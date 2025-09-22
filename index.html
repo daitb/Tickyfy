@@ -3,19 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <title>Start Button Example</title>
+    <style>
+        #quiz {
+            margin-top: 20px;
+            font-size: 18px;
+            display: none;
+        }
+        .option {
+            display: block;
+            margin: 5px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .option:hover {
+            background: #d0ffd0;
+        }
+        #result {
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
     <!-- Nút Start -->
     <button id="startButton">Start</button>
+
+    <!-- Khu vực game -->
+    <div id="quiz">
+        <p id="question"></p>
+        <div id="options"></div>
+        <div id="result"></div>
+    </div>
 
     <!-- JavaScript -->
     <script>
         // Lấy nút theo id
         const button = document.getElementById("startButton");
 
-        // Thêm sự kiện click
+        // Thêm sự kiện click (code gốc)
         button.addEventListener("click", function() {
             alert("Bạn vừa nhấn nút Start!");
+        });
+
+        // --- Code bổ sung: Mini Game ---
+        const quizDiv = document.getElementById("quiz");
+        const questionP = document.getElementById("question");
+        const optionsDiv = document.getElementById("options");
+        const resultDiv = document.getElementById("result");
+
+        const quizData = {
+            question: "Thủ đô của Việt Nam là gì?",
+            options: ["TP. Hồ Chí Minh", "Hà Nội", "Đà Nẵng"],
+            correct: 1
+        };
+
+        button.addEventListener("click", function() {
+            // Hiện game
+            quizDiv.style.display = "block";
+            questionP.textContent = quizData.question;
+            optionsDiv.innerHTML = "";
+            resultDiv.textContent = "";
+
+            quizData.options.forEach((opt, index) => {
+                const btn = document.createElement("button");
+                btn.textContent = opt;
+                btn.classList.add("option");
+                btn.addEventListener("click", function() {
+                    if (index === quizData.correct) {
+                        resultDiv.textContent = "🎉 Chính xác!";
+                        resultDiv.style.color = "green";
+                    } else {
+                        resultDiv.textContent = "❌ Sai rồi, thử lại!";
+                        resultDiv.style.color = "red";
+                    }
+                });
+                optionsDiv.appendChild(btn);
+            });
         });
     </script>
 </body>
