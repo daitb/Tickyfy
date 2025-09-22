@@ -2,8 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Start Button Example</title>
+
+    <title>Start + Quiz + Login Example</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
         #quiz {
             margin-top: 20px;
             font-size: 18px;
@@ -26,6 +31,46 @@
             font-size: 20px;
             font-weight: bold;
         }
+
+
+        /* --- Login Form --- */
+        #loginForm {
+            margin-top: 30px;
+            width: 300px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+        #loginForm h2 {
+            margin-top: 0;
+            text-align: center;
+        }
+        #loginForm label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+        #loginForm input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #bbb;
+            border-radius: 6px;
+        }
+        #loginForm button {
+            margin-top: 15px;
+            width: 100%;
+            padding: 10px;
+            background: #4CAF50;
+            border: none;
+            color: white;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        #loginForm button:hover {
+            background: #45a049;
+        }
+
     </style>
 </head>
 <body>
@@ -37,6 +82,21 @@
         <p id="question"></p>
         <div id="options"></div>
         <div id="result"></div>
+    </div>
+
+
+    <!-- Form login cơ bản -->
+    <div id="loginForm">
+        <h2>Đăng nhập</h2>
+        <form>
+            <label for="username">Tên đăng nhập</label>
+            <input type="text" id="username" placeholder="Nhập tên...">
+
+            <label for="password">Mật khẩu</label>
+            <input type="password" id="password" placeholder="Nhập mật khẩu...">
+
+            <button type="button">Đăng nhập</button>
+        </form>
     </div>
 
     <!-- JavaScript -->
