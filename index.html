@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Start Button + Login Example</title>
+</head>
+<body>
+    <!-- Nút Start -->
+    <button id="startButton">Start</button>
+
+    <hr>
+
+    <!-- Form login vui vui -->
+    <h2>Đăng nhập</h2>
+    <form id="loginForm">
+        <label for="username">Tên đăng nhập:</label><br>
+        <input type="text" id="username" name="username"><br><br>
+
+        <label for="password">Mật khẩu:</label><br>
+        <input type="password" id="password" name="password"><br><br>
+
+        <button type="submit">Đăng nhập</button>
+    </form>
+
+    <!-- JavaScript -->
+    <script>
+        // Nút Start
+        const button = document.getElementById("startButton");
+        button.addEventListener("click", function() {
+            alert("Bạn vừa nhấn nút Start!");
+        });
+
+        // Form login
+        const form = document.getElementById("loginForm");
+        form.addEventListener("submit", function(e) {
+            e.preventDefault(); // chặn reload trang
+            const user = document.getElementById("username").value;
+            const pass = document.getElementById("password").value;
+
+            if(user && pass){
+                alert("Xin chào " + user + " 👋 (login cho vui thôi 😁)");
+            } else {
+                alert("Vui lòng nhập đủ tên và mật khẩu!");
+            }
+        });
+    </script>
+</body>
+</html>
