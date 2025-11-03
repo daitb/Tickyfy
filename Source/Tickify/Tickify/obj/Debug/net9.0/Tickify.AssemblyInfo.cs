@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Tickify")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c79b5127cc6e861203c4d4d36877b03971755d02")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9b6e050e0a4943ad564cd6db0aa97ef5712d27b0")]
 [assembly: System.Reflection.AssemblyProductAttribute("Tickify")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Tickify")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
