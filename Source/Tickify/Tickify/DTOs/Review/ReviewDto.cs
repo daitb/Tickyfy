@@ -1,4 +1,4 @@
-using Tickify.DTOs.User;
+using Tickify.DTOs.Common;
 
 namespace Tickify.DTOs.Review
 {
@@ -6,12 +6,14 @@ namespace Tickify.DTOs.Review
     {
         public Guid Id { get; set; }
         public Guid EventId { get; set; }
-        public Guid UserId { get; set; }
+        public BasicUserInfo User { get; set; } = new();
         public int Rating { get; set; }
         public string Comment { get; set; } = string.Empty;
         public bool IsAnonymous { get; set; }
-        public UserDto? User { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+        
+        // Event info for display
+        public BasicEventInfo? Event { get; set; }
     }
 }

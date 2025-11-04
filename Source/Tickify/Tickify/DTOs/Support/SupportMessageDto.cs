@@ -1,4 +1,4 @@
-using Tickify.DTOs.User;
+using Tickify.DTOs.Common;
 
 namespace Tickify.DTOs.Support
 {
@@ -6,7 +6,8 @@ namespace Tickify.DTOs.Support
     {
         public Guid Id { get; set; }
         public string Content { get; set; } = string.Empty;
-        public UserDto? Sender { get; set; }
+        
+        public BasicUserInfo Sender { get; set; } = new();
         public bool IsInternalNote { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<string> Attachments { get; set; } = new();

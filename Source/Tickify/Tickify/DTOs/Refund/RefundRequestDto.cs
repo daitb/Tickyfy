@@ -1,5 +1,4 @@
-using Tickify.DTOs.Booking;
-using Tickify.DTOs.User;
+using Tickify.DTOs.Common;
 
 namespace Tickify.DTOs.Refund
 {
@@ -8,15 +7,16 @@ namespace Tickify.DTOs.Refund
         public Guid Id { get; set; }
         public string RefundNumber { get; set; } = string.Empty;
         public Guid BookingId { get; set; }
-        public Guid UserId { get; set; }
         public string Reason { get; set; } = string.Empty;
-        public string Status { get; set; } = "pending"; // pending, approved, rejected, processing, completed, failed
+        public string Status { get; set; } = "pending";
         public decimal RequestedAmount { get; set; }
         public decimal ApprovedAmount { get; set; }
         public string RefundMethod { get; set; } = string.Empty;
-        public UserDto? User { get; set; }
-        public BookingDto? Booking { get; set; }
-        public UserDto? ProcessedBy { get; set; }
+        
+        public BasicUserInfo User { get; set; } = new();
+        public BasicUserInfo? ProcessedBy { get; set; }
+        public BasicBookingInfo Booking { get; set; } = new();
+        
         public DateTime CreatedAt { get; set; }
         public DateTime? ProcessedAt { get; set; }
         public DateTime? CompletedAt { get; set; }
