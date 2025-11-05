@@ -41,6 +41,9 @@ bld/
 *.snupkg
 **/packages/*
 
+# Entity Framework Migrations (each developer generates locally)
+**/Migrations/
+
 # Database files
 *.db
 *.db-shm
