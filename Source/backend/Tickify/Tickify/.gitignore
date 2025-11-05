@@ -41,7 +41,7 @@ bld/
 **/packages/*
 
 # Entity Framework Migrations (Optional - uncomment if you don't want to track migrations)
-Migrations/
+# Migrations/
 
 # Database files (SQLite, etc.)
 *.db
@@ -63,5 +63,19 @@ appsettings.Production.json
 .DS_Store
 Thumbs.db
 
+# ========================================
+# IGNORE ALL IMPLEMENTATION FILES (Keep only folder structure)
+# ========================================
 
+# Ignore all .cs files in specific folders
+Controllers/*.cs
+Services/*.cs
+Repositories/*.cs
+Interfaces/**/*.cs
+Models/*.cs
+Data/*.cs
+Migrations/*.cs
+
+# BUT keep .gitkeep files to preserve folder structure
+!**/.gitkeep
 

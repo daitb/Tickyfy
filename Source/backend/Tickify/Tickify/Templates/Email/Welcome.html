@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chào mừng đến với Tickify</title>
+    <style>
+      /* Base styles */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f4f4;
+      }
+
+      /* Container */
+      .email-container {
+        max-width: 600px;
+        margin: 40px auto;
+        background-color: #ffffff;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Header */
+      .email-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px 30px;
+        text-align: center;
+        color: #ffffff;
+      }
+
+      .email-header h1 {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 600;
+      }
+
+      .logo {
+        font-size: 48px;
+        margin-bottom: 10px;
+      }
+
+      /* Body */
+      .email-body {
+        padding: 40px 30px;
+        color: #333333;
+        line-height: 1.6;
+      }
+
+      .email-body h2 {
+        color: #667eea;
+        font-size: 24px;
+        margin-top: 0;
+      }
+
+      .email-body p {
+        font-size: 16px;
+        margin: 15px 0;
+      }
+
+      /* Features list */
+      .features {
+        margin: 30px 0;
+      }
+
+      .feature-item {
+        display: flex;
+        align-items: center;
+        margin: 15px 0;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+      }
+
+      .feature-icon {
+        font-size: 24px;
+        margin-right: 15px;
+        min-width: 30px;
+      }
+
+      .feature-text {
+        font-size: 14px;
+        color: #555555;
+      }
+
+      /* CTA Button */
+      .cta-button {
+        display: inline-block;
+        margin: 30px 0;
+        padding: 15px 40px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #ffffff;
+        text-decoration: none;
+        border-radius: 25px;
+        font-weight: 600;
+        font-size: 16px;
+        transition: transform 0.2s;
+      }
+
+      .cta-button:hover {
+        transform: translateY(-2px);
+      }
+
+      /* Footer */
+      .email-footer {
+        background-color: #f8f9fa;
+        padding: 30px;
+        text-align: center;
+        color: #666666;
+        font-size: 14px;
+      }
+
+      .social-links {
+        margin: 20px 0;
+      }
+
+      .social-links a {
+        display: inline-block;
+        margin: 0 10px;
+        color: #667eea;
+        text-decoration: none;
+        font-size: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <!-- Header -->
+      <div class="email-header">
+        <div class="logo">🎫</div>
+        <h1>Tickify</h1>
+      </div>
+
+      <!-- Body -->
+      <div class="email-body">
+        <h2>Chào mừng {UserName}!</h2>
+        <p>
+          Cảm ơn bạn đã đăng ký tài khoản tại <strong>Tickify</strong> - Nền
+          tảng quản lý và đặt vé sự kiện hàng đầu Việt Nam.
+        </p>
+
+        <p>Với Tickify, bạn có thể:</p>
+
+        <div class="features">
+          <div class="feature-item">
+            <div class="feature-icon">🎉</div>
+            <div class="feature-text">
+              <strong>Khám phá sự kiện:</strong> Tìm kiếm hàng ngàn sự kiện hấp
+              dẫn từ concert, hội thảo đến workshop
+            </div>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-icon">⚡</div>
+            <div class="feature-text">
+              <strong>Đặt vé nhanh chóng:</strong> Thanh toán an toàn, nhận vé
+              điện tử ngay lập tức
+            </div>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-icon">🎯</div>
+            <div class="feature-text">
+              <strong>Quản lý booking:</strong> Theo dõi vé đã đặt, chuyển vé,
+              hoàn tiền dễ dàng
+            </div>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-icon">🔔</div>
+            <div class="feature-text">
+              <strong>Nhận thông báo:</strong> Cập nhật sự kiện yêu thích,
+              khuyến mãi độc quyền
+            </div>
+          </div>
+        </div>
+
+        <p>Hãy bắt đầu khám phá ngay hôm nay!</p>
+
+        <center>
+          <a href="https://tickify.com/events" class="cta-button"
+            >Khám phá sự kiện</a
+          >
+        </center>
+
+        <p style="margin-top: 30px; font-size: 14px; color: #666666">
+          Nếu bạn có bất kỳ câu hỏi nào, đừng ngần ngại liên hệ với chúng tôi
+          qua email
+          <a href="mailto:support@tickify.com" style="color: #667eea"
+            >support@tickify.com</a
+          >
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div class="email-footer">
+        <div class="social-links">
+          <a href="https://facebook.com/tickify" title="Facebook">📘</a>
+          <a href="https://instagram.com/tickify" title="Instagram">📷</a>
+          <a href="https://twitter.com/tickify" title="Twitter">🐦</a>
+        </div>
+        <p>© 2024 Tickify. All rights reserved.</p>
+        <p style="font-size: 12px; color: #999999">
+          Tickify Vietnam | Ho Chi Minh City, Vietnam
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
