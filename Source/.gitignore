@@ -1,0 +1,102 @@
+# =====================================
+# Tickify Project - GitIgnore
+# =====================================
+
+## Visual Studio temporary files, build results
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options directory
+.vs/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+**/packages/*
+
+# Entity Framework Migrations (each developer generates locally)
+**/Migrations/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# =====================================
+# Docker files (Not needed for Azure App Service)
+# =====================================
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+
+# =====================================
+# Internal Documentation (Not for repository)
+# =====================================
+SCORING-ANALYSIS.md
+5-WEEK-PROJECT-PLAN.md
+AZURE-SQL-SETUP-GUIDE.md
+
+# =====================================
+# Temporary/Backup files
+# =====================================
+*.bak
+*.tmp
+*.temp
+*~
+*.zip
+
+# =====================================
+# Sensitive Configuration (NEVER COMMIT!)
+# =====================================
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.*.json
+
+# =====================================
+# Environment files
+# =====================================
+.env
+.env.local
+.env.production
+
+# =====================================
+# User uploads (if stored locally)
+# =====================================
+wwwroot/uploads/*
+!wwwroot/uploads/.gitkeep
