@@ -1,0 +1,153 @@
+import { useState } from 'react';
+import { HeroSlider } from '../components/HeroSlider';
+import { EventCard } from '../components/EventCard';
+import { Badge } from '../components/ui/badge';
+import { ArrowRight, TrendingUp, Star } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { mockEvents, categories } from '../mockData';
+import { Category } from '../types';
+
+interface HomeProps {
+  onNavigate: (page: string, eventId?: string) => void;
+  isSearchOpen?: boolean;
+}
+
+export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
+  const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
+
+  const handleViewDetails = (eventId: string) => {
+    onNavigate('event-detail', eventId);
+  };
+
+  const trendingEvents = mockEvents.slice(0, 3);
+  const upcomingEvents = mockEvents.slice(3);
+  const specialEvents = mockEvents.filter(e => e.category === 'Music').slice(0, 4);
+
+  const filteredEvents = selectedCategory === 'all' 
+    ? upcomingEvents 
+    : upcomingEvents.filter(e => e.category === selectedCategory);
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Hero Slider - pauses when search is open */}
+      <HeroSlider 
+        onViewDetails={handleViewDetails}
+        isPaused={isSearchOpen}
+      />
+
+      {/* Categories Filter */}
+      <section className="bg-white border-b border-neutral-100">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            <Badge
+              variant={selectedCategory === 'all' ? 'default' : 'secondary'}
+              className={`cursor-pointer whitespace-nowrap ${
+                selectedCategory === 'all' 
+                  ? 'bg-teal-500 hover:bg-teal-600 text-white' 
+                  : 'bg-neutral-100 hover:bg-neutral-200'
+              }`}
+              onClick={() => setSelectedCategory('all')}
+            >
+              All Events
+            </Badge>
+            {categories.map((category) => (
+              <Badge
+                key={category}
+                variant={selectedCategory === category ? 'default' : 'secondary'}
+                className={`cursor-pointer whitespace-nowrap ${
+                  selectedCategory === category 
+                    ? 'bg-teal-500 hover:bg-teal-600 text-white' 
+                    : 'bg-neutral-100 hover:bg-neutral-200'
+                }`}
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Special Events */}
+      <section className="py-12 bg-gradient-to-br from-teal-50 to-white">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <Star className="text-teal-500" size={28} />
+              <h2 className="text-neutral-900">Special Events</h2>
+            </div>
+            <Button 
+              variant="ghost" 
+              onClick={() => onNavigate('listing')}
+              className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+            >
+              View All
+              <ArrowRight size={16} className="ml-2" />
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {specialEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onClick={() => onNavigate('event-detail', event.id)}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Trending Section */}
+      <section className="py-12 bg-white">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="text-teal-500" size={28} />
+              <h2 className="text-neutral-900">Trending Events</h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {trendingEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onClick={() => onNavigate('event-detail', event.id)}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Upcoming Events */}
+      <section className="py-12 bg-neutral-50">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-neutral-900">
+              {selectedCategory === 'all' ? 'Upcoming Events' : `${selectedCategory} Events`}
+            </h2>
+            <Button 
+              variant="ghost" 
+              onClick={() => onNavigate('listing')}
+              className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+            >
+              View All
+              <ArrowRight size={16} className="ml-2" />
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onClick={() => onNavigate('event-detail', event.id)}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
