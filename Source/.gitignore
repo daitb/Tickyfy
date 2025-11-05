@@ -86,7 +86,8 @@ AZURE-SQL-SETUP-GUIDE.md
 appsettings.json
 appsettings.Development.json
 appsettings.Production.json
-appsettings.*.json
+# Allow example configuration file
+!appsettings.example.json
 
 # =====================================
 # Environment files
