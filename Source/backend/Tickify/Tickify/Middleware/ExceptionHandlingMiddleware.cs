@@ -5,10 +5,7 @@ using Tickify.Exceptions;
 
 namespace Tickify.Middleware;
 
-/// <summary>
-/// Middleware xử lý tất cả exceptions trong ứng dụng
-/// Tự động convert exceptions thành ApiResponse với status code phù hợp
-/// </summary>
+
 public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
