@@ -1,9 +1,13 @@
 namespace Tickify.Exceptions;
 
+<<<<<<< Updated upstream
 /// <summary>
 /// Exception khi validation thất bại (400 Bad Request)
 /// VD: Email không đúng format, password quá ngắn
 /// </summary>
+=======
+
+>>>>>>> Stashed changes
 public class BadRequestException : Exception
 {
     public List<string> Errors { get; set; }
