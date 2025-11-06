@@ -1,40 +1,21 @@
 namespace Tickify.Common;
 
-/// <summary>
-/// Class chuẩn để trả về kết quả từ API
-/// Giúp frontend dễ dàng xử lý response theo format nhất quán
-/// </summary>
-/// <typeparam name="T">Kiểu dữ liệu của data trả về</typeparam>
 public class ApiResponse<T>
 {
-    /// <summary>
-    /// Trạng thái thành công hay thất bại
-    /// </summary>
     public bool Success { get; set; }
 
-    /// <summary>
-    /// Thông báo cho người dùng
-    /// </summary>
+
     public string Message { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Dữ liệu trả về (nếu thành công)
-    /// </summary>
     public T? Data { get; set; }
 
-    /// <summary>
-    /// Danh sách lỗi chi tiết (nếu có)
-    /// </summary>
+
     public List<string>? Errors { get; set; }
 
-    /// <summary>
-    /// Timestamp khi tạo response
-    /// </summary>
+
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
-    /// <summary>
-    /// Tạo response thành công
-    /// </summary>
+
     public static ApiResponse<T> SuccessResponse(T data, string message = "Success")
     {
         return new ApiResponse<T>
@@ -45,9 +26,6 @@ public class ApiResponse<T>
         };
     }
 
-    /// <summary>
-    /// Tạo response thất bại
-    /// </summary>
     public static ApiResponse<T> FailureResponse(string message, List<string>? errors = null)
     {
         return new ApiResponse<T>
