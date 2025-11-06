@@ -11,7 +11,7 @@ namespace Tickify.DTOs.Refund
         [StringLength(500)]
         public string Reason { get; set; } = string.Empty;
         
-        public List<string>? EvidenceUrls { get; set; } // Ảnh chứng cứ
+        public List<string>? EvidenceUrls { get; set; }
     }
 
     public class RefundRequestDto
@@ -24,7 +24,7 @@ namespace Tickify.DTOs.Refund
         public decimal Amount { get; set; }
         public string Reason { get; set; } = string.Empty;
         public List<string> EvidenceUrls { get; set; } = new();
-        public string Status { get; set; } = string.Empty; // Pending, Approved, Rejected
+        public string Status { get; set; } = string.Empty;
         public string? AdminNotes { get; set; }
         public DateTime RequestedAt { get; set; }
         public DateTime? ProcessedAt { get; set; }

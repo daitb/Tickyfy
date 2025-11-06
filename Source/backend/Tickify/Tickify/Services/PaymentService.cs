@@ -1,57 +1,63 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
+using Stripe;
 using PayOS;
 using PayOS.Models;
-using Stripe;
-using Tickify.Data;
 using Tickify.DTOs.Payment;
 using Tickify.Models;
+using Tickify.Data;
+using Tickify.Services.Email;
+using Net.payOS.Types;
 
 namespace Tickify.Services
 {
     public interface IPaymentService
     {
-        Task<PaymentResponseDto> CreatePaymentAsync(CreatePaymentDto request);
-        Task<bool> VerifyPaymentAsync(string paymentId, string provider);
-        Task ProcessPayOSWebhook(PaymentCallbackDto callback);
+        Task<PaymentIntentDto> CreatePaymentIntentAsync(CreatePaymentDto request);
         Task ProcessStripeWebhook(string json, string signature);
-        Task<Payment> GetPaymentAsync(Guid id);
-        Task<List<Payment>> GetPaymentsByBookingAsync(Guid bookingId);
+        Task ProcessPayOSWebhook(PaymentCallbackDto callback);
+        Task<PaymentDetailDto> GetPaymentAsync(Guid id);
+        Task<List<PaymentDetailDto>> GetPaymentsByBookingAsync(Guid bookingId);
+        Task<bool> VerifyPaymentAsync(Guid paymentId);
+        Task ConfirmPaymentAsync(Guid paymentId);
     }
 
     public class PaymentService : IPaymentService
     {
+        private readonly ApplicationDbContext _context;
         private readonly PayOS _payOS;
         private readonly IStripeClient _stripeClient;
-        private readonly ApplicationDbContext _context;
         private readonly ILogger<PaymentService> _logger;
-        private readonly PaymentSettings _paymentSettings;
+        private readonly IEmailService _emailService;
+        private readonly IQRCodeService _qrCodeService;
 
         public PaymentService(
-            IOptions<PaymentSettings> paymentSettings,
             ApplicationDbContext context,
-            ILogger<PaymentService> logger)
+            IConfiguration configuration,
+            ILogger<PaymentService> logger,
+            IEmailService emailService,
+            IQRCodeService qrCodeService)
         {
-            _paymentSettings = paymentSettings.Value;
             _context = context;
             _logger = logger;
+            _emailService = emailService;
+            _qrCodeService = qrCodeService;
 
-            // Khởi tạo payOS
+            // Khởi tạo PayOS
             _payOS = new PayOS(
-                _paymentSettings.PayOS.ClientId,
-                _paymentSettings.PayOS.ApiKey,
-                _paymentSettings.PayOS.ChecksumKey
+                configuration["PayOS:ClientId"],
+                configuration["PayOS:ApiKey"], 
+                configuration["PayOS:ChecksumKey"]
             );
 
             // Khởi tạo Stripe
-            _stripeClient = new StripeClient(_paymentSettings.Stripe.SecretKey);
+            _stripeClient = new StripeClient(configuration["Stripe:SecretKey"]);
         }
 
-        public async Task<PaymentResponseDto> CreatePaymentAsync(CreatePaymentDto request)
+        public async Task<PaymentIntentDto> CreatePaymentIntentAsync(CreatePaymentDto request)
         {
             var booking = await _context.Bookings
-                .Include(b => b.User)
                 .Include(b => b.Event)
+                .Include(b => b.User)
                 .FirstOrDefaultAsync(b => b.Id == request.BookingId);
 
             if (booking == null)
@@ -67,184 +73,102 @@ namespace Tickify.Services
                 PaymentMethod = request.PaymentMethod,
                 Status = PaymentStatus.Pending,
                 CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(30) // 30 phút để hoàn thành
+                ExpiresAt = DateTime.UtcNow.AddMinutes(15)
             };
 
             _context.Payments.Add(payment);
             await _context.SaveChangesAsync();
 
-            // Xử lý theo phương thức thanh toán
-            return request.PaymentMethod.ToUpper() switch
+            // Tạo payment intent theo method
+            if (request.PaymentMethod == "Stripe")
             {
-                "PAYOS" => await CreatePayOSPayment(payment, booking, request),
-                "STRIPE" => await CreateStripePayment(payment, booking, request),
-                "VNPAY" => await CreateVNPayPayment(payment, booking, request),
-                "MOMO" => await CreateMoMoPayment(payment, booking, request),
-                _ => throw new Exception($"Unsupported payment method: {request.PaymentMethod}")
-            };
-        }
-
-        private async Task<PaymentResponseDto> CreatePayOSPayment(Payment payment, Booking booking, CreatePaymentDto request)
-        {
-            try
-            {
-                var orderCode = int.Parse(DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()[^8..]);
-
-                var paymentData = new PaymentData
-                {
-                    orderCode = orderCode,
-                    amount = (int)request.Amount,
-                    description = request.Description ?? $"Thanh toán vé {booking.Event.Name}",
-                    buyerName = request.CustomerName ?? booking.User.FullName,
-                    buyerEmail = request.CustomerEmail ?? booking.User.Email,
-                    buyerPhone = request.CustomerPhone ?? "",
-                    returnUrl = request.ReturnUrl ?? _paymentSettings.PayOS.ReturnUrl,
-                    cancelUrl = request.CancelUrl ?? _paymentSettings.PayOS.CancelUrl
-                };
-
-                var paymentLink = await _payOS.createPaymentLink(paymentData);
-
-                // Lưu orderCode để verify sau
-                payment.ExternalPaymentId = orderCode.ToString();
-                await _context.SaveChangesAsync();
-
-                return new PaymentResponseDto
-                {
-                    PaymentId = payment.Id.ToString(),
-                    Status = "PENDING",
-                    CheckoutUrl = paymentLink.checkoutUrl,
-                    PaymentMethod = "PayOS",
-                    ExpiresAt = payment.ExpiresAt
-                };
+                return await CreateStripeIntent(payment, booking);
             }
-            catch (Exception ex)
+            else if (request.PaymentMethod == "PayOS")
             {
-                _logger.LogError(ex, "Error creating PayOS payment");
-                throw new Exception($"PayOS payment creation failed: {ex.Message}");
+                return await CreatePayOSPayment(payment, booking, request);
             }
+
+            throw new Exception("Unsupported payment method");
         }
 
-        private async Task<PaymentResponseDto> CreateStripePayment(Payment payment, Booking booking, CreatePaymentDto request)
+        private async Task<PaymentIntentDto> CreateStripeIntent(Payment payment, Booking booking)
         {
-            try
+            var options = new PaymentIntentCreateOptions
             {
-                var options = new PaymentIntentCreateOptions
+                Amount = (long)(payment.Amount * 100),
+                Currency = "usd",
+                PaymentMethodTypes = new List<string> { "card" },
+                Metadata = new Dictionary<string, string>
                 {
-                    Amount = (long)(request.Amount * 100), // Chuyển sang cents
-                    Currency = "usd",
-                    PaymentMethodTypes = new List<string> { "card" },
-                    Metadata = new Dictionary<string, string>
-                    {
-                        ["booking_id"] = booking.Id.ToString(),
-                        ["payment_id"] = payment.Id.ToString()
-                    }
-                };
-
-                var service = new PaymentIntentService(_stripeClient);
-                var intent = await service.CreateAsync(options);
-
-                payment.ExternalPaymentId = intent.Id;
-                await _context.SaveChangesAsync();
-
-                return new PaymentResponseDto
-                {
-                    PaymentId = payment.Id.ToString(),
-                    Status = "PENDING",
-                    ClientSecret = intent.ClientSecret,
-                    PaymentMethod = "Stripe",
-                    ExpiresAt = payment.ExpiresAt
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating Stripe payment");
-                throw new Exception($"Stripe payment creation failed: {ex.Message}");
-            }
-        }
-
-        private async Task<PaymentResponseDto> CreateVNPayPayment(Payment payment, Booking booking, CreatePaymentDto request)
-        {
-            // Triển khai VNPay integration ở đây
-            // Tạo URL thanh toán VNPay
-            var vnPayUrl = await GenerateVNPayUrl(payment, booking, request);
-            
-            payment.ExternalPaymentId = $"VNP_{payment.Id}";
-            await _context.SaveChangesAsync();
-
-            return new PaymentResponseDto
-            {
-                PaymentId = payment.Id.ToString(),
-                Status = "PENDING",
-                CheckoutUrl = vnPayUrl,
-                PaymentMethod = "VNPay",
-                ExpiresAt = payment.ExpiresAt
-            };
-        }
-
-        private async Task<PaymentResponseDto> CreateMoMoPayment(Payment payment, Booking booking, CreatePaymentDto request)
-        {
-            // Triển khai MoMo integration ở đây
-            // Tạo QR code hoặc deep link MoMo
-            var momoData = await GenerateMoMoPayment(payment, booking, request);
-            
-            payment.ExternalPaymentId = $"MOMO_{payment.Id}";
-            await _context.SaveChangesAsync();
-
-            return new PaymentResponseDto
-            {
-                PaymentId = payment.Id.ToString(),
-                Status = "PENDING",
-                QrCode = momoData.QrCode,
-                CheckoutUrl = momoData.DeepLink,
-                PaymentMethod = "MoMo",
-                ExpiresAt = payment.ExpiresAt
-            };
-        }
-
-        public async Task<bool> VerifyPaymentAsync(string paymentId, string provider)
-        {
-            var payment = await _context.Payments
-                .FirstOrDefaultAsync(p => p.Id.ToString() == paymentId);
-
-            if (payment == null) return false;
-
-            return provider.ToUpper() switch
-            {
-                "PAYOS" => await VerifyPayOSPayment(payment),
-                "STRIPE" => await VerifyStripePayment(payment),
-                "VNPAY" => await VerifyVNPayPayment(payment),
-                "MOMO" => await VerifyMoMoPayment(payment),
-                _ => false
-            };
-        }
-
-        private async Task<bool> VerifyPayOSPayment(Payment payment)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(payment.ExternalPaymentId))
-                    return false;
-
-                var orderCode = int.Parse(payment.ExternalPaymentId);
-                var paymentInfo = await _payOS.getPaymentLinkInformation(orderCode);
-
-                if (paymentInfo.status == "PAID")
-                {
-                    payment.Status = PaymentStatus.Completed;
-                    payment.PaidAt = DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
-                    
-                    // Cập nhật booking status
-                    await UpdateBookingStatus(payment.BookingId, BookingStatus.Confirmed);
-                    return true;
+                    ["payment_id"] = payment.Id.ToString(),
+                    ["booking_id"] = booking.Id.ToString()
                 }
+            };
 
-                return false;
-            }
-            catch (Exception ex)
+            var service = new PaymentIntentService(_stripeClient);
+            var intent = await service.CreateAsync(options);
+
+            payment.ExternalPaymentId = intent.Id;
+            await _context.SaveChangesAsync();
+
+            return new PaymentIntentDto
             {
-                _logger.LogError(ex, "Error verifying PayOS payment");
-                return false;
+                ClientSecret = intent.ClientSecret,
+                PaymentIntentId = intent.Id,
+                Amount = payment.Amount,
+                Currency = "usd"
+            };
+        }
+
+        private async Task<PaymentIntentDto> CreatePayOSPayment(Payment payment, Booking booking, CreatePaymentDto request)
+        {
+            var orderCode = int.Parse(DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()[^8..]);
+
+            var paymentData = new PaymentData
+            {
+                orderCode = orderCode,
+                amount = (int)payment.Amount,
+                description = $"Thanh toán vé {booking.Event.Name}",
+                buyerName = booking.User.FullName,
+                buyerEmail = booking.User.Email,
+                buyerPhone = "",
+                returnUrl = request.ReturnUrl ?? "https://yourdomain.com/payment-success",
+                cancelUrl = request.CancelUrl ?? "https://yourdomain.com/payment-cancel"
+            };
+
+            var paymentLink = await _payOS.createPaymentLink(paymentData);
+
+            payment.ExternalPaymentId = orderCode.ToString();
+            await _context.SaveChangesAsync();
+
+            return new PaymentIntentDto
+            {
+                ClientSecret = null,
+                PaymentIntentId = orderCode.ToString(),
+                Amount = payment.Amount,
+                Currency = "VND",
+                CheckoutUrl = paymentLink.checkoutUrl
+            };
+        }
+
+        public async Task ProcessStripeWebhook(string json, string signature)
+        {
+            try
+            {
+                var stripeEvent = EventUtility.ConstructEvent(
+                    json, signature, "whsec_your_webhook_secret");
+
+                if (stripeEvent.Type == "payment_intent.succeeded")
+                {
+                    var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
+                    await ConfirmPaymentByExternalId(paymentIntent.Id);
+                }
+            }
+            catch (StripeException ex)
+            {
+                _logger.LogError(ex, "Stripe webhook error");
+                throw;
             }
         }
 
@@ -252,47 +176,54 @@ namespace Tickify.Services
         {
             try
             {
-                var payment = await _context.Payments
-                    .FirstOrDefaultAsync(p => p.ExternalPaymentId == callback.OrderCode.ToString());
-
-                if (payment == null) return;
-
                 if (callback.Code == "00" && callback.Status == "PAID")
                 {
-                    payment.Status = PaymentStatus.Completed;
-                    payment.PaidAt = DateTime.UtcNow;
-                    
-                    // Cập nhật booking status và generate tickets
-                    await UpdateBookingStatus(payment.BookingId, BookingStatus.Confirmed);
-                    await GenerateTicketsForBooking(payment.BookingId);
-                    
-                    await _context.SaveChangesAsync();
-                    
-                    // Gửi email xác nhận
-                    await SendPaymentConfirmationEmail(payment.BookingId);
-                }
-                else if (callback.Cancel || callback.Status == "CANCELLED")
-                {
-                    payment.Status = PaymentStatus.Cancelled;
-                    await _context.SaveChangesAsync();
+                    await ConfirmPaymentByExternalId(callback.OrderCode.ToString());
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing PayOS webhook");
+                _logger.LogError(ex, "PayOS webhook error");
                 throw;
             }
         }
 
-        // Các methods helper
-        private async Task UpdateBookingStatus(Guid bookingId, BookingStatus status)
+        private async Task ConfirmPaymentByExternalId(string externalId)
         {
-            var booking = await _context.Bookings.FindAsync(bookingId);
-            if (booking != null)
+            var payment = await _context.Payments
+                .Include(p => p.Booking)
+                .FirstOrDefaultAsync(p => p.ExternalPaymentId == externalId);
+
+            if (payment != null)
             {
-                booking.Status = status;
-                await _context.SaveChangesAsync();
+                await ConfirmPaymentAsync(payment.Id);
             }
+        }
+
+        public async Task ConfirmPaymentAsync(Guid paymentId)
+        {
+            var payment = await _context.Payments
+                .Include(p => p.Booking)
+                    .ThenInclude(b => b.User)
+                .Include(p => p.Booking)
+                    .ThenInclude(b => b.Event)
+                .FirstOrDefaultAsync(p => p.Id == paymentId);
+
+            if (payment == null) return;
+
+            // Payment confirmation flow
+            payment.Status = PaymentStatus.Completed;
+            payment.PaidAt = DateTime.UtcNow;
+            payment.Booking.Status = BookingStatus.Confirmed;
+            payment.Booking.ExpiresAt = null;
+
+            await _context.SaveChangesAsync();
+
+            // Generate QR codes
+            await GenerateTicketsForBooking(payment.BookingId);
+
+            // Send confirmation email
+            await SendPaymentConfirmationEmail(payment.BookingId);
         }
 
         private async Task GenerateTicketsForBooking(Guid bookingId)
@@ -301,47 +232,93 @@ namespace Tickify.Services
                 .Include(b => b.Tickets)
                 .FirstOrDefaultAsync(b => b.Id == bookingId);
 
-            if (booking != null)
+            if (booking != null && booking.Tickets.Any())
             {
-                // Logic generate QR codes và tickets
-                // Đã có trong kế hoạch của Developer 3
+                foreach (var ticket in booking.Tickets)
+                {
+                    var qrCodeData = $"{ticket.Id}|{ticket.Booking.EventId}";
+                    ticket.QrCodeData = await _qrCodeService.GenerateQRCodeAsync(qrCodeData);
+                }
+                await _context.SaveChangesAsync();
             }
         }
 
         private async Task SendPaymentConfirmationEmail(Guid bookingId)
         {
-            // Gửi email xác nhận thanh toán
-            // Sử dụng EmailService từ Developer 1
+            var booking = await _context.Bookings
+                .Include(b => b.User)
+                .Include(b => b.Event)
+                .Include(b => b.Tickets)
+                .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+            if (booking != null)
+            {
+                await _emailService.SendPaymentConfirmationAsync(
+                    booking.User.Email,
+                    booking.User.FullName,
+                    booking.Event.Name,
+                    booking.TotalAmount,
+                    booking.Tickets.Count
+                );
+            }
         }
 
-        // Các methods khác (GetPaymentAsync, GetPaymentsByBookingAsync, etc.)
-        public async Task<Payment> GetPaymentAsync(Guid id)
+        public async Task<PaymentDetailDto> GetPaymentAsync(Guid id)
         {
-            return await _context.Payments
+            var payment = await _context.Payments
                 .Include(p => p.Booking)
+                    .ThenInclude(b => b.Event)
                 .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (payment == null) return null;
+
+            return new PaymentDetailDto
+            {
+                Id = payment.Id,
+                BookingId = payment.BookingId,
+                BookingNumber = payment.Booking.BookingNumber,
+                EventName = payment.Booking.Event.Name,
+                Amount = payment.Amount,
+                Currency = payment.Currency,
+                PaymentMethod = payment.PaymentMethod,
+                Status = payment.Status.ToString(),
+                ExternalPaymentId = payment.ExternalPaymentId,
+                CreatedAt = payment.CreatedAt,
+                PaidAt = payment.PaidAt,
+                ExpiresAt = payment.ExpiresAt
+            };
         }
 
-        public async Task<List<Payment>> GetPaymentsByBookingAsync(Guid bookingId)
+        public async Task<List<PaymentDetailDto>> GetPaymentsByBookingAsync(Guid bookingId)
         {
-            return await _context.Payments
+            var payments = await _context.Payments
+                .Include(p => p.Booking)
+                    .ThenInclude(b => b.Event)
                 .Where(p => p.BookingId == bookingId)
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
+
+            return payments.Select(p => new PaymentDetailDto
+            {
+                Id = p.Id,
+                BookingId = p.BookingId,
+                BookingNumber = p.Booking.BookingNumber,
+                EventName = p.Booking.Event.Name,
+                Amount = p.Amount,
+                Currency = p.Currency,
+                PaymentMethod = p.PaymentMethod,
+                Status = p.Status.ToString(),
+                ExternalPaymentId = p.ExternalPaymentId,
+                CreatedAt = p.CreatedAt,
+                PaidAt = p.PaidAt,
+                ExpiresAt = p.ExpiresAt
+            }).ToList();
         }
 
-        // Các methods verify cho các provider khác
-        private async Task<bool> VerifyStripePayment(Payment payment) { /* implementation */ }
-        private async Task<string> GenerateVNPayUrl(Payment payment, Booking booking, CreatePaymentDto request) { /* implementation */ }
-        private async Task<MoMoPaymentData> GenerateMoMoPayment(Payment payment, Booking booking, CreatePaymentDto request) { /* implementation */ }
-        private async Task<bool> VerifyVNPayPayment(Payment payment) { /* implementation */ }
-        private async Task<bool> VerifyMoMoPayment(Payment payment) { /* implementation */ }
-        public async Task ProcessStripeWebhook(string json, string signature) { /* implementation */ }
-    }
-
-    public class MoMoPaymentData
-    {
-        public string QrCode { get; set; } = string.Empty;
-        public string DeepLink { get; set; } = string.Empty;
+        public async Task<bool> VerifyPaymentAsync(Guid paymentId)
+        {
+            var payment = await _context.Payments.FindAsync(paymentId);
+            return payment?.Status == PaymentStatus.Completed;
+        }
     }
 }
