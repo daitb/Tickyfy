@@ -1,0 +1,15 @@
+using Tickify.DTOs.PromoCode;
+
+namespace Tickify.Interfaces.Services;
+
+public interface IPromoCodeService
+{
+    Task<PromoCodeDto> GetByIdAsync(int id);
+    Task<PromoCodeDto> GetByCodeAsync(string code);
+    Task<IEnumerable<PromoCodeDto>> GetByEventIdAsync(int eventId);
+    Task<IEnumerable<PromoCodeDto>> GetActivePromoCodesAsync();
+    Task<PromoCodeDto> ValidatePromoCodeAsync(ValidatePromoCodeDto validateDto);
+    Task<decimal> CalculateDiscountAsync(string promoCode, int eventId, decimal orderTotal);
+    Task<bool> ApplyPromoCodeAsync(int promoCodeId);
+    Task<int> GetUsageCountAsync(int promoCodeId);
+}
