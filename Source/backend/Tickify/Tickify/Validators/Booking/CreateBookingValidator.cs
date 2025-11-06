@@ -3,9 +3,7 @@ using Tickify.DTOs.Booking;
 
 namespace Tickify.Validators.Booking;
 
-/// <summary>
-/// Validator cho CreateBookingDto
-/// </summary>
+
 public class CreateBookingValidator : AbstractValidator<CreateBookingDto>
 {
     public CreateBookingValidator()

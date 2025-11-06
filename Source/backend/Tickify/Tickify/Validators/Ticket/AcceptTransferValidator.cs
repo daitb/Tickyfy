@@ -3,9 +3,7 @@ using Tickify.DTOs.Ticket;
 
 namespace Tickify.Validators.Ticket;
 
-/// <summary>
-/// Validator cho AcceptTransferDto
-/// </summary>
+
 public class AcceptTransferValidator : AbstractValidator<AcceptTransferDto>
 {
     public AcceptTransferValidator()

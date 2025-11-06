@@ -7,11 +7,6 @@ public class TicketTransferValidator : AbstractValidator<TicketTransferDto>
 {
     public TicketTransferValidator()
     {
-<<<<<<< Updated upstream
-        RuleFor(x => x.RecipientEmail)
-            .NotEmpty().WithMessage("Email người nhận là bắt buộc")
-            .EmailAddress().WithMessage("Email không đúng định dạng");
-=======
         RuleFor(x => x.TicketId)
             .GreaterThan(0).WithMessage("TicketId phải lớn hơn 0");
 
@@ -23,6 +18,5 @@ public class TicketTransferValidator : AbstractValidator<TicketTransferDto>
         RuleFor(x => x.Message)
             .MaximumLength(500).WithMessage("Tin nhắn không được dài quá 500 ký tự")
             .When(x => !string.IsNullOrEmpty(x.Message));
->>>>>>> Stashed changes
     }
 }
