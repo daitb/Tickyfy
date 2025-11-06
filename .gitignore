@@ -88,12 +88,26 @@ appsettings.Development.json
 appsettings.Production.json
 appsettings.*.json
 
+# Setup scripts with credentials
+setup-secrets.ps1
+*.secrets.ps1
+*.credentials.ps1
+
 # =====================================
 # Environment files
 # =====================================
 .env
 .env.local
 .env.production
+
+# =====================================
+# Azurite (Local Storage Emulator)
+# =====================================
+azurite-data/
+__blobstorage__/
+__queuestorage__/
+__tablestorage__/
+azurite-debug.log
 
 # =====================================
 # User uploads (if stored locally)
