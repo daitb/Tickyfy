@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using payOS;
-using payOS.Models;
+using PayOS;
+using PayOS.Models;
 using Stripe;
 using Tickify.Data;
 using Tickify.DTOs.Payment;
