@@ -1,11 +1,10 @@
 namespace Tickify.DTOs.Payment
 {
-    public class PaymentIntentDto
+    public sealed class PaymentIntentDto
     {
-        public string ClientSecret { get; set; } = string.Empty;
-        public string PaymentIntentId { get; set; } = string.Empty;
-        public decimal Amount { get; set; }
-        public string Currency { get; set; } = "usd";
-        public string? CheckoutUrl { get; set; }
+        public string Provider { get; set; } = default!;
+        public int PaymentId { get; set; }
+        public string RedirectUrl { get; set; } = default!;
+        public DateTime ExpiresAtUtc { get; set; }
     }
 }

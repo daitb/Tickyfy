@@ -1,112 +1,50 @@
-using Microsoft.AspNetCore.Mvc;
+// Controllers/PaymentController.cs
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using Tickify.DTOs.Payment;
-using Tickify.Services;
+using Tickify.Interfaces.Repositories;
+using Tickify.Repositories;
+using Tickify.Services.Payments;
 
-namespace Tickify.Controllers
+namespace Tickify.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public sealed class PaymentController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    [Authorize]
-    public class PaymentsController : ControllerBase
+    private readonly IPaymentService _payments;
+    public PaymentController(IPaymentService payments) => _payments = payments;
+
+    // POST /api/payments/create-intent
+    [HttpPost("create-intent")]
+    public async Task<ActionResult<PaymentIntentDto>> CreateIntent([FromBody] CreatePaymentDto dto, CancellationToken ct)
     {
-        private readonly IPaymentService _paymentService;
-        private readonly ILogger<PaymentsController> _logger;
-
-        public PaymentsController(IPaymentService paymentService, ILogger<PaymentsController> logger)
-        {
-            _paymentService = paymentService;
-            _logger = logger;
-        }
-
-        [HttpPost("create-intent")]
-        public async Task<ActionResult<PaymentIntentDto>> CreatePaymentIntent([FromBody] CreatePaymentDto request)
-        {
-            try
-            {
-                var result = await _paymentService.CreatePaymentIntentAsync(request);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating payment intent");
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
-        [HttpPost("webhook")]
-        [AllowAnonymous]
-        public async Task<ActionResult> PaymentWebhook()
-        {
-            try
-            {
-                var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
-                
-                if (Request.Headers.ContainsKey("Stripe-Signature"))
-                {
-                    var signature = Request.Headers["Stripe-Signature"].ToString();
-                    await _paymentService.ProcessStripeWebhook(json, signature);
-                }
-                else if (Request.Headers.ContainsKey("PayOS-Signature"))
-                {
-                    var callback = System.Text.Json.JsonSerializer.Deserialize<PaymentCallbackDto>(json);
-                    await _paymentService.ProcessPayOSWebhook(callback);
-                }
-
-                return Ok(new { success = true });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing payment webhook");
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
-        [HttpGet("{id}")]
-        public async Task<ActionResult<PaymentDetailDto>> GetPayment(Guid id)
-        {
-            try
-            {
-                var payment = await _paymentService.GetPaymentAsync(id);
-                if (payment == null) return NotFound();
-                return Ok(payment);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting payment");
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
-        [HttpGet("booking/{bookingId}")]
-        public async Task<ActionResult<List<PaymentDetailDto>>> GetPaymentsByBooking(Guid bookingId)
-        {
-            try
-            {
-                var payments = await _paymentService.GetPaymentsByBookingAsync(bookingId);
-                return Ok(payments);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting payments by booking");
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
-        [HttpPost("{id}/verify")]
-        public async Task<ActionResult> VerifyPayment(Guid id)
-        {
-            try
-            {
-                var isValid = await _paymentService.VerifyPaymentAsync(id);
-                return Ok(new { valid = isValid });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error verifying payment");
-                return BadRequest(new { message = ex.Message });
-            }
-        }
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
+        var intent = await _payments.CreateAsync(dto, ip, ct);
+        return Ok(intent);
     }
+
+    // POST /api/payments/webhook/{provider}  (provider: vnpay|momo)
+    [AllowAnonymous]
+    [HttpPost("webhook/{provider}")]
+    public async Task<IActionResult> Webhook([FromRoute] string provider, CancellationToken ct)
+    {
+        var ok = await _payments.HandleWebhookAsync(provider, Request, ct);
+        return ok ? Ok(new { RspCode = "00", Message = "success" }) : BadRequest();
+    }
+
+    // GET /api/payments/{id}
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById([FromRoute] int id, [FromServices] IPaymentRepository repo, CancellationToken ct)
+        => Ok(await repo.GetAsync(id, ct));
+
+    // GET /api/payments/booking/{bookingId}
+    [HttpGet("booking/{bookingId:int}")]
+    public async Task<IActionResult> GetByBooking([FromRoute] int bookingId, [FromServices] IPaymentRepository repo, CancellationToken ct)
+        => Ok(await repo.ListByBookingAsync(bookingId, ct));
+
+    // POST /api/payments/{id}/verify
+    [HttpPost("{id:int}/verify")]
+    public async Task<IActionResult> Verify([FromRoute] int id, CancellationToken ct)
+        => Ok(new { success = await _payments.VerifyAsync(id, ct) });
 }
