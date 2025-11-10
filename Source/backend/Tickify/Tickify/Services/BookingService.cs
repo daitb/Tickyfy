@@ -204,6 +204,73 @@ public class BookingService : IBookingService
         }
     }
 
+    public async Task<BookingDto> ApplyPromoCodeAsync(int bookingId, string promoCode, int userId)
+    {
+        // Get booking with navigation properties
+        var booking = await _bookingRepository.GetByIdAsync(bookingId);
+        if (booking == null)
+            throw new NotFoundException($"Booking with ID {bookingId} not found");
+
+        // Verify ownership
+        if (booking.UserId != userId)
+            throw new ForbiddenException("You don't have permission to modify this booking");
+
+        // Only pending bookings can apply promo codes
+        if (booking.Status != BookingStatus.Pending)
+            throw new BadRequestException("Promo codes can only be applied to pending bookings");
+
+        // Get promo code
+        var promo = await _promoCodeRepository.GetByCodeAsync(promoCode);
+        if (promo == null)
+            throw new NotFoundException($"Promo code '{promoCode}' not found");
+
+        // Validate promo code (dates, max uses, minimum purchase, event-specific)
+        if (!promo.IsActive)
+            throw new BadRequestException("Promo code is not active");
+
+        if (promo.ValidFrom.HasValue && DateTime.UtcNow < promo.ValidFrom.Value)
+            throw new BadRequestException("Promo code is not yet valid");
+
+        if (promo.ValidTo.HasValue && DateTime.UtcNow > promo.ValidTo.Value)
+            throw new BadRequestException("Promo code has expired");
+
+        if (promo.MaxUses.HasValue && promo.CurrentUses >= promo.MaxUses.Value)
+            throw new BadRequestException("Promo code has reached maximum uses");
+
+        if (promo.MinimumPurchase.HasValue && booking.TotalAmount < promo.MinimumPurchase.Value)
+            throw new BadRequestException($"Minimum purchase of {promo.MinimumPurchase:C} required to use this promo code");
+
+        if (promo.EventId.HasValue && promo.EventId.Value != booking.EventId)
+            throw new BadRequestException("Promo code is not valid for this event");
+
+        // Calculate discount
+        decimal discountAmount = 0;
+        if (promo.DiscountPercent.HasValue)
+        {
+            discountAmount = booking.TotalAmount * (promo.DiscountPercent.Value / 100);
+        }
+        else if (promo.DiscountAmount.HasValue)
+        {
+            discountAmount = promo.DiscountAmount.Value;
+        }
+
+        // Ensure discount doesn't exceed total amount
+        if (discountAmount > booking.TotalAmount)
+            discountAmount = booking.TotalAmount;
+
+        // Apply discount
+        booking.PromoCodeId = promo.Id;
+        booking.DiscountAmount = discountAmount;
+
+        // Increment promo code usage
+        await _promoCodeRepository.IncrementUsageAsync(promo.Id);
+
+        // Update booking
+        await _bookingRepository.UpdateAsync(booking);
+
+        return _mapper.Map<BookingDto>(booking);
+    }
+
     private string GenerateBookingCode()
     {
         return $"BK{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";

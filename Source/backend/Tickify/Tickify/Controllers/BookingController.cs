@@ -29,9 +29,7 @@ public class BookingController : ControllerBase
         _promoCodeService = promoCodeService;
     }
 
-    /// <summary>
     /// Create a new booking with transaction locking to prevent race conditions
-    /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<BookingConfirmationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -49,9 +47,7 @@ public class BookingController : ControllerBase
         ));
     }
 
-    /// <summary>
     /// Get booking details by ID
-    /// </summary>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ApiResponse<BookingDetailDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -73,9 +69,7 @@ public class BookingController : ControllerBase
         return Ok(ApiResponse<BookingDetailDto>.SuccessResponse(booking));
     }
 
-    /// <summary>
     /// Get current user's bookings
-    /// </summary>
     [HttpGet("my-bookings")]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<BookingListDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<BookingListDto>>>> GetMyBookings(
@@ -109,9 +103,7 @@ public class BookingController : ControllerBase
         return Ok(ApiResponse<IEnumerable<BookingListDto>>.SuccessResponse(bookings));
     }
 
-    /// <summary>
     /// Cancel a booking and release seats
-    /// </summary>
     [HttpPost("{id}/cancel")]
     [ProducesResponseType(typeof(ApiResponse<BookingDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -140,9 +132,7 @@ public class BookingController : ControllerBase
         ));
     }
 
-    /// <summary>
     /// Get tickets for a confirmed booking
-    /// </summary>
     [HttpGet("{id}/tickets")]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<TicketDetailDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -176,50 +166,24 @@ public class BookingController : ControllerBase
         return Ok(ApiResponse<IEnumerable<TicketDetailDto>>.SuccessResponse(bookingTickets));
     }
 
-    /// <summary>
     /// Apply promo code to a pending booking
-    /// NOTE: Promo code validation requires ticket type and total amount.
-    /// This is a simplified validation endpoint. Full implementation requires 
-    /// enhancing BookingDetailDto or adding method to BookingService.
-    /// </summary>
     [HttpPut("{id}/apply-promo")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<BookingDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<ApiResponse<object>>> ApplyPromoCode(
+    public async Task<ActionResult<ApiResponse<BookingDto>>> ApplyPromoCode(
         int id,
         [FromBody] ValidatePromoCodeDto promoCodeDto)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        // Check ownership
-        var booking = await _bookingService.GetByIdAsync(id);
-        if (booking.UserId != userId)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden,
-                ApiResponse<object>.FailureResponse("You don't have permission to modify this booking."));
-        }
+        // Apply promo code with full validation
+        var updatedBooking = await _bookingService.ApplyPromoCodeAsync(id, promoCodeDto.Code, userId);
 
-        // Only pending bookings can apply promo codes
-        if (booking.Status != BookingStatus.Pending.ToString())
-        {
-            return BadRequest(ApiResponse<object>.FailureResponse(
-                "Promo codes can only be applied to pending bookings."
-            ));
-        }
-
-        // TODO: Implement full promo code validation and application
-        // Current limitation: BookingDetailDto doesn't include TicketTypeId
-        // Required enhancement: Add TicketTypeId to DTO or create dedicated service method
-        
-        return Ok(ApiResponse<object>.SuccessResponse(
-            new { 
-                bookingId = id, 
-                promoCode = promoCodeDto.Code,
-                message = "Promo code endpoint ready. Full validation logic requires service enhancement."
-            },
-            $"Promo code '{promoCodeDto.Code}' - validation pending service implementation."
+        return Ok(ApiResponse<BookingDto>.SuccessResponse(
+            updatedBooking,
+            $"Promo code '{promoCodeDto.Code}' applied successfully."
         ));
     }
 }
