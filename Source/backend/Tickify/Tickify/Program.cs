@@ -43,6 +43,10 @@ namespace Tickify
             builder.Services.AddScoped<Tickify.Services.Email.IEmailService, Tickify.Services.Email.EmailService>();
             builder.Services.AddScoped<Tickify.Interfaces.IAzureStorageService, Tickify.Services.AzureStorageService>();
 
+            // Event Services & Repositories
+            builder.Services.AddScoped<Tickify.Interfaces.Repositories.IEventRepository, Tickify.Repositories.EventRepository>();
+            builder.Services.AddScoped<Tickify.Interfaces.Services.IEventService, Tickify.Services.EventService>();
+
             // ============================================
             // 4. JWT AUTHENTICATION CONFIGURATION
             // Cấu hình xác thực JWT token
