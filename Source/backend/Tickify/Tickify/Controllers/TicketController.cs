@@ -24,9 +24,7 @@ public class TicketController : ControllerBase
         _emailService = emailService;
     }
 
-    /// <summary>
     /// Get ticket details by ID
-    /// </summary>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ApiResponse<TicketDetailDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -57,9 +55,7 @@ public class TicketController : ControllerBase
         return Ok(ApiResponse<TicketDetailDto>.SuccessResponse(ticket!));
     }
 
-    /// <summary>
     /// Get current user's tickets
-    /// </summary>
     [HttpGet("my-tickets")]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<TicketDetailDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<TicketDetailDto>>>> GetMyTickets(
@@ -84,9 +80,7 @@ public class TicketController : ControllerBase
         return Ok(ApiResponse<IEnumerable<TicketDetailDto>>.SuccessResponse(tickets));
     }
 
-    /// <summary>
     /// Transfer ticket to another user
-    /// </summary>
     [HttpPost("{id}/transfer")]
     [ProducesResponseType(typeof(ApiResponse<TicketDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -106,9 +100,7 @@ public class TicketController : ControllerBase
         ));
     }
 
-    /// <summary>
     /// Accept ticket transfer
-    /// </summary>
     [HttpPost("transfers/{id}/accept")]
     [ProducesResponseType(typeof(ApiResponse<TicketDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -128,9 +120,7 @@ public class TicketController : ControllerBase
         ));
     }
 
-    /// <summary>
     /// Reject ticket transfer
-    /// </summary>
     [HttpPost("transfers/{id}/reject")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -142,15 +132,15 @@ public class TicketController : ControllerBase
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        // TODO: Implement RejectTransferAsync in ITicketService
-        // For now, return not implemented
-        return StatusCode(StatusCodes.Status501NotImplemented,
-            ApiResponse<object>.FailureResponse("Reject transfer functionality not yet implemented in service layer."));
+        var result = await _ticketService.RejectTransferAsync(rejectTransferDto, userId);
+
+        return Ok(ApiResponse<object>.SuccessResponse(
+            new { transferId = id, rejected = result },
+            "Ticket transfer rejected successfully."
+        ));
     }
 
-    /// <summary>
     /// Get QR code for ticket
-    /// </summary>
     [HttpGet("{id}/qrcode")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -189,9 +179,7 @@ public class TicketController : ControllerBase
         ));
     }
 
-    /// <summary>
     /// Resend ticket email
-    /// </summary>
     [HttpPost("{id}/resend-email")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -219,9 +207,7 @@ public class TicketController : ControllerBase
         ));
     }
 
-    /// <summary>
     /// Get all tickets for an event (Organizer/Admin only)
-    /// </summary>
     [HttpGet("event/{eventId}")]
     [Authorize(Roles = "Admin,Organizer")]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<TicketDto>>), StatusCodes.Status200OK)]
