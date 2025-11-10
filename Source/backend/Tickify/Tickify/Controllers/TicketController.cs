@@ -5,6 +5,7 @@ using Tickify.Common;
 using Tickify.DTOs.Ticket;
 using Tickify.Interfaces.Services;
 using Tickify.Services.Email;
+using QRCoder;
 
 namespace Tickify.Controllers;
 
@@ -164,19 +165,34 @@ public class TicketController : ControllerBase
             ? await _ticketService.GetByIdAsync(id) 
             : await _ticketService.GetByIdAsync(id);
 
-        // TODO: Generate QR code from ticket number
-        // For now, return ticket number (can be used to generate QR on frontend)
-        return Ok(ApiResponse<object>.SuccessResponse(
-            new 
-            { 
-                ticketId = id,
-                ticketNumber = ticket.TicketNumber,
-                qrCodeData = ticket.TicketNumber, // Frontend will generate QR from this
-                qrCode = ticket.QrCode, // May already be generated
-                message = "QR code data retrieved. Generate QR image on frontend using ticketNumber."
-            },
-            "QR code data ready for generation."
-        ));
+        // Generate QR code from ticket number
+        using (var qrGenerator = new QRCodeGenerator())
+        {
+            // Create QR code data with ticket number as the payload
+            var qrCodeData = qrGenerator.CreateQrCode(ticket.TicketNumber, QRCodeGenerator.ECCLevel.Q);
+            
+            using (var qrCode = new PngByteQRCode(qrCodeData))
+            {
+                // Generate QR code as PNG byte array (10 pixels per module for good quality)
+                byte[] qrCodeImage = qrCode.GetGraphic(10);
+                
+                // Convert to base64 for easy transmission
+                string base64QrCode = Convert.ToBase64String(qrCodeImage);
+                
+                return Ok(ApiResponse<object>.SuccessResponse(
+                    new 
+                    { 
+                        ticketId = id,
+                        ticketNumber = ticket.TicketNumber,
+                        qrCodeData = ticket.TicketNumber, // Raw data for validation
+                        qrCodeImage = $"data:image/png;base64,{base64QrCode}", // Base64 encoded image
+                        format = "png",
+                        encoding = "base64"
+                    },
+                    "QR code generated successfully."
+                ));
+            }
+        }
     }
 
     /// Resend ticket email
