@@ -1,7 +1,6 @@
 namespace Tickify.DTOs.Refund;
 
-public class ApproveRefundDto
+public sealed class ApproveRefundDto
 {
-    public int RefundId { get; set; }
-    public string? AdminNotes { get; set; }
+    public string? StaffNotes { get; set; }
 }
