@@ -18,15 +18,18 @@ public class TicketController : ControllerBase
     private readonly ITicketService _ticketService;
     private readonly IEmailService _emailService;
     private readonly IBookingRepository _bookingRepository;
+    private readonly ILogger<TicketController> _logger;
 
     public TicketController(
         ITicketService ticketService,
         IEmailService emailService,
-        IBookingRepository bookingRepository)
+        IBookingRepository bookingRepository,
+        ILogger<TicketController> logger)
     {
         _ticketService = ticketService;
         _emailService = emailService;
         _bookingRepository = bookingRepository;
+        _logger = logger;
     }
 
     /// Get ticket details by ID
@@ -145,7 +148,9 @@ public class TicketController : ControllerBase
         ));
     }
 
+    /// <summary>
     /// Get QR code for ticket
+    /// </summary>
     [HttpGet("{id}/qrcode")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -155,12 +160,20 @@ public class TicketController : ControllerBase
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var isAdmin = User.IsInRole("Admin") || User.IsInRole("Organizer");
 
+        _logger.LogInformation(
+            "User requesting QR code. TicketId: {TicketId}, UserId: {UserId}, IsAdmin: {IsAdmin}",
+            id, userId, isAdmin);
+
         // Get user's tickets to check ownership
         var userTickets = await _ticketService.GetUserTicketsAsync(userId);
         var userTicket = userTickets.FirstOrDefault(t => t.TicketId == id);
 
         if (userTicket == null && !isAdmin)
         {
+            _logger.LogWarning(
+                "Unauthorized QR code access attempt. TicketId: {TicketId}, UserId: {UserId}",
+                id, userId);
+
             return StatusCode(StatusCodes.Status403Forbidden,
                 ApiResponse<object>.FailureResponse("You don't have permission to view this ticket's QR code."));
         }
@@ -182,6 +195,10 @@ public class TicketController : ControllerBase
                 
                 // Convert to base64 for easy transmission
                 string base64QrCode = Convert.ToBase64String(qrCodeImage);
+
+                _logger.LogInformation(
+                    "QR code generated successfully. TicketId: {TicketId}, TicketNumber: {TicketNumber}",
+                    id, ticket.TicketNumber);
                 
                 return Ok(ApiResponse<object>.SuccessResponse(
                     new 
@@ -245,17 +262,27 @@ public class TicketController : ControllerBase
         // Send ticket email using template
         try
         {
+            _logger.LogInformation(
+                "Attempting to resend ticket email. TicketId: {TicketId}, UserId: {UserId}, Email: {Email}",
+                id, userId, booking.User.Email);
+
             await _emailService.SendEmailFromTemplateAsync(
                 booking.User.Email,
                 $"Your Ticket for {ticket.EventTitle}",
                 "ticket-confirmation", // Template name (should exist in EmailTemplates folder)
                 templateData
             );
+
+            _logger.LogInformation(
+                "Successfully sent ticket email. TicketId: {TicketId}, Email: {Email}",
+                id, booking.User.Email);
         }
         catch (Exception ex)
         {
-            // Log error but don't fail the request
-            // TODO: Add proper logging
+            _logger.LogError(ex,
+                "Failed to send ticket email. TicketId: {TicketId}, UserId: {UserId}, Email: {Email}, Error: {ErrorMessage}",
+                id, userId, booking.User.Email, ex.Message);
+
             return StatusCode(StatusCodes.Status500InternalServerError,
                 ApiResponse<object>.FailureResponse($"Failed to send email: {ex.Message}"));
         }
