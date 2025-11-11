@@ -88,7 +88,7 @@ public class AuthService : IAuthService
         {
             try
             {
-                var verificationLink = $"{_configuration["AppSettings:FrontendUrl"]}/verify-email?token={verificationToken}";
+                var verificationLink = $"{_configuration["AppSettings:FrontendUrl"]}/verify-email?token={verificationToken}&email={user.Email}";
                 await _emailService.SendVerificationEmailAsync(user.Email, user.FullName, verificationLink);
             }
             catch

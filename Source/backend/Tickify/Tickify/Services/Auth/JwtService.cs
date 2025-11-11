@@ -21,10 +21,10 @@ public class JwtService : IJwtService
     public JwtService(IConfiguration configuration)
     {
         _configuration = configuration;
-        _secretKey = _configuration["Jwt:Secret"] ?? throw new ArgumentNullException("Jwt:Secret");
-        _issuer = _configuration["Jwt:Issuer"] ?? "TickifyAPI";
-        _audience = _configuration["Jwt:Audience"] ?? "TickifyClient";
-        _expiryMinutes = int.Parse(_configuration["Jwt:ExpiryMinutes"] ?? "60");
+        _secretKey = _configuration["JwtSettings:SecretKey"] ?? throw new ArgumentNullException("JwtSettings:SecretKey");
+        _issuer = _configuration["JwtSettings:Issuer"] ?? "TickifyAPI";
+        _audience = _configuration["JwtSettings:Audience"] ?? "TickifyClient";
+        _expiryMinutes = int.Parse(_configuration["JwtSettings:ExpiryInMinutes"] ?? "60");
     }
 
     /// <summary>
