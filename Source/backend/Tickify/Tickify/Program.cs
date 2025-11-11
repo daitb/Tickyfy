@@ -68,6 +68,10 @@ namespace Tickify
             // [NOTE] Nếu IBookingRepository CHƯA được đăng ký ở nơi khác thì thêm dòng dưới:
             // builder.Services.AddScoped<IBookingRepository, EfBookingRepository>(); // <-- chỉ bật nếu bạn đã có EfBookingRepository
 
+            // Event Services & Repositories
+            builder.Services.AddScoped<Tickify.Interfaces.Repositories.IEventRepository, Tickify.Repositories.EventRepository>();
+            builder.Services.AddScoped<Tickify.Interfaces.Services.IEventService, Tickify.Services.EventService>();
+
             // ============================================
             // 4. JWT AUTHENTICATION CONFIGURATION
             // Cấu hình xác thực JWT token
