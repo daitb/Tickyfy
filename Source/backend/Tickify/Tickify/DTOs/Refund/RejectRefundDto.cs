@@ -1,7 +1,6 @@
 namespace Tickify.DTOs.Refund;
 
-public class RejectRefundDto
+public sealed class RejectRefundDto
 {
-    public int RefundId { get; set; }
-    public string RejectionReason { get; set; } = string.Empty;
+    public string Reason { get; set; } = "Not eligible";
 }

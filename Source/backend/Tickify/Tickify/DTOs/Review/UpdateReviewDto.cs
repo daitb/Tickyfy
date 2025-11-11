@@ -1,7 +1,8 @@
-namespace Tickify.DTOs.Review;
-
-public class UpdateReviewDto
+namespace Tickify.DTOs.Review
 {
-    public int Rating { get; set; }
+public sealed class UpdateReviewDto
+{
+    public int Rating { get; set; } // 1..5
     public string? Comment { get; set; }
+}
 }

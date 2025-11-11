@@ -8,6 +8,12 @@ using Tickify.Middleware;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 
+// [ADD] using cho DI của Payment/Refund/Repositories
+using Tickify.Services.Payments;              // PaymentService, VNPayProvider, MoMoProvider
+using Tickify.Services.Refunds;              // RefundService
+using Tickify.Repositories;                  // EfPaymentRepository, EfRefundRequestRepository
+using Tickify.Interfaces.Repositories;       // IBookingRepository, IPaymentRepository, IRefundRequestRepository
+
 namespace Tickify
 {
     public class Program
@@ -42,6 +48,25 @@ namespace Tickify
             builder.Services.AddScoped<Tickify.Services.Auth.IJwtService, Tickify.Services.Auth.JwtService>();
             builder.Services.AddScoped<Tickify.Services.Email.IEmailService, Tickify.Services.Email.EmailService>();
             builder.Services.AddScoped<Tickify.Interfaces.IAzureStorageService, Tickify.Services.AzureStorageService>();
+            builder.Services.AddScoped<Tickify.Services.Reviews.IReviewService, Tickify.Services.Reviews.ReviewService>();
+
+
+            // [ADD] HttpClient + HttpContextAccessor (MoMoProvider dùng HttpClient; controller cần lấy IP)
+            builder.Services.AddHttpClient();
+            builder.Services.AddHttpContextAccessor();
+
+            // [ADD] Đăng ký Payment/Refund theo Week 2 (không ảnh hưởng module khác)
+            builder.Services.AddScoped<IReviewRepository, EfReviewRepository>();
+            builder.Services.AddScoped<IBookingRepository, EfBookingRepository>(); // <-- THÊM DÒNG NÀY
+            builder.Services.AddScoped<IPaymentRepository, EfPaymentRepository>();
+            builder.Services.AddScoped<IRefundRequestRepository, EfRefundRequestRepository>();
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
+            builder.Services.AddScoped<IPaymentProvider, VNPayProvider>();
+            builder.Services.AddScoped<IPaymentProvider, MoMoProvider>();
+            builder.Services.AddScoped<IRefundService, RefundService>();
+
+            // [NOTE] Nếu IBookingRepository CHƯA được đăng ký ở nơi khác thì thêm dòng dưới:
+            // builder.Services.AddScoped<IBookingRepository, EfBookingRepository>(); // <-- chỉ bật nếu bạn đã có EfBookingRepository
 
             // ============================================
             // 4. JWT AUTHENTICATION CONFIGURATION
@@ -49,7 +74,18 @@ namespace Tickify
             // ============================================
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
             var secretKey = jwtSettings["SecretKey"];
-            
+
+            // [ADD] Guard nhẹ để dễ debug cấu hình thiếu (không phá runtime Production)
+            if (string.IsNullOrWhiteSpace(secretKey))
+            {
+                builder.Logging.AddConsole();
+                builder.Logging.AddDebug();
+                var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().AddDebug());
+                var logger = loggerFactory.CreateLogger("Startup");
+                logger.LogWarning("JwtSettings:SecretKey is missing or empty. Please configure appsettings.");
+                secretKey = "fallback-key-please-change"; // fallback tránh crash dev; đổi ngay ở appsettings!
+            }
+
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -68,6 +104,17 @@ namespace Tickify
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
                     ClockSkew = TimeSpan.Zero // Token hết hạn chính xác
                 };
+
+                // [ADD] Cho phép đọc token từ query nếu cần cho SignalR/webhooks (tắt nếu không dùng)
+                // options.Events = new JwtBearerEvents
+                // {
+                //     OnMessageReceived = ctx => {
+                //         var accessToken = ctx.Request.Query["access_token"];
+                //         if (!string.IsNullOrEmpty(accessToken) && ctx.HttpContext.Request.Path.StartsWithSegments("/hub"))
+                //             ctx.Token = accessToken;
+                //         return Task.CompletedTask;
+                //     }
+                // };
             });
 
             builder.Services.AddAuthorization();
@@ -95,6 +142,8 @@ namespace Tickify
                 {
                     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
                     options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+                    // [ADD] Giới hạn độ sâu JSON để tránh reference loop lớn (tuỳ ý)
+                    options.JsonSerializerOptions.MaxDepth = 64;
                 });
 
             // ============================================
