@@ -23,13 +23,13 @@ public class EmailService : IEmailService
         _configuration = configuration;
         _env = env;
 
-        // Đọc cấu hình SMTP từ appsettings
-        _smtpHost = _configuration["Email:SmtpHost"] ?? "smtp.gmail.com";
-        _smtpPort = int.Parse(_configuration["Email:SmtpPort"] ?? "587");
-        _smtpUser = _configuration["Email:SmtpUser"] ?? throw new ArgumentNullException("Email:SmtpUser");
-        _smtpPassword = _configuration["Email:SmtpPassword"] ?? throw new ArgumentNullException("Email:SmtpPassword");
-        _fromEmail = _configuration["Email:FromEmail"] ?? _smtpUser;
-        _fromName = _configuration["Email:FromName"] ?? "Tickify";
+        // Đọc cấu hình SMTP từ appsettings - Khớp với EmailSettings
+        _smtpHost = _configuration["EmailSettings:SmtpServer"] ?? "smtp.gmail.com";
+        _smtpPort = int.Parse(_configuration["EmailSettings:SmtpPort"] ?? "587");
+        _smtpUser = _configuration["EmailSettings:Username"] ?? throw new ArgumentNullException("EmailSettings:Username");
+        _smtpPassword = _configuration["EmailSettings:Password"] ?? throw new ArgumentNullException("EmailSettings:Password");
+        _fromEmail = _configuration["EmailSettings:SenderEmail"] ?? _smtpUser;
+        _fromName = _configuration["EmailSettings:SenderName"] ?? "Tickify Event Management";
     }
 
     /// <summary>
