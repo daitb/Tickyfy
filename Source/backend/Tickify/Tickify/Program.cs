@@ -216,7 +216,7 @@ namespace Tickify
             // CORS (cho phép frontend call API)
             app.UseCors("AllowFrontend");
 
-            app.UseHttpsRedirection();
+            // app.UseHttpsRedirection();
 
             // Authentication & Authorization
             app.UseAuthentication(); // Phải đặt trước UseAuthorization

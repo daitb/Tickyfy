@@ -150,6 +150,29 @@ public class TicketService : ITicketService
         return _mapper.Map<TicketDto>(updatedTicket);
     }
 
+    public async Task<bool> RejectTransferAsync(AcceptTransferDto rejectTransferDto, int userId)
+    {
+        // Get transfer record
+        var transfer = await _ticketTransferRepository.GetByIdAsync(rejectTransferDto.TransferId);
+        if (transfer == null)
+            throw new NotFoundException($"Transfer not found");
+
+        if (transfer.ToUserId != userId)
+            throw new UnauthorizedException("You are not authorized to reject this transfer");
+
+        if (transfer.IsApproved)
+            throw new BadRequestException("This transfer has already been accepted and cannot be rejected");
+
+        // Validate acceptance token
+        if (rejectTransferDto.AcceptanceToken != GenerateAcceptanceToken(transfer.Id))
+            throw new BadRequestException("Invalid acceptance token");
+
+        // Delete the transfer record to reject it
+        await _ticketTransferRepository.DeleteAsync(transfer.Id);
+
+        return true;
+    }
+
     public async Task<TicketDto> ScanTicketAsync(TicketScanDto scanDto)
     {
         var ticket = await _ticketRepository.GetByTicketCodeAsync(scanDto.TicketNumber);
