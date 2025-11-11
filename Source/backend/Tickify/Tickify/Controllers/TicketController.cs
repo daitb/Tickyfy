@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Tickify.Common;
 using Tickify.DTOs.Ticket;
 using Tickify.Interfaces.Services;
+using Tickify.Interfaces.Repositories;
 using Tickify.Services.Email;
 using QRCoder;
 
@@ -16,13 +17,16 @@ public class TicketController : ControllerBase
 {
     private readonly ITicketService _ticketService;
     private readonly IEmailService _emailService;
+    private readonly IBookingRepository _bookingRepository;
 
     public TicketController(
         ITicketService ticketService,
-        IEmailService emailService)
+        IEmailService emailService,
+        IBookingRepository bookingRepository)
     {
         _ticketService = ticketService;
         _emailService = emailService;
+        _bookingRepository = bookingRepository;
     }
 
     /// Get ticket details by ID
@@ -214,11 +218,50 @@ public class TicketController : ControllerBase
                 ApiResponse<object>.FailureResponse("You don't have permission to resend email for this ticket or ticket not found."));
         }
 
-        // TODO: Implement email resend logic
-        // await _emailService.SendTicketEmailAsync(ticket);
+        // Get booking to retrieve user email
+        var booking = await _bookingRepository.GetByIdAsync(ticket.BookingId);
+        if (booking?.User == null)
+        {
+            return StatusCode(StatusCodes.Status404NotFound,
+                ApiResponse<object>.FailureResponse("Booking or user information not found."));
+        }
+
+        // Prepare email template data with ticket details
+        var templateData = new Dictionary<string, string>
+        {
+            { "UserName", booking.User.FullName },
+            { "EventTitle", ticket.EventTitle },
+            { "EventVenue", ticket.EventVenue },
+            { "EventDate", ticket.EventStartDate.ToString("MMMM dd, yyyy") },
+            { "EventTime", ticket.EventStartDate.ToString("hh:mm tt") },
+            { "TicketNumber", ticket.TicketNumber },
+            { "TicketType", ticket.TicketTypeName },
+            { "SeatNumber", ticket.SeatNumber ?? "General Admission" },
+            { "Price", ticket.Price.ToString("C") },
+            { "BookingNumber", ticket.BookingNumber },
+            { "QRCode", ticket.QrCode ?? ticket.TicketNumber } // Use QR code or ticket number as fallback
+        };
+
+        // Send ticket email using template
+        try
+        {
+            await _emailService.SendEmailFromTemplateAsync(
+                booking.User.Email,
+                $"Your Ticket for {ticket.EventTitle}",
+                "ticket-confirmation", // Template name (should exist in EmailTemplates folder)
+                templateData
+            );
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the request
+            // TODO: Add proper logging
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                ApiResponse<object>.FailureResponse($"Failed to send email: {ex.Message}"));
+        }
         
         return Ok(ApiResponse<object>.SuccessResponse(
-            new { ticketId = id },
+            new { ticketId = id, emailSent = true },
             "Ticket email resent successfully. Check your inbox."
         ));
     }
