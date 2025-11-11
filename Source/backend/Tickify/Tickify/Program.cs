@@ -48,12 +48,16 @@ namespace Tickify
             builder.Services.AddScoped<Tickify.Services.Auth.IJwtService, Tickify.Services.Auth.JwtService>();
             builder.Services.AddScoped<Tickify.Services.Email.IEmailService, Tickify.Services.Email.EmailService>();
             builder.Services.AddScoped<Tickify.Interfaces.IAzureStorageService, Tickify.Services.AzureStorageService>();
+            builder.Services.AddScoped<Tickify.Services.Reviews.IReviewService, Tickify.Services.Reviews.ReviewService>();
+
 
             // [ADD] HttpClient + HttpContextAccessor (MoMoProvider dùng HttpClient; controller cần lấy IP)
             builder.Services.AddHttpClient();
             builder.Services.AddHttpContextAccessor();
 
             // [ADD] Đăng ký Payment/Refund theo Week 2 (không ảnh hưởng module khác)
+            builder.Services.AddScoped<IReviewRepository, EfReviewRepository>();
+            builder.Services.AddScoped<IBookingRepository, EfBookingRepository>(); // <-- THÊM DÒNG NÀY
             builder.Services.AddScoped<IPaymentRepository, EfPaymentRepository>();
             builder.Services.AddScoped<IRefundRequestRepository, EfRefundRequestRepository>();
             builder.Services.AddScoped<IPaymentService, PaymentService>();
