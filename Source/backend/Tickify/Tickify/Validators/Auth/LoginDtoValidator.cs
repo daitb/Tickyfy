@@ -3,10 +3,6 @@ using Tickify.DTOs.Auth;
 
 namespace Tickify.Validators.Auth;
 
-/// <summary>
-/// Validator cho LoginDto
-/// Kiểm tra: Email và Password không được rỗng
-/// </summary>
 public class LoginDtoValidator : AbstractValidator<LoginDto>
 {
     public LoginDtoValidator()

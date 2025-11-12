@@ -32,9 +32,8 @@ public class RegisterDtoValidator : AbstractValidator<RegisterDto>
             .MinimumLength(2).WithMessage("Họ tên phải có ít nhất 2 ký tự")
             .MaximumLength(100).WithMessage("Họ tên không được dài quá 100 ký tự");
 
-        // Phone validation (optional)
-        RuleFor(x => x.PhoneNumber)
-            .Matches(@"^(0|\+84)[0-9]{9}$").WithMessage("Số điện thoại không đúng định dạng")
-            .When(x => !string.IsNullOrEmpty(x.PhoneNumber));
+        // ConfirmPassword validation
+        RuleFor(x => x.ConfirmPassword)
+            .Equal(x => x.Password).WithMessage("Mật khẩu xác nhận không khớp");
     }
 }

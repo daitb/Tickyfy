@@ -33,6 +33,7 @@ namespace Tickify.Data
         public DbSet<TicketScan> TicketScans { get; set; }
         public DbSet<Waitlist> Waitlists { get; set; }
         public DbSet<TicketTransfer> TicketTransfers { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -625,6 +626,20 @@ namespace Tickify.Data
                 .ToTable(t => t.HasCheckConstraint(
                     "CK_Waitlists_Quantity_Positive",
                     "[RequestedQuantity] > 0"));
+
+            // RefreshToken - User relationship
+            modelBuilder.Entity<RefreshToken>()
+                .HasOne(rt => rt.User)
+                .WithMany()
+                .HasForeignKey(rt => rt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // RefreshToken - Index for faster lookups
+            modelBuilder.Entity<RefreshToken>()
+                .HasIndex(rt => rt.Token);
+
+            modelBuilder.Entity<RefreshToken>()
+                .HasIndex(rt => new { rt.UserId, rt.IsRevoked });
         }
     }
 }

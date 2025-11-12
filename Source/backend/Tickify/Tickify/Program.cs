@@ -7,6 +7,7 @@ using Tickify.Data;
 using Tickify.Middleware;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Tickify.Services.Auth;
 
 // [ADD] using cho DI của Payment/Refund/Repositories
 using Tickify.Services.Payments;              // PaymentService, VNPayProvider, MoMoProvider
@@ -48,6 +49,11 @@ namespace Tickify
             builder.Services.AddScoped<Tickify.Services.Auth.IJwtService, Tickify.Services.Auth.JwtService>();
             builder.Services.AddScoped<Tickify.Services.Email.IEmailService, Tickify.Services.Email.EmailService>();
             builder.Services.AddScoped<Tickify.Interfaces.IAzureStorageService, Tickify.Services.AzureStorageService>();
+            builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
+            builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+            builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             builder.Services.AddScoped<Tickify.Services.Reviews.IReviewService, Tickify.Services.Reviews.ReviewService>();
 
 

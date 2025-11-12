@@ -21,39 +21,30 @@ public class JwtService : IJwtService
     public JwtService(IConfiguration configuration)
     {
         _configuration = configuration;
-        _secretKey = _configuration["Jwt:Secret"] ?? throw new ArgumentNullException("Jwt:Secret");
-        _issuer = _configuration["Jwt:Issuer"] ?? "TickifyAPI";
-        _audience = _configuration["Jwt:Audience"] ?? "TickifyClient";
-        _expiryMinutes = int.Parse(_configuration["Jwt:ExpiryMinutes"] ?? "60");
+        _secretKey = _configuration["JwtSettings:SecretKey"] ?? throw new ArgumentNullException("JwtSettings:SecretKey");
+        _issuer = _configuration["JwtSettings:Issuer"] ?? "TickifyAPI";
+        _audience = _configuration["JwtSettings:Audience"] ?? "TickifyClient";
+        _expiryMinutes = int.Parse(_configuration["JwtSettings:ExpiryInMinutes"] ?? "60");
     }
 
-    /// <summary>
-    /// Tạo JWT Access Token
-    /// Chứa: UserId, Email, Roles
-    /// Expiry: Theo config (default 60 phút)
-    /// </summary>
     public string GenerateAccessToken(int userId, string email, IList<string> roles)
     {
-        // 1. Tạo claims cho token
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
             new Claim(ClaimTypes.Email, email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), // Unique token ID
-            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()) // Issued At
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), 
+            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())
         };
 
-        // 2. Thêm roles vào claims
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
-        // 3. Tạo signing key từ secret
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        // 4. Tạo token với các thông tin
         var token = new JwtSecurityToken(
             issuer: _issuer,
             audience: _audience,
@@ -62,14 +53,9 @@ public class JwtService : IJwtService
             signingCredentials: credentials
         );
 
-        // 5. Serialize token thành string
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    /// <summary>
-    /// Tạo Refresh Token (Random string)
-    /// Sử dụng: RNGCryptoServiceProvider để đảm bảo random secure
-    /// </summary>
     public string GenerateRefreshToken()
     {
         var randomBytes = new byte[64];
@@ -78,10 +64,6 @@ public class JwtService : IJwtService
         return Convert.ToBase64String(randomBytes);
     }
 
-    /// <summary>
-    /// Validate JWT Token
-    /// Kiểm tra: Signature, Expiry, Issuer, Audience
-    /// </summary>
     public ClaimsPrincipal? ValidateToken(string token)
     {
         try
@@ -89,7 +71,6 @@ public class JwtService : IJwtService
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_secretKey);
 
-            // Cấu hình validation parameters
             var validationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -98,24 +79,19 @@ public class JwtService : IJwtService
                 ValidIssuer = _issuer,
                 ValidateAudience = true,
                 ValidAudience = _audience,
-                ValidateLifetime = true, // Check expiry
-                ClockSkew = TimeSpan.Zero // No tolerance for expiry
+                ValidateLifetime = true, 
+                ClockSkew = TimeSpan.Zero   
             };
 
-            // Validate và trả về principal
             var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
             return principal;
         }
         catch
         {
-            // Token invalid (expired, wrong signature, etc.)
             return null;
         }
     }
 
-    /// <summary>
-    /// Extract User ID từ JWT token
-    /// </summary>
     public int? GetUserIdFromToken(string token)
     {
         var principal = ValidateToken(token);
