@@ -3,10 +3,6 @@ using Tickify.DTOs.Auth;
 
 namespace Tickify.Validators.Auth;
 
-/// <summary>
-/// Validator cho VerifyEmailDto
-/// Kiểm tra: Email và Token
-/// </summary>
 public class VerifyEmailDtoValidator : AbstractValidator<VerifyEmailDto>
 {
     public VerifyEmailDtoValidator()

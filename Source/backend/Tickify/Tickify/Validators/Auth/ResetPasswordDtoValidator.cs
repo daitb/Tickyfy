@@ -3,10 +3,6 @@ using Tickify.DTOs.Auth;
 
 namespace Tickify.Validators.Auth;
 
-/// <summary>
-/// Validator cho ResetPasswordDto
-/// Kiểm tra: Token, Password, ConfirmPassword
-/// </summary>
 public class ResetPasswordDtoValidator : AbstractValidator<ResetPasswordDto>
 {
     public ResetPasswordDtoValidator()
