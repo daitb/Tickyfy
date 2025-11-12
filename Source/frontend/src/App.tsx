@@ -25,6 +25,10 @@ import { ForgotPassword } from "./pages/ForgotPassword";
 import { VerifyEmail } from "./pages/VerifyEmail";
 import { UserProfile } from "./pages/UserProfile";
 import { ChangePassword } from "./pages/ChangePassword";
+import { OrderDetail } from "./pages/OrderDetail";
+import { TicketDetail } from "./pages/TicketDetail";
+import { Wishlist } from "./pages/Wishlist";
+import { Waitlist } from "./pages/Waitlist";
 import { CartItem, Order } from "./types";
 
 // Layout component cho pages có Header và Footer
@@ -140,6 +144,10 @@ function AppStateProvider() {
         />
         <Route path="/user-profile" element={<UserProfileWrapper />} />
         <Route path="/profile" element={<UserProfileWrapper />} />
+        <Route path="/order/:id" element={<OrderDetailWrapper />} />
+        <Route path="/ticket/:id" element={<TicketDetailWrapper />} />
+        <Route path="/wishlist" element={<WishlistWrapper />} />
+        <Route path="/waitlist" element={<WaitlistWrapper />} />
       </Route>
 
       {/* Standalone Layout Routes (no Header & Footer) */}
@@ -266,6 +274,26 @@ function VerifyEmailWrapper() {
 function ChangePasswordWrapper() {
   const { handleNavigate } = useOutletContext<any>();
   return <ChangePassword onNavigate={handleNavigate} />;
+}
+
+function OrderDetailWrapper() {
+  const { handleNavigate } = useOutletContext<any>();
+  return <OrderDetail onNavigate={handleNavigate} />;
+}
+
+function TicketDetailWrapper() {
+  const { handleNavigate } = useOutletContext<any>();
+  return <TicketDetail onNavigate={handleNavigate} />;
+}
+
+function WishlistWrapper() {
+  const { handleNavigate } = useOutletContext<any>();
+  return <Wishlist onNavigate={handleNavigate} />;
+}
+
+function WaitlistWrapper() {
+  const { handleNavigate } = useOutletContext<any>();
+  return <Waitlist onNavigate={handleNavigate} />;
 }
 
 export default function App() {
