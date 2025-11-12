@@ -1,8 +1,11 @@
-namespace Tickify.DTOs.Review;
+using System.ComponentModel.DataAnnotations;
 
-public class CreateReviewDto
+namespace Tickify.DTOs.Review
+{
+public sealed class CreateReviewDto
 {
     public int EventId { get; set; }
-    public int Rating { get; set; }
+    public int Rating { get; set; } // 1..5
     public string? Comment { get; set; }
+}
 }

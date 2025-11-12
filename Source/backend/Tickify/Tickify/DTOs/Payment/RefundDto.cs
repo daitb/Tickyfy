@@ -1,8 +1,9 @@
-namespace Tickify.DTOs.Payment;
-
-public class RefundDto
+namespace Tickify.DTOs.Payment
 {
-    public int PaymentId { get; set; }
-    public decimal RefundAmount { get; set; }
-    public string? Reason { get; set; }
+    public sealed class RefundDto
+    {
+        public int PaymentId { get; set; }
+        public decimal Amount { get; set; }
+        public string Reason { get; set; } = default!;
+    }
 }

@@ -18,9 +18,7 @@ public class EventRepository : IEventRepository
 
     #region Query Methods
 
-    /// <summary>
     /// Get event by ID with optional eager loading
-    /// </summary>
     public async Task<Event?> GetByIdAsync(int id, bool includeRelated = false)
     {
         var query = _context.Events.AsQueryable();
@@ -41,9 +39,7 @@ public class EventRepository : IEventRepository
         return await query.FirstOrDefaultAsync(e => e.Id == id);
     }
 
-    /// <summary>
     /// Get all events with comprehensive filtering, sorting and pagination
-    /// </summary>
     public async Task<PagedResult<Event>> GetAllAsync(EventFilterDto filter)
     {
         // Validate pagination
@@ -56,8 +52,6 @@ public class EventRepository : IEventRepository
                 .ThenInclude(o => o!.User)
             .Include(e => e.TicketTypes)
             .AsQueryable();
-
-        // ===== APPLY FILTERS =====
 
         // Search by keyword (title, description, location)
         if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
@@ -150,9 +144,7 @@ public class EventRepository : IEventRepository
         return new PagedResult<Event>(items, totalCount, filter.PageNumber, filter.PageSize);
     }
 
-    /// <summary>
     /// Get featured events (for homepage carousel/banner)
-    /// </summary>
     public async Task<List<Event>> GetFeaturedEventsAsync(int count = 10)
     {
         return await _context.Events
@@ -168,9 +160,7 @@ public class EventRepository : IEventRepository
             .ToListAsync();
     }
 
-    /// <summary>
     /// Get upcoming events (published and in the future)
-    /// </summary>
     public async Task<List<Event>> GetUpcomingEventsAsync(int count = 20)
     {
         return await _context.Events
@@ -184,9 +174,7 @@ public class EventRepository : IEventRepository
             .ToListAsync();
     }
 
-    /// <summary>
     /// Search events by keyword with pagination
-    /// </summary>
     public async Task<PagedResult<Event>> SearchEventsAsync(string searchTerm, int pageNumber = 1, int pageSize = 20)
     {
         if (pageSize > 100) pageSize = 100;
@@ -218,9 +206,7 @@ public class EventRepository : IEventRepository
         return new PagedResult<Event>(items, totalCount, pageNumber, pageSize);
     }
 
-    /// <summary>
     /// Get events by organizer ID with pagination
-    /// </summary>
     public async Task<PagedResult<Event>> GetByOrganizerIdAsync(int organizerId, int pageNumber = 1, int pageSize = 20)
     {
         if (pageSize > 100) pageSize = 100;
@@ -242,9 +228,7 @@ public class EventRepository : IEventRepository
         return new PagedResult<Event>(items, totalCount, pageNumber, pageSize);
     }
 
-    /// <summary>
     /// Get events by category ID with pagination
-    /// </summary>
     public async Task<PagedResult<Event>> GetByCategoryIdAsync(int categoryId, int pageNumber = 1, int pageSize = 20)
     {
         if (pageSize > 100) pageSize = 100;
@@ -268,9 +252,7 @@ public class EventRepository : IEventRepository
         return new PagedResult<Event>(items, totalCount, pageNumber, pageSize);
     }
 
-    /// <summary>
     /// Get events pending admin approval
-    /// </summary>
     public async Task<List<Event>> GetPendingApprovalAsync()
     {
         return await _context.Events
@@ -283,17 +265,13 @@ public class EventRepository : IEventRepository
             .ToListAsync();
     }
 
-    /// <summary>
     /// Check if event exists
-    /// </summary>
     public async Task<bool> ExistsAsync(int id)
     {
         return await _context.Events.AnyAsync(e => e.Id == id);
     }
 
-    /// <summary>
     /// Check if organizer owns the event
-    /// </summary>
     public async Task<bool> IsOrganizerOwnerAsync(int eventId, int organizerId)
     {
         return await _context.Events
@@ -304,9 +282,7 @@ public class EventRepository : IEventRepository
 
     #region Command Methods
 
-    /// <summary>
     /// Add new event to database
-    /// </summary>
     public async Task<Event> AddAsync(Event eventEntity)
     {
         eventEntity.CreatedAt = DateTime.UtcNow;
@@ -315,13 +291,10 @@ public class EventRepository : IEventRepository
         await _context.Events.AddAsync(eventEntity);
         await _context.SaveChangesAsync();
 
-        // Reload with related data
         return (await GetByIdAsync(eventEntity.Id, includeRelated: true))!;
     }
 
-    /// <summary>
     /// Update existing event
-    /// </summary>
     public async Task<Event> UpdateAsync(Event eventEntity)
     {
         eventEntity.UpdatedAt = DateTime.UtcNow;
@@ -333,9 +306,7 @@ public class EventRepository : IEventRepository
         return (await GetByIdAsync(eventEntity.Id, includeRelated: true))!;
     }
 
-    /// <summary>
     /// Delete event (soft delete recommended - change status to Cancelled)
-    /// </summary>
     public async Task<bool> DeleteAsync(int id)
     {
         var eventEntity = await _context.Events.FindAsync(id);
@@ -354,9 +325,7 @@ public class EventRepository : IEventRepository
         // return await _context.SaveChangesAsync() > 0;
     }
 
-    /// <summary>
     /// Save changes to database
-    /// </summary>
     public async Task<int> SaveChangesAsync()
     {
         return await _context.SaveChangesAsync();
@@ -366,9 +335,7 @@ public class EventRepository : IEventRepository
 
     #region Statistics
 
-    /// <summary>
     /// Get total events count with optional status filter
-    /// </summary>
     public async Task<int> GetTotalCountAsync(EventStatus? status = null)
     {
         var query = _context.Events.AsQueryable();
@@ -381,9 +348,7 @@ public class EventRepository : IEventRepository
         return await query.CountAsync();
     }
 
-    /// <summary>
     /// Get events count by organizer
-    /// </summary>
     public async Task<int> GetCountByOrganizerAsync(int organizerId)
     {
         return await _context.Events
@@ -394,9 +359,7 @@ public class EventRepository : IEventRepository
 
     #region Private Helper Methods
 
-    /// <summary>
     /// Apply sorting to query based on sort field and order
-    /// </summary>
     private IQueryable<Event> ApplySorting(IQueryable<Event> query, string sortBy, string sortOrder)
     {
         var isDescending = sortOrder.ToLower() == "desc";

@@ -1,8 +1,11 @@
-namespace Tickify.DTOs.Payment;
+using System.ComponentModel.DataAnnotations;
 
-public class CreatePaymentDto
+namespace Tickify.DTOs.Payment
 {
-    public int BookingId { get; set; }
-    public string PaymentMethod { get; set; } = string.Empty;
-    public decimal Amount { get; set; }
+    public class CreatePaymentDto
+    {
+        public int BookingId { get; set; }
+        public string Provider { get; set; } = "VNPay"; // VNPay | MoMo
+    }
+
 }
