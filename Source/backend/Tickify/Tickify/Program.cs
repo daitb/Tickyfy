@@ -78,6 +78,16 @@ namespace Tickify
             builder.Services.AddScoped<Tickify.Interfaces.Repositories.IEventRepository, Tickify.Repositories.EventRepository>();
             builder.Services.AddScoped<Tickify.Interfaces.Services.IEventService, Tickify.Services.EventService>();
 
+            // Ticket Services & Repositories (Dev 3)
+            builder.Services.AddScoped<Tickify.Interfaces.Repositories.ITicketRepository, Tickify.Repositories.TicketRepository>();
+            builder.Services.AddScoped<Tickify.Interfaces.Repositories.ITicketTransferRepository, Tickify.Repositories.TicketTransferRepository>();
+            builder.Services.AddScoped<Tickify.Interfaces.Repositories.ITicketScanRepository, Tickify.Repositories.TicketScanRepository>();
+            builder.Services.AddScoped<Tickify.Interfaces.Repositories.ISeatRepository, Tickify.Repositories.SeatRepository>();
+            builder.Services.AddScoped<Tickify.Interfaces.Repositories.IPromoCodeRepository, Tickify.Repositories.PromoCodeRepository>();
+            builder.Services.AddScoped<Tickify.Interfaces.Services.ITicketService, Tickify.Services.TicketService>();
+            builder.Services.AddScoped<Tickify.Interfaces.Services.IBookingService, Tickify.Services.BookingService>();
+            builder.Services.AddScoped<Tickify.Interfaces.Services.IPromoCodeService, Tickify.Services.PromoCodeService>();
+
             // ============================================
             // 4. JWT AUTHENTICATION CONFIGURATION
             // Cấu hình xác thực JWT token
