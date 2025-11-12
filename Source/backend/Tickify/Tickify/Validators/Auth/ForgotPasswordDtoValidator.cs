@@ -3,10 +3,6 @@ using Tickify.DTOs.Auth;
 
 namespace Tickify.Validators.Auth;
 
-/// <summary>
-/// Validator cho ForgotPasswordDto
-/// Kiểm tra: Email
-/// </summary>
 public class ForgotPasswordDtoValidator : AbstractValidator<ForgotPasswordDto>
 {
     public ForgotPasswordDtoValidator()

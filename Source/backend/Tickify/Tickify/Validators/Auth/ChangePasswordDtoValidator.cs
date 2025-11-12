@@ -3,10 +3,6 @@ using Tickify.DTOs.Auth;
 
 namespace Tickify.Validators.Auth;
 
-/// <summary>
-/// Validator cho ChangePasswordDto
-/// Kiểm tra: CurrentPassword, NewPassword, và ConfirmPassword phải khớp
-/// </summary>
 public class ChangePasswordDtoValidator : AbstractValidator<ChangePasswordDto>
 {
     public ChangePasswordDtoValidator()
