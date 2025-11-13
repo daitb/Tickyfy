@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, User, Ticket } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Checkbox } from '../components/ui/checkbox';
-import { Separator } from '../components/ui/separator';
+import { useState } from "react";
+import { Mail, Lock, Eye, EyeOff, User, Ticket } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Checkbox } from "../components/ui/checkbox";
+import { Separator } from "../components/ui/separator";
 
 interface RegisterProps {
   onNavigate: (page: string) => void;
@@ -14,10 +14,10 @@ export function Register({ onNavigate }: RegisterProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [receiveUpdates, setReceiveUpdates] = useState(false);
@@ -25,23 +25,23 @@ export function Register({ onNavigate }: RegisterProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
+      alert("Passwords do not match");
       return;
     }
 
     if (!agreeToTerms) {
-      alert('Please agree to the terms and conditions');
+      alert("Please agree to the terms and conditions");
       return;
     }
 
     setIsLoading(true);
-    
+
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
-      onNavigate('home');
+      onNavigate("home");
     }, 1000);
   };
 
@@ -49,12 +49,12 @@ export function Register({ onNavigate }: RegisterProps) {
     console.log(`Sign up with ${provider}`);
     // Simulate social signup
     setTimeout(() => {
-      onNavigate('home');
+      onNavigate("home");
     }, 500);
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -62,8 +62,8 @@ export function Register({ onNavigate }: RegisterProps) {
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <button 
-            onClick={() => onNavigate('home')}
+          <button
+            onClick={() => onNavigate("home")}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
             <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
@@ -93,7 +93,7 @@ export function Register({ onNavigate }: RegisterProps) {
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => handleSocialSignup('google')}
+                onClick={() => handleSocialSignup("google")}
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path
@@ -120,10 +120,14 @@ export function Register({ onNavigate }: RegisterProps) {
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => handleSocialSignup('facebook')}
+                onClick={() => handleSocialSignup("facebook")}
               >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="#1877F2">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                <svg
+                  className="w-5 h-5 mr-2"
+                  viewBox="0 0 24 24"
+                  fill="#1877F2"
+                >
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                 </svg>
                 Continue with Facebook
               </Button>
@@ -143,13 +147,18 @@ export function Register({ onNavigate }: RegisterProps) {
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                  <User
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                    size={18}
+                  />
                   <Input
                     id="fullName"
                     type="text"
                     placeholder="Enter your full name"
                     value={formData.fullName}
-                    onChange={(e) => handleInputChange('fullName', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("fullName", e.target.value)
+                    }
                     className="pl-10"
                     required
                   />
@@ -159,13 +168,16 @@ export function Register({ onNavigate }: RegisterProps) {
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                  <Mail
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                    size={18}
+                  />
                   <Input
                     id="email"
                     type="email"
                     placeholder="Enter your email"
                     value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
                     className="pl-10"
                     required
                   />
@@ -175,13 +187,18 @@ export function Register({ onNavigate }: RegisterProps) {
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                  <Lock
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                    size={18}
+                  />
                   <Input
                     id="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     placeholder="Create a password"
                     value={formData.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("password", e.target.value)
+                    }
                     className="pl-10 pr-10"
                     required
                     minLength={8}
@@ -202,13 +219,18 @@ export function Register({ onNavigate }: RegisterProps) {
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                  <Lock
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                    size={18}
+                  />
                   <Input
                     id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
+                    type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm your password"
                     value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("confirmPassword", e.target.value)
+                    }
                     className="pl-10 pr-10"
                     required
                   />
@@ -217,7 +239,11 @@ export function Register({ onNavigate }: RegisterProps) {
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
                   >
-                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showConfirmPassword ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -227,25 +253,27 @@ export function Register({ onNavigate }: RegisterProps) {
                   <Checkbox
                     id="terms"
                     checked={agreeToTerms}
-                    onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
+                    onCheckedChange={(checked: boolean) =>
+                      setAgreeToTerms(checked)
+                    }
                     className="mt-1"
                   />
                   <label
                     htmlFor="terms"
                     className="text-sm text-neutral-700 leading-tight cursor-pointer"
                   >
-                    I agree to the{' '}
+                    I agree to the{" "}
                     <button
                       type="button"
-                      onClick={() => window.open('#', '_blank')}
+                      onClick={() => window.open("#", "_blank")}
                       className="text-orange-500 hover:text-orange-600"
                     >
                       Terms of Service
-                    </button>
-                    {' '}and{' '}
+                    </button>{" "}
+                    and{" "}
                     <button
                       type="button"
-                      onClick={() => window.open('#', '_blank')}
+                      onClick={() => window.open("#", "_blank")}
                       className="text-orange-500 hover:text-orange-600"
                     >
                       Privacy Policy
@@ -257,7 +285,9 @@ export function Register({ onNavigate }: RegisterProps) {
                   <Checkbox
                     id="updates"
                     checked={receiveUpdates}
-                    onCheckedChange={(checked) => setReceiveUpdates(checked as boolean)}
+                    onCheckedChange={(checked: boolean) =>
+                      setReceiveUpdates(checked)
+                    }
                     className="mt-1"
                   />
                   <label
@@ -274,7 +304,7 @@ export function Register({ onNavigate }: RegisterProps) {
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                 disabled={isLoading}
               >
-                {isLoading ? 'Creating account...' : 'Create account'}
+                {isLoading ? "Creating account..." : "Create account"}
               </Button>
             </form>
           </div>
@@ -282,9 +312,9 @@ export function Register({ onNavigate }: RegisterProps) {
           {/* Sign In Link */}
           <div className="text-center mt-6">
             <p className="text-sm text-neutral-600">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <button
-                onClick={() => onNavigate('login')}
+                onClick={() => onNavigate("login")}
                 className="text-orange-500 hover:text-orange-600 transition-colors"
               >
                 Sign in

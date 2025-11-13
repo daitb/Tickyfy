@@ -1,5 +1,14 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import {
+  Calendar,
+  MapPin,
+  Download,
+  Printer,
+  Check,
+  Clock,
+  ChevronRight,
+  ExternalLink,
+} from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -9,407 +18,345 @@ import {
 } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Separator } from "../components/ui/separator";
-import { QRTicketCard } from "../components/QRTicketCard";
-import { OrderTicket } from "../types";
+import { Order } from "../types";
+import { mockEvents } from "../mockData";
+import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 
 interface OrderDetailProps {
-  onNavigate?: (page: string) => void;
+  orderId?: string;
+  orders?: Order[];
+  onNavigate: (page: string, eventId?: string) => void;
 }
 
-interface Booking {
-  id: number;
-  bookingCode: string;
-  eventId: number;
-  eventTitle: string;
-  eventImage: string;
-  eventDate: string;
-  eventVenue: string;
-  totalAmount: number;
-  discountAmount: number;
-  status: "Pending" | "Confirmed" | "Cancelled" | "Refunded";
-  bookingDate: string;
-  expiresAt?: string;
-  tickets: OrderTicket[];
-  promoCode?: string;
-}
+export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
+  // Find order from orders list - use first order if orderId not provided
+  const currentOrder = orderId
+    ? orders?.find((o) => o.id === orderId) || orders?.[0]
+    : orders?.[0];
 
-export function OrderDetail({ onNavigate }: OrderDetailProps) {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [booking, setBooking] = useState<Booking | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [cancelling, setCancelling] = useState(false);
+  if (!currentOrder) {
+    return (
+      <div className="min-h-screen bg-neutral-50 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center py-16">
+            <h2 className="text-neutral-900 mb-4">Order not found</h2>
+            <Button onClick={() => onNavigate("my-tickets")}>
+              Back to My Tickets
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    fetchBookingDetails();
-  }, [id]);
+  const event = mockEvents.find((e) => e.id === currentOrder.eventId);
 
-  const fetchBookingDetails = async () => {
-    try {
-      setLoading(true);
-      // TODO: Replace with actual API call
-      // const response = await fetch(`/api/booking/${id}`, {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-      // const data = await response.json();
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-neutral-50 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center py-16">
+            <h2 className="text-neutral-900 mb-4">Event not found</h2>
+            <Button onClick={() => onNavigate("my-tickets")}>
+              Back to My Tickets
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-      // Mock data for now
-      const mockBooking: Booking = {
-        id: parseInt(id || "1"),
-        bookingCode: `BK-2025-${id?.padStart(4, "0")}`,
-        eventId: 1,
-        eventTitle: "Summer Music Festival 2025",
-        eventImage:
-          "https://images.unsplash.com/photo-1459749411175-04bf5292ceea",
-        eventDate: "2025-12-31T20:00:00",
-        eventVenue: "Madison Square Garden, New York",
-        totalAmount: 150.0,
-        discountAmount: 15.0,
-        status: "Confirmed",
-        bookingDate: "2025-11-10T14:30:00",
-        promoCode: "SUMMER25",
-        tickets: [
-          {
-            id: "1",
-            tierId: "tier-vip-1",
-            tierName: "VIP",
-            price: 75.0,
-            status: "valid",
-            qrCode: "QR_CODE_DATA_1",
-          },
-          {
-            id: "2",
-            tierId: "tier-vip-1",
-            tierName: "VIP",
-            price: 75.0,
-            status: "valid",
-            qrCode: "QR_CODE_DATA_2",
-          },
-        ],
-      };
-
-      setBooking(mockBooking);
-    } catch (error) {
-      console.error("Error fetching booking:", error);
-    } finally {
-      setLoading(false);
-    }
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
-  const handleCancelBooking = async () => {
-    if (
-      !booking ||
-      !window.confirm(
-        "Are you sure you want to cancel this booking? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
+  const formatDateTime = (dateString: string, timeString?: string) => {
+    const date = new Date(dateString);
+    const formattedDate = date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
 
-    try {
-      setCancelling(true);
-      // TODO: Replace with actual API call
-      // await fetch(`/api/booking/${id}/cancel`, {
-      //   method: 'POST',
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-
-      alert("Booking cancelled successfully");
-      fetchBookingDetails(); // Refresh data
-    } catch (error) {
-      console.error("Error cancelling booking:", error);
-      alert("Failed to cancel booking. Please try again.");
-    } finally {
-      setCancelling(false);
+    if (timeString) {
+      return `${formattedDate} • ${timeString}`;
     }
+    return formattedDate;
+  };
+
+  const formatPrice = (price: number) => {
+    return `${(price / 1000).toFixed(0)}K VND`;
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Confirmed":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "Cancelled":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "Refunded":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "completed":
+        return "bg-green-100 text-green-700";
+      case "pending":
+        return "bg-yellow-100 text-yellow-700";
+      case "cancelled":
+        return "bg-red-100 text-red-700";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-neutral-100 text-neutral-700";
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-neutral-50 py-8">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-center h-96">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!booking) {
-    return (
-      <div className="min-h-screen bg-neutral-50 py-8">
-        <div className="max-w-7xl mx-auto px-4">
-          <Card className="mt-8">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <svg
-                className="w-16 h-16 text-neutral-300 mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              <h3 className="text-lg font-semibold text-neutral-900 mb-2">
-                Booking not found
-              </h3>
-              <p className="text-neutral-600 mb-6">
-                This order may have been cancelled or doesn't exist
-              </p>
-              <Button onClick={() => navigate("/my-tickets")}>
-                Back to My Tickets
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  const canCancel =
-    booking.status === "Pending" || booking.status === "Confirmed";
-  const finalAmount = booking.totalAmount - booking.discountAmount;
+  const timelineSteps = [
+    {
+      title: "Order Placed",
+      timestamp: formatDate(currentOrder.createdAt),
+      completed: true,
+    },
+    {
+      title: "Payment Confirmed",
+      timestamp: formatDate(currentOrder.createdAt),
+      completed: currentOrder.status === "completed",
+    },
+    {
+      title: "Tickets Issued",
+      timestamp: formatDate(currentOrder.createdAt),
+      completed: currentOrder.status === "completed",
+    },
+    {
+      title: "Event Check-in",
+      timestamp: "Not yet",
+      completed: false,
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-neutral-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/my-tickets")}
-            className="mb-4 -ml-3 hover:bg-transparent"
+    <div className="min-h-screen bg-neutral-50">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-neutral-600 mb-6">
+          <button
+            onClick={() => onNavigate("home")}
+            className="hover:text-teal-600"
           >
-            ← Back to My Tickets
-          </Button>
-          <div className="flex items-start justify-between flex-wrap gap-4">
-            <div>
-              <h1 className="mb-2">Order Details</h1>
-              <p className="text-neutral-600">
-                Booking Code:{" "}
-                <span className="font-mono font-semibold">
-                  {booking.bookingCode}
-                </span>
-              </p>
-            </div>
-            <Badge className={getStatusColor(booking.status)}>
-              {booking.status}
-            </Badge>
-          </div>
+            Home
+          </button>
+          <ChevronRight size={16} />
+          <button
+            onClick={() => onNavigate("my-tickets")}
+            className="hover:text-teal-600"
+          >
+            My Orders
+          </button>
+          <ChevronRight size={16} />
+          <span className="text-neutral-900">Order #{currentOrder.id}</span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Event Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Event Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4">
-                  <img
-                    src={booking.eventImage}
-                    alt={booking.eventTitle}
-                    className="w-32 h-32 object-cover rounded-lg"
+        {/* Order Summary Card */}
+        <Card className="mb-8 overflow-hidden">
+          <CardContent className="p-0">
+            <div className="flex flex-col md:flex-row gap-6 p-6">
+              {/* Event Image */}
+              <div className="md:w-96 flex-shrink-0">
+                <div className="aspect-[16/10] rounded-lg overflow-hidden bg-neutral-100">
+                  <ImageWithFallback
+                    src={event.image}
+                    alt={event.title}
+                    className="w-full h-full object-cover"
                   />
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold mb-2">
-                      {booking.eventTitle}
-                    </h3>
-                    <div className="space-y-1 text-sm text-neutral-600">
-                      <div className="flex items-center gap-2">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <span>{formatDate(booking.eventDate)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
-                        <span>{booking.eventVenue}</span>
-                      </div>
-                    </div>
+                </div>
+              </div>
+
+              {/* Order Info */}
+              <div className="flex-1 space-y-4">
+                <div>
+                  <h1 className="mb-2">{event.title}</h1>
+                  <div className="flex items-center gap-2 text-neutral-600 mb-2">
+                    <Calendar size={18} />
+                    <span>{formatDateTime(event.date, event.time)}</span>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Tickets */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Tickets ({booking.tickets.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {booking.tickets.map((ticket) => (
-                    <div
-                      key={ticket.id}
-                      onClick={() => navigate(`/ticket/${ticket.id}`)}
-                      className="cursor-pointer"
-                    >
-                      <QRTicketCard
-                        ticket={ticket}
-                        eventTitle={booking.eventTitle}
-                        eventDate={booking.eventDate}
-                        eventVenue={booking.eventVenue}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Order Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Order Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">Subtotal</span>
-                  <span className="font-semibold">
-                    {formatCurrency(booking.totalAmount)}
-                  </span>
-                </div>
-
-                {booking.discountAmount > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
+                  <div className="flex items-center gap-2 text-neutral-600">
+                    <MapPin size={18} />
                     <span>
-                      Discount {booking.promoCode && `(${booking.promoCode})`}
-                    </span>
-                    <span className="font-semibold">
-                      -{formatCurrency(booking.discountAmount)}
+                      {event.venue}, {event.city}
                     </span>
                   </div>
-                )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary">Order #{currentOrder.id}</Badge>
+                  <Badge className={getStatusColor(currentOrder.status)}>
+                    {currentOrder.status === "completed"
+                      ? "Confirmed"
+                      : currentOrder.status}
+                  </Badge>
+                  {currentOrder.paymentMethod && (
+                    <Badge variant="outline">
+                      {currentOrder.paymentMethod}
+                    </Badge>
+                  )}
+                </div>
 
                 <Separator />
 
-                <div className="flex justify-between text-base font-bold">
-                  <span>Total</span>
-                  <span>{formatCurrency(finalAmount)}</span>
+                <div>
+                  <div className="text-neutral-600 mb-1">Total Paid</div>
+                  <div className="text-teal-600">
+                    {formatPrice(currentOrder.total)}
+                  </div>
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-                <div className="text-xs text-neutral-500 mt-4">
-                  <p>Booked on {formatDate(booking.bookingDate)}</p>
-                  {booking.expiresAt && booking.status === "Pending" && (
-                    <p className="text-orange-600 mt-1">
-                      Expires: {formatDate(booking.expiresAt)}
-                    </p>
+        {/* Tickets Grid */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2>Your Tickets ({currentOrder.tickets.length})</h2>
+            <Button variant="secondary" size="sm">
+              <Download size={16} className="mr-2" />
+              Download All
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentOrder.tickets.map((ticket) => (
+              <Card
+                key={ticket.id}
+                className="overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer"
+                onClick={() => onNavigate("ticket-detail", ticket.id)}
+              >
+                <CardHeader className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white pb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge className="bg-white/20 text-white border-white/30">
+                      {ticket.tierName}
+                    </Badge>
+                    <Badge className="bg-white text-indigo-600">
+                      {ticket.status}
+                    </Badge>
+                  </div>
+                  {ticket.seatInfo && (
+                    <p className="text-sm text-white/90">{ticket.seatInfo}</p>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Actions */}
-            {canCancel && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Actions</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    onClick={handleCancelBooking}
-                    disabled={cancelling}
-                  >
-                    {cancelling ? "Cancelling..." : "Cancel Booking"}
-                  </Button>
-                  <p className="text-xs text-neutral-500">
-                    {booking.status === "Pending"
-                      ? "Cancel this booking to release your seats."
-                      : "Cancelling will refund your payment and release the tickets."}
-                  </p>
+                <CardContent className="p-6">
+                  <div className="text-center mb-4">
+                    <div className="text-teal-600">
+                      {formatPrice(ticket.price)}
+                    </div>
+                  </div>
+
+                  {/* QR Code Placeholder */}
+                  <div className="bg-neutral-50 rounded-lg p-6 mb-4 flex items-center justify-center">
+                    <div className="w-36 h-36 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                      <div className="w-full h-full flex items-center justify-center">
+                        <svg
+                          className="w-28 h-28 text-neutral-300"
+                          viewBox="0 0 100 100"
+                          fill="currentColor"
+                        >
+                          <rect x="0" y="0" width="40" height="40" />
+                          <rect x="60" y="0" width="40" height="40" />
+                          <rect x="0" y="60" width="40" height="40" />
+                          <rect x="50" y="50" width="15" height="15" />
+                          <rect x="75" y="75" width="10" height="10" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      size="sm"
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        // Handle view details
+                      }}
+                    >
+                      View Details
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        // Handle download
+                      }}
+                    >
+                      <Download size={16} />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Help */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Need Help?</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <p className="text-neutral-600">
-                  If you have any questions about your order, please contact our
-                  support team.
-                </p>
-                <Button variant="outline" className="w-full" size="sm">
-                  Contact Support
-                </Button>
-              </CardContent>
-            </Card>
+            ))}
           </div>
+        </div>
+
+        {/* Order Timeline */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Order Timeline</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {timelineSteps.map((step, index) => (
+                <div key={index} className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        step.completed
+                          ? "bg-green-100 text-green-600"
+                          : "bg-neutral-100 text-neutral-400"
+                      }`}
+                    >
+                      {step.completed ? (
+                        <Check size={20} />
+                      ) : (
+                        <Clock size={20} />
+                      )}
+                    </div>
+                    {index < timelineSteps.length - 1 && (
+                      <div
+                        className={`w-0.5 h-12 ${
+                          step.completed ? "bg-green-200" : "bg-neutral-200"
+                        }`}
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1 pb-6">
+                    <div className="font-medium text-neutral-900">
+                      {step.title}
+                    </div>
+                    <div className="text-sm text-neutral-600">
+                      {step.timestamp}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button
+            className="flex-1 sm:flex-none"
+            onClick={() => onNavigate("event-detail", event.id)}
+          >
+            <ExternalLink size={16} className="mr-2" />
+            View Event Details
+          </Button>
+          <Button variant="outline" className="flex-1 sm:flex-none">
+            Contact Support
+          </Button>
+          <Button variant="ghost" className="flex-1 sm:flex-none">
+            <Printer size={16} className="mr-2" />
+            Print All Tickets
+          </Button>
         </div>
       </div>
     </div>

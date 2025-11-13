@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, Ticket } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Checkbox } from '../components/ui/checkbox';
-import { Separator } from '../components/ui/separator';
+import { useState } from "react";
+import { Mail, Lock, Eye, EyeOff, Ticket } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Checkbox } from "../components/ui/checkbox";
+import { Separator } from "../components/ui/separator";
 
 interface LoginProps {
   onNavigate: (page: string) => void;
@@ -12,19 +12,19 @@ interface LoginProps {
 
 export function Login({ onNavigate }: LoginProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
-      onNavigate('home');
+      onNavigate("home");
     }, 1000);
   };
 
@@ -32,7 +32,7 @@ export function Login({ onNavigate }: LoginProps) {
     console.log(`Login with ${provider}`);
     // Simulate social login
     setTimeout(() => {
-      onNavigate('home');
+      onNavigate("home");
     }, 500);
   };
 
@@ -41,8 +41,8 @@ export function Login({ onNavigate }: LoginProps) {
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <button 
-            onClick={() => onNavigate('home')}
+          <button
+            onClick={() => onNavigate("home")}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
             <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
@@ -72,7 +72,7 @@ export function Login({ onNavigate }: LoginProps) {
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => handleSocialLogin('google')}
+                onClick={() => handleSocialLogin("google")}
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path
@@ -99,10 +99,14 @@ export function Login({ onNavigate }: LoginProps) {
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => handleSocialLogin('facebook')}
+                onClick={() => handleSocialLogin("facebook")}
               >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="#1877F2">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                <svg
+                  className="w-5 h-5 mr-2"
+                  viewBox="0 0 24 24"
+                  fill="#1877F2"
+                >
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                 </svg>
                 Continue with Facebook
               </Button>
@@ -122,7 +126,10 @@ export function Login({ onNavigate }: LoginProps) {
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                  <Mail
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                    size={18}
+                  />
                   <Input
                     id="email"
                     type="email"
@@ -138,10 +145,13 @@ export function Login({ onNavigate }: LoginProps) {
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                  <Lock
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                    size={18}
+                  />
                   <Input
                     id="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -163,7 +173,9 @@ export function Login({ onNavigate }: LoginProps) {
                   <Checkbox
                     id="remember"
                     checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                    onCheckedChange={(checked: boolean) =>
+                      setRememberMe(checked)
+                    }
                   />
                   <label
                     htmlFor="remember"
@@ -174,7 +186,7 @@ export function Login({ onNavigate }: LoginProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => onNavigate('forgot-password')}
+                  onClick={() => onNavigate("forgot-password")}
                   className="text-sm text-orange-500 hover:text-orange-600 transition-colors"
                 >
                   Forgot password?
@@ -186,7 +198,7 @@ export function Login({ onNavigate }: LoginProps) {
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                 disabled={isLoading}
               >
-                {isLoading ? 'Signing in...' : 'Sign in'}
+                {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
           </div>
@@ -194,9 +206,9 @@ export function Login({ onNavigate }: LoginProps) {
           {/* Sign Up Link */}
           <div className="text-center mt-6">
             <p className="text-sm text-neutral-600">
-              Don't have an account?{' '}
+              Don't have an account?{" "}
               <button
-                onClick={() => onNavigate('register')}
+                onClick={() => onNavigate("register")}
                 className="text-orange-500 hover:text-orange-600 transition-colors"
               >
                 Sign up
