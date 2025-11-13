@@ -1,585 +1,404 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
-import { Switch } from "../components/ui/switch";
-import { Label } from "../components/ui/label";
+import { useState } from 'react';
+import { Clock, Calendar, MapPin, PartyPopper, Info, ChevronRight } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../components/ui/tooltip';
+import { Separator } from '../components/ui/separator';
+import { WaitlistEntry } from '../types';
+import { mockEvents, mockWaitlist } from '../mockData';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 
 interface WaitlistProps {
-  onNavigate?: (page: string) => void;
+  waitlistEntries?: WaitlistEntry[];
+  onNavigate: (page: string, eventId?: string) => void;
 }
 
-interface WaitlistEntry {
-  waitlistId: number;
-  eventId: number;
-  eventTitle: string;
-  eventImage: string;
-  eventStartDate: string;
-  eventEndDate: string;
-  eventVenue: string;
-  eventCity: string;
-  category: string;
-  position: number;
-  totalWaitlisted: number;
-  joinedAt: string;
-  emailNotifications: boolean;
-  smsNotifications: boolean;
-  status: "Active" | "Notified" | "Expired";
-  notifiedAt?: string;
-}
+export function Waitlist({ waitlistEntries, onNavigate }: WaitlistProps) {
+  const [activeTab, setActiveTab] = useState('all');
 
-export function Waitlist({ onNavigate }: WaitlistProps) {
-  const navigate = useNavigate();
-  const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
+  // Use provided waitlist or mock data
+  const allWaitlistEntries = waitlistEntries || mockWaitlist;
 
-  useEffect(() => {
-    fetchWaitlist();
-  }, []);
+  // Filter entries based on status
+  const activeEntries = allWaitlistEntries.filter(entry => entry.status === 'active');
+  const notifiedEntries = allWaitlistEntries.filter(entry => entry.status === 'notified');
+  const expiredEntries = allWaitlistEntries.filter(entry => entry.status === 'expired');
 
-  const fetchWaitlist = async () => {
-    try {
-      setLoading(true);
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/waitlist', {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-      // const data = await response.json();
-
-      // Mock data for now
-      const mockWaitlist: WaitlistEntry[] = [
-        {
-          waitlistId: 1,
-          eventId: 2,
-          eventTitle: "Tech Conference 2025",
-          eventImage:
-            "https://images.unsplash.com/photo-1540575467063-178a50c2df87",
-          eventStartDate: "2026-01-15T09:00:00",
-          eventEndDate: "2026-01-17T18:00:00",
-          eventVenue: "Convention Center",
-          eventCity: "San Francisco",
-          category: "Conference",
-          position: 15,
-          totalWaitlisted: 78,
-          joinedAt: "2025-11-08T10:30:00",
-          emailNotifications: true,
-          smsNotifications: false,
-          status: "Active",
-        },
-        {
-          waitlistId: 2,
-          eventId: 4,
-          eventTitle: "Broadway Show - Hamilton",
-          eventImage:
-            "https://images.unsplash.com/photo-1503095396549-807759245b35",
-          eventStartDate: "2025-12-15T19:00:00",
-          eventEndDate: "2025-12-15T22:00:00",
-          eventVenue: "Broadway Theatre",
-          eventCity: "New York",
-          category: "Theatre",
-          position: 3,
-          totalWaitlisted: 42,
-          joinedAt: "2025-11-10T14:15:00",
-          emailNotifications: true,
-          smsNotifications: true,
-          status: "Active",
-        },
-        {
-          waitlistId: 3,
-          eventId: 5,
-          eventTitle: "NBA Finals Game 7",
-          eventImage:
-            "https://images.unsplash.com/photo-1546519638-68e109498ffc",
-          eventStartDate: "2026-06-20T20:30:00",
-          eventEndDate: "2026-06-20T23:00:00",
-          eventVenue: "Madison Square Garden",
-          eventCity: "New York",
-          category: "Sports",
-          position: 127,
-          totalWaitlisted: 324,
-          joinedAt: "2025-11-05T09:00:00",
-          emailNotifications: true,
-          smsNotifications: true,
-          status: "Notified",
-          notifiedAt: "2025-11-10T16:45:00",
-        },
-      ];
-
-      setWaitlistEntries(mockWaitlist);
-    } catch (error) {
-      console.error("Error fetching waitlist:", error);
-    } finally {
-      setLoading(false);
+  const getFilteredEntries = () => {
+    switch (activeTab) {
+      case 'active':
+        return activeEntries;
+      case 'notified':
+        return notifiedEntries;
+      case 'expired':
+        return expiredEntries;
+      default:
+        return allWaitlistEntries;
     }
   };
 
-  const handleLeaveWaitlist = async (waitlistId: number) => {
-    if (!confirm("Leave this waitlist? You will lose your position.")) return;
-
-    try {
-      setUpdatingId(waitlistId);
-      // TODO: Replace with actual API call
-      // await fetch(`/api/waitlist/${waitlistId}`, {
-      //   method: 'DELETE',
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-
-      setWaitlistEntries((prev) =>
-        prev.filter((e) => e.waitlistId !== waitlistId)
-      );
-    } catch (error) {
-      console.error("Error leaving waitlist:", error);
-      alert("Failed to leave waitlist. Please try again.");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const handleToggleNotification = async (
-    waitlistId: number,
-    type: "email" | "sms",
-    currentValue: boolean
-  ) => {
-    try {
-      setUpdatingId(waitlistId);
-      // TODO: Replace with actual API call
-      // await fetch(`/api/waitlist/${waitlistId}/notifications`, {
-      //   method: 'PUT',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     Authorization: `Bearer ${token}`
-      //   },
-      //   body: JSON.stringify({ [type]: !currentValue })
-      // });
-
-      setWaitlistEntries((prev) =>
-        prev.map((entry) =>
-          entry.waitlistId === waitlistId
-            ? {
-                ...entry,
-                [`${type}Notifications`]: !currentValue,
-              }
-            : entry
-        )
-      );
-    } catch (error) {
-      console.error("Error updating notification settings:", error);
-      alert("Failed to update notification settings. Please try again.");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const handleViewEvent = (eventId: number) => {
-    if (onNavigate) {
-      onNavigate(`/event/${eventId}`);
-    } else {
-      navigate(`/event/${eventId}`);
-    }
-  };
+  const displayEntries = getFilteredEntries();
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+  const formatDateTime = (dateString: string, timeString?: string) => {
+    const date = new Date(dateString);
+    const formattedDate = date.toLocaleDateString('en-US', { 
+      weekday: 'short',
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
     });
+    
+    if (timeString) {
+      return `${formattedDate} • ${timeString}`;
+    }
+    return formattedDate;
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
-      case "Active":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "Notified":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "Expired":
-        return "bg-gray-100 text-gray-800 border-gray-200";
+      case 'active':
+        return {
+          dotColor: 'bg-blue-500',
+          text: 'Active - Waiting for tickets',
+          textColor: 'text-blue-700'
+        };
+      case 'notified':
+        return {
+          dotColor: 'bg-green-500',
+          text: 'Notified - Tickets available!',
+          textColor: 'text-green-700'
+        };
+      case 'expired':
+        return {
+          dotColor: 'bg-neutral-400',
+          text: 'Expired - Waitlist closed',
+          textColor: 'text-neutral-600'
+        };
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return {
+          dotColor: 'bg-neutral-400',
+          text: status,
+          textColor: 'text-neutral-600'
+        };
     }
   };
 
-  const getPositionBadgeColor = (position: number, total: number) => {
-    const percentile = (position / total) * 100;
-    if (percentile <= 10) return "bg-green-500 text-white";
-    if (percentile <= 30) return "bg-yellow-500 text-white";
-    return "bg-gray-500 text-white";
+  const handleLeaveWaitlist = (entryId: string) => {
+    console.log('Leave waitlist:', entryId);
   };
 
-  if (loading) {
+  const handleReserveNow = (eventId: string) => {
+    onNavigate('event-detail', eventId);
+  };
+
+  if (displayEntries.length === 0 && activeTab === 'all') {
     return (
-      <div className="min-h-screen bg-neutral-50 py-8">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-center h-96">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      <div className="min-h-screen bg-neutral-50">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="mb-2">My Waitlist</h1>
+            <p className="text-neutral-600">You'll be notified when tickets become available</p>
           </div>
+
+          {/* Empty State */}
+          <div className="text-center py-20">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-neutral-100 mb-6">
+              <Clock size={48} className="text-neutral-400" strokeWidth={1.5} />
+            </div>
+            <h2 className="text-neutral-900 mb-2">You're not on any waitlists</h2>
+            <p className="text-neutral-600 mb-6">Join a waitlist to get notified when tickets become available</p>
+            <Button onClick={() => onNavigate('listing')}>
+              Browse Sold Out Events
+            </Button>
+          </div>
+
+          {/* Info Sidebar */}
+          <Card className="max-w-2xl mx-auto mt-12 bg-blue-50 border-blue-200">
+            <CardContent className="p-6">
+              <h3 className="text-blue-900 mb-4">How Waitlist Works</h3>
+              <div className="space-y-3 text-blue-800">
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center text-sm font-medium">
+                    1
+                  </div>
+                  <p>Join the waitlist for sold-out events</p>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center text-sm font-medium">
+                    2
+                  </div>
+                  <p>Get notified when tickets become available</p>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center text-sm font-medium">
+                    3
+                  </div>
+                  <p>Reserve your spot within 24 hours</p>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center text-sm font-medium">
+                    4
+                  </div>
+                  <p>First come, first served basis</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
+  const hasNotifiedEntries = notifiedEntries.length > 0;
+
   return (
-    <div className="min-h-screen bg-neutral-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Header */}
+    <div className="min-h-screen bg-neutral-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Page Header */}
         <div className="mb-8">
           <h1 className="mb-2">My Waitlist</h1>
-          <p className="text-neutral-600">
-            Events you're waiting for • {waitlistEntries.length}{" "}
-            {waitlistEntries.length === 1 ? "entry" : "entries"}
-          </p>
+          <p className="text-neutral-600">You'll be notified when tickets become available</p>
         </div>
 
-        {/* Info Banner */}
-        {waitlistEntries.some((e) => e.status === "Notified") && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <svg
-                className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0"
-                fill="currentColor"
-                viewBox="0 0 20 20"
+        {/* Notification Banner */}
+        {hasNotifiedEntries && (
+          <Alert className="mb-8 bg-green-50 border-green-200">
+            <PartyPopper className="h-5 w-5 text-green-600" />
+            <AlertDescription className="text-green-800 ml-2">
+              <strong>🎉 Good news!</strong> Tickets are now available for {notifiedEntries.length} {notifiedEntries.length === 1 ? 'event' : 'events'}
+              <Button 
+                variant="link" 
+                className="ml-2 text-green-700 p-0 h-auto"
+                onClick={() => setActiveTab('notified')}
               >
-                <path
-                  fillRule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <div>
-                <p className="font-medium text-green-900">Tickets Available!</p>
-                <p className="text-sm text-green-700 mt-1">
-                  Some events on your waitlist now have tickets available. Book
-                  them before they're gone!
-                </p>
-              </div>
-            </div>
-          </div>
+                View Opportunities
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
 
-        {/* Waitlist Grid */}
-        {waitlistEntries.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <svg
-                className="w-24 h-24 text-neutral-300 mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <p className="text-lg font-medium text-neutral-700 mb-2">
-                No waitlist entries
-              </p>
-              <p className="text-neutral-500 mb-6 text-center max-w-md">
-                When you join a waitlist for sold-out events, they'll appear
-                here. We'll notify you when tickets become available!
-              </p>
-              <Button onClick={() => navigate("/events")}>
-                Explore Events
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {waitlistEntries.map((entry) => (
-              <Card
-                key={entry.waitlistId}
-                className={`overflow-hidden ${
-                  entry.status === "Notified"
-                    ? "border-green-300 shadow-md"
-                    : ""
-                }`}
-              >
-                <div className="flex flex-col md:flex-row">
-                  {/* Event Image */}
-                  <div className="md:w-48 h-48 md:h-auto overflow-hidden flex-shrink-0">
-                    <img
-                      src={entry.eventImage}
-                      alt={entry.eventTitle}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+        {/* Status Filter */}
+        <div className="mb-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="active">Active ({activeEntries.length})</TabsTrigger>
+              <TabsTrigger value="notified">Notified ({notifiedEntries.length})</TabsTrigger>
+              <TabsTrigger value="expired">Expired ({expiredEntries.length})</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
-                  {/* Event Details */}
-                  <div className="flex-1 p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="text-xs">{entry.category}</Badge>
-                          <Badge className={getStatusColor(entry.status)}>
-                            {entry.status}
+        {/* Waitlist Entries */}
+        <div className="space-y-4">
+          {displayEntries.map((entry) => {
+            const event = mockEvents.find(e => e.id === entry.eventId);
+            if (!event) return null;
+
+            const statusConfig = getStatusConfig(entry.status);
+
+            return (
+              <Card 
+                key={entry.id}
+                className="overflow-hidden hover:shadow-lg transition-all duration-300"
+              >
+                <CardContent className="p-0">
+                  <div className="flex flex-col lg:flex-row gap-6 p-6">
+                    {/* Event Thumbnail */}
+                    <div className="lg:w-64 flex-shrink-0">
+                      <div 
+                        className="aspect-[16/10] rounded-lg overflow-hidden bg-neutral-100 cursor-pointer relative"
+                        onClick={() => onNavigate('event-detail', event.id)}
+                      >
+                        <ImageWithFallback
+                          src={event.image}
+                          alt={event.title}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        />
+                        {/* Category Badge */}
+                        <div className="absolute top-3 left-3">
+                          <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm">
+                            {event.category}
                           </Badge>
                         </div>
-                        <h3 className="text-xl font-semibold mb-2">
-                          {entry.eventTitle}
+                      </div>
+                    </div>
+
+                    {/* Info Section */}
+                    <div className="flex-1 space-y-4">
+                      <div>
+                        <h3 
+                          className="mb-2 cursor-pointer hover:text-teal-600 transition-colors"
+                          onClick={() => onNavigate('event-detail', event.id)}
+                        >
+                          {event.title}
                         </h3>
-                      </div>
-                    </div>
-
-                    {/* Date and Location */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                      <div className="flex items-center gap-2 text-sm text-neutral-600">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <span>{formatDate(entry.eventStartDate)}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-neutral-600">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
-                        <span>
-                          {entry.eventVenue}, {entry.eventCity}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Position Info */}
-                    <div className="bg-neutral-50 rounded-lg p-4 mb-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-neutral-600">
-                          Your Position
-                        </span>
-                        <Badge
-                          className={getPositionBadgeColor(
-                            entry.position,
-                            entry.totalWaitlisted
-                          )}
-                        >
-                          #{entry.position}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-neutral-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-500 h-2 rounded-full transition-all"
-                            style={{
-                              width: `${Math.max(
-                                5,
-                                (entry.position / entry.totalWaitlisted) * 100
-                              )}%`,
-                            }}
-                          />
-                        </div>
-                        <span className="text-xs text-neutral-500">
-                          {entry.totalWaitlisted} total
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Notification Settings */}
-                    <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                      <p className="text-sm font-medium text-neutral-700 mb-3">
-                        Notification Preferences
-                      </p>
-                      <div className="flex items-center justify-between gap-6">
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            id={`email-${entry.waitlistId}`}
-                            checked={entry.emailNotifications}
-                            onCheckedChange={() =>
-                              handleToggleNotification(
-                                entry.waitlistId,
-                                "email",
-                                entry.emailNotifications
-                              )
-                            }
-                            disabled={updatingId === entry.waitlistId}
-                          />
-                          <Label
-                            htmlFor={`email-${entry.waitlistId}`}
-                            className="text-sm cursor-pointer"
-                          >
-                            Email notifications
-                          </Label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            id={`sms-${entry.waitlistId}`}
-                            checked={entry.smsNotifications}
-                            onCheckedChange={() =>
-                              handleToggleNotification(
-                                entry.waitlistId,
-                                "sms",
-                                entry.smsNotifications
-                              )
-                            }
-                            disabled={updatingId === entry.waitlistId}
-                          />
-                          <Label
-                            htmlFor={`sms-${entry.waitlistId}`}
-                            className="text-sm cursor-pointer"
-                          >
-                            SMS notifications
-                          </Label>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-neutral-600">
+                          <div className="flex items-center gap-2">
+                            <Calendar size={16} />
+                            <span className="text-sm">{formatDateTime(event.date, event.time)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <MapPin size={16} />
+                            <span className="text-sm">{event.venue}, {event.city}</span>
+                          </div>
                         </div>
                       </div>
+
+                      <Separator />
+
+                      {/* Status Row */}
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${statusConfig.dotColor}`} />
+                        <span className={`font-medium ${statusConfig.textColor}`}>
+                          {statusConfig.text}
+                        </span>
+                      </div>
+
+                      {/* Position and Dates */}
+                      <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
+                        {entry.status === 'active' && entry.position > 0 && (
+                          <div>
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                              {entry.position === 1 ? 'Next in line!' : `#${entry.position} in waitlist`}
+                            </Badge>
+                          </div>
+                        )}
+                        <div>
+                          Joined {formatDate(entry.joinedAt)}
+                        </div>
+                        {entry.estimatedNotification && entry.status === 'active' && (
+                          <div>
+                            Est. notification: {formatDate(entry.estimatedNotification)}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Status Info */}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-neutral-500">
-                        Joined {formatDateTime(entry.joinedAt)}
-                      </span>
-                      {entry.notifiedAt && (
-                        <span className="text-green-600 font-medium">
-                          Notified {formatDateTime(entry.notifiedAt)}
-                        </span>
+                    {/* Action Section */}
+                    <div className="lg:w-48 flex-shrink-0 flex flex-col justify-center gap-3">
+                      {entry.status === 'notified' && (
+                        <Button 
+                          className="w-full bg-green-600 hover:bg-green-700"
+                          onClick={() => handleReserveNow(event.id)}
+                        >
+                          Reserve Now
+                        </Button>
                       )}
+                      {entry.status === 'active' && (
+                        <Button 
+                          variant="outline" 
+                          className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => handleLeaveWaitlist(entry.id)}
+                        >
+                          Leave Waitlist
+                        </Button>
+                      )}
+                      {entry.status === 'expired' && (
+                        <Button 
+                          variant="ghost" 
+                          className="w-full"
+                          disabled
+                        >
+                          Expired
+                        </Button>
+                      )}
+
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="sm" className="w-full">
+                              <Info size={16} className="mr-2" />
+                              What happens next?
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-sm">
+                              {entry.status === 'active' && 
+                                "We'll notify you via email when tickets become available. You'll have 24 hours to complete your purchase."
+                              }
+                              {entry.status === 'notified' && 
+                                "Tickets are available now! Reserve your spot before they're gone. You have 24 hours from notification."
+                              }
+                              {entry.status === 'expired' && 
+                                "This waitlist has closed. Check out other upcoming events you might enjoy."
+                              }
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
 
-                  {/* Actions */}
-                  <div className="p-6 md:w-48 flex md:flex-col gap-2 border-t md:border-t-0 md:border-l">
-                    {entry.status === "Notified" ? (
-                      <Button
-                        className="flex-1 md:w-full"
-                        onClick={() => handleViewEvent(entry.eventId)}
-                      >
-                        Book Now
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="flex-1 md:w-full"
-                        onClick={() => handleViewEvent(entry.eventId)}
-                      >
-                        View Event
-                      </Button>
-                    )}
-
-                    <Button
-                      variant="outline"
-                      className="flex-1 md:w-full"
-                      onClick={() => handleLeaveWaitlist(entry.waitlistId)}
-                      disabled={updatingId === entry.waitlistId}
-                    >
-                      Leave Waitlist
-                    </Button>
+        {/* Info Sidebar for Desktop */}
+        <Card className="mt-12 bg-blue-50 border-blue-200 hidden lg:block">
+          <CardContent className="p-8">
+            <h3 className="text-blue-900 mb-6">How Waitlist Works</h3>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center font-medium">
+                    1
+                  </div>
+                  <div>
+                    <div className="font-medium text-blue-900 mb-1">Join the waitlist</div>
+                    <p className="text-sm text-blue-700">For sold-out events you want to attend</p>
                   </div>
                 </div>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {/* Info Footer */}
-        <Card className="mt-8 bg-blue-50 border-blue-200">
-          <CardContent className="p-6">
-            <h3 className="font-semibold text-neutral-900 mb-3">
-              How Waitlists Work
-            </h3>
-            <ul className="space-y-2 text-sm text-neutral-700">
-              <li className="flex items-start gap-2">
-                <svg
-                  className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span>
-                  You'll be notified immediately when tickets become available
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <svg
-                  className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span>
-                  Your position updates as people ahead of you get tickets or
-                  leave the waitlist
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <svg
-                  className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span>
-                  You have 24 hours to complete your purchase once notified
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <svg
-                  className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span>
-                  Manage your notification preferences anytime to stay updated
-                  your way
-                </span>
-              </li>
-            </ul>
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center font-medium">
+                    2
+                  </div>
+                  <div>
+                    <div className="font-medium text-blue-900 mb-1">Get notified</div>
+                    <p className="text-sm text-blue-700">When tickets become available via email</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center font-medium">
+                    3
+                  </div>
+                  <div>
+                    <div className="font-medium text-blue-900 mb-1">Reserve your spot</div>
+                    <p className="text-sm text-blue-700">Within 24 hours of notification</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center font-medium">
+                    4
+                  </div>
+                  <div>
+                    <div className="font-medium text-blue-900 mb-1">First come, first served</div>
+                    <p className="text-sm text-blue-700">Act fast to secure your tickets</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

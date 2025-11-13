@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, MapPin, User, Minus, Plus, Clock } from 'lucide-react';
+import { Calendar, MapPin, User, Minus, Plus, Clock, Share2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { MiniCartBar } from '../components/MiniCartBar';
 import { HoldTimer } from '../components/HoldTimer';
@@ -8,12 +8,18 @@ import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Separator } from '../components/ui/separator';
 import { Badge } from '../components/ui/badge';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import EventHighlights from '../components/event-detail/EventHighlights';
+import FAQSection from '../components/event-detail/FAQSection';
+import LocationMap from '../components/event-detail/LocationMap';
+import ShareButtons from '../components/event-detail/ShareButtons';
+import RelatedEvents from '../components/event-detail/RelatedEvents';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { mockEvents } from '../mockData';
 import { CartItem } from '../types';
 
 interface EventDetailProps {
   eventId: string;
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, eventId?: string) => void;
   onAddToCart: (items: CartItem[]) => void;
 }
 
@@ -89,24 +95,50 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
     }).format(price);
   };
 
+  // Get related events from the same category
+  const relatedEvents = mockEvents.filter(e => 
+    e.category === event.category && e.id !== event.id
+  );
+
+  const eventUrl = `https://tickify.vn/events/${event.slug}`;
+
   return (
     <div className="min-h-screen bg-neutral-50 pb-32">
       {/* Hero Image */}
-      <div className="w-full h-[400px] bg-neutral-900">
+      <div className="w-full h-[400px] bg-neutral-900 relative">
         <ImageWithFallback
           src={event.image}
           alt={event.title}
           className="w-full h-full object-cover opacity-90"
         />
+        
+        {/* Share Button Overlay */}
+        <div className="absolute top-4 right-4 z-10">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                className="bg-white/90 hover:bg-white backdrop-blur-sm"
+              >
+                <Share2 size={16} className="mr-2" />
+                Share
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 border-0 shadow-xl" align="end">
+              <ShareButtons eventTitle={event.title} eventUrl={eventUrl} />
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 -mt-20 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl p-8 shadow-lg mb-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white rounded-2xl p-8 shadow-lg">
               <div className="flex items-start justify-between mb-4">
-                <Badge className="bg-orange-500">{event.category}</Badge>
+                <Badge className="bg-teal-500 hover:bg-teal-600">{event.category}</Badge>
                 {showTimer && <HoldTimer onExpire={() => setShowTimer(false)} />}
               </div>
 
@@ -114,7 +146,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div className="flex items-start gap-3">
-                  <Calendar className="text-orange-500 mt-1 flex-shrink-0" size={20} />
+                  <Calendar className="text-teal-500 mt-1 flex-shrink-0" size={20} />
                   <div>
                     <div className="text-sm text-neutral-500">Date & Time</div>
                     <div className="text-neutral-900">
@@ -125,7 +157,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <MapPin className="text-orange-500 mt-1 flex-shrink-0" size={20} />
+                  <MapPin className="text-teal-500 mt-1 flex-shrink-0" size={20} />
                   <div>
                     <div className="text-sm text-neutral-500">Venue</div>
                     <div className="text-neutral-900">{event.venue}</div>
@@ -138,9 +170,9 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
 
               <div>
                 <h3 className="mb-4">About This Event</h3>
-                <p className="text-neutral-600 leading-relaxed">
-                  {event.description}
-                </p>
+                <div className="text-neutral-600 leading-relaxed space-y-4 whitespace-pre-line">
+                  {event.fullDescription || event.description}
+                </div>
               </div>
 
               <Separator className="my-8" />
@@ -149,9 +181,9 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
               <div>
                 <h3 className="mb-4">Organizer</h3>
                 <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarFallback className="bg-orange-100 text-orange-600">
-                      {event.organizerName.charAt(0)}
+                  <Avatar className="w-12 h-12">
+                    <AvatarFallback className="bg-teal-100 text-teal-600">
+                      {event.organizerAvatar || event.organizerName.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
@@ -162,8 +194,35 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
               </div>
             </div>
 
+            {/* Event Highlights */}
+            {event.highlights && <EventHighlights highlights={event.highlights} />}
+
+            {/* Location Map */}
+            {event.venueDetails && (
+              <LocationMap
+                address={event.venueDetails.fullAddress}
+                latitude={event.venueDetails.latitude}
+                longitude={event.venueDetails.longitude}
+              />
+            )}
+
+            {/* FAQs */}
+            {event.faqs && <FAQSection faqs={event.faqs} />}
+
             {/* Policies */}
             <PolicyBlock policies={event.policies} />
+
+            {/* Related Events */}
+            {relatedEvents.length > 0 && (
+              <RelatedEvents
+                currentEventId={event.id}
+                relatedEvents={relatedEvents}
+                onEventClick={(id) => {
+                  onNavigate('event-detail', id);
+                  window.scrollTo(0, 0);
+                }}
+              />
+            )}
           </div>
 
           {/* Ticket Selection Sidebar */}
@@ -179,8 +238,8 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                       tier.available === 0
                         ? 'border-neutral-200 bg-neutral-50 opacity-60'
                         : quantities[tier.id] > 0
-                        ? 'border-orange-500 bg-orange-50'
-                        : 'border-neutral-200 hover:border-orange-300'
+                        ? 'border-teal-500 bg-teal-50'
+                        : 'border-neutral-200 hover:border-teal-300'
                     }`}
                   >
                     <div className="flex items-start justify-between mb-2">
