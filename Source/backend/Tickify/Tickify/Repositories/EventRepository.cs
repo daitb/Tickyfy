@@ -32,7 +32,7 @@ public class EventRepository : IEventRepository
                 .Include(e => e.TicketTypes)
                 .Include(e => e.ApprovedByStaff)
                 .Include(e => e.Reviews)
-                .Include(e => e.Bookings)
+                .Include(e => e.Bookings!)
                     .ThenInclude(b => b.Tickets);
         }
 

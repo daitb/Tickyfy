@@ -133,4 +133,304 @@ public class EventController : ControllerBase
 
     #endregion
 
+    #region Organizer Endpoints (Organizer Role Required)
+
+    /// Create new event (Organizer only)
+    [HttpPost]
+    [Authorize(Roles = "Organizer")]
+    [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<EventDetailDto>>> CreateEvent(
+        [FromBody] CreateEventDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+
+            return BadRequest(ApiResponse<EventDetailDto>.FailureResponse(
+                "Validation failed",
+                errors
+            ));
+        }
+
+        var organizerId = GetOrganizerIdFromClaims();
+
+        _logger.LogInformation("Organizer {OrganizerId} creating event: {EventTitle}",
+            organizerId, dto.Title);
+
+        var createdEvent = await _eventService.CreateEventAsync(dto, organizerId);
+
+        return CreatedAtAction(
+            nameof(GetEventById),
+            new { id = createdEvent.EventId },
+            ApiResponse<EventDetailDto>.SuccessResponse(
+                createdEvent,
+                "Event created successfully and submitted for approval"
+            )
+        );
+    }
+
+    /// Update existing event (Organizer/Admin)
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Organizer,Admin")]
+    [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<EventDetailDto>>> UpdateEvent(
+        int id,
+        [FromBody] UpdateEventDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+
+            return BadRequest(ApiResponse<EventDetailDto>.FailureResponse(
+                "Validation failed",
+                errors
+            ));
+        }
+
+        var userId = GetUserIdFromClaims();
+        var isAdmin = User.IsInRole("Admin");
+
+        _logger.LogInformation("User {UserId} updating event {EventId}", userId, id);
+
+        var updatedEvent = await _eventService.UpdateEventAsync(id, dto, userId, isAdmin);
+
+        return Ok(ApiResponse<EventDetailDto>.SuccessResponse(
+            updatedEvent,
+            "Event updated successfully"
+        ));
+    }
+
+    /// Publish event - submit for admin approval (Organizer only)
+    [HttpPost("{id}/publish")]
+    [Authorize(Roles = "Organizer")]
+    [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<EventDetailDto>>> PublishEvent(int id)
+    {
+        var organizerId = GetOrganizerIdFromClaims();
+
+        _logger.LogInformation("Organizer {OrganizerId} publishing event {EventId}",
+            organizerId, id);
+
+        var publishedEvent = await _eventService.PublishEventAsync(id, organizerId);
+
+        return Ok(ApiResponse<EventDetailDto>.SuccessResponse(
+            publishedEvent,
+            "Event published and submitted for approval"
+        ));
+    }
+
+    /// Cancel event (Organizer/Admin)
+    [HttpPost("{id}/cancel")]
+    [Authorize(Roles = "Organizer,Admin")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<bool>>> CancelEvent(
+        int id,
+        [FromBody] CancelEventRequest? request = null)
+    {
+        var userId = GetUserIdFromClaims();
+        var isAdmin = User.IsInRole("Admin");
+
+        _logger.LogInformation("User {UserId} cancelling event {EventId}", userId, id);
+
+        var result = await _eventService.CancelEventAsync(
+            id,
+            userId,
+            isAdmin,
+            request?.Reason
+        );
+
+        return Ok(ApiResponse<bool>.SuccessResponse(
+            result,
+            "Event cancelled successfully. Refunds will be processed automatically."
+        ));
+    }
+
+    /// Duplicate event (create copy with new dates)
+    [HttpPost("{id}/duplicate")]
+    [Authorize(Roles = "Organizer")]
+    [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<EventDetailDto>>> DuplicateEvent(int id)
+    {
+        var organizerId = GetOrganizerIdFromClaims();
+
+        _logger.LogInformation("Organizer {OrganizerId} duplicating event {EventId}",
+            organizerId, id);
+
+        var duplicatedEvent = await _eventService.DuplicateEventAsync(id, organizerId);
+
+        return CreatedAtAction(
+            nameof(GetEventById),
+            new { id = duplicatedEvent.EventId },
+            ApiResponse<EventDetailDto>.SuccessResponse(
+                duplicatedEvent,
+                "Event duplicated successfully. Please update dates and details before publishing."
+            )
+        );
+    }
+
+    #endregion
+
+    #region Admin Endpoints (Admin Role Required)
+
+    /// Approve event (Admin only)
+    [HttpPost("{id}/approve")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<EventDetailDto>>> ApproveEvent(int id)
+    {
+        var adminId = GetUserIdFromClaims();
+
+        _logger.LogInformation("Admin {AdminId} approving event {EventId}", adminId, id);
+
+        var approvedEvent = await _eventService.ApproveEventAsync(id, adminId);
+
+        return Ok(ApiResponse<EventDetailDto>.SuccessResponse(
+            approvedEvent,
+            "Event approved successfully and is now live"
+        ));
+    }
+
+    /// Reject event (Admin only)
+    [HttpPost("{id}/reject")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<EventDetailDto>>> RejectEvent(
+        int id,
+        [FromBody] RejectEventDto dto)
+    {
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(dto.Reason))
+        {
+            return BadRequest(ApiResponse<EventDetailDto>.FailureResponse(
+                "Rejection reason is required",
+                new List<string> { "Please provide a reason for rejection" }
+            ));
+        }
+
+        var adminId = GetUserIdFromClaims();
+
+        _logger.LogInformation("Admin {AdminId} rejecting event {EventId} with reason: {Reason}",
+            adminId, id, dto.Reason);
+
+        var rejectedEvent = await _eventService.RejectEventAsync(id, adminId, dto.Reason);
+
+        return Ok(ApiResponse<EventDetailDto>.SuccessResponse(
+            rejectedEvent,
+            "Event rejected. Organizer has been notified."
+        ));
+    }
+
+    /// Delete event (Admin only) - Soft delete
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteEvent(int id)
+    {
+        var adminId = GetUserIdFromClaims();
+
+        _logger.LogInformation("Admin {AdminId} deleting event {EventId}", adminId, id);
+
+        var result = await _eventService.DeleteEventAsync(id);
+
+        return Ok(ApiResponse<bool>.SuccessResponse(
+            result,
+            "Event deleted successfully"
+        ));
+    }
+
+    #endregion
+
+    #region Statistics Endpoint (Organizer/Admin)
+
+    /// Get event statistics (Organizer/Admin)
+    [HttpGet("{id}/stats")]
+    [Authorize(Roles = "Organizer,Admin")]
+    [ProducesResponseType(typeof(ApiResponse<EventStatsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<EventStatsDto>>> GetEventStatistics(int id)
+    {
+        var userId = GetUserIdFromClaims();
+        var isAdmin = User.IsInRole("Admin");
+
+        _logger.LogInformation("User {UserId} requesting statistics for event {EventId}",
+            userId, id);
+
+        var stats = await _eventService.GetEventStatisticsAsync(id, userId, isAdmin);
+
+        return Ok(ApiResponse<EventStatsDto>.SuccessResponse(
+            stats,
+            "Event statistics retrieved successfully"
+        ));
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    /// Get current user ID from JWT claims
+    private int GetUserIdFromClaims()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value
+            ?? User.FindFirst("userId")?.Value;
+
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            throw new UnauthorizedAccessException("User ID not found in token");
+        }
+
+        return userId;
+    }
+
+    /// Get organizer ID from JWT claims (for organizers)
+    private int GetOrganizerIdFromClaims()
+    {
+        var organizerIdClaim = User.FindFirst("organizerId")?.Value;
+
+        if (string.IsNullOrEmpty(organizerIdClaim) || !int.TryParse(organizerIdClaim, out var organizerId))
+        {
+            throw new UnauthorizedAccessException("Organizer ID not found in token. User may not be an organizer.");
+        }
+
+        return organizerId;
+    }
+
+    #endregion
 }
+
+/// Request model for cancelling events
+public class CancelEventRequest
+{
+    public string? Reason { get; set; }
+}
+
+

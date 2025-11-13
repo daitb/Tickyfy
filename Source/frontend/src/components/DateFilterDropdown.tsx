@@ -1,27 +1,32 @@
-import { useState, useRef, useEffect } from 'react';
-import { Calendar as CalendarIcon, X } from 'lucide-react';
-import { Button } from './ui/button';
-import { Calendar } from './ui/calendar';
-import { Badge } from './ui/badge';
+import { useState, useRef, useEffect } from "react";
+import { Calendar as CalendarIcon, X } from "lucide-react";
+import { Button } from "./ui/button";
+import { Calendar } from "./ui/calendar";
+import { Badge } from "./ui/badge";
 
 interface DateFilterDropdownProps {
   onApply: (dates: { from?: Date; to?: Date }) => void;
   currentDates?: { from?: Date; to?: Date };
 }
 
-type QuickOption = 'all' | 'today' | 'tomorrow' | 'weekend' | 'month';
+type QuickOption = "all" | "today" | "tomorrow" | "weekend" | "month";
 
-export function DateFilterDropdown({ onApply, currentDates }: DateFilterDropdownProps) {
+export function DateFilterDropdown({
+  onApply,
+  currentDates,
+}: DateFilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>(currentDates || {});
-  const [quickOption, setQuickOption] = useState<QuickOption>('all');
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>(
+    currentDates || {}
+  );
+  const [quickOption, setQuickOption] = useState<QuickOption>("all");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        dropdownRef.current && 
+        dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node) &&
         buttonRef.current &&
         !buttonRef.current.contains(event.target as Node)
@@ -31,11 +36,11 @@ export function DateFilterDropdown({ onApply, currentDates }: DateFilterDropdown
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
 
@@ -45,18 +50,18 @@ export function DateFilterDropdown({ onApply, currentDates }: DateFilterDropdown
     today.setHours(0, 0, 0, 0);
 
     switch (option) {
-      case 'all':
+      case "all":
         setDateRange({});
         break;
-      case 'today':
+      case "today":
         setDateRange({ from: today, to: today });
         break;
-      case 'tomorrow':
+      case "tomorrow":
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         setDateRange({ from: tomorrow, to: tomorrow });
         break;
-      case 'weekend':
+      case "weekend":
         const daysUntilSaturday = (6 - today.getDay() + 7) % 7;
         const saturday = new Date(today);
         saturday.setDate(saturday.getDate() + daysUntilSaturday);
@@ -64,7 +69,7 @@ export function DateFilterDropdown({ onApply, currentDates }: DateFilterDropdown
         sunday.setDate(sunday.getDate() + 1);
         setDateRange({ from: saturday, to: sunday });
         break;
-      case 'month':
+      case "month":
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
         const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         setDateRange({ from: monthStart, to: monthEnd });
@@ -74,7 +79,7 @@ export function DateFilterDropdown({ onApply, currentDates }: DateFilterDropdown
 
   const handleReset = () => {
     setDateRange({});
-    setQuickOption('all');
+    setQuickOption("all");
   };
 
   const handleApply = () => {
@@ -83,20 +88,24 @@ export function DateFilterDropdown({ onApply, currentDates }: DateFilterDropdown
   };
 
   const formatDateLabel = () => {
-    if (!dateRange.from) return 'All days';
-    
+    if (!dateRange.from) return "All days";
+
     const formatDate = (date: Date) => {
-      return new Intl.DateTimeFormat('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: 'numeric'
+      return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
       }).format(date);
     };
 
-    if (dateRange.from && dateRange.to && dateRange.from.getTime() !== dateRange.to.getTime()) {
+    if (
+      dateRange.from &&
+      dateRange.to &&
+      dateRange.from.getTime() !== dateRange.to.getTime()
+    ) {
       return `${formatDate(dateRange.from)} - ${formatDate(dateRange.to)}`;
     }
-    
+
     return formatDate(dateRange.from);
   };
 
@@ -107,11 +116,11 @@ export function DateFilterDropdown({ onApply, currentDates }: DateFilterDropdown
       {/* Trigger Button */}
       <Button
         ref={buttonRef}
-        variant={hasActiveFilter ? 'default' : 'outline'}
+        variant={hasActiveFilter ? "default" : "outline"}
         className={`gap-2 ${
-          hasActiveFilter 
-            ? 'bg-teal-500 hover:bg-teal-600 text-white' 
-            : 'bg-white hover:bg-neutral-50'
+          hasActiveFilter
+            ? "bg-teal-500 hover:bg-teal-600 text-white"
+            : "bg-white hover:bg-neutral-50"
         }`}
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -121,51 +130,65 @@ export function DateFilterDropdown({ onApply, currentDates }: DateFilterDropdown
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div 
+        <div
           ref={dropdownRef}
           className="absolute top-full mt-2 left-0 bg-white rounded-xl shadow-2xl border border-neutral-200 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
-          style={{ width: '600px' }}
+          style={{ width: "600px" }}
         >
           <div className="p-6">
             {/* Quick Select Buttons */}
             <div className="flex items-center gap-2 mb-6 pb-4 border-b border-neutral-100">
               <Button
-                variant={quickOption === 'all' ? 'default' : 'outline'}
+                variant={quickOption === "all" ? "default" : "outline"}
                 size="sm"
-                onClick={() => handleQuickSelect('all')}
-                className={quickOption === 'all' ? 'bg-teal-500 hover:bg-teal-600' : ''}
+                onClick={() => handleQuickSelect("all")}
+                className={
+                  quickOption === "all" ? "bg-teal-500 hover:bg-teal-600" : ""
+                }
               >
                 All days
               </Button>
               <Button
-                variant={quickOption === 'today' ? 'default' : 'outline'}
+                variant={quickOption === "today" ? "default" : "outline"}
                 size="sm"
-                onClick={() => handleQuickSelect('today')}
-                className={quickOption === 'today' ? 'bg-teal-500 hover:bg-teal-600' : ''}
+                onClick={() => handleQuickSelect("today")}
+                className={
+                  quickOption === "today" ? "bg-teal-500 hover:bg-teal-600" : ""
+                }
               >
                 Today
               </Button>
               <Button
-                variant={quickOption === 'tomorrow' ? 'default' : 'outline'}
+                variant={quickOption === "tomorrow" ? "default" : "outline"}
                 size="sm"
-                onClick={() => handleQuickSelect('tomorrow')}
-                className={quickOption === 'tomorrow' ? 'bg-teal-500 hover:bg-teal-600' : ''}
+                onClick={() => handleQuickSelect("tomorrow")}
+                className={
+                  quickOption === "tomorrow"
+                    ? "bg-teal-500 hover:bg-teal-600"
+                    : ""
+                }
               >
                 Tomorrow
               </Button>
               <Button
-                variant={quickOption === 'weekend' ? 'default' : 'outline'}
+                variant={quickOption === "weekend" ? "default" : "outline"}
                 size="sm"
-                onClick={() => handleQuickSelect('weekend')}
-                className={quickOption === 'weekend' ? 'bg-teal-500 hover:bg-teal-600' : ''}
+                onClick={() => handleQuickSelect("weekend")}
+                className={
+                  quickOption === "weekend"
+                    ? "bg-teal-500 hover:bg-teal-600"
+                    : ""
+                }
               >
                 This weekend
               </Button>
               <Button
-                variant={quickOption === 'month' ? 'default' : 'outline'}
+                variant={quickOption === "month" ? "default" : "outline"}
                 size="sm"
-                onClick={() => handleQuickSelect('month')}
-                className={quickOption === 'month' ? 'bg-teal-500 hover:bg-teal-600' : ''}
+                onClick={() => handleQuickSelect("month")}
+                className={
+                  quickOption === "month" ? "bg-teal-500 hover:bg-teal-600" : ""
+                }
               >
                 This month
               </Button>
@@ -176,10 +199,10 @@ export function DateFilterDropdown({ onApply, currentDates }: DateFilterDropdown
               <Calendar
                 mode="range"
                 selected={dateRange}
-                onSelect={(range) => {
+                onSelect={(range: { from?: Date; to?: Date } | undefined) => {
                   if (range) {
                     setDateRange(range);
-                    setQuickOption('all');
+                    setQuickOption("all");
                   }
                 }}
                 numberOfMonths={2}
