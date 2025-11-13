@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { CreditCard, Lock } from 'lucide-react';
+import { Lock, CheckCircle, ShoppingBag } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { ProgressSteps } from '../components/ProgressSteps';
 import { FeeBreakdown } from '../components/FeeBreakdown';
+import { PaymentMethodSelector, PaymentMethod } from '../components/PaymentMethodSelector';
 import { Separator } from '../components/ui/separator';
+import { mockEvents } from '../mockData';
 import { CartItem, Order } from '../types';
 
 interface CheckoutProps {
@@ -20,16 +22,30 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
     email: '',
     name: '',
     phone: '',
-    cardNumber: '',
-    expiry: '',
-    cvv: ''
   });
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('momo');
+  const [paymentDetails, setPaymentDetails] = useState<any>(null);
 
   const steps = [
     { number: 1, label: 'Information' },
     { number: 2, label: 'Payment' },
     { number: 3, label: 'Review' }
   ];
+
+  if (items.length === 0) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <ShoppingBag className="mx-auto mb-4 text-neutral-400" size={48} />
+          <h2 className="mb-2">Your cart is empty</h2>
+          <p className="text-neutral-600 mb-6">Add some tickets to get started!</p>
+          <Button onClick={() => onNavigate('home')} className="bg-teal-500 hover:bg-teal-600">
+            Browse Events
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const serviceFee = subtotal * 0.05;
@@ -39,32 +55,54 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
     setFormData({ ...formData, [field]: value });
   };
 
+  const handlePaymentMethodChange = (method: PaymentMethod, details?: any) => {
+    setPaymentMethod(method);
+    setPaymentDetails(details);
+  };
+
   const handleNext = () => {
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handleSubmit = () => {
-    // Create mock order
+    // Group tickets by event
+    const ticketsByEvent = items.reduce((acc, item) => {
+      if (!acc[item.eventId]) {
+        acc[item.eventId] = [];
+      }
+      
+      // Create individual tickets for each quantity
+      for (let i = 0; i < item.quantity; i++) {
+        acc[item.eventId].push({
+          id: `tkt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          tierId: item.tierId,
+          tierName: item.tierName,
+          price: item.price,
+          qrCode: `QR-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+          status: 'valid' as const
+        });
+      }
+      
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    // Create order for the first event (in real app, would handle multiple events)
+    const firstEventId = Object.keys(ticketsByEvent)[0];
     const order: Order = {
-      id: `ord-${Date.now()}`,
+      id: `ORD-${Date.now()}`,
       userId: 'user-1',
-      eventId: items[0].eventId,
-      tickets: items.map((item, index) => ({
-        id: `tkt-${Date.now()}-${index}`,
-        tierId: item.tierId,
-        tierName: item.tierName,
-        price: item.price,
-        qrCode: `QR-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-        status: 'valid'
-      })),
+      eventId: firstEventId,
+      tickets: ticketsByEvent[firstEventId],
       subtotal,
       serviceFee,
       total,
@@ -90,27 +128,51 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
       return formData.email && formData.name && formData.phone;
     }
     if (currentStep === 2) {
-      return formData.cardNumber && formData.expiry && formData.cvv;
+      if (paymentMethod === 'momo') {
+        return paymentDetails?.phone;
+      }
+      if (paymentMethod === 'vnpay') {
+        return true; // VNPay doesn't require additional details
+      }
+      if (paymentMethod === 'credit-card') {
+        return paymentDetails?.number && paymentDetails?.name && 
+               paymentDetails?.expiry && paymentDetails?.cvv;
+      }
     }
     return true;
+  };
+
+  const getPaymentMethodDisplay = () => {
+    if (paymentMethod === 'momo') return 'MoMo E-Wallet';
+    if (paymentMethod === 'vnpay') return 'VNPay Gateway';
+    if (paymentMethod === 'credit-card') return `Card ending in ${paymentDetails?.number?.slice(-4) || '****'}`;
+    return 'Not selected';
   };
 
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
       <div className="max-w-5xl mx-auto px-4">
-        <h1 className="mb-4">Checkout</h1>
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="mb-2">Checkout</h1>
+          <p className="text-neutral-600">Complete your purchase in just a few steps</p>
+        </div>
         
         <ProgressSteps steps={steps} currentStep={currentStep} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
           {/* Form */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl p-8">
+            <div className="bg-white rounded-2xl p-8 shadow-sm">
               {/* Step 1: Personal Info */}
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div>
                     <h3 className="mb-6">Contact Information</h3>
+                    <p className="text-neutral-600 mb-6">
+                      We'll send your tickets to this email address. Make sure it's correct!
+                    </p>
+                    
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="email">Email Address *</Label>
@@ -120,10 +182,10 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                           placeholder="you@example.com"
                           value={formData.email}
                           onChange={(e) => handleInputChange('email', e.target.value)}
-                          className="mt-1"
+                          className="mt-2"
                         />
-                        <p className="text-xs text-neutral-500 mt-1">
-                          Tickets will be sent to this email
+                        <p className="text-xs text-neutral-500 mt-2">
+                          📧 Your tickets and receipt will be sent here
                         </p>
                       </div>
 
@@ -135,8 +197,11 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                           placeholder="Nguyen Van A"
                           value={formData.name}
                           onChange={(e) => handleInputChange('name', e.target.value)}
-                          className="mt-1"
+                          className="mt-2"
                         />
+                        <p className="text-xs text-neutral-500 mt-2">
+                          Name as it appears on your ID
+                        </p>
                       </div>
 
                       <div>
@@ -144,11 +209,26 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                         <Input
                           id="phone"
                           type="tel"
-                          placeholder="+84 xxx xxx xxx"
+                          placeholder="09xx xxx xxx"
                           value={formData.phone}
                           onChange={(e) => handleInputChange('phone', e.target.value)}
-                          className="mt-1"
+                          className="mt-2"
                         />
+                        <p className="text-xs text-neutral-500 mt-2">
+                          For order updates and confirmations
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="text-teal-600 mt-0.5 flex-shrink-0" size={18} />
+                      <div className="text-sm text-teal-700">
+                        <p className="mb-1">Your information is secure</p>
+                        <p className="text-xs">
+                          We use industry-standard encryption to protect your personal data.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -158,61 +238,19 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
               {/* Step 2: Payment */}
               {currentStep === 2 && (
                 <div className="space-y-6">
-                  <div>
-                    <div className="flex items-center gap-2 mb-6">
-                      <CreditCard className="text-orange-500" size={24} />
-                      <h3>Payment Details</h3>
-                    </div>
+                  <PaymentMethodSelector
+                    onPaymentMethodChange={handlePaymentMethodChange}
+                    selectedMethod={paymentMethod}
+                  />
 
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="cardNumber">Card Number *</Label>
-                        <Input
-                          id="cardNumber"
-                          type="text"
-                          placeholder="1234 5678 9012 3456"
-                          value={formData.cardNumber}
-                          onChange={(e) => handleInputChange('cardNumber', e.target.value)}
-                          className="mt-1"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="expiry">Expiry Date *</Label>
-                          <Input
-                            id="expiry"
-                            type="text"
-                            placeholder="MM/YY"
-                            value={formData.expiry}
-                            onChange={(e) => handleInputChange('expiry', e.target.value)}
-                            className="mt-1"
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="cvv">CVV *</Label>
-                          <Input
-                            id="cvv"
-                            type="text"
-                            placeholder="123"
-                            value={formData.cvv}
-                            onChange={(e) => handleInputChange('cvv', e.target.value)}
-                            className="mt-1"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-6">
-                      <div className="flex items-start gap-3">
-                        <Lock className="text-blue-600 mt-0.5 flex-shrink-0" size={18} />
-                        <div className="text-sm text-blue-700">
-                          <p className="mb-1">Your payment is secure</p>
-                          <p className="text-xs">
-                            All transactions are encrypted and processed securely through our payment partners.
-                          </p>
-                        </div>
+                  <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mt-6">
+                    <div className="flex items-start gap-3">
+                      <Lock className="text-teal-600 mt-0.5 flex-shrink-0" size={18} />
+                      <div className="text-sm text-teal-700">
+                        <p className="mb-1">Your payment is secure</p>
+                        <p className="text-xs">
+                          All transactions are encrypted and processed securely through our trusted payment partners. We never store your full payment details.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -224,44 +262,90 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                 <div className="space-y-6">
                   <div>
                     <h3 className="mb-6">Review Your Order</h3>
+                    <p className="text-neutral-600 mb-6">
+                      Please review all details before completing your purchase.
+                    </p>
 
                     <div className="space-y-4">
                       {/* Contact Info */}
-                      <div className="bg-neutral-50 rounded-xl p-4">
-                        <h4 className="mb-2">Contact Information</h4>
+                      <div className="bg-neutral-50 rounded-xl p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <h4>Contact Information</h4>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setCurrentStep(1)}
+                            className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+                          >
+                            Edit
+                          </Button>
+                        </div>
                         <div className="text-sm text-neutral-600 space-y-1">
-                          <p>{formData.name}</p>
+                          <p className="text-neutral-900">{formData.name}</p>
                           <p>{formData.email}</p>
                           <p>{formData.phone}</p>
                         </div>
                       </div>
 
                       {/* Items */}
-                      <div className="bg-neutral-50 rounded-xl p-4">
-                        <h4 className="mb-3">Tickets</h4>
+                      <div className="bg-neutral-50 rounded-xl p-5">
+                        <h4 className="mb-4">Ticket Summary</h4>
                         <div className="space-y-3">
-                          {items.map((item, index) => (
-                            <div key={index}>
-                              <div className="text-sm">
-                                <div className="text-neutral-900">{item.eventTitle}</div>
-                                <div className="text-neutral-600 mt-1">
-                                  {item.tierName} × {item.quantity}
+                          {items.map((item, index) => {
+                            const event = mockEvents.find(e => e.id === item.eventId);
+                            return (
+                              <div key={index}>
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="text-neutral-900">{item.eventTitle}</div>
+                                    <div className="text-sm text-neutral-600 mt-1">
+                                      {item.tierName}
+                                    </div>
+                                    <div className="text-sm text-neutral-500 mt-1">
+                                      {event?.date} • {event?.venue}
+                                    </div>
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="text-neutral-900">
+                                      {formatPrice(item.price * item.quantity)}
+                                    </div>
+                                    <div className="text-sm text-neutral-500 mt-1">
+                                      Qty: {item.quantity}
+                                    </div>
+                                  </div>
                                 </div>
+                                {index < items.length - 1 && (
+                                  <Separator className="mt-3" />
+                                )}
                               </div>
-                              {index < items.length - 1 && (
-                                <Separator className="mt-3" />
-                              )}
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
 
                       {/* Payment Method */}
-                      <div className="bg-neutral-50 rounded-xl p-4">
-                        <h4 className="mb-2">Payment Method</h4>
-                        <div className="text-sm text-neutral-600">
-                          Card ending in {formData.cardNumber.slice(-4)}
+                      <div className="bg-neutral-50 rounded-xl p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <h4>Payment Method</h4>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setCurrentStep(2)}
+                            className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+                          >
+                            Edit
+                          </Button>
                         </div>
+                        <div className="text-sm text-neutral-600">
+                          {getPaymentMethodDisplay()}
+                        </div>
+                      </div>
+
+                      {/* Terms */}
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                        <p className="text-sm text-amber-800">
+                          <strong>Important:</strong> By completing this purchase, you agree to our Terms of Service and acknowledge our Refund Policy. Please review the event's specific policies before proceeding.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -283,17 +367,17 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                   <Button
                     onClick={handleNext}
                     disabled={!isStepValid()}
-                    className="flex-1 bg-orange-500 hover:bg-orange-600"
+                    className="flex-1 bg-teal-500 hover:bg-teal-600"
                   >
-                    Continue
+                    Continue to {steps[currentStep].label}
                   </Button>
                 ) : (
                   <Button
                     onClick={handleSubmit}
-                    className="flex-1 bg-orange-500 hover:bg-orange-600"
+                    className="flex-1 bg-teal-500 hover:bg-teal-600"
                   >
                     <Lock size={16} className="mr-2" />
-                    Complete Purchase
+                    Complete Payment - {formatPrice(total)}
                   </Button>
                 )}
               </div>
@@ -307,6 +391,21 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                 subtotal={subtotal}
                 serviceFee={serviceFee}
               />
+              
+              {/* Order Items Preview */}
+              <div className="mt-4 bg-white rounded-xl p-5 shadow-sm">
+                <h4 className="mb-4">Order Items</h4>
+                <div className="space-y-3">
+                  {items.map((item, index) => (
+                    <div key={index} className="text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-neutral-600">{item.tierName}</span>
+                        <span className="text-neutral-900">×{item.quantity}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>

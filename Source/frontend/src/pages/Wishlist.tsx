@@ -1,179 +1,157 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardFooter } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
+import { useState } from 'react';
+import { Heart, Calendar, MapPin, ChevronRight } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import { Checkbox } from '../components/ui/checkbox';
+import { WishlistItem } from '../types';
+import { mockEvents, mockWishlist } from '../mockData';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 
 interface WishlistProps {
-  onNavigate?: (page: string) => void;
+  wishlistItems?: WishlistItem[];
+  onNavigate: (page: string, eventId?: string) => void;
 }
 
-interface WishlistEvent {
-  wishlistId: number;
-  eventId: number;
-  eventTitle: string;
-  eventImage: string;
-  eventStartDate: string;
-  eventEndDate: string;
-  eventVenue: string;
-  eventCity: string;
-  category: string;
-  lowestPrice: number;
-  highestPrice: number;
-  availableTickets: number;
-  totalTickets: number;
-  isSoldOut: boolean;
-  addedAt: string;
-}
+export function Wishlist({ wishlistItems, onNavigate }: WishlistProps) {
+  const [activeTab, setActiveTab] = useState('all');
+  const [sortBy, setSortBy] = useState('date-added');
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
-export function Wishlist({ onNavigate }: WishlistProps) {
-  const navigate = useNavigate();
-  const [wishlistEvents, setWishlistEvents] = useState<WishlistEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [removingId, setRemovingId] = useState<number | null>(null);
+  // Use provided wishlist or mock data
+  const allWishlistItems = wishlistItems || mockWishlist;
 
-  useEffect(() => {
-    fetchWishlist();
-  }, []);
+  // Filter events based on wishlist
+  const wishlistEvents = allWishlistItems
+    .map(item => ({
+      ...mockEvents.find(e => e.id === item.eventId),
+      wishlistId: item.id,
+      addedAt: item.addedAt
+    }))
+    .filter(item => item.id); // Remove any undefined events
 
-  const fetchWishlist = async () => {
-    try {
-      setLoading(true);
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/wishlist', {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-      // const data = await response.json();
+  const now = new Date();
+  
+  const upcomingEvents = wishlistEvents.filter(event => {
+    if (!event.date) return false;
+    return new Date(event.date) >= now;
+  });
 
-      // Mock data for now
-      const mockWishlist: WishlistEvent[] = [
-        {
-          wishlistId: 1,
-          eventId: 1,
-          eventTitle: "Summer Music Festival 2025",
-          eventImage:
-            "https://images.unsplash.com/photo-1459749411175-04bf5292ceea",
-          eventStartDate: "2025-12-31T20:00:00",
-          eventEndDate: "2025-12-31T23:59:00",
-          eventVenue: "Madison Square Garden",
-          eventCity: "New York",
-          category: "Music",
-          lowestPrice: 50.0,
-          highestPrice: 150.0,
-          availableTickets: 120,
-          totalTickets: 500,
-          isSoldOut: false,
-          addedAt: "2025-11-01T10:00:00",
-        },
-        {
-          wishlistId: 2,
-          eventId: 2,
-          eventTitle: "Tech Conference 2025",
-          eventImage:
-            "https://images.unsplash.com/photo-1540575467063-178a50c2df87",
-          eventStartDate: "2026-01-15T09:00:00",
-          eventEndDate: "2026-01-17T18:00:00",
-          eventVenue: "Convention Center",
-          eventCity: "San Francisco",
-          category: "Conference",
-          lowestPrice: 99.0,
-          highestPrice: 299.0,
-          availableTickets: 0,
-          totalTickets: 200,
-          isSoldOut: true,
-          addedAt: "2025-10-25T14:30:00",
-        },
-        {
-          wishlistId: 3,
-          eventId: 3,
-          eventTitle: "Stand-Up Comedy Night",
-          eventImage:
-            "https://images.unsplash.com/photo-1585699324551-f6c309eedeca",
-          eventStartDate: "2025-12-20T19:30:00",
-          eventEndDate: "2025-12-20T22:00:00",
-          eventVenue: "Comedy Club",
-          eventCity: "Los Angeles",
-          category: "Comedy",
-          lowestPrice: 35.0,
-          highestPrice: 75.0,
-          availableTickets: 45,
-          totalTickets: 100,
-          isSoldOut: false,
-          addedAt: "2025-11-05T16:45:00",
-        },
-      ];
+  const pastEvents = wishlistEvents.filter(event => {
+    if (!event.date) return false;
+    return new Date(event.date) < now;
+  });
 
-      setWishlistEvents(mockWishlist);
-    } catch (error) {
-      console.error("Error fetching wishlist:", error);
-    } finally {
-      setLoading(false);
+  const getFilteredEvents = () => {
+    switch (activeTab) {
+      case 'upcoming':
+        return upcomingEvents;
+      case 'past':
+        return pastEvents;
+      default:
+        return wishlistEvents;
     }
   };
 
-  const handleRemoveFromWishlist = async (wishlistId: number) => {
-    if (!confirm("Remove this event from your wishlist?")) return;
-
-    try {
-      setRemovingId(wishlistId);
-      // TODO: Replace with actual API call
-      // await fetch(`/api/wishlist/${wishlistId}`, {
-      //   method: 'DELETE',
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-
-      setWishlistEvents((prev) =>
-        prev.filter((e) => e.wishlistId !== wishlistId)
-      );
-    } catch (error) {
-      console.error("Error removing from wishlist:", error);
-      alert("Failed to remove from wishlist. Please try again.");
-    } finally {
-      setRemovingId(null);
+  const getSortedEvents = (events: typeof wishlistEvents) => {
+    const sorted = [...events];
+    switch (sortBy) {
+      case 'event-date':
+        return sorted.sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime());
+      case 'price-low':
+        return sorted.sort((a, b) => {
+          const priceA = Math.min(...(a.ticketTiers?.map(t => t.price) || [0]));
+          const priceB = Math.min(...(b.ticketTiers?.map(t => t.price) || [0]));
+          return priceA - priceB;
+        });
+      case 'price-high':
+        return sorted.sort((a, b) => {
+          const priceA = Math.min(...(a.ticketTiers?.map(t => t.price) || [0]));
+          const priceB = Math.min(...(b.ticketTiers?.map(t => t.price) || [0]));
+          return priceB - priceA;
+        });
+      default: // date-added
+        return sorted.sort((a, b) => new Date(b.addedAt!).getTime() - new Date(a.addedAt!).getTime());
     }
   };
 
-  const handleBookNow = (eventId: number) => {
-    if (onNavigate) {
-      onNavigate(`/event/${eventId}`);
-    } else {
-      navigate(`/event/${eventId}`);
-    }
-  };
-
-  const handleJoinWaitlist = (_eventId: number) => {
-    // Navigate to waitlist page or show waitlist modal
-    alert("Join waitlist functionality coming soon!");
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
+  const displayEvents = getSortedEvents(getFilteredEvents());
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const formatPrice = (price: number) => {
+    return `${(price / 1000).toFixed(0)}K VND`;
   };
 
-  if (loading) {
+  const getPriceRange = (event: any) => {
+    if (!event.ticketTiers || event.ticketTiers.length === 0) return 'TBD';
+    const prices = event.ticketTiers.map((t: any) => t.price);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    if (min === max) return `${formatPrice(min)}`;
+    return `${formatPrice(min)} - ${formatPrice(max)}`;
+  };
+
+  const getEventStatus = (event: any) => {
+    if (!event.ticketTiers) return { label: 'Coming Soon', variant: 'secondary' as const };
+    const available = event.ticketTiers.some((t: any) => t.available > 0);
+    if (available) return { label: 'On Sale', variant: 'default' as const };
+    return { label: 'Sold Out', variant: 'destructive' as const };
+  };
+
+  const toggleSelection = (itemId: string) => {
+    setSelectedItems(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const handleRemoveFromWishlist = (wishlistId: string) => {
+    // Handle remove from wishlist
+    console.log('Remove from wishlist:', wishlistId);
+  };
+
+  const handleRemoveSelected = () => {
+    // Handle bulk remove
+    console.log('Remove selected:', selectedItems);
+    setSelectedItems([]);
+  };
+
+  if (displayEvents.length === 0) {
     return (
-      <div className="min-h-screen bg-neutral-50 py-8">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-center h-96">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      <div className="min-h-screen bg-neutral-50">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="mb-2">My Wishlist</h1>
+            <p className="text-neutral-600">Events you want to attend</p>
+          </div>
+
+          {/* Empty State */}
+          <div className="text-center py-20">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-neutral-100 mb-6">
+              <Heart size={48} className="text-neutral-400" strokeWidth={1.5} />
+            </div>
+            <h2 className="text-neutral-900 mb-2">Your wishlist is empty</h2>
+            <p className="text-neutral-600 mb-6">Start adding events you love</p>
+            <Button onClick={() => onNavigate('listing')}>
+              Explore Events
+            </Button>
           </div>
         </div>
       </div>
@@ -181,196 +159,160 @@ export function Wishlist({ onNavigate }: WishlistProps) {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Header */}
+    <div className="min-h-screen bg-neutral-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Page Header */}
         <div className="mb-8">
           <h1 className="mb-2">My Wishlist</h1>
-          <p className="text-neutral-600">
-            Events you're interested in • {wishlistEvents.length}{" "}
-            {wishlistEvents.length === 1 ? "event" : "events"}
-          </p>
+          <p className="text-neutral-600">Events you want to attend</p>
         </div>
 
-        {/* Wishlist Grid */}
-        {wishlistEvents.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <svg
-                className="w-24 h-24 text-neutral-300 mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
-              </svg>
-              <p className="text-lg font-medium text-neutral-700 mb-2">
-                Your wishlist is empty
-              </p>
-              <p className="text-neutral-500 mb-6 text-center max-w-md">
-                Start adding events you're interested in to keep track of them
-                and get notified about updates!
-              </p>
-              <Button onClick={() => navigate("/events")}>
-                Explore Events
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {wishlistEvents.map((event) => (
-              <Card
+        {/* Filter Bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="all">
+                All ({wishlistEvents.length})
+              </TabsTrigger>
+              <TabsTrigger value="upcoming">
+                Upcoming ({upcomingEvents.length})
+              </TabsTrigger>
+              <TabsTrigger value="past">
+                Past ({pastEvents.length})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-neutral-600">Sort by:</span>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date-added">Date Added</SelectItem>
+                <SelectItem value="event-date">Event Date</SelectItem>
+                <SelectItem value="price-low">Price: Low to High</SelectItem>
+                <SelectItem value="price-high">Price: High to Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Event Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {displayEvents.map((event) => {
+            const status = getEventStatus(event);
+            const isSelected = selectedItems.includes(event.wishlistId!);
+            
+            return (
+              <div 
                 key={event.wishlistId}
-                className="overflow-hidden hover:shadow-lg transition-shadow"
+                className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
               >
-                {/* Event Image */}
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={event.eventImage}
-                    alt={event.eventTitle}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                {/* Selection Checkbox */}
+                <div className="absolute top-4 left-4 z-20">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleSelection(event.wishlistId!)}
+                    className="bg-white shadow-lg"
                   />
-
-                  {/* Category Badge */}
-                  <Badge className="absolute top-3 left-3 bg-white/90 text-neutral-800 hover:bg-white">
-                    {event.category}
-                  </Badge>
-
-                  {/* Sold Out Badge */}
-                  {event.isSoldOut && (
-                    <Badge className="absolute top-3 right-3 bg-red-500 text-white">
-                      Sold Out
-                    </Badge>
-                  )}
-
-                  {/* Remove Heart Button */}
-                  <button
-                    onClick={() => handleRemoveFromWishlist(event.wishlistId)}
-                    disabled={removingId === event.wishlistId}
-                    className="absolute bottom-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white transition-colors disabled:opacity-50"
-                    title="Remove from wishlist"
-                  >
-                    <svg
-                      className="w-6 h-6 text-red-500"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                    </svg>
-                  </button>
                 </div>
 
-                <CardContent className="p-4">
-                  {/* Event Title */}
-                  <h3 className="font-semibold text-lg mb-2 line-clamp-2 min-h-[3.5rem]">
-                    {event.eventTitle}
+                {/* Remove Heart */}
+                <button
+                  onClick={() => handleRemoveFromWishlist(event.wishlistId!)}
+                  className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-red-50 transition-colors"
+                >
+                  <Heart size={20} className="text-red-500 fill-red-500" />
+                </button>
+
+                {/* Event Image */}
+                <div 
+                  className="aspect-[16/9] overflow-hidden bg-neutral-100 cursor-pointer"
+                  onClick={() => onNavigate('event-detail', event.id)}
+                >
+                  <ImageWithFallback
+                    src={event.image!}
+                    alt={event.title!}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  {/* Category Badge */}
+                  <div className="absolute top-4 left-16">
+                    <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm">
+                      {event.category}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Event Info */}
+                <div className="p-4">
+                  <h3 
+                    className="mb-3 line-clamp-2 min-h-[3em] cursor-pointer hover:text-teal-600 transition-colors"
+                    onClick={() => onNavigate('event-detail', event.id)}
+                  >
+                    {event.title}
                   </h3>
 
-                  {/* Date and Time */}
-                  <div className="flex items-start gap-2 text-sm text-neutral-600 mb-2">
-                    <svg
-                      className="w-4 h-4 mt-0.5 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <div>
-                      <div>{formatDate(event.eventStartDate)}</div>
-                      <div className="text-xs">
-                        {formatTime(event.eventStartDate)}
-                      </div>
+                  <div className="space-y-2 text-neutral-600 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={16} />
+                      <span className="text-sm">{formatDate(event.date!)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin size={16} />
+                      <span className="text-sm">{event.city}</span>
                     </div>
                   </div>
 
-                  {/* Location */}
-                  <div className="flex items-center gap-2 text-sm text-neutral-600 mb-3">
-                    <svg
-                      className="w-4 h-4 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                    <span className="truncate">
-                      {event.eventVenue}, {event.eventCity}
-                    </span>
-                  </div>
-
-                  {/* Price Range */}
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-4">
                     <div>
-                      <span className="text-xs text-neutral-500">From</span>
-                      <div className="font-semibold text-lg">
-                        {formatCurrency(event.lowestPrice)}
-                      </div>
+                      <span className="text-sm text-neutral-500">From</span>
+                      <div className="text-teal-600">{getPriceRange(event)}</div>
                     </div>
-
-                    {/* Availability */}
-                    {!event.isSoldOut && (
-                      <Badge variant="outline" className="text-xs">
-                        {event.availableTickets} / {event.totalTickets} left
-                      </Badge>
-                    )}
+                    <Badge variant={status.variant}>{status.label}</Badge>
                   </div>
 
-                  {/* Added Date */}
-                  <p className="text-xs text-neutral-400 mb-3">
-                    Added {formatDate(event.addedAt)}
-                  </p>
-                </CardContent>
-
-                <CardFooter className="p-4 pt-0 flex gap-2">
-                  {event.isSoldOut ? (
-                    <Button
-                      variant="secondary"
-                      className="flex-1"
-                      onClick={() => handleJoinWaitlist(event.eventId)}
-                    >
-                      Join Waitlist
-                    </Button>
-                  ) : (
-                    <Button
-                      className="flex-1"
-                      onClick={() => handleBookNow(event.eventId)}
-                    >
-                      Book Now
-                    </Button>
-                  )}
-
-                  <Button
-                    variant="outline"
-                    onClick={() => handleRemoveFromWishlist(event.wishlistId)}
-                    disabled={removingId === event.wishlistId}
+                  <Button 
+                    className="w-full"
+                    variant={status.label === 'On Sale' ? 'default' : 'outline'}
+                    onClick={() => {
+                      if (status.label === 'On Sale') {
+                        onNavigate('event-detail', event.id);
+                      } else {
+                        // Handle notify me
+                        console.log('Notify me for:', event.id);
+                      }
+                    }}
                   >
-                    Remove
+                    {status.label === 'On Sale' ? 'View Details' : 'Notify Me'}
                   </Button>
-                </CardFooter>
-              </Card>
-            ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Bulk Actions Bar */}
+        {selectedItems.length > 0 && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-white rounded-full shadow-2xl px-6 py-4 flex items-center gap-6 border border-neutral-200">
+            <span className="text-neutral-900 font-medium">
+              {selectedItems.length} {selectedItems.length === 1 ? 'item' : 'items'} selected
+            </span>
+            <Button 
+              variant="destructive" 
+              onClick={handleRemoveSelected}
+              className="rounded-full"
+            >
+              Remove Selected
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => setSelectedItems([])}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
           </div>
         )}
       </div>

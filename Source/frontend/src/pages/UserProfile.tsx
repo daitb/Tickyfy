@@ -1,477 +1,555 @@
-import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Alert, AlertDescription } from "../components/ui/alert";
-import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../components/ui/tabs";
+import { useState } from 'react';
 import {
   User,
   Mail,
   Phone,
-  Calendar,
+  Calendar as CalendarIcon,
   MapPin,
-  Camera,
+  Globe,
+  CheckCircle,
+  Upload,
+  Edit,
   Save,
-  AlertCircle,
-  CheckCircle2,
-  ArrowLeft,
-  Key,
-  Bell,
-  CreditCard,
-} from "lucide-react";
-import { Badge } from "../components/ui/badge";
-import { Separator } from "../components/ui/separator";
+  X,
+  Facebook,
+  Twitter,
+  Instagram,
+  Trash2,
+} from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 
 interface UserProfileProps {
   onNavigate: (page: string) => void;
 }
 
-interface ProfileData {
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  dateOfBirth: string;
-  address: string;
-  avatarUrl: string;
-}
-
 export function UserProfile({ onNavigate }: UserProfileProps) {
+  const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">(
-    "idle"
-  );
-  const [errorMessage, setErrorMessage] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState('/api/placeholder/120/120');
 
-  // Mock user data
-  const [profileData, setProfileData] = useState<ProfileData>({
-    fullName: "Nguyễn Văn A",
-    email: "nguyenvana@gmail.com",
-    phoneNumber: "0901234567",
-    dateOfBirth: "1995-05-15",
-    address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
-    avatarUrl: "",
+  const [formData, setFormData] = useState({
+    fullName: 'John Doe',
+    email: 'john.doe@example.com',
+    phone: '+84 123 456 789',
+    dateOfBirth: '1990-01-15',
+    gender: 'male',
+    streetAddress: '123 Nguyen Hue Boulevard',
+    city: 'Ho Chi Minh City',
+    state: 'Ho Chi Minh',
+    postalCode: '700000',
+    country: 'Vietnam',
+    bio: 'Event enthusiast and music lover. Always looking for the next great concert!',
+    interests: ['Music', 'Sports', 'Arts'],
+    facebook: 'https://facebook.com/johndoe',
+    twitter: 'https://twitter.com/johndoe',
+    instagram: 'https://instagram.com/johndoe',
   });
 
-  const [tempData, setTempData] = useState<ProfileData>(profileData);
-
-  const handleInputChange = (field: keyof ProfileData, value: string) => {
-    setTempData((prev) => ({ ...prev, [field]: value }));
-    setSaveStatus("idle");
-  };
-
-  const handleSaveProfile = async () => {
-    setIsSaving(true);
-    setSaveStatus("idle");
-    setErrorMessage("");
-
-    try {
-      // TODO: Call API to update profile
-      // const response = await fetch('/api/users/profile', {
-      //   method: 'PUT',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${token}`
-      //   },
-      //   body: JSON.stringify(tempData)
-      // });
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Mock success
-      setProfileData(tempData);
-      setSaveStatus("success");
-      setIsEditing(false);
-
-      setTimeout(() => {
-        setSaveStatus("idle");
-      }, 3000);
-    } catch (error) {
-      setSaveStatus("error");
-      setErrorMessage("Không thể cập nhật thông tin. Vui lòng thử lại sau.");
-      console.error("Update error:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setTempData(profileData);
-    setIsEditing(false);
-    setSaveStatus("idle");
+  const handleInputChange = (field: string, value: any) => {
+    setFormData({ ...formData, [field]: value });
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // TODO: Upload avatar to server
       const reader = new FileReader();
-      reader.onload = () => {
-        setTempData((prev) => ({
-          ...prev,
-          avatarUrl: reader.result as string,
-        }));
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+  const handleSave = () => {
+    console.log('Saving profile:', formData);
+    setIsEditing(false);
+    // Show success toast
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    // Reset form data to original values
+  };
+
+  const availableInterests = [
+    'Music',
+    'Sports',
+    'Arts',
+    'Food & Drink',
+    'Business',
+    'Technology',
+    'Theater',
+    'Comedy',
+    'Festivals',
+  ];
+
+  const toggleInterest = (interest: string) => {
+    if (formData.interests.includes(interest)) {
+      handleInputChange(
+        'interests',
+        formData.interests.filter((i) => i !== interest)
+      );
+    } else {
+      handleInputChange('interests', [...formData.interests, interest]);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50 py-8">
-      <div className="max-w-5xl mx-auto px-4">
-        {/* Back button */}
-        <Button
-          variant="ghost"
-          onClick={() => onNavigate("home")}
-          className="mb-6 text-neutral-600 hover:text-neutral-900"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Về trang chủ
-        </Button>
-
-        {/* Success/Error Alert */}
-        {saveStatus === "success" && (
-          <Alert className="mb-6 bg-green-50 border-green-200 text-green-800">
-            <CheckCircle2 className="h-4 w-4" />
-            <AlertDescription>
-              Cập nhật thông tin cá nhân thành công!
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {saveStatus === "error" && (
-          <Alert className="mb-6 bg-red-50 border-red-200 text-red-800">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left sidebar - Profile Card */}
-          <div className="lg:col-span-1">
-            <Card className="border-neutral-200 shadow-lg">
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center text-center space-y-4">
-                  {/* Avatar */}
-                  <div className="relative group">
-                    <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
-                      <AvatarImage
-                        src={tempData.avatarUrl || profileData.avatarUrl}
-                      />
-                      <AvatarFallback className="bg-gradient-to-br from-teal-400 to-blue-500 text-white text-3xl">
-                        {getInitials(profileData.fullName)}
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          {/* Left Sidebar */}
+          <div className="w-80 flex-shrink-0">
+            <Card className="sticky top-8">
+              <CardContent className="p-6">
+                {/* Avatar Section */}
+                <div className="text-center mb-6">
+                  <div className="relative inline-block group">
+                    <Avatar className="w-32 h-32 mx-auto mb-4">
+                      <AvatarImage src={avatarPreview} />
+                      <AvatarFallback className="bg-purple-100 text-purple-600 text-3xl">
+                        {formData.fullName
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')}
                       </AvatarFallback>
                     </Avatar>
-
-                    {isEditing && (
-                      <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Camera className="h-8 w-8 text-white" />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleAvatarChange}
-                        />
-                      </label>
-                    )}
-                  </div>
-
-                  {/* Name & Email */}
-                  <div className="space-y-1">
-                    <h3 className="text-xl font-bold text-neutral-900">
-                      {profileData.fullName}
-                    </h3>
-                    <p className="text-sm text-neutral-600">
-                      {profileData.email}
-                    </p>
-                    <Badge className="bg-teal-100 text-teal-700 hover:bg-teal-200">
-                      Đã xác thực
-                    </Badge>
-                  </div>
-
-                  <Separator />
-
-                  {/* Stats */}
-                  <div className="w-full grid grid-cols-2 gap-4 text-center">
-                    <div className="p-3 bg-gradient-to-br from-teal-50 to-blue-50 rounded-lg">
-                      <p className="text-2xl font-bold text-teal-600">12</p>
-                      <p className="text-xs text-neutral-600">Vé đã đặt</p>
-                    </div>
-                    <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg">
-                      <p className="text-2xl font-bold text-purple-600">5</p>
-                      <p className="text-xs text-neutral-600">Sự kiện</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card className="border-neutral-200 shadow-lg mt-6">
-              <CardHeader>
-                <CardTitle className="text-lg">Thao tác nhanh</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  onClick={() => onNavigate("my-tickets")}
-                >
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Vé của tôi
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
-                  onClick={() => onNavigate("change-password")}
-                >
-                  <Key className="mr-2 h-4 w-4" />
-                  Đổi mật khẩu
-                </Button>
-                <Button variant="ghost" className="w-full justify-start">
-                  <Bell className="mr-2 h-4 w-4" />
-                  Thông báo
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right content - Profile Details */}
-          <div className="lg:col-span-2">
-            <Card className="border-neutral-200 shadow-lg">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-2xl text-neutral-900">
-                      Thông tin cá nhân
-                    </CardTitle>
-                    <CardDescription>
-                      Quản lý thông tin tài khoản của bạn
-                    </CardDescription>
-                  </div>
-
-                  {!isEditing ? (
-                    <Button
-                      onClick={() => setIsEditing(true)}
-                      className="bg-teal-600 hover:bg-teal-700"
+                    <label
+                      htmlFor="avatar-upload"
+                      className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                     >
-                      <User className="mr-2 h-4 w-4" />
-                      Chỉnh sửa
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={handleCancel}
-                        disabled={isSaving}
-                      >
-                        Hủy
-                      </Button>
-                      <Button
-                        onClick={handleSaveProfile}
-                        disabled={isSaving}
-                        className="bg-teal-600 hover:bg-teal-700"
-                      >
-                        <Save className="mr-2 h-4 w-4" />
-                        {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
-                      </Button>
-                    </div>
-                  )}
+                      <Upload className="text-white" size={24} />
+                    </label>
+                    <input
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                  </div>
+                  <h3 className="text-neutral-900 mb-1">{formData.fullName}</h3>
+                  <Badge className="bg-purple-100 text-purple-700">Regular User</Badge>
                 </div>
-              </CardHeader>
 
-              <CardContent>
-                <Tabs defaultValue="personal" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="personal">
-                      Thông tin cá nhân
+                {/* Navigation Tabs */}
+                <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical">
+                  <TabsList className="flex flex-col w-full h-auto space-y-1 bg-transparent">
+                    <TabsTrigger
+                      value="profile"
+                      className="w-full justify-start data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900"
+                    >
+                      <User size={16} className="mr-2" />
+                      Profile
                     </TabsTrigger>
-                    <TabsTrigger value="security">Bảo mật</TabsTrigger>
+                    <TabsTrigger
+                      value="security"
+                      className="w-full justify-start data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900"
+                    >
+                      Security
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="preferences"
+                      className="w-full justify-start data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900"
+                    >
+                      Preferences
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="notifications"
+                      className="w-full justify-start data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900"
+                    >
+                      Notifications
+                    </TabsTrigger>
                   </TabsList>
-
-                  <TabsContent value="personal" className="space-y-6 mt-6">
-                    {/* Full Name */}
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="fullName"
-                        className="flex items-center gap-2"
-                      >
-                        <User className="h-4 w-4 text-teal-600" />
-                        Họ và tên
-                      </Label>
-                      <Input
-                        id="fullName"
-                        value={
-                          isEditing ? tempData.fullName : profileData.fullName
-                        }
-                        onChange={(e) =>
-                          handleInputChange("fullName", e.target.value)
-                        }
-                        disabled={!isEditing}
-                        className="border-neutral-300"
-                      />
-                    </div>
-
-                    {/* Email */}
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="email"
-                        className="flex items-center gap-2"
-                      >
-                        <Mail className="h-4 w-4 text-teal-600" />
-                        Email
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={profileData.email}
-                        disabled
-                        className="border-neutral-300 bg-neutral-50"
-                      />
-                      <p className="text-xs text-neutral-500">
-                        Email không thể thay đổi
-                      </p>
-                    </div>
-
-                    {/* Phone Number */}
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="phone"
-                        className="flex items-center gap-2"
-                      >
-                        <Phone className="h-4 w-4 text-teal-600" />
-                        Số điện thoại
-                      </Label>
-                      <Input
-                        id="phone"
-                        value={
-                          isEditing
-                            ? tempData.phoneNumber
-                            : profileData.phoneNumber
-                        }
-                        onChange={(e) =>
-                          handleInputChange("phoneNumber", e.target.value)
-                        }
-                        disabled={!isEditing}
-                        className="border-neutral-300"
-                      />
-                    </div>
-
-                    {/* Date of Birth */}
-                    <div className="space-y-2">
-                      <Label htmlFor="dob" className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-teal-600" />
-                        Ngày sinh
-                      </Label>
-                      <Input
-                        id="dob"
-                        type="date"
-                        value={
-                          isEditing
-                            ? tempData.dateOfBirth
-                            : profileData.dateOfBirth
-                        }
-                        onChange={(e) =>
-                          handleInputChange("dateOfBirth", e.target.value)
-                        }
-                        disabled={!isEditing}
-                        className="border-neutral-300"
-                      />
-                    </div>
-
-                    {/* Address */}
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="address"
-                        className="flex items-center gap-2"
-                      >
-                        <MapPin className="h-4 w-4 text-teal-600" />
-                        Địa chỉ
-                      </Label>
-                      <Input
-                        id="address"
-                        value={
-                          isEditing ? tempData.address : profileData.address
-                        }
-                        onChange={(e) =>
-                          handleInputChange("address", e.target.value)
-                        }
-                        disabled={!isEditing}
-                        className="border-neutral-300"
-                      />
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="security" className="space-y-6 mt-6">
-                    <div className="space-y-4">
-                      <div className="p-4 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg">
-                        <div className="flex items-start gap-3">
-                          <Key className="h-5 w-5 text-teal-600 mt-0.5" />
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-neutral-900 mb-1">
-                              Mật khẩu
-                            </h4>
-                            <p className="text-sm text-neutral-600 mb-3">
-                              Thay đổi mật khẩu thường xuyên để bảo vệ tài khoản
-                            </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onNavigate("change-password")}
-                            >
-                              Đổi mật khẩu
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg">
-                        <div className="flex items-start gap-3">
-                          <Bell className="h-5 w-5 text-purple-600 mt-0.5" />
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-neutral-900 mb-1">
-                              Xác thực 2 lớp
-                            </h4>
-                            <p className="text-sm text-neutral-600 mb-3">
-                              Tăng cường bảo mật tài khoản với xác thực 2 lớp
-                            </p>
-                            <Button variant="outline" size="sm" disabled>
-                              Đang phát triển
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
                 </Tabs>
               </CardContent>
             </Card>
           </div>
+
+          {/* Main Content */}
+          <div className="flex-1">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              {/* Profile Tab */}
+              <TabsContent value="profile" className="mt-0">
+                <div className="flex items-center justify-between mb-6">
+                  <h1>My Profile</h1>
+                  {!isEditing ? (
+                    <Button
+                      onClick={() => setIsEditing(true)}
+                      className="bg-purple-600 hover:bg-purple-700"
+                    >
+                      <Edit size={16} className="mr-2" />
+                      Edit Profile
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={handleCancel}>
+                        <X size={16} className="mr-2" />
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleSave}
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      >
+                        <Save size={16} className="mr-2" />
+                        Save Changes
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Personal Information */}
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Personal Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="fullName">Full Name</Label>
+                      <Input
+                        id="fullName"
+                        value={formData.fullName}
+                        onChange={(e) => handleInputChange('fullName', e.target.value)}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="email">
+                        Email Address
+                        {!isEditing && (
+                          <Badge className="ml-2 bg-green-100 text-green-700">
+                            <CheckCircle size={12} className="mr-1" />
+                            Verified
+                          </Badge>
+                        )}
+                      </Label>
+                      <Input id="email" value={formData.email} disabled className="bg-gray-50" />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                        <Input
+                          id="dateOfBirth"
+                          type="date"
+                          value={formData.dateOfBirth}
+                          onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                          disabled={!isEditing}
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Gender</Label>
+                        <RadioGroup
+                          value={formData.gender}
+                          onValueChange={(v) => handleInputChange('gender', v)}
+                          disabled={!isEditing}
+                          className="flex gap-4 mt-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="male" id="male" disabled={!isEditing} />
+                            <Label htmlFor="male">Male</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="female" id="female" disabled={!isEditing} />
+                            <Label htmlFor="female">Female</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="other" id="other" disabled={!isEditing} />
+                            <Label htmlFor="other">Other</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Address */}
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Address</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="streetAddress">Street Address</Label>
+                      <Input
+                        id="streetAddress"
+                        value={formData.streetAddress}
+                        onChange={(e) => handleInputChange('streetAddress', e.target.value)}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="city">City</Label>
+                        <Input
+                          id="city"
+                          value={formData.city}
+                          onChange={(e) => handleInputChange('city', e.target.value)}
+                          disabled={!isEditing}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="state">State/Province</Label>
+                        <Select
+                          value={formData.state}
+                          onValueChange={(v) => handleInputChange('state', v)}
+                          disabled={!isEditing}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Ho Chi Minh">Ho Chi Minh</SelectItem>
+                            <SelectItem value="Hanoi">Hanoi</SelectItem>
+                            <SelectItem value="Da Nang">Da Nang</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="postalCode">Postal Code</Label>
+                        <Input
+                          id="postalCode"
+                          value={formData.postalCode}
+                          onChange={(e) => handleInputChange('postalCode', e.target.value)}
+                          disabled={!isEditing}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="country">Country</Label>
+                        <Select
+                          value={formData.country}
+                          onValueChange={(v) => handleInputChange('country', v)}
+                          disabled={!isEditing}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Vietnam">🇻🇳 Vietnam</SelectItem>
+                            <SelectItem value="Thailand">🇹🇭 Thailand</SelectItem>
+                            <SelectItem value="Singapore">🇸🇬 Singapore</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Bio & Interests */}
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Bio & Interests</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="bio">Bio</Label>
+                      <Textarea
+                        id="bio"
+                        value={formData.bio}
+                        onChange={(e) => handleInputChange('bio', e.target.value)}
+                        disabled={!isEditing}
+                        rows={4}
+                        maxLength={500}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">{formData.bio.length}/500 characters</p>
+                    </div>
+
+                    <div>
+                      <Label>Interests</Label>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {availableInterests.map((interest) => (
+                          <Badge
+                            key={interest}
+                            onClick={() => isEditing && toggleInterest(interest)}
+                            className={`cursor-pointer transition-colors ${
+                              formData.interests.includes(interest)
+                                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            } ${!isEditing && 'cursor-default'}`}
+                          >
+                            {interest}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Social Links */}
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Social Links (Optional)</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="facebook">Facebook</Label>
+                      <div className="relative">
+                        <Facebook
+                          size={18}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
+                        <Input
+                          id="facebook"
+                          value={formData.facebook}
+                          onChange={(e) => handleInputChange('facebook', e.target.value)}
+                          disabled={!isEditing}
+                          className="pl-10"
+                          placeholder="https://facebook.com/username"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="twitter">Twitter</Label>
+                      <div className="relative">
+                        <Twitter
+                          size={18}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
+                        <Input
+                          id="twitter"
+                          value={formData.twitter}
+                          onChange={(e) => handleInputChange('twitter', e.target.value)}
+                          disabled={!isEditing}
+                          className="pl-10"
+                          placeholder="https://twitter.com/username"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="instagram">Instagram</Label>
+                      <div className="relative">
+                        <Instagram
+                          size={18}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
+                        <Input
+                          id="instagram"
+                          value={formData.instagram}
+                          onChange={(e) => handleInputChange('instagram', e.target.value)}
+                          disabled={!isEditing}
+                          className="pl-10"
+                          placeholder="https://instagram.com/username"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Delete Account */}
+                <div className="text-center pt-6 border-t">
+                  <Button
+                    variant="link"
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 size={14} className="mr-1" />
+                    Delete Account
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* Other tabs (Security, Preferences, Notifications) */}
+              <TabsContent value="security">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Security Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">Security settings content would go here...</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="preferences">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Preferences</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">Preferences content would go here...</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="notifications">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Notification Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">Notification settings content would go here...</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </div>
+
+      {/* Delete Account Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Account</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete your account? This action cannot be undone and all your data will
+              be permanently deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button className="bg-red-500 hover:bg-red-600" onClick={() => setShowDeleteDialog(false)}>
+              Delete Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

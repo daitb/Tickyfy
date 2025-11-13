@@ -16,6 +16,30 @@ export interface Event {
   policies: EventPolicies;
   status: 'draft' | 'published' | 'cancelled';
   createdAt: string;
+  // Extended details
+  highlights?: EventHighlight[];
+  faqs?: EventFAQ[];
+  venueDetails?: VenueDetails;
+  fullDescription?: string;
+}
+
+export interface EventHighlight {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+export interface EventFAQ {
+  question: string;
+  answer: string;
+}
+
+export interface VenueDetails {
+  fullAddress: string;
+  latitude: number;
+  longitude: number;
+  publicTransit?: string;
+  parking?: string;
 }
 
 export interface TicketTier {
@@ -56,6 +80,7 @@ export interface Order {
   createdAt: string;
   userEmail: string;
   userName: string;
+  paymentMethod?: string;
 }
 
 export interface OrderTicket {
@@ -65,6 +90,8 @@ export interface OrderTicket {
   price: number;
   qrCode: string;
   status: 'valid' | 'used' | 'cancelled';
+  seatInfo?: string;
+  checkInTime?: string;
 }
 
 export type Category = 
@@ -85,3 +112,20 @@ export interface Filter {
 }
 
 export type SortOption = 'popularity' | 'date' | 'price-asc' | 'price-desc';
+
+export interface WishlistItem {
+  id: string;
+  userId: string;
+  eventId: string;
+  addedAt: string;
+}
+
+export interface WaitlistEntry {
+  id: string;
+  userId: string;
+  eventId: string;
+  position: number;
+  status: 'active' | 'notified' | 'expired';
+  joinedAt: string;
+  estimatedNotification?: string;
+}
