@@ -98,7 +98,7 @@ public class SeatService : ISeatService
     {
         var seat = _mapper.Map<Seat>(createSeatDto);
         seat.CreatedAt = DateTime.UtcNow;
-        seat.IsAvailable = true;
+        seat.Status = SeatStatus.Available;
 
         var createdSeat = await _seatRepository.CreateAsync(seat);
         return _mapper.Map<SeatDto>(createdSeat);
@@ -110,7 +110,7 @@ public class SeatService : ISeatService
         {
             var seat = _mapper.Map<Seat>(dto);
             seat.CreatedAt = DateTime.UtcNow;
-            seat.IsAvailable = true;
+            seat.Status = SeatStatus.Available;
             return seat;
         });
 

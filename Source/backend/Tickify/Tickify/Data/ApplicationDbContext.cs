@@ -29,6 +29,8 @@ namespace Tickify.Data
         public DbSet<Role> Roles { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<Seat> Seats { get; set; }
+        public DbSet<SeatMap> SeatMaps { get; set; }
+        public DbSet<SeatZone> SeatZones { get; set; }
         public DbSet<PromoCode> PromoCodes { get; set; }
         public DbSet<TicketScan> TicketScans { get; set; }
         public DbSet<Waitlist> Waitlists { get; set; }
@@ -405,7 +407,7 @@ namespace Tickify.Data
 
             // Seats - Real-time availability
             modelBuilder.Entity<Seat>()
-                .HasIndex(s => new { s.TicketTypeId, s.IsAvailable }); // Critical for seat selection!
+                .HasIndex(s => new { s.TicketTypeId, s.Status }); // Critical for seat selection!
 
             // Notifications - User inbox (shown on every page!)
             modelBuilder.Entity<Notification>()

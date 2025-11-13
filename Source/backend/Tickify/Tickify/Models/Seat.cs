@@ -1,19 +1,44 @@
 namespace Tickify.Models
 {
+    public enum SeatStatus
+    {
+        Available,
+        Selected,
+        Sold,
+        Blocked,
+        Reserved
+    }
+
     public class Seat
     {
         public int Id { get; set; }
         public int TicketTypeId { get; set; }
-        public string Row { get; set; } = string.Empty;
-        public string SeatNumber { get; set; } = string.Empty;
-        public string FullSeatCode => $"{Row}{SeatNumber}";
-        public bool IsAvailable { get; set; } = true;
+        public int? SeatZoneId { get; set; } // Optional: which zone this seat belongs to
+        
+        public string Row { get; set; } = string.Empty; // e.g., "A", "B", "1", "2"
+        public string SeatNumber { get; set; } = string.Empty; // e.g., "1", "2", "15"
+        public string FullSeatCode => $"{Row}{SeatNumber}"; // e.g., "A15"
+        
+        // Position in the grid (for visual representation)
+        public int? GridRow { get; set; }
+        public int? GridColumn { get; set; }
+        
+        // Status and availability
+        public SeatStatus Status { get; set; } = SeatStatus.Available;
         public bool IsBlocked { get; set; } = false;
         public string? BlockedReason { get; set; }
-        public DateTime CreatedAt { get; set; }
+        
+        // Reservation handling (temporary hold during checkout)
+        public int? ReservedByUserId { get; set; }
+        public DateTime? ReservedUntil { get; set; }
+        
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
 
         // Navigation properties
         public TicketType TicketType { get; set; } = null!;
+        public SeatZone? SeatZone { get; set; }
+        public User? ReservedByUser { get; set; }
         public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
     }
 }

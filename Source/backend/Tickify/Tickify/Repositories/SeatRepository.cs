@@ -35,7 +35,7 @@ public class SeatRepository : ISeatRepository
     {
         return await _context.Seats
             .Include(s => s.TicketType)
-            .Where(s => s.TicketType.EventId == eventId && s.IsAvailable)
+            .Where(s => s.TicketType.EventId == eventId && s.Status == SeatStatus.Available)
             .OrderBy(s => s.Row)
             .ThenBy(s => s.SeatNumber)
             .ToListAsync();
@@ -80,13 +80,13 @@ public class SeatRepository : ISeatRepository
     public async Task<bool> IsSeatAvailableAsync(int seatId)
     {
         var seat = await _context.Seats.FindAsync(seatId);
-        return seat?.IsAvailable ?? false;
+        return seat?.Status == SeatStatus.Available;
     }
 
     public async Task<bool> ReserveSeatsAsync(IEnumerable<int> seatIds)
     {
         var seats = await _context.Seats
-            .Where(s => seatIds.Contains(s.Id) && s.IsAvailable)
+            .Where(s => seatIds.Contains(s.Id) && s.Status == SeatStatus.Available)
             .ToListAsync();
 
         if (seats.Count != seatIds.Count())
@@ -94,7 +94,8 @@ public class SeatRepository : ISeatRepository
 
         foreach (var seat in seats)
         {
-            seat.IsAvailable = false;
+            seat.Status = SeatStatus.Reserved;
+            seat.UpdatedAt = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync();
@@ -109,7 +110,10 @@ public class SeatRepository : ISeatRepository
 
         foreach (var seat in seats)
         {
-            seat.IsAvailable = true;
+            seat.Status = SeatStatus.Available;
+            seat.ReservedByUserId = null;
+            seat.ReservedUntil = null;
+            seat.UpdatedAt = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync();

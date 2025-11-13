@@ -18,6 +18,7 @@ using Tickify.DTOs.Refund;
 using Tickify.DTOs.Waitlist;
 using Tickify.DTOs.Wishlist;
 using Tickify.DTOs.Payout;
+using Tickify.DTOs.SeatMap;
 using Tickify.Models;
 
 namespace Tickify.Mappings;
@@ -105,8 +106,24 @@ public class MappingProfile : Profile
         CreateMap<Ticket, TicketDetailDto>()
             .ForMember(dest => dest.SeatNumber, opt => opt.MapFrom(src => src.Seat != null ? src.Seat.SeatNumber : null));
 
-        // Seat mappings
-        CreateMap<Seat, SeatDto>();
+        // Seat mappings (original)
+        CreateMap<Seat, DTOs.Seat.SeatDto>();
+        CreateMap<DTOs.Seat.CreateSeatDto, Seat>();
+        
+        // Seat Management mappings (Week 2 - Seat Selection)
+        CreateMap<SeatMap, SeatMapResponseDto>();
+        CreateMap<CreateSeatMapDto, SeatMap>();
+        CreateMap<UpdateSeatMapDto, SeatMap>()
+            .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+        
+        CreateMap<SeatZone, SeatZoneResponseDto>();
+        CreateMap<CreateSeatZoneDto, SeatZone>();
+        CreateMap<CreateSeatZoneDto, SeatZone>();
+        
+        CreateMap<Seat, DTOs.SeatMap.SeatResponseDto>()
+            .ForMember(dest => dest.FullSeatCode, opt => opt.MapFrom(src => $"{src.Row}{src.SeatNumber}"))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.IsBlocked ? "Blocked" : (src.ReservedByUserId.HasValue ? "Reserved" : "Available")))
+            .ForMember(dest => dest.IsReserved, opt => opt.MapFrom(src => src.ReservedByUserId.HasValue));
         CreateMap<CreateSeatDto, Seat>();
 
         // PromoCode mappings
