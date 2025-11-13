@@ -1,0 +1,64 @@
+# .gitlab-ci.yml
+# Basic CI/CD pipeline with build, test, and deploy stages
+
+stages:
+  - build
+  - test
+  - deploy
+
+# -----------------------------
+# BUILD STAGE
+# -----------------------------
+build-job:
+  stage: build
+  image: node:20 # <== Thay bằng image phù hợp với project bạn (python, java, php,...)
+  script:
+    - echo "Starting build process..."
+    - npm ci
+    - npm run build
+    - echo "✅ Build complete."
+  artifacts:
+    paths:
+      - dist/        # Lưu kết quả build (ví dụ: dist, build, out, target,...)
+    expire_in: 1 week
+
+# -----------------------------
+# TEST STAGE
+# -----------------------------
+unit-test-job:
+  stage: test
+  image: node:20
+  script:
+    - echo "Running unit tests..."
+    - npm test
+  artifacts:
+    when: always
+    reports:
+      junit: junit-report.xml  # Nếu bạn dùng Jest hoặc Mocha có plugin junit
+
+lint-test-job:
+  stage: test
+  image: node:20
+  script:
+    - echo "Running lint check..."
+    - npm run lint
+  allow_failure: true # Cho phép lint fail mà không chặn pipeline
+
+# -----------------------------
+# DEPLOY STAGE
+# -----------------------------
+deploy-job:
+  stage: deploy
+  image: alpine:latest
+  environment:
+    name: production
+    url: https://your-production-domain.com
+  script:
+    - echo "Deploying application..."
+    - apk add --no-cache openssh
+    - echo "Connecting to server and deploying..."
+    # Ví dụ: deploy qua SSH
+    # - scp -r dist/* user@your-server:/var/www/html/
+    - echo "✅ Application successfully deployed."
+  only:
+    - main   # Chỉ deploy khi commit lên nhánh main (hoặc master)
