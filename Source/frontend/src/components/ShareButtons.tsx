@@ -1,45 +1,36 @@
-import { Share2, Facebook, Twitter, Link2, MessageCircle } from "lucide-react";
-import { Button } from "./ui/button";
-import { toast } from "sonner";
+import { Share2, Facebook, Twitter, Link2, MessageCircle } from 'lucide-react';
+import { Button } from './ui/button';
+import { toast } from 'sonner@2.0.3';
 
 interface ShareButtonsProps {
   title: string;
   url?: string;
 }
 
-export function ShareButtons({
-  title,
-  url = window.location.href,
-}: ShareButtonsProps) {
+export function ShareButtons({ title, url = window.location.href }: ShareButtonsProps) {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(url);
-    toast.success("Link copied to clipboard!");
+    toast.success('Link copied to clipboard!');
   };
 
   const handleShare = (platform: string) => {
     const text = `Check out: ${title}`;
-    let shareUrl = "";
+    let shareUrl = '';
 
     switch (platform) {
-      case "facebook":
-        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-          url
-        )}`;
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
         break;
-      case "twitter":
-        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-          text
-        )}&url=${encodeURIComponent(url)}`;
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
         break;
-      case "whatsapp":
-        shareUrl = `https://wa.me/?text=${encodeURIComponent(
-          text + " " + url
-        )}`;
+      case 'whatsapp':
+        shareUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
         break;
     }
 
     if (shareUrl) {
-      window.open(shareUrl, "_blank", "width=600,height=400");
+      window.open(shareUrl, '_blank', 'width=600,height=400');
     }
   };
 
@@ -52,7 +43,7 @@ export function ShareButtons({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => handleShare("facebook")}
+        onClick={() => handleShare('facebook')}
         className="gap-2"
       >
         <Facebook size={16} />
@@ -60,7 +51,7 @@ export function ShareButtons({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => handleShare("twitter")}
+        onClick={() => handleShare('twitter')}
         className="gap-2"
       >
         <Twitter size={16} />
@@ -68,7 +59,7 @@ export function ShareButtons({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => handleShare("whatsapp")}
+        onClick={() => handleShare('whatsapp')}
         className="gap-2"
       >
         <MessageCircle size={16} />

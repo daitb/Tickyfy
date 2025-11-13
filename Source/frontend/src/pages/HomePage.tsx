@@ -1,96 +1,103 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { HeroSlider } from "../components/HeroSlider";
-import { DateFilterDropdown } from "../components/DateFilterDropdown";
-import { CategoryFilterDropdown } from "../components/CategoryFilterDropdown";
-import { Calendar, MapPin, TrendingUp, Star } from "lucide-react";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import HeroSlider from '../components/HeroSlider';
+import DateFilterDropdown from '../components/DateFilterDropdown';
+import CategoryFilterDropdown from '../components/CategoryFilterDropdown';
+import { Calendar, MapPin, TrendingUp, Star } from 'lucide-react';
 
 const mockEvents = [
   {
-    id: "1",
-    title: "Summer Music Festival 2025",
-    date: "July 15, 2025",
-    time: "18:00",
-    location: "Central Park, New York",
-    image: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600",
-    category: "music",
-    price: "From $75",
+    id: '1',
+    title: 'Summer Music Festival 2025',
+    date: 'July 15, 2025',
+    time: '18:00',
+    location: 'Central Park, New York',
+    image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600',
+    category: 'music',
+    price: 'From $75',
     isFeatured: true,
     rating: 4.8,
-    attendees: 2500,
+    attendees: 2500
   },
   {
-    id: "2",
-    title: "Tech Innovation Summit 2025",
-    date: "August 20, 2025",
-    time: "09:00",
-    location: "Convention Center, San Francisco",
-    image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600",
-    category: "conference",
-    price: "From $199",
+    id: '2',
+    title: 'Tech Innovation Summit 2025',
+    date: 'August 20, 2025',
+    time: '09:00',
+    location: 'Convention Center, San Francisco',
+    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600',
+    category: 'conference',
+    price: 'From $199',
     isFeatured: true,
     rating: 4.9,
-    attendees: 1200,
+    attendees: 1200
   },
   {
-    id: "3",
-    title: "Food & Wine Expo",
-    date: "September 5, 2025",
-    time: "12:00",
-    location: "Exhibition Hall, Chicago",
-    image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600",
-    category: "food-drink",
-    price: "From $45",
+    id: '3',
+    title: 'Food & Wine Expo',
+    date: 'September 5, 2025',
+    time: '12:00',
+    location: 'Exhibition Hall, Chicago',
+    image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600',
+    category: 'food-drink',
+    price: 'From $45',
     isFeatured: false,
     rating: 4.7,
-    attendees: 800,
+    attendees: 800
   },
   {
-    id: "4",
-    title: "Jazz Night Under the Stars",
-    date: "July 22, 2025",
-    time: "20:00",
-    location: "Rooftop Venue, Los Angeles",
-    image: "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=600",
-    category: "music",
-    price: "From $55",
+    id: '4',
+    title: 'Jazz Night Under the Stars',
+    date: 'July 22, 2025',
+    time: '20:00',
+    location: 'Rooftop Venue, Los Angeles',
+    image: 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=600',
+    category: 'music',
+    price: 'From $55',
     isFeatured: false,
     rating: 4.6,
-    attendees: 350,
+    attendees: 350
   },
   {
-    id: "5",
-    title: "Digital Marketing Conference",
-    date: "August 10, 2025",
-    time: "10:00",
-    location: "Business Center, Boston",
-    image: "https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=600",
-    category: "business",
-    price: "From $149",
+    id: '5',
+    title: 'Digital Marketing Conference',
+    date: 'August 10, 2025',
+    time: '10:00',
+    location: 'Business Center, Boston',
+    image: 'https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=600',
+    category: 'business',
+    price: 'From $149',
     isFeatured: true,
     rating: 4.8,
-    attendees: 600,
+    attendees: 600
   },
   {
-    id: "6",
-    title: "Art Exhibition: Modern Masters",
-    date: "September 12, 2025",
-    time: "11:00",
-    location: "Art Gallery, Miami",
-    image: "https://images.unsplash.com/photo-1531243269054-5ebf6f34081e?w=600",
-    category: "arts",
-    price: "From $25",
+    id: '6',
+    title: 'Art Exhibition: Modern Masters',
+    date: 'September 12, 2025',
+    time: '11:00',
+    location: 'Art Gallery, Miami',
+    image: 'https://images.unsplash.com/photo-1531243269054-5ebf6f34081e?w=600',
+    category: 'arts',
+    price: 'From $25',
     isFeatured: false,
     rating: 4.5,
-    attendees: 450,
-  },
+    attendees: 450
+  }
 ];
 
 export default function HomePage() {
+  const [selectedDate, setSelectedDate] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const navigate = useNavigate();
 
-  const filteredEvents = mockEvents;
-  const featuredEvents = filteredEvents.filter((e) => e.isFeatured);
+  const filteredEvents = mockEvents.filter(event => {
+    const categoryMatch = selectedCategory === 'all' || event.category === selectedCategory;
+    // In real app, you'd filter by actual dates
+    return categoryMatch;
+  });
+
+  const featuredEvents = filteredEvents.filter(e => e.isFeatured);
 
   return (
     <div>
@@ -106,14 +113,12 @@ export default function HomePage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <DateFilterDropdown
-                onApply={(dates) => console.log("Date filter applied:", dates)}
-                currentDates={{}}
+                selectedDate={selectedDate}
+                onDateChange={setSelectedDate}
               />
               <CategoryFilterDropdown
-                onApply={(filters) =>
-                  console.log("Category filter applied:", filters)
-                }
-                currentFilters={{}}
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
               />
             </div>
             <div className="text-sm text-gray-600 sm:ml-auto">
@@ -133,12 +138,8 @@ export default function HomePage() {
               <h2 className="text-2xl text-gray-900">Featured Events</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredEvents.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  onClick={() => navigate(`/event/${event.id}`)}
-                />
+              {featuredEvents.map(event => (
+                <EventCard key={event.id} event={event} onClick={() => navigate(`/event/${event.id}`)} />
               ))}
             </div>
           </section>
@@ -148,20 +149,14 @@ export default function HomePage() {
         <section>
           <h2 className="text-2xl text-gray-900 mb-6">All Events</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onClick={() => navigate(`/event/${event.id}`)}
-              />
+            {filteredEvents.map(event => (
+              <EventCard key={event.id} event={event} onClick={() => navigate(`/event/${event.id}`)} />
             ))}
           </div>
 
           {filteredEvents.length === 0 && (
             <div className="text-center py-16">
-              <p className="text-gray-500">
-                No events found matching your filters.
-              </p>
+              <p className="text-gray-500">No events found matching your filters.</p>
             </div>
           )}
         </section>
@@ -206,9 +201,7 @@ function EventCard({ event, onClick }: EventCardProps) {
         <div className="space-y-2 text-sm text-gray-600">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-[#00C16A]" />
-            <span>
-              {event.date} • {event.time}
-            </span>
+            <span>{event.date} • {event.time}</span>
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="w-4 h-4 text-[#00C16A]" />
@@ -220,9 +213,7 @@ function EventCard({ event, onClick }: EventCardProps) {
             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
             <span className="text-sm text-gray-900">{event.rating}</span>
           </div>
-          <span className="text-sm text-gray-500">
-            {event.attendees} attending
-          </span>
+          <span className="text-sm text-gray-500">{event.attendees} attending</span>
         </div>
       </div>
     </div>

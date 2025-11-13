@@ -12,8 +12,10 @@ interface MyTicketsProps {
 export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
   const [activeTab, setActiveTab] = useState('upcoming');
 
-  // Combine prop orders with mock orders
-  const allOrders = [...orders, ...mockOrders];
+  // Combine prop orders with mock orders, removing duplicates based on order ID
+  const allOrders = [...orders, ...mockOrders.filter(
+    mockOrder => !orders.some(order => order.id === mockOrder.id)
+  )];
 
   const now = new Date();
   const upcomingOrders = allOrders.filter(order => {

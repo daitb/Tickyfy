@@ -1,4 +1,4 @@
-import { Ticket, User, Plus, Heart, Clock } from 'lucide-react';
+import { Ticket, User, Plus, Heart, Clock, Shield, LayoutDashboard, Calendar, Bell } from 'lucide-react';
 import { Button } from './ui/button';
 import { InlineSearchBar } from './InlineSearchBar';
 import { Category } from '../types';
@@ -15,6 +15,7 @@ interface HeaderProps {
   onNavigate: (page: string, eventId?: string) => void;
   currentPage: string;
   isAuthenticated?: boolean;
+  userRole?: 'user' | 'organizer' | 'admin';
   onSearchOpenChange?: (isOpen: boolean) => void;
 }
 
@@ -22,6 +23,7 @@ export function Header({
   onNavigate, 
   currentPage, 
   isAuthenticated = false,
+  userRole = 'user',
   onSearchOpenChange
 }: HeaderProps) {
   const handleEventClick = (eventId: string) => {
@@ -119,10 +121,32 @@ export function Header({
                     <Clock size={16} className="mr-2" />
                     Waitlist
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onNavigate('organizer-dashboard')}>
-                    <Plus size={16} className="mr-2" />
-                    Organizer Dashboard
-                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {(userRole === 'organizer' || userRole === 'admin') && (
+                    <>
+                      <DropdownMenuItem onClick={() => onNavigate('organizer-dashboard')}>
+                        <LayoutDashboard size={16} className="mr-2" />
+                        Organizer Dashboard
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onNavigate('event-management')}>
+                        <Calendar size={16} className="mr-2" />
+                        Manage Events
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onNavigate('organizer-wizard')}>
+                        <Plus size={16} className="mr-2" />
+                        Create Event
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {userRole === 'admin' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onNavigate('admin-dashboard')}>
+                        <Shield size={16} className="mr-2" />
+                        Admin Dashboard
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
                     <User size={16} className="mr-2" />

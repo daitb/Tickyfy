@@ -7,6 +7,7 @@ import {
   Wallet,
   ChevronRight,
   AlertCircle,
+  Send,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -33,9 +34,9 @@ export function TicketDetail({
   onNavigate,
 }: TicketDetailProps) {
   // Find ticket from orders list if not provided
-  let currentTicket: any = undefined;
-  let currentOrder: Order | undefined = undefined;
-  let currentEvent: any = undefined;
+  let currentOrder: Order | undefined;
+  let currentTicket: OrderTicket | undefined;
+  let currentEvent: any; // Nếu có type Event thì dùng, nếu không thì dùng any
 
   if (ticketId && orders) {
     for (const order of orders) {
@@ -51,10 +52,9 @@ export function TicketDetail({
 
   // If not found, use first ticket from first order
   if (!currentTicket && orders && orders.length > 0) {
-    const firstOrder = orders[0];
-    currentOrder = firstOrder;
-    currentTicket = firstOrder.tickets[0];
-    currentEvent = mockEvents.find((e) => e.id === firstOrder.eventId);
+    currentOrder = orders[0];
+    currentTicket = currentOrder.tickets[0];
+    currentEvent = mockEvents.find((e) => e.id === currentOrder?.eventId);
   }
 
   if (!currentTicket) {
@@ -309,13 +309,16 @@ export function TicketDetail({
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <Button
+            className="w-full bg-teal-500 hover:bg-teal-600"
+            onClick={() => onNavigate("transfer-ticket", currentTicket?.id)}
+          >
+            <Send size={16} className="mr-2" />
+            Transfer
+          </Button>
           <Button className="w-full">
             <Download size={16} className="mr-2" />
             Download PDF
-          </Button>
-          <Button variant="secondary" className="w-full">
-            <Wallet size={16} className="mr-2" />
-            Add to Wallet
           </Button>
           <Button variant="outline" className="w-full">
             <Share2 size={16} className="mr-2" />

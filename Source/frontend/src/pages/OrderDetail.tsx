@@ -272,7 +272,7 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
                       variant="outline"
                       className="flex-1"
                       size="sm"
-                      onClick={(e: React.MouseEvent) => {
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
                         // Handle view details
                       }}
@@ -282,9 +282,9 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={(e: React.MouseEvent) => {
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
-                        // Handle download
+                        // Handle view details
                       }}
                     >
                       <Download size={16} />
