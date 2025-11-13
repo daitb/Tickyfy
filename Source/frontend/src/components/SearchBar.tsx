@@ -1,23 +1,11 @@
-import { useState, useRef, useEffect } from "react";
-import {
-  Search,
-  TrendingUp,
-  MapPin,
-  Calendar,
-  ArrowRight,
-  Music,
-  Theater,
-  Trophy,
-  Briefcase,
-  Palette,
-  UtensilsCrossed,
-} from "lucide-react";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
-import { Badge } from "./ui/badge";
-import { mockEvents, categories, cities } from "../mockData";
-import { Category } from "../types";
+import { useState, useRef, useEffect } from 'react';
+import { Search, TrendingUp, MapPin, Calendar, ArrowRight, Music, Theater, Trophy, Briefcase, Palette, UtensilsCrossed } from 'lucide-react';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
+import { Badge } from './ui/badge';
+import { mockEvents, categories, cities } from '../mockData';
+import { Category } from '../types';
 
 interface SearchBarProps {
   value: string;
@@ -31,85 +19,78 @@ interface SearchBarProps {
 }
 
 const trendingKeywords = [
-  { keyword: "yconcert", trend: "up" },
-  { keyword: "gdragon", trend: "up" },
-  { keyword: "ntpmm", trend: "up" },
-  { keyword: "summer festival", trend: "up" },
-  { keyword: "hanoi concert", trend: "up" },
+  { keyword: 'yconcert', trend: 'up' },
+  { keyword: 'gdragon', trend: 'up' },
+  { keyword: 'ntpmm', trend: 'up' },
+  { keyword: 'summer festival', trend: 'up' },
+  { keyword: 'hanoi concert', trend: 'up' },
 ];
 
 const categoryIcons: Record<Category, any> = {
-  Music: Music,
-  Theater: Theater,
-  Sports: Trophy,
-  Conference: Briefcase,
-  Arts: Palette,
-  "Food & Drink": UtensilsCrossed,
-  Other: Briefcase,
+  'Music': Music,
+  'Theater': Theater,
+  'Sports': Trophy,
+  'Conference': Briefcase,
+  'Arts': Palette,
+  'Food & Drink': UtensilsCrossed,
 };
 
-export function SearchBar({
-  value,
-  onChange,
+export function SearchBar({ 
+  value, 
+  onChange, 
   onSearch,
   onEventClick,
   onCategoryClick,
   onCityClick,
   placeholder = "What are you looking for today?",
-  className = "",
+  className = ""
 }: SearchBarProps) {
   const [isFocused, setIsFocused] = useState(false);
-  const [activeTab, setActiveTab] = useState("category");
+  const [activeTab, setActiveTab] = useState('category');
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsFocused(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       onSearch();
       setIsFocused(false);
     }
   };
 
   // Filter events based on search value
-  const filteredEvents = value.trim()
-    ? mockEvents
-        .filter(
-          (event) =>
-            event.title.toLowerCase().includes(value.toLowerCase()) ||
-            event.category.toLowerCase().includes(value.toLowerCase()) ||
-            event.city.toLowerCase().includes(value.toLowerCase()) ||
-            event.venue.toLowerCase().includes(value.toLowerCase())
-        )
-        .slice(0, 4)
+  const filteredEvents = value.trim() 
+    ? mockEvents.filter(event => 
+        event.title.toLowerCase().includes(value.toLowerCase()) ||
+        event.category.toLowerCase().includes(value.toLowerCase()) ||
+        event.city.toLowerCase().includes(value.toLowerCase()) ||
+        event.venue.toLowerCase().includes(value.toLowerCase())
+      ).slice(0, 4)
     : mockEvents.slice(0, 4);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
     }).format(price);
   };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
+    return new Intl.DateTimeFormat('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
     }).format(date);
   };
 
@@ -146,10 +127,7 @@ export function SearchBar({
     <div ref={containerRef} className={`relative ${className}`}>
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 z-10"
-            size={20}
-          />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 z-10" size={20} />
           <Input
             type="text"
             value={value}
@@ -160,7 +138,7 @@ export function SearchBar({
             className="pl-10 h-12 bg-neutral-50 border-neutral-200"
           />
         </div>
-        <Button
+        <Button 
           onClick={() => {
             onSearch();
             setIsFocused(false);
@@ -173,9 +151,9 @@ export function SearchBar({
 
       {/* Dropdown Suggestions */}
       {showDropdown && (
-        <div
+        <div 
           className="absolute top-full mt-2 left-0 right-0 bg-white rounded-xl shadow-2xl border border-neutral-200 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200"
-          style={{ maxHeight: "80vh", overflowY: "auto" }}
+          style={{ maxHeight: '80vh', overflowY: 'auto' }}
         >
           <div className="p-4 md:p-6">
             {/* Trending Keywords */}
@@ -203,9 +181,7 @@ export function SearchBar({
             <div className="mb-6">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="mb-4">
-                  <TabsTrigger value="category">
-                    Explore by Category
-                  </TabsTrigger>
+                  <TabsTrigger value="category">Explore by Category</TabsTrigger>
                   <TabsTrigger value="city">Explore by City</TabsTrigger>
                 </TabsList>
 
@@ -254,28 +230,20 @@ export function SearchBar({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-neutral-900">
-                  {value.trim() ? "Search Results" : "Suggestions for You"}
+                  {value.trim() ? 'Search Results' : 'Suggestions for You'}
                 </h3>
                 {value.trim() && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-orange-50 text-orange-600"
-                  >
-                    {filteredEvents.length} result
-                    {filteredEvents.length !== 1 ? "s" : ""}
+                  <Badge variant="secondary" className="bg-orange-50 text-orange-600">
+                    {filteredEvents.length} result{filteredEvents.length !== 1 ? 's' : ''}
                   </Badge>
                 )}
               </div>
               {filteredEvents.length > 0 ? (
                 <div className="space-y-3">
                   {filteredEvents.map((event) => {
-                    const lowestPrice = Math.min(
-                      ...event.ticketTiers.map((tier) => tier.price)
-                    );
-                    const isSoldOut = event.ticketTiers.every(
-                      (tier) => tier.available === 0
-                    );
-
+                    const lowestPrice = Math.min(...event.ticketTiers.map(tier => tier.price));
+                    const isSoldOut = event.ticketTiers.every(tier => tier.available === 0);
+                    
                     return (
                       <button
                         key={event.id}
@@ -284,16 +252,14 @@ export function SearchBar({
                       >
                         {/* Event Image */}
                         <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
-                          <img
-                            src={event.image}
+                          <img 
+                            src={event.image} 
                             alt={event.title}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                           />
                           {isSoldOut && (
                             <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                              <Badge className="bg-red-500 text-white text-xs">
-                                Sold Out
-                              </Badge>
+                              <Badge className="bg-red-500 text-white text-xs">Sold Out</Badge>
                             </div>
                           )}
                         </div>
@@ -317,9 +283,9 @@ export function SearchBar({
                             <p className="text-orange-600">
                               From {formatPrice(lowestPrice)}
                             </p>
-                            <ArrowRight
-                              size={16}
-                              className="text-neutral-400 group-hover:text-orange-500 group-hover:translate-x-1 transition-all"
+                            <ArrowRight 
+                              size={16} 
+                              className="text-neutral-400 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" 
                             />
                           </div>
                         </div>
@@ -339,7 +305,7 @@ export function SearchBar({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onChange("")}
+                    onClick={() => onChange('')}
                     className="border-orange-200 text-orange-600 hover:bg-orange-50"
                   >
                     Clear search

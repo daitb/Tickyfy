@@ -1,9 +1,9 @@
-import { Outlet } from "react-router-dom";
+import { ReactNode } from "react";
 
-export function StandaloneLayout() {
-  return (
-    <div className="min-h-screen">
-      <Outlet />
-    </div>
-  );
+interface StandaloneLayoutProps {
+  children: ReactNode;
+}
+
+export function StandaloneLayout({ children }: StandaloneLayoutProps) {
+  return <div className="min-h-screen">{children}</div>;
 }

@@ -1,23 +1,26 @@
-import axios from "axios";
+import axios, {
+  InternalAxiosRequestConfig,
+  AxiosResponse,
+  AxiosError,
+} from "axios";
 
-// Backend API base URL
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://localhost:7129/api";
+// Base API URL
+const API_BASE_URL = "http://localhost:5128/api";
 
 // Create axios instance
-export const apiClient = axios.create({
+const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 30000, // 30 seconds
+  withCredentials: false,
 });
 
-// Request interceptor - Add JWT token to all requests
+// Request interceptor to add auth token
 apiClient.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem("authToken");
-    if (token) {
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -27,38 +30,59 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor - Handle errors globally
+// Response interceptor to handle common errors and extract data from ApiResponse wrapper
 apiClient.interceptors.response.use(
-  (response) => {
-    // Extract data from ApiResponse wrapper if exists
-    if (response.data?.data) {
-      return { ...response, data: response.data.data };
+  (response: AxiosResponse) => {
+    console.log(
+      "ApiClient Response Interceptor - Original response:",
+      response
+    );
+    console.log(
+      "ApiClient Response Interceptor - Response data:",
+      response.data
+    );
+
+    // Backend wraps responses in ApiResponse<T> with { success, message, data }
+    // Extract the data field if it exists
+    if (
+      response.data &&
+      typeof response.data === "object" &&
+      "data" in response.data
+    ) {
+      console.log("ApiClient Response Interceptor - Extracting data field");
+      response.data = response.data.data;
+      console.log(
+        "ApiClient Response Interceptor - After extraction:",
+        response.data
+      );
     }
     return response;
   },
-  (error) => {
-    // Handle 401 Unauthorized - Redirect to login
-    if (error.response?.status === 401) {
+  (error: AxiosError) => {
+    console.error("ApiClient Error Interceptor - Error:", error);
+    console.error(
+      "ApiClient Error Interceptor - Error response:",
+      error.response
+    );
+
+    // Don't redirect on login failure (401), let the login page handle it
+    if (
+      error.response?.status === 401 &&
+      !error.config?.url?.includes("/Auth/login")
+    ) {
+      // Unauthorized - clear token and redirect to login (but NOT during login attempt)
       localStorage.removeItem("authToken");
       localStorage.removeItem("user");
       window.location.href = "/login";
+    } else if (error.response?.status === 403) {
+      console.error(
+        "Forbidden: You do not have permission to access this resource"
+      );
+    } else if (error.response?.status === 404) {
+      console.error("Not Found: The requested resource does not exist");
+    } else if (error.response?.status && error.response.status >= 500) {
+      console.error("Server Error: Please try again later");
     }
-
-    // Handle 403 Forbidden
-    if (error.response?.status === 403) {
-      console.error("Access forbidden:", error.response.data);
-    }
-
-    // Handle 404 Not Found
-    if (error.response?.status === 404) {
-      console.error("Resource not found:", error.response.data);
-    }
-
-    // Handle 500 Internal Server Error
-    if (error.response?.status >= 500) {
-      console.error("Server error:", error.response.data);
-    }
-
     return Promise.reject(error);
   }
 );

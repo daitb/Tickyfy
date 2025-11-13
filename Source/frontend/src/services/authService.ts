@@ -1,0 +1,159 @@
+import apiClient from "./apiClient";
+
+// ===== INTERFACES =====
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export interface RegisterDto {
+  fullName: string;
+  email: string;
+  password: string;
+  role: "User" | "Organizer";
+}
+
+export interface UserDto {
+  userId: string;
+  fullName: string;
+  email: string;
+  role: string;
+  phoneNumber?: string;
+  profilePictureUrl?: string;
+  isEmailVerified: boolean;
+}
+
+// Backend actual response structure
+export interface LoginResponse {
+  userId: number;
+  email: string;
+  fullName: string;
+  roles: string[];
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
+}
+
+// ===== AUTH SERVICE =====
+class AuthService {
+  /**
+   * Register a new user
+   */
+  async register(data: RegisterDto): Promise<void> {
+    await apiClient.post("/Auth/register", data);
+  }
+
+  /**
+   * Login user and save token + user info to localStorage
+   */
+  async login(data: LoginDto): Promise<LoginResponse> {
+    console.log("AuthService.login - Sending request:", data);
+
+    const response = await apiClient.post<LoginResponse>("/Auth/login", data);
+
+    console.log("AuthService.login - Raw response:", response);
+    console.log("AuthService.login - Response data:", response.data);
+
+    const loginResponse = response.data;
+
+    // Check if loginResponse is valid (backend returns flat structure)
+    if (!loginResponse || !loginResponse.accessToken || !loginResponse.email) {
+      console.error("Invalid login response structure:", loginResponse);
+      throw new Error("Invalid response from server");
+    }
+
+    // Save to localStorage (backend uses accessToken, not token)
+    localStorage.setItem("authToken", loginResponse.accessToken);
+
+    // Convert backend response to UserDto format for compatibility
+    const user: UserDto = {
+      userId: loginResponse.userId.toString(),
+      fullName: loginResponse.fullName,
+      email: loginResponse.email,
+      role: loginResponse.roles[0], // Take first role
+      isEmailVerified: true,
+    };
+
+    localStorage.setItem("user", JSON.stringify(user));
+
+    console.log("AuthService.login - Token saved:", loginResponse.accessToken);
+    console.log("AuthService.login - User saved:", user);
+
+    return loginResponse;
+  }
+
+  /**
+   * Logout user - clear localStorage and redirect
+   */
+  logout(): void {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+  }
+
+  /**
+   * Get current logged-in user from localStorage
+   */
+  getCurrentUser(): UserDto | null {
+    const userStr = localStorage.getItem("user");
+    if (!userStr) return null;
+
+    try {
+      return JSON.parse(userStr) as UserDto;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Check if user is authenticated
+   */
+  isAuthenticated(): boolean {
+    const token = localStorage.getItem("authToken");
+    return !!token;
+  }
+
+  /**
+   * Check if current user has specific role
+   */
+  hasRole(role: string): boolean {
+    const user = this.getCurrentUser();
+    return user?.role === role;
+  }
+
+  /**
+   * Refresh JWT token
+   */
+  async refreshToken(): Promise<string> {
+    const response = await apiClient.post<{ token: string }>(
+      "/Auth/refresh-token"
+    );
+    const newToken = response.data.token;
+
+    localStorage.setItem("authToken", newToken);
+    return newToken;
+  }
+
+  /**
+   * Verify email with token
+   */
+  async verifyEmail(token: string): Promise<void> {
+    await apiClient.post("/Auth/verify-email", { token });
+  }
+
+  /**
+   * Request password reset
+   */
+  async forgotPassword(email: string): Promise<void> {
+    await apiClient.post("/Auth/forgot-password", { email });
+  }
+
+  /**
+   * Reset password with token
+   */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await apiClient.post("/Auth/reset-password", { token, newPassword });
+  }
+}
+
+export const authService = new AuthService();

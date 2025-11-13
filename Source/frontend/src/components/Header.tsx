@@ -1,41 +1,53 @@
-import { Ticket, User, Plus, Heart, Clock, Shield, LayoutDashboard, Calendar, Bell } from 'lucide-react';
-import { Button } from './ui/button';
-import { InlineSearchBar } from './InlineSearchBar';
-import { Category } from '../types';
+import {
+  Ticket,
+  User,
+  Plus,
+  Heart,
+  Clock,
+  Shield,
+  LayoutDashboard,
+  Calendar,
+  Bell,
+  LogOut,
+} from "lucide-react";
+import { Button } from "./ui/button";
+import { InlineSearchBar } from "./InlineSearchBar";
+import { Category } from "../types";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
-import { Avatar, AvatarFallback } from './ui/avatar';
+} from "./ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import { authService } from "../services/authService";
 
 interface HeaderProps {
   onNavigate: (page: string, eventId?: string) => void;
   currentPage: string;
   isAuthenticated?: boolean;
-  userRole?: 'user' | 'organizer' | 'admin';
+  userRole?: "user" | "organizer" | "admin";
   onSearchOpenChange?: (isOpen: boolean) => void;
 }
 
-export function Header({ 
-  onNavigate, 
-  currentPage, 
+export function Header({
+  onNavigate,
+  currentPage,
   isAuthenticated = false,
-  userRole = 'user',
-  onSearchOpenChange
+  userRole = "user",
+  onSearchOpenChange,
 }: HeaderProps) {
   const handleEventClick = (eventId: string) => {
-    onNavigate('event-detail', eventId);
+    onNavigate("event-detail", eventId);
   };
 
   const handleCategoryClick = (category: Category) => {
-    onNavigate('listing');
+    onNavigate("listing");
   };
 
   const handleCityClick = (city: string) => {
-    onNavigate('listing');
+    onNavigate("listing");
   };
 
   return (
@@ -43,8 +55,8 @@ export function Header({
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between gap-4 h-20">
           {/* Logo */}
-          <button 
-            onClick={() => onNavigate('home')}
+          <button
+            onClick={() => onNavigate("home")}
             className="flex items-center gap-2 hover:opacity-90 transition-opacity flex-shrink-0"
           >
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
@@ -68,7 +80,7 @@ export function Header({
             {/* Create Event Button */}
             {isAuthenticated && (
               <Button
-                onClick={() => onNavigate('organizer-wizard')}
+                onClick={() => onNavigate("organizer-wizard")}
                 variant="secondary"
                 size="sm"
                 className="bg-white text-teal-600 hover:bg-neutral-100 gap-2 hidden lg:flex"
@@ -80,11 +92,11 @@ export function Header({
 
             {/* My Tickets */}
             <Button
-              onClick={() => onNavigate('my-tickets')}
+              onClick={() => onNavigate("my-tickets")}
               variant="ghost"
               size="sm"
               className={`gap-2 text-white hover:bg-teal-600 ${
-                currentPage === 'my-tickets' ? 'bg-teal-600' : ''
+                currentPage === "my-tickets" ? "bg-teal-600" : ""
               }`}
             >
               <Ticket size={18} />
@@ -95,71 +107,91 @@ export function Header({
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     className="gap-2 text-white hover:bg-teal-600"
                   >
                     <Avatar className="w-7 h-7">
-                      <AvatarFallback className="bg-white text-teal-600 text-sm">
-                        U
+                      <AvatarFallback className="bg-white text-teal-600 text-sm font-semibold">
+                        {authService
+                          .getCurrentUser()
+                          ?.fullName?.charAt(0)
+                          .toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="hidden sm:inline">Account</span>
+                    <span className="hidden sm:inline">
+                      {authService.getCurrentUser()?.fullName || "Account"}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => onNavigate('my-tickets')}>
+                  <DropdownMenuItem onClick={() => onNavigate("my-tickets")}>
                     <Ticket size={16} className="mr-2" />
                     My Tickets
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onNavigate('wishlist')}>
+                  <DropdownMenuItem onClick={() => onNavigate("wishlist")}>
                     <Heart size={16} className="mr-2" />
                     Wishlist
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onNavigate('waitlist')}>
+                  <DropdownMenuItem onClick={() => onNavigate("waitlist")}>
                     <Clock size={16} className="mr-2" />
                     Waitlist
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {(userRole === 'organizer' || userRole === 'admin') && (
+                  {(userRole === "organizer" || userRole === "admin") && (
                     <>
-                      <DropdownMenuItem onClick={() => onNavigate('organizer-dashboard')}>
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("organizer-dashboard")}
+                      >
                         <LayoutDashboard size={16} className="mr-2" />
                         Organizer Dashboard
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onNavigate('event-management')}>
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("event-management")}
+                      >
                         <Calendar size={16} className="mr-2" />
                         Manage Events
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onNavigate('organizer-wizard')}>
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("organizer-wizard")}
+                      >
                         <Plus size={16} className="mr-2" />
                         Create Event
                       </DropdownMenuItem>
                     </>
                   )}
-                  {userRole === 'admin' && (
+                  {userRole === "admin" && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onNavigate('admin-dashboard')}>
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("admin-dashboard")}
+                      >
                         <Shield size={16} className="mr-2" />
                         Admin Dashboard
                       </DropdownMenuItem>
                     </>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onNavigate("user-profile")}>
                     <User size={16} className="mr-2" />
-                    Settings
+                    Profile & Settings
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onNavigate('login')}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      authService.logout();
+                      // Logout will redirect to /login automatically
+                    }}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <LogOut size={16} className="mr-2" />
                     Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Button
-                onClick={() => onNavigate('login')}
+                onClick={() => onNavigate("login")}
                 variant="secondary"
                 size="sm"
                 className="bg-white text-teal-600 hover:bg-neutral-100"

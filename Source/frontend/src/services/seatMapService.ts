@@ -1,49 +1,50 @@
-import { apiClient } from "./apiClient";
+import apiClient from "./apiClient";
 
+// ===== INTERFACES =====
 export interface SeatDto {
-  id: number;
-  row: string;
-  seatNumber: string;
-  gridRow?: number;
-  gridColumn?: number;
-  status: "Available" | "Selected" | "Sold" | "Blocked" | "Reserved";
+  seatId: string;
+  row: number;
+  seatNumber: number;
+  gridRow: number;
+  gridColumn: number;
+  status: "Available" | "Reserved" | "Sold";
   price: number;
-  seatZoneId?: number;
+  seatZoneId: string;
 }
 
 export interface SeatZoneDto {
-  id: number;
+  seatZoneId: string;
   name: string;
-  color?: string;
+  color: string;
   description?: string;
-  startRow: number;
-  endRow: number;
-  startColumn: number;
-  endColumn: number;
+  rowStart: number;
+  rowEnd: number;
+  columnStart: number;
+  columnEnd: number;
   zonePrice: number;
   capacity: number;
   availableSeats: number;
-  isActive: boolean;
+  seats: SeatDto[];
 }
 
 export interface SeatMapDto {
-  id: number;
-  eventId: number;
+  seatMapId: string;
+  eventId: string;
   name: string;
-  description?: string;
-  layoutConfig: string; // JSON string
+  layoutConfig?: string;
   totalRows: number;
   totalColumns: number;
   isActive: boolean;
+  createdAt: string;
   zones: SeatZoneDto[];
   seats: SeatDto[];
 }
 
 export interface CreateSeatMapDto {
-  eventId: number;
+  eventId: string;
   name: string;
   description?: string;
-  layoutConfig: string;
+  layoutConfig?: string;
   totalRows: number;
   totalColumns: number;
 }
@@ -58,74 +59,71 @@ export interface UpdateSeatMapDto {
 }
 
 export interface ReserveSeatDto {
-  seatIds: number[];
+  seatIds: string[];
 }
 
-const seatMapService = {
+// ===== SEAT MAP SERVICE =====
+class SeatMapService {
   /**
    * Get seat map by ID
-   * GET /api/seatmaps/{id}
    */
-  getSeatMapById: async (id: number): Promise<SeatMapDto> => {
-    const response = await apiClient.get<SeatMapDto>(`/seatmaps/${id}`);
+  async getSeatMapById(seatMapId: string): Promise<SeatMapDto> {
+    const response = await apiClient.get<SeatMapDto>(`/SeatMap/${seatMapId}`);
     return response.data;
-  },
+  }
 
   /**
    * Get seat map by event ID
-   * GET /api/seatmaps/event/{eventId}
    */
-  getSeatMapByEvent: async (eventId: number): Promise<SeatMapDto> => {
+  async getSeatMapByEvent(eventId: string): Promise<SeatMapDto> {
     const response = await apiClient.get<SeatMapDto>(
-      `/seatmaps/event/${eventId}`
+      `/SeatMap/event/${eventId}`
     );
     return response.data;
-  },
+  }
 
   /**
-   * Create seat map (Organizer/Admin)
-   * POST /api/seatmaps
+   * Create a new seat map (Organizer/Admin only)
    */
-  createSeatMap: async (data: CreateSeatMapDto): Promise<SeatMapDto> => {
-    const response = await apiClient.post<SeatMapDto>("/seatmaps", data);
+  async createSeatMap(data: CreateSeatMapDto): Promise<SeatMapDto> {
+    const response = await apiClient.post<SeatMapDto>("/SeatMap", data);
     return response.data;
-  },
+  }
 
   /**
-   * Update seat map (Organizer/Admin)
-   * PUT /api/seatmaps/{id}
+   * Update seat map (Organizer/Admin only)
    */
-  updateSeatMap: async (
-    id: number,
+  async updateSeatMap(
+    seatMapId: string,
     data: UpdateSeatMapDto
-  ): Promise<SeatMapDto> => {
-    const response = await apiClient.put<SeatMapDto>(`/seatmaps/${id}`, data);
+  ): Promise<SeatMapDto> {
+    const response = await apiClient.put<SeatMapDto>(
+      `/SeatMap/${seatMapId}`,
+      data
+    );
     return response.data;
-  },
+  }
 
   /**
-   * Delete seat map (Organizer/Admin)
-   * DELETE /api/seatmaps/{id}
+   * Delete seat map (Organizer/Admin only)
    */
-  deleteSeatMap: async (id: number): Promise<void> => {
-    await apiClient.delete(`/seatmaps/${id}`);
-  },
+  async deleteSeatMap(seatMapId: string): Promise<void> {
+    await apiClient.delete(`/SeatMap/${seatMapId}`);
+  }
 
   /**
    * Reserve seats
-   * POST /api/seatmaps/{seatMapId}/reserve
    */
-  reserveSeats: async (seatMapId: number, seatIds: number[]): Promise<void> => {
-    await apiClient.post(`/seatmaps/${seatMapId}/reserve`, seatIds);
-  },
+  async reserveSeats(seatMapId: string, seatIds: string[]): Promise<void> {
+    await apiClient.post(`/SeatMap/${seatMapId}/reserve`, { seatIds });
+  }
 
   /**
-   * Release reserved seats
-   * POST /api/seatmaps/{seatMapId}/release
+   * Release seats
    */
-  releaseSeats: async (seatMapId: number, seatIds: number[]): Promise<void> => {
-    await apiClient.post(`/seatmaps/${seatMapId}/release`, seatIds);
-  },
-};
+  async releaseSeats(seatMapId: string, seatIds: string[]): Promise<void> {
+    await apiClient.post(`/SeatMap/${seatMapId}/release`, { seatIds });
+  }
+}
 
-export default seatMapService;
+export const seatMapService = new SeatMapService();

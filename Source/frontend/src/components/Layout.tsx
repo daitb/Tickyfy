@@ -1,24 +1,17 @@
-import { Outlet } from "react-router-dom";
+import { ReactNode } from "react";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
-import { useNavigateAdapter } from "../hooks/useNavigateAdapter";
 
-export function Layout() {
-  const { handleNavigate } = useNavigateAdapter();
+interface LayoutProps {
+  children: ReactNode;
+}
 
+export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
-      <Header
-        onNavigate={handleNavigate}
-        currentPage=""
-        isAuthenticated={false}
-        userRole="user"
-        onSearchOpenChange={() => {}}
-      />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <Footer />
+      <Header onNavigate={(page) => (window.location.href = `/${page}`)} />
+      <main className="flex-1">{children}</main>
+      <Footer onNavigate={(page) => (window.location.href = `/${page}`)} />
     </div>
   );
 }

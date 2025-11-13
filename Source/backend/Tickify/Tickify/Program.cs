@@ -145,13 +145,16 @@ namespace Tickify
 
             // ============================================
             // 5. CORS CONFIGURATION
-            // Cho phép frontend gọi API
+            // Cho phép frontend gọi API (đọc từ appsettings.json)
             // ============================================
+            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+                                 ?? new[] { "http://localhost:3000", "http://localhost:5173" };
+            
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
                 {
-                    policy.WithOrigins("http://localhost:5173", "http://localhost:3000") // Vite & React default ports
+                    policy.WithOrigins(allowedOrigins)
                           .AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials();

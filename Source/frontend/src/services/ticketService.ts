@@ -1,113 +1,90 @@
-import { apiClient } from "./apiClient";
+import apiClient from "./apiClient";
 
-export interface TicketDetailDto {
-  id: number;
-  bookingId: number;
-  ticketCode: string;
-  qrCode: string;
-  eventName: string;
-  eventDate: string;
-  venueName: string;
+// ===== INTERFACES =====
+export interface TicketDto {
+  ticketId: string;
+  bookingId: string;
+  eventId: string;
+  userId: string;
+  ticketTypeId: string;
   seatNumber?: string;
-  ticketTypeName: string;
-  price: number;
+  qrCode: string;
   status: string;
-  createdAt: string;
+  price: number;
+  isCheckedIn: boolean;
+  checkedInAt?: string;
+  event?: any;
 }
 
 export interface TransferTicketDto {
   recipientEmail: string;
-  message?: string;
+  recipientName: string;
 }
 
-export interface TicketTransferDto {
-  id: number;
-  ticketId: number;
-  fromUserId: number;
-  toUserEmail: string;
-  status: string;
-  transferredAt: string;
-}
-
-const ticketService = {
+// ===== TICKET SERVICE =====
+class TicketService {
   /**
    * Get ticket by ID
-   * GET /api/ticket/{id}
    */
-  getTicketById: async (id: number): Promise<TicketDetailDto> => {
-    const response = await apiClient.get<TicketDetailDto>(`/ticket/${id}`);
+  async getTicketById(ticketId: string): Promise<TicketDto> {
+    const response = await apiClient.get<TicketDto>(`/Ticket/${ticketId}`);
     return response.data;
-  },
+  }
 
   /**
-   * Get current user's tickets
-   * GET /api/ticket/my-tickets
+   * Get all tickets for current user
    */
-  getMyTickets: async (): Promise<TicketDetailDto[]> => {
-    const response = await apiClient.get<TicketDetailDto[]>(
-      "/ticket/my-tickets"
-    );
+  async getMyTickets(): Promise<TicketDto[]> {
+    const response = await apiClient.get<TicketDto[]>("/Ticket/my-tickets");
     return response.data;
-  },
+  }
 
   /**
    * Transfer ticket to another user
-   * POST /api/ticket/{id}/transfer
    */
-  transferTicket: async (
-    ticketId: number,
+  async transferTicket(
+    ticketId: string,
     data: TransferTicketDto
-  ): Promise<TicketTransferDto> => {
-    const response = await apiClient.post<TicketTransferDto>(
-      `/ticket/${ticketId}/transfer`,
-      data
-    );
+  ): Promise<void> {
+    await apiClient.post(`/Ticket/${ticketId}/transfer`, data);
+  }
+
+  /**
+   * Cancel a ticket
+   */
+  async cancelTicket(ticketId: string): Promise<void> {
+    await apiClient.post(`/Ticket/${ticketId}/cancel`);
+  }
+
+  /**
+   * Validate ticket (for QR scanning)
+   */
+  async validateTicket(
+    ticketId: string
+  ): Promise<{ isValid: boolean; message: string }> {
+    const response = await apiClient.post<{
+      isValid: boolean;
+      message: string;
+    }>(`/Ticket/${ticketId}/validate`);
     return response.data;
-  },
+  }
 
   /**
-   * Accept ticket transfer
-   * POST /api/ticket/transfers/{id}/accept
+   * Check in ticket
    */
-  acceptTransfer: async (transferId: number): Promise<void> => {
-    await apiClient.post(`/ticket/transfers/${transferId}/accept`);
-  },
+  async checkInTicket(ticketId: string): Promise<void> {
+    await apiClient.post(`/Ticket/${ticketId}/check-in`);
+  }
 
   /**
-   * Reject ticket transfer
-   * POST /api/ticket/transfers/{id}/reject
+   * Download ticket as PDF
    */
-  rejectTransfer: async (transferId: number): Promise<void> => {
-    await apiClient.post(`/ticket/transfers/${transferId}/reject`);
-  },
-
-  /**
-   * Get QR code for ticket
-   * GET /api/ticket/{id}/qrcode
-   */
-  getTicketQRCode: async (ticketId: number): Promise<string> => {
-    const response = await apiClient.get<string>(`/ticket/${ticketId}/qrcode`);
+  async downloadTicket(ticketId: string): Promise<Blob> {
+    const response = await apiClient.get(`/Ticket/${ticketId}/download`, {
+      responseType: "blob",
+    });
     return response.data;
-  },
+  }
+}
 
-  /**
-   * Resend ticket email
-   * POST /api/ticket/{id}/resend-email
-   */
-  resendTicketEmail: async (ticketId: number): Promise<void> => {
-    await apiClient.post(`/ticket/${ticketId}/resend-email`);
-  },
-
-  /**
-   * Get all tickets for an event (Organizer only)
-   * GET /api/ticket/event/{eventId}
-   */
-  getEventTickets: async (eventId: number): Promise<TicketDetailDto[]> => {
-    const response = await apiClient.get<TicketDetailDto[]>(
-      `/ticket/event/${eventId}`
-    );
-    return response.data;
-  },
-};
-
-export default ticketService;
+export const ticketService = new TicketService();

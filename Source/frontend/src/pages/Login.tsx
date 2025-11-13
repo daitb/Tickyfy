@@ -5,6 +5,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { Separator } from "../components/ui/separator";
+import { authService } from "../services/authService";
 
 interface LoginProps {
   onNavigate: (page: string) => void;
@@ -16,16 +17,48 @@ export function Login({ onNavigate }: LoginProps) {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Call backend API
+      console.log("Attempting login with:", { email, password: "***" });
+      const response = await authService.login({ email, password });
+      console.log("Login response:", response);
+
+      // Redirect based on role (backend returns roles array)
+      const userRole = response.roles[0];
+      console.log("User role:", userRole);
+
+      if (userRole === "User") {
+        onNavigate("home");
+      } else if (userRole === "Organizer") {
+        onNavigate("organizer-dashboard");
+      } else if (userRole === "Admin") {
+        onNavigate("admin-dashboard");
+      } else {
+        onNavigate("home");
+      }
+    } catch (err: any) {
+      console.error("Login error full:", err);
+      console.error("Error response:", err.response);
+      console.error("Error response data:", err.response?.data);
+
+      // Get error message from different possible locations
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.errors?.[0] ||
+        err.message ||
+        "Invalid email or password";
+
+      setError(errorMessage);
+    } finally {
       setIsLoading(false);
-      onNavigate("home");
-    }, 1000);
+    }
   };
 
   const handleSocialLogin = (provider: string) => {
@@ -123,6 +156,13 @@ export function Login({ onNavigate }: LoginProps) {
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
@@ -174,7 +214,7 @@ export function Login({ onNavigate }: LoginProps) {
                     id="remember"
                     checked={rememberMe}
                     onCheckedChange={(checked: boolean) =>
-                      setRememberMe(checked)
+                      setRememberMe(checked as boolean)
                     }
                   />
                   <label

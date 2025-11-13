@@ -1,24 +1,11 @@
-import { useState, useRef, useEffect } from "react";
-import {
-  Search,
-  TrendingUp,
-  MapPin,
-  Calendar,
-  ArrowRight,
-  Music,
-  Theater,
-  Trophy,
-  Briefcase,
-  Palette,
-  UtensilsCrossed,
-  X,
-} from "lucide-react";
-import { Input } from "./ui/input";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
-import { mockEvents, categories, cities } from "../mockData";
-import { Category } from "../types";
+import { useState, useRef, useEffect } from 'react';
+import { Search, TrendingUp, MapPin, Calendar, ArrowRight, Music, Theater, Trophy, Briefcase, Palette, UtensilsCrossed, X } from 'lucide-react';
+import { Input } from './ui/input';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
+import { mockEvents, categories, cities } from '../mockData';
+import { Category } from '../types';
 
 interface InlineSearchBarProps {
   onEventClick?: (eventId: string) => void;
@@ -28,36 +15,35 @@ interface InlineSearchBarProps {
 }
 
 const trendingKeywords = [
-  "yconcert",
-  "gdragon",
-  "drama",
-  "ntpmm",
-  "summer festival",
+  'yconcert',
+  'gdragon',
+  'drama',
+  'ntpmm',
+  'summer festival',
 ];
 
 const categoryIcons: Record<Category, any> = {
-  Music: Music,
-  Theater: Theater,
-  Sports: Trophy,
-  Conference: Briefcase,
-  Arts: Palette,
-  "Food & Drink": UtensilsCrossed,
-  Other: Briefcase,
+  'Music': Music,
+  'Theater': Theater,
+  'Sports': Trophy,
+  'Conference': Briefcase,
+  'Arts': Palette,
+  'Food & Drink': UtensilsCrossed,
 };
 
-export function InlineSearchBar({
+export function InlineSearchBar({ 
   onEventClick,
   onCategoryClick,
   onCityClick,
-  onOpenChange,
+  onOpenChange
 }: InlineSearchBarProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("category");
+  const [activeTab, setActiveTab] = useState('category');
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
   // Notify parent when open state changes
   useEffect(() => {
@@ -67,29 +53,26 @@ export function InlineSearchBar({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
 
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         setIsOpen(false);
         inputRef.current?.blur();
       }
     };
 
     if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleEscape);
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
     }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen]);
 
@@ -97,7 +80,7 @@ export function InlineSearchBar({
   useEffect(() => {
     if (searchQuery.length >= 2) {
       setIsLoading(true);
-
+      
       // Clear previous timeout
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
@@ -127,7 +110,7 @@ export function InlineSearchBar({
 
   const handleClose = () => {
     setIsOpen(false);
-    setSearchQuery("");
+    setSearchQuery('');
   };
 
   const handleTrendingClick = (keyword: string) => {
@@ -156,34 +139,28 @@ export function InlineSearchBar({
   };
 
   // Filter events based on search query
-  const filteredEvents =
-    searchQuery.trim().length >= 2
-      ? mockEvents
-          .filter(
-            (event) =>
-              event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              event.category
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase()) ||
-              event.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              event.venue.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-          .slice(0, 4)
-      : mockEvents.slice(0, 4);
+  const filteredEvents = searchQuery.trim().length >= 2
+    ? mockEvents.filter(event => 
+        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.venue.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 4)
+    : mockEvents.slice(0, 4);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
     }).format(price);
   };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
+    return new Intl.DateTimeFormat('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
     }).format(date);
   };
 
@@ -194,10 +171,7 @@ export function InlineSearchBar({
       {/* Search Input */}
       <div ref={containerRef} className="relative w-full max-w-2xl">
         <div className="relative">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 z-10"
-            size={20}
-          />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 z-10" size={20} />
           <Input
             ref={inputRef}
             type="text"
@@ -224,9 +198,9 @@ export function InlineSearchBar({
 
         {/* Dropdown Panel */}
         {isOpen && (
-          <div
+          <div 
             className="absolute top-full mt-2 left-0 right-0 bg-neutral-900 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
-            style={{ maxHeight: "500px", overflowY: "auto", zIndex: 60 }}
+            style={{ maxHeight: '500px', overflowY: 'auto', zIndex: 60 }}
           >
             <div className="p-6">
               {!showResults ? (
@@ -246,10 +220,7 @@ export function InlineSearchBar({
                           onClick={() => handleTrendingClick(keyword)}
                         >
                           {keyword}
-                          <TrendingUp
-                            size={12}
-                            className="ml-1 text-teal-400"
-                          />
+                          <TrendingUp size={12} className="ml-1 text-teal-400" />
                         </Badge>
                       ))}
                     </div>
@@ -259,16 +230,10 @@ export function InlineSearchBar({
                   <div className="mb-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                       <TabsList className="mb-4 bg-neutral-800">
-                        <TabsTrigger
-                          value="category"
-                          className="data-[state=active]:bg-teal-500 data-[state=active]:text-white"
-                        >
+                        <TabsTrigger value="category" className="data-[state=active]:bg-teal-500 data-[state=active]:text-white">
                           Explore by Category
                         </TabsTrigger>
-                        <TabsTrigger
-                          value="city"
-                          className="data-[state=active]:bg-teal-500 data-[state=active]:text-white"
-                        >
+                        <TabsTrigger value="city" className="data-[state=active]:bg-teal-500 data-[state=active]:text-white">
                           Explore by City
                         </TabsTrigger>
                       </TabsList>
@@ -280,17 +245,12 @@ export function InlineSearchBar({
                             return (
                               <button
                                 key={category}
-                                onClick={() =>
-                                  handleCategoryCardClick(category)
-                                }
+                                onClick={() => handleCategoryCardClick(category)}
                                 className="group relative overflow-hidden rounded-lg bg-gradient-to-br from-neutral-800 to-neutral-950 p-4 text-left transition-all hover:scale-105 hover:shadow-xl"
                               >
                                 <div className="absolute inset-0 bg-gradient-to-br from-teal-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className="relative z-10">
-                                  <Icon
-                                    className="text-teal-400 mb-2"
-                                    size={24}
-                                  />
+                                  <Icon className="text-teal-400 mb-2" size={24} />
                                   <p className="text-white">{category}</p>
                                 </div>
                               </button>
@@ -309,10 +269,7 @@ export function InlineSearchBar({
                             >
                               <div className="absolute inset-0 bg-gradient-to-br from-teal-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                               <div className="relative z-10">
-                                <MapPin
-                                  className="text-teal-400 mb-2"
-                                  size={24}
-                                />
+                                <MapPin className="text-teal-400 mb-2" size={24} />
                                 <p className="text-white">{city}</p>
                               </div>
                             </button>
@@ -327,9 +284,7 @@ export function InlineSearchBar({
                     <h3 className="text-white mb-3">Suggestions for You</h3>
                     <div className="space-y-3">
                       {filteredEvents.slice(0, 3).map((event) => {
-                        const lowestPrice = Math.min(
-                          ...event.ticketTiers.map((tier) => tier.price)
-                        );
+                        const lowestPrice = Math.min(...event.ticketTiers.map(tier => tier.price));
                         return (
                           <button
                             key={event.id}
@@ -337,8 +292,8 @@ export function InlineSearchBar({
                             className="group w-full flex gap-3 p-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-all"
                           >
                             <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden">
-                              <img
-                                src={event.image}
+                              <img 
+                                src={event.image} 
                                 alt={event.title}
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                               />
@@ -355,9 +310,9 @@ export function InlineSearchBar({
                                 From {formatPrice(lowestPrice)}
                               </p>
                             </div>
-                            <ArrowRight
-                              size={16}
-                              className="text-neutral-500 group-hover:text-teal-400 group-hover:translate-x-1 transition-all self-center"
+                            <ArrowRight 
+                              size={16} 
+                              className="text-neutral-500 group-hover:text-teal-400 group-hover:translate-x-1 transition-all self-center" 
                             />
                           </button>
                         );
@@ -370,24 +325,16 @@ export function InlineSearchBar({
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-white">Search Results</h3>
-                    <Badge
-                      variant="secondary"
-                      className="bg-teal-500/20 text-teal-400"
-                    >
-                      {filteredEvents.length} result
-                      {filteredEvents.length !== 1 ? "s" : ""}
+                    <Badge variant="secondary" className="bg-teal-500/20 text-teal-400">
+                      {filteredEvents.length} result{filteredEvents.length !== 1 ? 's' : ''}
                     </Badge>
                   </div>
                   {filteredEvents.length > 0 ? (
                     <div className="space-y-3">
                       {filteredEvents.map((event) => {
-                        const lowestPrice = Math.min(
-                          ...event.ticketTiers.map((tier) => tier.price)
-                        );
-                        const isSoldOut = event.ticketTiers.every(
-                          (tier) => tier.available === 0
-                        );
-
+                        const lowestPrice = Math.min(...event.ticketTiers.map(tier => tier.price));
+                        const isSoldOut = event.ticketTiers.every(tier => tier.available === 0);
+                        
                         return (
                           <button
                             key={event.id}
@@ -395,16 +342,14 @@ export function InlineSearchBar({
                             className="group w-full flex gap-3 p-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-all"
                           >
                             <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
-                              <img
-                                src={event.image}
+                              <img 
+                                src={event.image} 
                                 alt={event.title}
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                               />
                               {isSoldOut && (
                                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                                  <Badge className="bg-red-500 text-white text-xs">
-                                    Sold Out
-                                  </Badge>
+                                  <Badge className="bg-red-500 text-white text-xs">Sold Out</Badge>
                                 </div>
                               )}
                             </div>
@@ -426,9 +371,9 @@ export function InlineSearchBar({
                                 From {formatPrice(lowestPrice)}
                               </p>
                             </div>
-                            <ArrowRight
-                              size={16}
-                              className="text-neutral-500 group-hover:text-teal-400 group-hover:translate-x-1 transition-all self-center"
+                            <ArrowRight 
+                              size={16} 
+                              className="text-neutral-500 group-hover:text-teal-400 group-hover:translate-x-1 transition-all self-center" 
                             />
                           </button>
                         );
@@ -441,13 +386,12 @@ export function InlineSearchBar({
                       </div>
                       <h4 className="text-white mb-2">No events found</h4>
                       <p className="text-sm text-neutral-400 mb-4">
-                        Try searching with different keywords or explore by
-                        category
+                        Try searching with different keywords or explore by category
                       </p>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setSearchQuery("")}
+                        onClick={() => setSearchQuery('')}
                         className="border-teal-500 text-teal-400 hover:bg-teal-500/20"
                       >
                         Clear search
@@ -463,7 +407,7 @@ export function InlineSearchBar({
 
       {/* Overlay - positioned behind the dropdown */}
       {isOpen && (
-        <div
+        <div 
           className="fixed inset-0 bg-black/60 z-40 animate-in fade-in duration-200"
           style={{ top: 0 }}
         />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   QrCode,
   XCircle,
@@ -15,24 +15,29 @@ import {
   Printer,
   ChevronRight,
   ArrowLeft,
-} from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../components/ui/select';
+} from "../components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
+} from "../components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -40,14 +45,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../components/ui/table';
+} from "../components/ui/table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '../components/ui/dialog';
-import { mockEvents } from '../mockData';
+} from "../components/ui/dialog";
+import { mockEvents } from "../mockData";
 
 interface ScanHistoryProps {
   eventId?: string;
@@ -61,65 +66,65 @@ interface ScanRecord {
   attendeeName: string;
   ticketType: string;
   seat?: string;
-  status: 'success' | 'failed' | 'duplicate';
+  status: "success" | "failed" | "duplicate";
   scannedBy: string;
 }
 
 const mockScans: ScanRecord[] = [
   {
-    id: '1',
-    time: '18:45:23',
-    ticketCode: 'TIX-001',
-    attendeeName: 'John Doe',
-    ticketType: 'VIP',
-    seat: 'A12',
-    status: 'success',
-    scannedBy: 'Staff 1',
+    id: "1",
+    time: "18:45:23",
+    ticketCode: "TIX-001",
+    attendeeName: "John Doe",
+    ticketType: "VIP",
+    seat: "A12",
+    status: "success",
+    scannedBy: "Staff 1",
   },
   {
-    id: '2',
-    time: '18:43:15',
-    ticketCode: 'TIX-002',
-    attendeeName: 'Jane Smith',
-    ticketType: 'Standard',
-    seat: 'B24',
-    status: 'success',
-    scannedBy: 'Staff 2',
+    id: "2",
+    time: "18:43:15",
+    ticketCode: "TIX-002",
+    attendeeName: "Jane Smith",
+    ticketType: "Standard",
+    seat: "B24",
+    status: "success",
+    scannedBy: "Staff 2",
   },
   {
-    id: '3',
-    time: '18:42:08',
-    ticketCode: 'TIX-003',
-    attendeeName: 'Bob Johnson',
-    ticketType: 'VIP',
-    seat: 'A15',
-    status: 'duplicate',
-    scannedBy: 'Staff 1',
+    id: "3",
+    time: "18:42:08",
+    ticketCode: "TIX-003",
+    attendeeName: "Bob Johnson",
+    ticketType: "VIP",
+    seat: "A15",
+    status: "duplicate",
+    scannedBy: "Staff 1",
   },
   {
-    id: '4',
-    time: '18:40:55',
-    ticketCode: 'TIX-004',
-    attendeeName: 'Alice Williams',
-    ticketType: 'Standard',
-    status: 'failed',
-    scannedBy: 'Staff 3',
+    id: "4",
+    time: "18:40:55",
+    ticketCode: "TIX-004",
+    attendeeName: "Alice Williams",
+    ticketType: "Standard",
+    status: "failed",
+    scannedBy: "Staff 3",
   },
   {
-    id: '5',
-    time: '18:38:42',
-    ticketCode: 'TIX-005',
-    attendeeName: 'Charlie Brown',
-    ticketType: 'Early Bird',
-    seat: 'C10',
-    status: 'success',
-    scannedBy: 'Staff 2',
+    id: "5",
+    time: "18:38:42",
+    ticketCode: "TIX-005",
+    attendeeName: "Charlie Brown",
+    ticketType: "Early Bird",
+    seat: "C10",
+    status: "success",
+    scannedBy: "Staff 2",
   },
 ];
 
 export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedScan, setSelectedScan] = useState<ScanRecord | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -133,34 +138,35 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
   };
 
   const handleExport = (format: string) => {
-    console.log('Exporting as:', format);
+    console.log("Exporting as:", format);
   };
 
   const filteredScans = mockScans.filter((scan) => {
     const matchesSearch =
       scan.ticketCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       scan.attendeeName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || scan.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || scan.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'success':
+      case "success":
         return (
           <Badge className="bg-green-100 text-green-700 gap-1">
             <CheckCircle size={12} />
             Success
           </Badge>
         );
-      case 'failed':
+      case "failed":
         return (
           <Badge className="bg-red-100 text-red-700 gap-1">
             <XCircle size={12} />
             Failed
           </Badge>
         );
-      case 'duplicate':
+      case "duplicate":
         return (
           <Badge className="bg-amber-100 text-amber-700 gap-1">
             <AlertTriangle size={12} />
@@ -172,19 +178,25 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
     }
   };
 
-  const successCount = mockScans.filter((s) => s.status === 'success').length;
-  const failedCount = mockScans.filter((s) => s.status === 'failed').length;
+  const successCount = mockScans.filter((s) => s.status === "success").length;
+  const failedCount = mockScans.filter((s) => s.status === "failed").length;
 
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-neutral-600 mb-6">
-          <button onClick={() => onNavigate('event-management')} className="hover:text-teal-600">
+          <button
+            onClick={() => onNavigate("event-management")}
+            className="hover:text-teal-600"
+          >
             My Events
           </button>
           <ChevronRight size={16} />
-          <button onClick={() => onNavigate('event-detail', event.id)} className="hover:text-teal-600">
+          <button
+            onClick={() => onNavigate("event-detail", event.id)}
+            className="hover:text-teal-600"
+          >
             {event.title}
           </button>
           <ChevronRight size={16} />
@@ -197,7 +209,11 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-neutral-200 rounded-lg overflow-hidden flex-shrink-0">
-                  <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+                  <img
+                    src={event.image}
+                    alt={event.title}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div>
                   <h2 className="text-neutral-900 mb-1">{event.title}</h2>
@@ -231,22 +247,25 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                    <DropdownMenuItem onClick={() => handleExport("pdf")}>
                       <Download size={14} className="mr-2" />
                       PDF Report
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleExport('excel')}>
+                    <DropdownMenuItem onClick={() => handleExport("excel")}>
                       <Download size={14} className="mr-2" />
                       Excel Spreadsheet
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleExport('csv')}>
+                    <DropdownMenuItem onClick={() => handleExport("csv")}>
                       <Download size={14} className="mr-2" />
                       CSV Data
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Button variant="outline" onClick={() => onNavigate('event-detail', event.id)}>
+                <Button
+                  variant="outline"
+                  onClick={() => onNavigate("event-detail", event.id)}
+                >
                   <ArrowLeft size={16} className="mr-2" />
                   Back to Event
                 </Button>
@@ -265,8 +284,12 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
                   <QrCode className="text-teal-600" size={20} />
                 </div>
               </div>
-              <div className="text-2xl text-neutral-900 mb-1">{successCount}</div>
-              <div className="text-xs text-neutral-600">Successful check-ins</div>
+              <div className="text-2xl text-neutral-900 mb-1">
+                {successCount}
+              </div>
+              <div className="text-xs text-neutral-600">
+                Successful check-ins
+              </div>
             </CardContent>
           </Card>
 
@@ -279,7 +302,9 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
                 </div>
               </div>
               <div className="text-2xl text-red-500 mb-1">{failedCount}</div>
-              <div className="text-xs text-neutral-600">Invalid or duplicate</div>
+              <div className="text-xs text-neutral-600">
+                Invalid or duplicate
+              </div>
             </CardContent>
           </Card>
 
@@ -315,7 +340,10 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                  size={18}
+                />
                 <Input
                   placeholder="Search ticket code or name..."
                   value={searchTerm}
@@ -340,7 +368,10 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
                 disabled={isRefreshing}
                 className="w-full sm:w-auto"
               >
-                <RotateCw size={16} className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <RotateCw
+                  size={16}
+                  className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+                />
                 Refresh
               </Button>
             </div>
@@ -355,9 +386,9 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
                 <Calendar className="mx-auto text-neutral-400 mb-4" size={64} />
                 <h3 className="text-neutral-900 mb-2">No scans found</h3>
                 <p className="text-neutral-600">
-                  {searchTerm || statusFilter !== 'all'
-                    ? 'Try adjusting your filters'
-                    : 'Check-ins will appear here once scanning begins'}
+                  {searchTerm || statusFilter !== "all"
+                    ? "Try adjusting your filters"
+                    : "Check-ins will appear here once scanning begins"}
                 </p>
               </div>
             ) : (
@@ -370,7 +401,9 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
                     <TableHead>Type</TableHead>
                     <TableHead className="hidden md:table-cell">Seat</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="hidden lg:table-cell">Scanned By</TableHead>
+                    <TableHead className="hidden lg:table-cell">
+                      Scanned By
+                    </TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -381,8 +414,12 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
                       className="hover:bg-neutral-50 cursor-pointer"
                       onClick={() => setSelectedScan(scan)}
                     >
-                      <TableCell className="font-mono text-sm">{scan.time}</TableCell>
-                      <TableCell className="font-mono">{scan.ticketCode}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {scan.time}
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        {scan.ticketCode}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <User size={14} className="text-neutral-400" />
@@ -393,7 +430,7 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
                         <Badge variant="outline">{scan.ticketType}</Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {scan.seat || '-'}
+                        {scan.seat || "-"}
                       </TableCell>
                       <TableCell>{getStatusBadge(scan.status)}</TableCell>
                       <TableCell className="hidden lg:table-cell text-neutral-600">
@@ -401,16 +438,23 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuTrigger
+                            asChild
+                            onClick={(e: React.MouseEvent) =>
+                              e.stopPropagation()
+                            }
+                          >
                             <Button variant="ghost" size="sm">
                               <MoreVertical size={16} />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setSelectedScan(scan)}>
+                            <DropdownMenuItem
+                              onClick={() => setSelectedScan(scan)}
+                            >
                               View Details
                             </DropdownMenuItem>
-                            {scan.status === 'failed' && (
+                            {scan.status === "failed" && (
                               <DropdownMenuItem>Rescan</DropdownMenuItem>
                             )}
                             <DropdownMenuItem>
@@ -433,7 +477,9 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
 
         {/* Pagination */}
         <div className="flex items-center justify-between mt-6">
-          <div className="text-sm text-neutral-600">Showing 1-{filteredScans.length} of {mockScans.length}</div>
+          <div className="text-sm text-neutral-600">
+            Showing 1-{filteredScans.length} of {mockScans.length}
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled>
               Previous
@@ -497,7 +543,11 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
                   <Printer size={16} className="mr-2" />
                   Print Receipt
                 </Button>
-                <Button variant="outline" className="flex-1" onClick={() => setSelectedScan(null)}>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setSelectedScan(null)}
+                >
                   Close
                 </Button>
               </div>

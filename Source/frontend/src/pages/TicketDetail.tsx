@@ -34,9 +34,9 @@ export function TicketDetail({
   onNavigate,
 }: TicketDetailProps) {
   // Find ticket from orders list if not provided
-  let currentOrder: Order | undefined;
-  let currentTicket: OrderTicket | undefined;
-  let currentEvent: any; // Nếu có type Event thì dùng, nếu không thì dùng any
+  let currentTicket: any = null;
+  let currentOrder: any = null;
+  let currentEvent: any = null;
 
   if (ticketId && orders) {
     for (const order of orders) {
@@ -54,7 +54,7 @@ export function TicketDetail({
   if (!currentTicket && orders && orders.length > 0) {
     currentOrder = orders[0];
     currentTicket = currentOrder.tickets[0];
-    currentEvent = mockEvents.find((e) => e.id === currentOrder?.eventId);
+    currentEvent = mockEvents.find((e) => e.id === currentOrder.eventId);
   }
 
   if (!currentTicket) {

@@ -1,14 +1,19 @@
-import { useState } from 'react';
-import { Lock, CheckCircle, ShoppingBag } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { ProgressSteps } from '../components/ProgressSteps';
-import { FeeBreakdown } from '../components/FeeBreakdown';
-import { PaymentMethodSelector, PaymentMethod } from '../components/PaymentMethodSelector';
-import { Separator } from '../components/ui/separator';
-import { mockEvents } from '../mockData';
-import { CartItem, Order } from '../types';
+import { useState } from "react";
+import { Lock, CheckCircle, ShoppingBag } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { ProgressSteps } from "../components/ProgressSteps";
+import { FeeBreakdown } from "../components/FeeBreakdown";
+import {
+  PaymentMethodSelector,
+  PaymentMethod,
+} from "../components/PaymentMethodSelector";
+import { Separator } from "../components/ui/separator";
+import { mockEvents } from "../mockData";
+import { CartItem, Order } from "../types";
+import { bookingService } from "../services/bookingService";
+import { authService } from "../services/authService";
 
 interface CheckoutProps {
   items: CartItem[];
@@ -16,20 +21,26 @@ interface CheckoutProps {
   onCompleteOrder: (order: Order) => void;
 }
 
-export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) {
+export function Checkout({
+  items,
+  onNavigate,
+  onCompleteOrder,
+}: CheckoutProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
-    email: '',
-    name: '',
-    phone: '',
+    email: "",
+    name: "",
+    phone: "",
   });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('momo');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("momo");
   const [paymentDetails, setPaymentDetails] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState("");
 
   const steps = [
-    { number: 1, label: 'Information' },
-    { number: 2, label: 'Payment' },
-    { number: 3, label: 'Review' }
+    { number: 1, label: "Information" },
+    { number: 2, label: "Payment" },
+    { number: 3, label: "Review" },
   ];
 
   if (items.length === 0) {
@@ -38,8 +49,13 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
         <div className="text-center">
           <ShoppingBag className="mx-auto mb-4 text-neutral-400" size={48} />
           <h2 className="mb-2">Your cart is empty</h2>
-          <p className="text-neutral-600 mb-6">Add some tickets to get started!</p>
-          <Button onClick={() => onNavigate('home')} className="bg-teal-500 hover:bg-teal-600">
+          <p className="text-neutral-600 mb-6">
+            Add some tickets to get started!
+          </p>
+          <Button
+            onClick={() => onNavigate("home")}
+            className="bg-teal-500 hover:bg-teal-600"
+          >
             Browse Events
           </Button>
         </div>
@@ -47,7 +63,10 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
     );
   }
 
-  const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
   const serviceFee = subtotal * 0.05;
   const total = subtotal + serviceFee;
 
@@ -63,63 +82,72 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
   const handleNext = () => {
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
-  const handleSubmit = () => {
-    // Group tickets by event
-    const ticketsByEvent = items.reduce((acc, item) => {
-      if (!acc[item.eventId]) {
-        acc[item.eventId] = [];
-      }
-      
-      // Create individual tickets for each quantity
-      for (let i = 0; i < item.quantity; i++) {
-        acc[item.eventId].push({
-          id: `tkt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          tierId: item.tierId,
-          tierName: item.tierName,
-          price: item.price,
-          qrCode: `QR-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-          status: 'valid' as const
-        });
-      }
-      
-      return acc;
-    }, {} as Record<string, any[]>);
+  const handleSubmit = async () => {
+    setIsProcessing(true);
+    setError("");
 
-    // Create order for the first event (in real app, would handle multiple events)
-    const firstEventId = Object.keys(ticketsByEvent)[0];
-    const order: Order = {
-      id: `ORD-${Date.now()}`,
-      userId: 'user-1',
-      eventId: firstEventId,
-      tickets: ticketsByEvent[firstEventId],
-      subtotal,
-      serviceFee,
-      total,
-      status: 'completed',
-      createdAt: new Date().toISOString(),
-      userEmail: formData.email,
-      userName: formData.name
-    };
+    try {
+      // Check if user is authenticated
+      if (!authService.isAuthenticated()) {
+        setError("Please login to complete your booking");
+        onNavigate("login");
+        return;
+      }
 
-    onCompleteOrder(order);
-    onNavigate('success');
+      // Get first item (in real app, would handle multiple events)
+      const firstItem = items[0];
+
+      // Create booking via API
+      const booking = await bookingService.createBooking({
+        eventId: firstItem.eventId,
+        ticketTypeId: firstItem.tierId,
+        quantity: items.reduce((sum, item) => sum + item.quantity, 0),
+        // seatIds can be added here if seat selection is implemented
+      });
+
+      // Create order object for Success page (using mock structure for compatibility)
+      const order: Order = {
+        id: booking.bookingId,
+        userId: booking.userId,
+        eventId: booking.eventId,
+        tickets: [], // Will be populated from backend if needed
+        subtotal: booking.totalAmount,
+        serviceFee: booking.totalAmount - booking.finalAmount,
+        total: booking.finalAmount,
+        status: "completed",
+        createdAt: booking.bookingDate,
+        userEmail: formData.email,
+        userName: formData.name,
+      };
+
+      onCompleteOrder(order);
+      onNavigate("success");
+    } catch (err: any) {
+      console.error("Booking error:", err);
+      setError(
+        err.response?.data?.message ||
+          "Failed to create booking. Please try again."
+      );
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
@@ -128,25 +156,30 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
       return formData.email && formData.name && formData.phone;
     }
     if (currentStep === 2) {
-      if (paymentMethod === 'momo') {
+      if (paymentMethod === "momo") {
         return paymentDetails?.phone;
       }
-      if (paymentMethod === 'vnpay') {
+      if (paymentMethod === "vnpay") {
         return true; // VNPay doesn't require additional details
       }
-      if (paymentMethod === 'credit-card') {
-        return paymentDetails?.number && paymentDetails?.name && 
-               paymentDetails?.expiry && paymentDetails?.cvv;
+      if (paymentMethod === "credit-card") {
+        return (
+          paymentDetails?.number &&
+          paymentDetails?.name &&
+          paymentDetails?.expiry &&
+          paymentDetails?.cvv
+        );
       }
     }
     return true;
   };
 
   const getPaymentMethodDisplay = () => {
-    if (paymentMethod === 'momo') return 'MoMo E-Wallet';
-    if (paymentMethod === 'vnpay') return 'VNPay Gateway';
-    if (paymentMethod === 'credit-card') return `Card ending in ${paymentDetails?.number?.slice(-4) || '****'}`;
-    return 'Not selected';
+    if (paymentMethod === "momo") return "MoMo E-Wallet";
+    if (paymentMethod === "vnpay") return "VNPay Gateway";
+    if (paymentMethod === "credit-card")
+      return `Card ending in ${paymentDetails?.number?.slice(-4) || "****"}`;
+    return "Not selected";
   };
 
   return (
@@ -155,24 +188,34 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
         {/* Header */}
         <div className="mb-8">
           <h1 className="mb-2">Checkout</h1>
-          <p className="text-neutral-600">Complete your purchase in just a few steps</p>
+          <p className="text-neutral-600">
+            Complete your purchase in just a few steps
+          </p>
         </div>
-        
+
         <ProgressSteps steps={steps} currentStep={currentStep} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
           {/* Form */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl p-8 shadow-sm">
+              {/* Error Message */}
+              {error && (
+                <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
               {/* Step 1: Personal Info */}
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div>
                     <h3 className="mb-6">Contact Information</h3>
                     <p className="text-neutral-600 mb-6">
-                      We'll send your tickets to this email address. Make sure it's correct!
+                      We'll send your tickets to this email address. Make sure
+                      it's correct!
                     </p>
-                    
+
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="email">Email Address *</Label>
@@ -181,7 +224,9 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                           type="email"
                           placeholder="you@example.com"
                           value={formData.email}
-                          onChange={(e) => handleInputChange('email', e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange("email", e.target.value)
+                          }
                           className="mt-2"
                         />
                         <p className="text-xs text-neutral-500 mt-2">
@@ -196,7 +241,9 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                           type="text"
                           placeholder="Nguyen Van A"
                           value={formData.name}
-                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange("name", e.target.value)
+                          }
                           className="mt-2"
                         />
                         <p className="text-xs text-neutral-500 mt-2">
@@ -211,7 +258,9 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                           type="tel"
                           placeholder="09xx xxx xxx"
                           value={formData.phone}
-                          onChange={(e) => handleInputChange('phone', e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange("phone", e.target.value)
+                          }
                           className="mt-2"
                         />
                         <p className="text-xs text-neutral-500 mt-2">
@@ -223,11 +272,15 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
 
                   <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="text-teal-600 mt-0.5 flex-shrink-0" size={18} />
+                      <CheckCircle
+                        className="text-teal-600 mt-0.5 flex-shrink-0"
+                        size={18}
+                      />
                       <div className="text-sm text-teal-700">
                         <p className="mb-1">Your information is secure</p>
                         <p className="text-xs">
-                          We use industry-standard encryption to protect your personal data.
+                          We use industry-standard encryption to protect your
+                          personal data.
                         </p>
                       </div>
                     </div>
@@ -245,11 +298,16 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
 
                   <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mt-6">
                     <div className="flex items-start gap-3">
-                      <Lock className="text-teal-600 mt-0.5 flex-shrink-0" size={18} />
+                      <Lock
+                        className="text-teal-600 mt-0.5 flex-shrink-0"
+                        size={18}
+                      />
                       <div className="text-sm text-teal-700">
                         <p className="mb-1">Your payment is secure</p>
                         <p className="text-xs">
-                          All transactions are encrypted and processed securely through our trusted payment partners. We never store your full payment details.
+                          All transactions are encrypted and processed securely
+                          through our trusted payment partners. We never store
+                          your full payment details.
                         </p>
                       </div>
                     </div>
@@ -271,8 +329,8 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <div className="flex items-start justify-between mb-3">
                           <h4>Contact Information</h4>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => setCurrentStep(1)}
                             className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
@@ -292,12 +350,16 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                         <h4 className="mb-4">Ticket Summary</h4>
                         <div className="space-y-3">
                           {items.map((item, index) => {
-                            const event = mockEvents.find(e => e.id === item.eventId);
+                            const event = mockEvents.find(
+                              (e) => e.id === item.eventId
+                            );
                             return (
                               <div key={index}>
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1">
-                                    <div className="text-neutral-900">{item.eventTitle}</div>
+                                    <div className="text-neutral-900">
+                                      {item.eventTitle}
+                                    </div>
                                     <div className="text-sm text-neutral-600 mt-1">
                                       {item.tierName}
                                     </div>
@@ -327,8 +389,8 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <div className="flex items-start justify-between mb-3">
                           <h4>Payment Method</h4>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => setCurrentStep(2)}
                             className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
@@ -344,7 +406,10 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                       {/* Terms */}
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                         <p className="text-sm text-amber-800">
-                          <strong>Important:</strong> By completing this purchase, you agree to our Terms of Service and acknowledge our Refund Policy. Please review the event's specific policies before proceeding.
+                          <strong>Important:</strong> By completing this
+                          purchase, you agree to our Terms of Service and
+                          acknowledge our Refund Policy. Please review the
+                          event's specific policies before proceeding.
                         </p>
                       </div>
                     </div>
@@ -375,9 +440,12 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                   <Button
                     onClick={handleSubmit}
                     className="flex-1 bg-teal-500 hover:bg-teal-600"
+                    disabled={isProcessing}
                   >
                     <Lock size={16} className="mr-2" />
-                    Complete Payment - {formatPrice(total)}
+                    {isProcessing
+                      ? "Processing..."
+                      : `Complete Payment - ${formatPrice(total)}`}
                   </Button>
                 )}
               </div>
@@ -387,11 +455,8 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
           {/* Summary Sidebar */}
           <div className="lg:col-span-1">
             <div className="sticky top-20">
-              <FeeBreakdown
-                subtotal={subtotal}
-                serviceFee={serviceFee}
-              />
-              
+              <FeeBreakdown subtotal={subtotal} serviceFee={serviceFee} />
+
               {/* Order Items Preview */}
               <div className="mt-4 bg-white rounded-xl p-5 shadow-sm">
                 <h4 className="mb-4">Order Items</h4>
@@ -399,8 +464,12 @@ export function Checkout({ items, onNavigate, onCompleteOrder }: CheckoutProps) 
                   {items.map((item, index) => (
                     <div key={index} className="text-sm">
                       <div className="flex justify-between">
-                        <span className="text-neutral-600">{item.tierName}</span>
-                        <span className="text-neutral-900">×{item.quantity}</span>
+                        <span className="text-neutral-600">
+                          {item.tierName}
+                        </span>
+                        <span className="text-neutral-900">
+                          ×{item.quantity}
+                        </span>
                       </div>
                     </div>
                   ))}
