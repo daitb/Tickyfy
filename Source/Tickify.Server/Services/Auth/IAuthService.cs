@@ -19,4 +19,6 @@ public interface IAuthService
     Task ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
 
     Task ChangePasswordAsync(int userId, ChangePasswordDto changePasswordDto);
+
+    Task<LoginResponse> ExternalLoginAsync(ExternalLoginDto externalLoginDto);
 }

@@ -22,6 +22,11 @@ namespace Tickify.Models
         public string? PasswordResetToken { get; set; }
         public DateTime? PasswordResetTokenExpiry { get; set; }
 
+        // OAuth Provider (Google, Facebook, etc.)
+        public string? AuthProvider { get; set; } // "Google", "Facebook", "Local"
+        public string? ProviderId { get; set; } // ID from OAuth provider
+        public string? ProviderDisplayName { get; set; } // Display name from provider
+
         // Navigation properties
         public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
         public ICollection<Booking>? Bookings { get; set; }

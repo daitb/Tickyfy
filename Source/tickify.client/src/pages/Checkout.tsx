@@ -7,11 +7,11 @@ import { ProgressSteps } from "../components/ProgressSteps";
 import { FeeBreakdown } from "../components/FeeBreakdown";
 import {
   PaymentMethodSelector,
-  PaymentMethod,
 } from "../components/PaymentMethodSelector";
+import type { PaymentMethod } from "../components/PaymentMethodSelector";
 import { Separator } from "../components/ui/separator";
 import { mockEvents } from "../mockData";
-import { CartItem, Order } from "../types";
+import type { CartItem, Order } from "../types";
 import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
 

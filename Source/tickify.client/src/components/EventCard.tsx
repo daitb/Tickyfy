@@ -1,5 +1,6 @@
 import { Calendar, MapPin } from 'lucide-react';
-import { Event } from '../types';
+import React from 'react';
+import type { Event } from '../types';
 import { Badge } from './ui/badge';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 

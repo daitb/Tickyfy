@@ -6,7 +6,7 @@ import { FeeBreakdown } from "../components/FeeBreakdown";
 import { Separator } from "../components/ui/separator";
 import { Badge } from "../components/ui/badge";
 import { mockEvents } from "../mockData";
-import { CartItem } from "../types";
+import type { CartItem } from "../types";
 import { promoCodeService } from "../services/promoCodeService";
 
 interface CartProps {

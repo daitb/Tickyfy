@@ -1,7 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import { EventCard } from './EventCard';
 import { Button } from './ui/button';
-import { Event } from '../types';
+import type { Event } from '../types';
 
 interface RelatedEventsProps {
   events: Event[];

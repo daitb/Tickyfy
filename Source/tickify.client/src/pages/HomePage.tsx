@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import HeroSlider from '../components/HeroSlider';
-import DateFilterDropdown from '../components/DateFilterDropdown';
-import CategoryFilterDropdown from '../components/CategoryFilterDropdown';
+import { HeroSlider } from '../components/HeroSlider';
+import { DateFilterDropdown } from '../components/DateFilterDropdown';
+import { CategoryFilterDropdown } from '../components/CategoryFilterDropdown';
 import { Calendar, MapPin, TrendingUp, Star } from 'lucide-react';
 
 const mockEvents = [
@@ -113,12 +113,16 @@ export default function HomePage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <DateFilterDropdown
-                selectedDate={selectedDate}
-                onDateChange={setSelectedDate}
+                onApply={(dates) => {
+                  // Handle date filter
+                  console.log('Date filter applied:', dates);
+                }}
               />
               <CategoryFilterDropdown
-                selectedCategory={selectedCategory}
-                onCategoryChange={setSelectedCategory}
+                onApply={(filters) => {
+                  // Handle category filter
+                  console.log('Category filter applied:', filters);
+                }}
               />
             </div>
             <div className="text-sm text-gray-600 sm:ml-auto">

@@ -1,5 +1,6 @@
 import { Music, Users, Utensils, Camera, Sparkles, Shield, Trophy, Star, Video, Heart, Building, Palette, Briefcase, Rocket, Award, Book, Coffee, Map, Leaf, Mic, Image, ShoppingBag, Smartphone, ChefHat, Shirt } from 'lucide-react';
-import { EventHighlight } from '../../types';
+import React from 'react';
+import type { EventHighlight } from '../../types';
 
 interface EventHighlightsProps {
   highlights: EventHighlight[];

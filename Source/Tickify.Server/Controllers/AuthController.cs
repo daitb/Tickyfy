@@ -144,26 +144,31 @@ public class AuthController : ControllerBase
         ));
     }
 
-    [Authorize]
-    [HttpGet("me")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
-    public IActionResult GetCurrentUser()
+    [HttpPost("external-login")]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ExternalLogin([FromBody] ExternalLoginDto externalLoginDto)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var email = User.FindFirst(ClaimTypes.Email)?.Value;
-        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-
-        var userInfo = new
+        try
         {
-            UserId = userId,
-            Email = email,
-            Roles = roles
-        };
+            _logger.LogInformation("External login attempt - Provider: {Provider}, Email: {Email}", 
+                externalLoginDto.Provider, externalLoginDto.Email);
 
-        return Ok(ApiResponse<object>.SuccessResponse(
-            userInfo,
-            "Lấy thông tin user thành công"
-        ));
+            var response = await _authService.ExternalLoginAsync(externalLoginDto);
+            
+            _logger.LogInformation("User {Email} logged in via {Provider} successfully", 
+                externalLoginDto.Email, externalLoginDto.Provider);
+            
+            return Ok(ApiResponse<LoginResponse>.SuccessResponse(
+                response,
+                $"Đăng nhập bằng {externalLoginDto.Provider} thành công"
+            ));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "External login failed - Provider: {Provider}, Email: {Email}", 
+                externalLoginDto.Provider, externalLoginDto.Email);
+            throw;
+        }
     }
 }

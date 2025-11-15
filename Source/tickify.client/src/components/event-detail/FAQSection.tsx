@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { EventFAQ } from '../../types';
+import type { EventFAQ } from '../../types';
 
 interface FAQSectionProps {
   faqs: EventFAQ[];

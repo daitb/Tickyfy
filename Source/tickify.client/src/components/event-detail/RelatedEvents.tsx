@@ -1,5 +1,6 @@
 import { Calendar, MapPin } from 'lucide-react';
-import { Event } from '../../types';
+import React from 'react';
+import type { Event } from '../../types';
 
 interface RelatedEventsProps {
   currentEventId: string;

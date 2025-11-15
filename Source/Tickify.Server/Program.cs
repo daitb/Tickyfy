@@ -13,7 +13,9 @@ using Tickify.Services.Auth;
 using Tickify.Services.Payments;              // PaymentService, VNPayProvider, MoMoProvider
 using Tickify.Services.Refunds;              // RefundService
 using Tickify.Repositories;                  // EfPaymentRepository, EfRefundRequestRepository
-using Tickify.Interfaces.Repositories;       // IBookingRepository, IPaymentRepository, IRefundRequestRepository
+using Tickify.Interfaces.Repositories;
+using Tickify.Interfaces.Services;
+using Tickify.Services;       // IBookingRepository, IPaymentRepository, IRefundRequestRepository
 
 namespace Tickify
 {
@@ -54,6 +56,8 @@ namespace Tickify
             builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
             builder.Services.AddScoped<IRoleRepository, RoleRepository>();
             builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+            builder.Services.AddScoped<IUserService, UserService>();
+            builder.Services.AddScoped<IFileUploadService, FileUploadService>();
             builder.Services.AddScoped<Tickify.Services.Reviews.IReviewService, Tickify.Services.Reviews.ReviewService>();
 
 
@@ -66,7 +70,7 @@ namespace Tickify
             builder.Services.AddScoped<IBookingRepository, EfBookingRepository>(); // <-- THÊM DÒNG NÀY
             builder.Services.AddScoped<IPaymentRepository, EfPaymentRepository>();
             builder.Services.AddScoped<IRefundRequestRepository, EfRefundRequestRepository>();
-            builder.Services.AddScoped<IPaymentService, PaymentService>();
+            builder.Services.AddScoped<Services.Payments.IPaymentService, PaymentService>();
             builder.Services.AddScoped<IPaymentProvider, VNPayProvider>();
             builder.Services.AddScoped<IPaymentProvider, MoMoProvider>();
             builder.Services.AddScoped<IRefundService, RefundService>();

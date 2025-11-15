@@ -1,7 +1,7 @@
 import { QrCode, Download, Share2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { OrderTicket } from '../types';
+import type { OrderTicket } from '../types';
 
 interface QRTicketCardProps {
   ticket: OrderTicket;

@@ -5,7 +5,7 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { Badge } from './ui/badge';
-import { Category } from '../types';
+import type { Category } from '../types';
 
 interface CategoryFilterDropdownProps {
   onApply: (filters: {

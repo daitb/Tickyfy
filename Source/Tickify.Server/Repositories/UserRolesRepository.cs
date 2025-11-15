@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Tickify.Data;
 using Tickify.Models;
 
@@ -15,5 +16,22 @@ public class UserRoleRepository : IUserRoleRepository
     public async Task AddUserRoleAsync(UserRole userRole)
     {
         await _context.UserRoles.AddAsync(userRole);
+    }
+
+    public async Task<UserRole?> GetUserRoleAsync(int userId, int roleId)
+    {
+        return await _context.UserRoles
+            .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
+    }
+
+    public async Task RemoveUserRoleAsync(UserRole userRole)
+    {
+        _context.UserRoles.Remove(userRole);
+        await Task.CompletedTask;
+    }
+
+    public async Task SaveChangesAsync()
+    {
+        await _context.SaveChangesAsync();
     }
 }

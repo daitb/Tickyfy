@@ -1,4 +1,4 @@
-import { Event, Order, Category, WishlistItem, WaitlistEntry } from './types';
+import type { Event, Order, Category, WishlistItem, WaitlistEntry } from './types';
 
 // Categories for filtering
 export const categories: Category[] = [

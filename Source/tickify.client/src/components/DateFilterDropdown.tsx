@@ -175,10 +175,13 @@ export function DateFilterDropdown({ onApply, currentDates }: DateFilterDropdown
             <div className="mb-4">
               <Calendar
                 mode="range"
-                selected={dateRange}
+                selected={dateRange.from && dateRange.to ? { from: dateRange.from, to: dateRange.to } : undefined}
                 onSelect={(range) => {
                   if (range) {
-                    setDateRange(range);
+                    setDateRange({
+                      from: range.from || new Date(),
+                      to: range.to || new Date()
+                    });
                     setQuickOption('all');
                   }
                 }}

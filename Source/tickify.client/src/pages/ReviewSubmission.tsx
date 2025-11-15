@@ -112,7 +112,7 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
                     <span>Attended on {event.date}</span>
                   </div>
                   <div>{event.venue}</div>
-                  <div>{event.location}</div>
+                  <div>{event.city}</div>
                 </div>
                 <Badge className="bg-green-100 text-green-700 mt-2">Verified Attendee</Badge>
               </div>

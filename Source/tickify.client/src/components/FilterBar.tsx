@@ -2,7 +2,7 @@ import { DateFilterDropdown } from './DateFilterDropdown';
 import { CategoryFilterDropdown } from './CategoryFilterDropdown';
 import { Badge } from './ui/badge';
 import { X } from 'lucide-react';
-import { Category } from '../types';
+import type { Category } from '../types';
 
 export interface FilterBarState {
   dateRange?: { from?: Date; to?: Date };

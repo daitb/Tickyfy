@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { EventCard } from '../components/EventCard';
-import { FilterBar, FilterBarState } from '../components/FilterBar';
+import { FilterBar } from '../components/FilterBar';
+import type { FilterBarState } from '../components/FilterBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { mockEvents } from '../mockData';
-import { SortOption } from '../types';
+import type { SortOption } from '../types';
 
 interface EventListingProps {
   onNavigate: (page: string, eventId?: string) => void;

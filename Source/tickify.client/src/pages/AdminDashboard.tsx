@@ -27,7 +27,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const totalRevenue = mockOrders.reduce((sum, order) => sum + order.total, 0);
   const totalTicketsSold = mockOrders.reduce((sum, order) => sum + order.tickets.length, 0);
   const totalEvents = mockEvents.length;
-  const activeEvents = mockEvents.filter(e => e.status === 'On Sale').length;
+  const activeEvents = mockEvents.filter(e => e.status === 'published').length;
   const totalOrganizers = 12; // Mock number
   const platformFees = totalRevenue * 0.05; // 5% platform fee
 

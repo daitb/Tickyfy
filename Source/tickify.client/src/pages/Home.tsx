@@ -5,7 +5,7 @@ import { Badge } from '../components/ui/badge';
 import { ArrowRight, TrendingUp, Star } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { mockEvents, categories } from '../mockData';
-import { Category } from '../types';
+import type { Category } from '../types';
 
 interface HomeProps {
   onNavigate: (page: string, eventId?: string) => void;

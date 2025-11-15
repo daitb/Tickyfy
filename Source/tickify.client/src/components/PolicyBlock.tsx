@@ -1,5 +1,6 @@
 import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
-import { EventPolicies } from '../types';
+import React from 'react';
+import type { EventPolicies } from '../types';
 
 interface PolicyBlockProps {
   policies: EventPolicies;

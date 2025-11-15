@@ -75,7 +75,7 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
     timezone: 'Asia/Ho_Chi_Minh',
     venueType: 'physical',
     venueName: event.venue,
-    address: event.location,
+    address: event.venue,
     city: event.city,
     district: '',
     mapsLink: '',

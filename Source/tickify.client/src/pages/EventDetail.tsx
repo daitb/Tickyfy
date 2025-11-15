@@ -15,7 +15,7 @@ import ShareButtons from '../components/event-detail/ShareButtons';
 import RelatedEvents from '../components/event-detail/RelatedEvents';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { mockEvents } from '../mockData';
-import { CartItem } from '../types';
+import type { CartItem } from '../types';
 
 interface EventDetailProps {
   eventId: string;

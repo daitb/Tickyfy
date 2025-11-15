@@ -161,6 +161,58 @@ class AuthService {
   async resetPassword(token: string, newPassword: string): Promise<void> {
     await apiClient.post("/Auth/reset-password", { token, newPassword });
   }
+
+    /**
+   * Google Login - External authentication
+   */
+  async googleLogin(credential: string): Promise<LoginResponse> {
+    console.log("AuthService.googleLogin - Sending Google credential");
+
+    // Decode JWT token to get user info
+    const payload = JSON.parse(atob(credential.split('.')[1]));
+    
+    const externalLoginDto = {
+      provider: "Google",
+      idToken: credential,
+      email: payload.email,
+      fullName: payload.name,
+      providerId: payload.sub,
+      profilePicture: payload.picture
+    };
+
+    const response = await apiClient.post<LoginResponse>("/Auth/external-login", externalLoginDto);
+
+    console.log("AuthService.googleLogin - Response:", response.data);
+
+    const loginResponse = response.data;
+
+    // Check if loginResponse is valid
+    if (!loginResponse || !loginResponse.accessToken || !loginResponse.email) {
+      console.error("Invalid login response structure:", loginResponse);
+      throw new Error("Invalid response from server");
+    }
+
+    // Save to localStorage
+    localStorage.setItem("authToken", loginResponse.accessToken);
+
+    // Convert backend response to UserDto format
+    const user: UserDto = {
+      userId: loginResponse.userId.toString(),
+      fullName: loginResponse.fullName,
+      email: loginResponse.email,
+      role: loginResponse.roles[0],
+      isEmailVerified: true,
+    };
+
+    localStorage.setItem("user", JSON.stringify(user));
+
+    console.log("AuthService.googleLogin - Login successful");
+
+    // Dispatch custom event to notify app of auth change
+    window.dispatchEvent(new Event("auth-change"));
+
+    return loginResponse;
+  }
 }
 
 export const authService = new AuthService();

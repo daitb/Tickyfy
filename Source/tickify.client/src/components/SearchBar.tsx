@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { mockEvents, categories, cities } from '../mockData';
-import { Category } from '../types';
+import type { Category } from '../types';
 
 interface SearchBarProps {
   value: string;
@@ -33,6 +33,7 @@ const categoryIcons: Record<Category, any> = {
   'Conference': Briefcase,
   'Arts': Palette,
   'Food & Drink': UtensilsCrossed,
+  'Other': Palette,
 };
 
 export function SearchBar({ 
