@@ -26,27 +26,52 @@ public sealed class PaymentService : IPaymentService
 
     public async Task<PaymentIntentDto> CreateAsync(CreatePaymentDto dto, string clientIp, CancellationToken ct)
     {
-        var booking = await _bookings.GetAsync(dto.BookingId, ct) ?? throw new InvalidOperationException("Booking not found");
-        if (booking.Status != BookingStatus.Pending) throw new InvalidOperationException("Booking not pending");
+        // Retrieve booking - must exist and be pending
+        var booking = await _bookings.GetAsync(dto.BookingId, ct);
+        if (booking is null)
+            throw new InvalidOperationException($"Booking {dto.BookingId} not found");
+        
+        if (booking.Status != BookingStatus.Pending)
+            throw new InvalidOperationException($"Booking is not pending (current status: {booking.Status})");
+
+        // Calculate final amount (total minus discount)
+        // Note: TotalAmount already has discount applied (TotalAmount = totalAmount - discount)
+        // So the amount to pay is just TotalAmount
+        var amount = booking.TotalAmount;
+        
+        // If amount is 0 (free event or 100% discount), we should handle it differently
+        // For now, we'll allow it but the payment provider might reject it
+        if (amount < 0)
+            throw new InvalidOperationException($"Invalid payment amount: {amount}. Amount cannot be negative");
+
+        // Find provider - use the one passed in DTO or fall back to default
+        if (!_providers.Any())
+            throw new InvalidOperationException("No payment providers are configured");
 
         var provider = _providers.FirstOrDefault(p => p.Name.Equals(dto.Provider, StringComparison.OrdinalIgnoreCase))
-                       ?? _providers.First(p => p.Name.Equals(_cfg["Payments:DefaultProvider"], StringComparison.OrdinalIgnoreCase));
+                       ?? _providers.FirstOrDefault(p => p.Name.Equals(_cfg["Payments:DefaultProvider"], StringComparison.OrdinalIgnoreCase))
+                       ?? _providers.First(); // Fallback to first available
 
-        // 1) tạo bản ghi Payment trước để có Id (int)
-        var paymentRow = new Payment {
+        if (provider is null)
+            throw new InvalidOperationException($"Payment provider '{dto.Provider}' not found and no default provider available");
+
+        // Create Payment record with the correct amount
+        var paymentRow = new Payment
+        {
             BookingId = booking.Id,
-            Amount = booking.TotalAmount,
+            Amount = amount,
             Method = dto.Provider.Equals("MoMo", StringComparison.OrdinalIgnoreCase) ? PaymentMethod.Momo : PaymentMethod.VNPay,
             Status = PaymentStatus.Pending,
             PaymentGateway = provider.Name
         };
+        
         var newId = await _payments.AddAsync(paymentRow, ct);
 
-        // 2) gọi provider, truyền paymentId (int) làm mã đối soát với gateway
-        var intent = await provider.CreatePaymentAsync(newId, booking.Id, booking.TotalAmount,
+        // Call provider to create payment intent with correct amount
+        var intent = await provider.CreatePaymentAsync(newId, booking.Id, amount,
                         $"Tickify - Booking {booking.Id}", clientIp, ct);
 
-        return intent; // RedirectUrl + ExpiresAtUtc + Provider + PaymentId
+        return intent;
     }
 
     public Task<bool> HandleWebhookAsync(string provider, HttpRequest request, CancellationToken ct)

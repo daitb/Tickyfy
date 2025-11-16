@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EventCard } from '../components/EventCard';
-import { FilterBar } from '../components/FilterBar';
-import type { FilterBarState } from '../components/FilterBar';
+import { FilterBar, FilterBarState } from '../components/FilterBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { mockEvents } from '../mockData';
-import type { SortOption } from '../types';
+import { eventService } from '../services/eventService';
+import { SortOption } from '../types';
 
 interface EventListingProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -13,9 +12,14 @@ interface EventListingProps {
 export function EventListing({ onNavigate }: EventListingProps) {
   const [filters, setFilters] = useState<FilterBarState>({});
   const [sortBy, setSortBy] = useState<SortOption>('popularity');
+  const [events, setEvents] = useState<any[]>([]);
 
-  // Filter events
-  let filteredEvents = [...mockEvents];
+  useEffect(() => {
+    eventService.getEvents().then((data) => setEvents(data || [])).catch(() => setEvents([]));
+  }, []);
+
+  // Filter events (from backend)
+  let filteredEvents = [...events];
 
   // Filter by date range
   if (filters.dateRange?.from) {
