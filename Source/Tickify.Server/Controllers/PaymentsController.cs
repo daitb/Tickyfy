@@ -7,7 +7,7 @@ using Tickify.Interfaces.Repositories;
 using Tickify.Models.Momo; 
 using Tickify.Services.Payments;
 
-namespace Tickify.Api.Controllers;
+namespace Tickify.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -27,7 +27,7 @@ public sealed class PaymentController : ControllerBase
         {
             // Get client IP address - prioritize X-Forwarded-For or X-Real-IP headers (for proxies/load balancers)
             // Then fall back to RemoteIpAddress
-            string ip = null;
+            string? ip = null;
             
             // Try X-Forwarded-For header first (most common for proxied requests)
             var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
@@ -113,7 +113,7 @@ public sealed class PaymentController : ControllerBase
         }
     }
 
-    // POST /api/payments/webhook/{provider}  (provider: vnpay|momo)
+    // POST /api/payment/webhook/{provider}  (provider: vnpay|momo)
     [AllowAnonymous]
     [HttpPost("webhook/{provider}")]
     public async Task<IActionResult> Webhook([FromRoute] string provider, CancellationToken ct)
@@ -122,7 +122,7 @@ public sealed class PaymentController : ControllerBase
         return ok ? Ok(new { RspCode = "00", Message = "success" }) : BadRequest();
     }
 
-    // GET /api/payments/webhook/{provider}
+    // GET /api/payment/webhook/{provider}
 
     [AllowAnonymous]
     [HttpGet("webhook/{provider}")]

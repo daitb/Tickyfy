@@ -19,6 +19,22 @@ export default function PaymentReturn() {
     async function run() {
       setStatus("verifying");
 
+      // Check if this is a free booking (no payment required)
+      const isFree = query.get("free") === "true";
+      const bookingIdParam = query.get("bookingId");
+
+      if (isFree && bookingIdParam) {
+        // Free booking - no payment verification needed
+        const parsedBookingId = parseInt(bookingIdParam, 10);
+        if (!isNaN(parsedBookingId)) {
+          setPaymentId(parsedBookingId);
+          setStatus("success");
+          setMessage("Your free booking has been confirmed!");
+          setTimeout(() => navigate("/my-tickets"), 2000);
+          return;
+        }
+      }
+
       // VNPay uses vnp_TxnRef as the payment id; MoMo uses orderId
       // VNPay also has vnp_ResponseCode: "00" means success
       const vnpTxnRef = query.get("vnp_TxnRef");

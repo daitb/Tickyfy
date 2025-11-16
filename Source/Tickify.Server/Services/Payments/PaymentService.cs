@@ -39,10 +39,31 @@ public sealed class PaymentService : IPaymentService
         // So the amount to pay is just TotalAmount
         var amount = booking.TotalAmount;
         
-        // If amount is 0 (free event or 100% discount), we should handle it differently
-        // For now, we'll allow it but the payment provider might reject it
         if (amount < 0)
             throw new InvalidOperationException($"Invalid payment amount: {amount}. Amount cannot be negative");
+
+        // Handle free bookings (amount = 0) - skip payment creation and directly confirm booking
+        // Database constraint requires Amount > 0, so we cannot create a payment record for free bookings
+        if (amount == 0)
+        {
+            // Directly confirm the booking without creating a payment record
+            booking.Status = BookingStatus.Confirmed;
+            booking.ExpiresAt = null;
+            await _bookings.UpdateAsync(booking, ct);
+
+            // Return a PaymentIntentDto with redirect to success page
+            // Use bookingId as a temporary paymentId for the redirect URL
+            var returnUrl = _cfg["Payments:ReturnUrl"] ?? "http://localhost:5173/payment/return";
+            var successUrl = $"{returnUrl}?bookingId={booking.Id}&free=true";
+            
+            return new PaymentIntentDto
+            {
+                Provider = "Free",
+                PaymentId = booking.Id, // Use bookingId as identifier since no payment record exists
+                RedirectUrl = successUrl,
+                ExpiresAtUtc = DateTime.UtcNow.AddMinutes(15)
+            };
+        }
 
         // Find provider - use the one passed in DTO or fall back to default
         if (!_providers.Any())
@@ -55,7 +76,7 @@ public sealed class PaymentService : IPaymentService
         if (provider is null)
             throw new InvalidOperationException($"Payment provider '{dto.Provider}' not found and no default provider available");
 
-        // Create Payment record with the correct amount
+        // Create Payment record with the correct amount (must be > 0 due to database constraint)
         var paymentRow = new Payment
         {
             BookingId = booking.Id,
@@ -75,8 +96,15 @@ public sealed class PaymentService : IPaymentService
     }
 
     public Task<bool> HandleWebhookAsync(string provider, HttpRequest request, CancellationToken ct)
-        => (_providers.First(p => p.Name.Equals(provider, StringComparison.OrdinalIgnoreCase)))
-           .HandleWebhookAsync(request, ct);
+    {
+        var providerInstance = _providers.FirstOrDefault(p => p.Name.Equals(provider, StringComparison.OrdinalIgnoreCase));
+        if (providerInstance == null)
+        {
+            Console.WriteLine($"[PaymentService] Provider '{provider}' not found for webhook");
+            return Task.FromResult(false);
+        }
+        return providerInstance.HandleWebhookAsync(request, ct);
+    }
 
     public Task<bool> VerifyAsync(int paymentId, CancellationToken ct)
         => (_providers.First()).VerifyAsync(paymentId, ct);
@@ -84,7 +112,11 @@ public sealed class PaymentService : IPaymentService
     public async Task<bool> RefundAsync(RefundDto dto, CancellationToken ct)
     {
         var payment = await _payments.GetAsync(dto.PaymentId, ct) ?? throw new InvalidOperationException("Payment not found");
-        var provider = _providers.First(p => p.Name.Equals(payment.PaymentGateway, StringComparison.OrdinalIgnoreCase));
+        var provider = _providers.FirstOrDefault(p => p.Name.Equals(payment.PaymentGateway, StringComparison.OrdinalIgnoreCase));
+        if (provider == null)
+        {
+            throw new InvalidOperationException($"Payment provider '{payment.PaymentGateway}' not found for refund");
+        }
         return await provider.RefundAsync(payment.Id, dto.Amount, dto.Reason, ct);
     }
 }
