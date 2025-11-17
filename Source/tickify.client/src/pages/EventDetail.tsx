@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, MapPin, User, Minus, Plus, Clock, Share2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { MiniCartBar } from '../components/MiniCartBar';
@@ -14,8 +14,8 @@ import LocationMap from '../components/event-detail/LocationMap';
 import ShareButtons from '../components/event-detail/ShareButtons';
 import RelatedEvents from '../components/event-detail/RelatedEvents';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
-import { mockEvents } from '../mockData';
-import type { CartItem } from '../types';
+import { eventService } from '../services/eventService';
+import { CartItem } from '../types';
 
 interface EventDetailProps {
   eventId: string;
@@ -24,9 +24,32 @@ interface EventDetailProps {
 }
 
 export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailProps) {
-  const event = mockEvents.find(e => e.id === eventId);
+  const [event, setEvent] = useState<any | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [showTimer, setShowTimer] = useState(false);
+  const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    eventService.getEventByIdentifier(eventId)
+      .then((ev) => { if (mounted) setEvent(ev); })
+      .catch(() => { if (mounted) setEvent(null); });
+    return () => { mounted = false; };
+  }, [eventId]);
+
+  // Get related events from the same category
+  useEffect(() => {
+    if (event?.category) {
+      eventService.getEvents()
+        .then(events => {
+          const related = events.filter(e => 
+            e.category === event.category && e.id !== event.id
+          ).slice(0, 4);
+          setRelatedEvents(related);
+        })
+        .catch(() => setRelatedEvents([]));
+    }
+  }, [event?.category, event?.id]);
 
   if (!event) {
     return (
@@ -94,11 +117,6 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
       currency: 'VND'
     }).format(price);
   };
-
-  // Get related events from the same category
-  const relatedEvents = mockEvents.filter(e => 
-    e.category === event.category && e.id !== event.id
-  );
 
   const eventUrl = `https://tickify.vn/events/${event.slug}`;
 

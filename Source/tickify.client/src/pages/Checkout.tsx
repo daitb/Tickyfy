@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Lock, CheckCircle, ShoppingBag } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -7,13 +7,14 @@ import { ProgressSteps } from "../components/ProgressSteps";
 import { FeeBreakdown } from "../components/FeeBreakdown";
 import {
   PaymentMethodSelector,
+  PaymentMethod,
 } from "../components/PaymentMethodSelector";
-import type { PaymentMethod } from "../components/PaymentMethodSelector";
 import { Separator } from "../components/ui/separator";
-import { mockEvents } from "../mockData";
-import type { CartItem, Order } from "../types";
+import { eventService } from "../services/eventService";
+import { CartItem, Order } from "../types";
 import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
+import { createPaymentIntent } from "../services/paymentService";
 
 interface CheckoutProps {
   items: CartItem[];
@@ -36,12 +37,43 @@ export function Checkout({
   const [paymentDetails, setPaymentDetails] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
-
+  const [eventsMap, setEventsMap] = useState<Record<number, any>>({});
   const steps = [
     { number: 1, label: "Information" },
     { number: 2, label: "Payment" },
     { number: 3, label: "Review" },
   ];
+
+  // Utility: extract trailing numeric ID from strings like 'evt-1' or return number as-is
+  const extractTrailingNumber = (val: string | number | undefined) => {
+    if (typeof val === "number") return val;
+    if (!val) return NaN;
+    const s = String(val);
+    const m = s.match(/(\d+)$/);
+    return m ? parseInt(m[1], 10) : NaN;
+  };
+
+  // When cart items change, fetch event metadata from backend for display
+  useEffect(() => {
+    const ids = Array.from(
+      new Set(
+        items
+          .map((i) => extractTrailingNumber(i.eventId))
+          .filter((n) => !isNaN(n))
+      )
+    ) as number[];
+
+    ids.forEach((id) => {
+      if (eventsMap[id]) return;
+      eventService
+        .getEventById(id)
+        .then((ev) => setEventsMap((prev) => ({ ...prev, [id]: ev })))
+        .catch(() => {
+          // ignore missing events for now
+        });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   if (items.length === 0) {
     return (
@@ -108,33 +140,57 @@ export function Checkout({
       // Get first item (in real app, would handle multiple events)
       const firstItem = items[0];
 
-      // Create booking via API
+      const eventId = extractTrailingNumber(firstItem.eventId);
+      const ticketTypeId = extractTrailingNumber(firstItem.tierId);
+
+      if (isNaN(eventId) || isNaN(ticketTypeId)) {
+        setError("Invalid event or ticket type ID");
+        return;
+      }
+
+      const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+
+      // Create booking via API with numeric IDs
       const booking = await bookingService.createBooking({
-        eventId: firstItem.eventId,
-        ticketTypeId: firstItem.tierId,
-        quantity: items.reduce((sum, item) => sum + item.quantity, 0),
-        // seatIds can be added here if seat selection is implemented
+        eventId: eventId,
+        ticketTypeId: ticketTypeId,
+        quantity: totalQuantity,
       });
 
-      // Create order object for Success page (using mock structure for compatibility)
-      const order: Order = {
-        id: booking.bookingId,
-        userId: booking.userId,
-        eventId: booking.eventId,
-        tickets: [], // Will be populated from backend if needed
-        subtotal: booking.totalAmount,
-        serviceFee: booking.totalAmount - booking.finalAmount,
-        total: booking.finalAmount,
-        status: "completed",
-        createdAt: booking.bookingDate,
-        userEmail: formData.email,
-        userName: formData.name,
+      console.log("Booking created:", booking);
+
+      // Now create payment intent for the booking
+      const paymentProviderMap: { [key in PaymentMethod]: "momo" | "vnpay" } = {
+        momo: "momo",
+        vnpay: "vnpay",
+        "credit-card": "vnpay", // fallback to VNPay for credit cards
       };
 
-      onCompleteOrder(order);
-      onNavigate("success");
+      const provider = paymentProviderMap[paymentMethod];
+      
+      try {
+        const paymentIntent = await createPaymentIntent({
+          bookingId: parseInt(String(booking.bookingId), 10),
+          provider: provider,
+        });
+
+        console.log("Payment intent created:", paymentIntent);
+
+        // Redirect to payment provider
+        if (paymentIntent.redirectUrl) {
+          window.location.href = paymentIntent.redirectUrl;
+        } else {
+          setError("No payment redirect URL received from provider");
+        }
+      } catch (paymentErr: any) {
+        console.error("Payment intent creation error:", paymentErr);
+        setError(
+          paymentErr.response?.data?.message ||
+            "Failed to initiate payment. Please try again."
+        );
+      }
     } catch (err: any) {
-      console.error("Booking error:", err);
+      console.error("Booking creation error:", err);
       setError(
         err.response?.data?.message ||
           "Failed to create booking. Please try again."
@@ -350,9 +406,8 @@ export function Checkout({
                         <h4 className="mb-4">Ticket Summary</h4>
                         <div className="space-y-3">
                           {items.map((item, index) => {
-                            const event = mockEvents.find(
-                              (e) => e.id === item.eventId
-                            );
+                                                  const numericEventId = extractTrailingNumber(item.eventId);
+                                                  const event = eventsMap[numericEventId];
                             return (
                               <div key={index}>
                                 <div className="flex justify-between items-start">

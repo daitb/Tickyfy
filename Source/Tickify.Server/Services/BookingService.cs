@@ -1,4 +1,6 @@
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using Tickify.Data;
 using Tickify.DTOs.Booking;
 using Tickify.Exceptions;
 using Tickify.Interfaces.Repositories;
@@ -13,6 +15,7 @@ public class BookingService : IBookingService
     private readonly ITicketRepository _ticketRepository;
     private readonly ISeatRepository _seatRepository;
     private readonly IPromoCodeRepository _promoCodeRepository;
+    private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
 
     public BookingService(
@@ -20,12 +23,14 @@ public class BookingService : IBookingService
         ITicketRepository ticketRepository,
         ISeatRepository seatRepository,
         IPromoCodeRepository promoCodeRepository,
+        ApplicationDbContext context,
         IMapper mapper)
     {
         _bookingRepository = bookingRepository;
         _ticketRepository = ticketRepository;
         _seatRepository = seatRepository;
         _promoCodeRepository = promoCodeRepository;
+        _context = context;
         _mapper = mapper;
     }
 
@@ -61,9 +66,21 @@ public class BookingService : IBookingService
 
     public async Task<BookingConfirmationDto> CreateBookingAsync(CreateBookingDto createBookingDto, int userId)
     {
-        // Calculate total amount based on ticket type and quantity (should be calculated, not from DTO)
-        // For now, we'll need to get ticket type price
-        decimal totalAmount = 0; // TODO: Get from TicketType price * quantity
+        // Get ticket type to calculate price
+        var ticketType = await _context.TicketTypes
+            .FirstOrDefaultAsync(tt => tt.Id == createBookingDto.TicketTypeId && tt.EventId == createBookingDto.EventId);
+        
+        if (ticketType == null)
+            throw new NotFoundException($"Ticket type {createBookingDto.TicketTypeId} not found for event {createBookingDto.EventId}");
+        
+        if (!ticketType.IsActive)
+            throw new BadRequestException("Ticket type is not active");
+        
+        if (ticketType.AvailableQuantity < createBookingDto.Quantity)
+            throw new BadRequestException($"Not enough tickets available. Available: {ticketType.AvailableQuantity}, Requested: {createBookingDto.Quantity}");
+
+        // Calculate total amount based on ticket type price and quantity
+        decimal totalAmount = ticketType.Price * createBookingDto.Quantity;
 
         // Validate seat availability
         if (createBookingDto.SeatIds?.Any() == true)
@@ -109,6 +126,11 @@ public class BookingService : IBookingService
         };
 
         var createdBooking = await _bookingRepository.CreateAsync(booking);
+
+        // Update ticket type available quantity (reserve tickets)
+        ticketType.AvailableQuantity -= createBookingDto.Quantity;
+        _context.TicketTypes.Update(ticketType);
+        await _context.SaveChangesAsync();
 
         // Increment promo code usage if applied
         if (promoCodeId.HasValue)

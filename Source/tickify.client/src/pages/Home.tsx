@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HeroSlider } from '../components/HeroSlider';
 import { EventCard } from '../components/EventCard';
 import { Badge } from '../components/ui/badge';
 import { ArrowRight, TrendingUp, Star } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { mockEvents, categories } from '../mockData';
-import type { Category } from '../types';
+import { eventService } from '../services/eventService';
+import { Category } from '../types';
 
 interface HomeProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -14,18 +14,42 @@ interface HomeProps {
 
 export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
+  const [events, setEvents] = useState<any[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [trendingEvents, setTrendingEvents] = useState<any[]>([]);
+  const [specialEvents, setSpecialEvents] = useState<any[]>([]);
+  const [upcomingEventsList, setUpcomingEventsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch all events for categories and upcoming events
+    Promise.all([
+      eventService.getEvents(),
+      eventService.getFeaturedEvents(4),
+      eventService.getUpcomingEvents(3)
+    ]).then(([allEvents, featured, upcoming]) => {
+      setEvents(allEvents || []);
+      const cats = Array.from(new Set((allEvents || []).map((e: any) => e.category).filter(Boolean)));
+      setAvailableCategories(cats);
+      setTrendingEvents(upcoming || []);
+      setSpecialEvents(featured || []);
+      setUpcomingEventsList(allEvents || []);
+    }).catch((error) => {
+      console.error('Error loading events:', error);
+      setEvents([]);
+      setAvailableCategories([]);
+      setTrendingEvents([]);
+      setSpecialEvents([]);
+      setUpcomingEventsList([]);
+    });
+  }, []);
 
   const handleViewDetails = (eventId: string) => {
     onNavigate('event-detail', eventId);
   };
 
-  const trendingEvents = mockEvents.slice(0, 3);
-  const upcomingEvents = mockEvents.slice(3);
-  const specialEvents = mockEvents.filter(e => e.category === 'Music').slice(0, 4);
-
   const filteredEvents = selectedCategory === 'all' 
-    ? upcomingEvents 
-    : upcomingEvents.filter(e => e.category === selectedCategory);
+    ? upcomingEventsList 
+    : upcomingEventsList.filter(e => e.category === selectedCategory);
 
   return (
     <div className="min-h-screen bg-white">
@@ -50,7 +74,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
             >
               All Events
             </Badge>
-            {categories.map((category) => (
+            {availableCategories.map((category) => (
               <Badge
                 key={category}
                 variant={selectedCategory === category ? 'default' : 'secondary'}
@@ -59,7 +83,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
                     ? 'bg-teal-500 hover:bg-teal-600 text-white' 
                     : 'bg-neutral-100 hover:bg-neutral-200'
                 }`}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => setSelectedCategory(category as Category | 'all')}
               >
                 {category}
               </Badge>

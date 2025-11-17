@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import App from "./App";
+import PaymentReturn from "./pages/PaymentReturn";
 
 export function AppRoutes() {
   // Map URL paths to page names
@@ -51,6 +52,7 @@ export function AppRoutes() {
           element={<App initialPage={route.page} />}
         />
       ))}
+      <Route path="/payment/return" element={<PaymentReturn />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -4,6 +4,7 @@ import {
   Download,
   Printer,
   Share2,
+  Wallet,
   ChevronRight,
   AlertCircle,
   Send,
@@ -18,8 +19,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "../components/ui/accordion";
-import type { Order } from "../types";
-import { mockEvents } from "../mockData";
+import { Order, OrderTicket } from "../types";
+import { mockEvents, mockOrders } from "../mockData";
 
 interface TicketDetailProps {
   ticketId?: string;
@@ -278,7 +279,9 @@ export function TicketDetail({
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-600">Check-in Status</span>
                   <Badge
-                    variant={currentTicket.checkInTime ? "default" : "secondary"}
+                    variant={
+                      currentTicket.checkInTime ? "default" : "secondary"
+                    }
                   >
                     {currentTicket.checkInTime
                       ? `Checked in at ${currentTicket.checkInTime}`
