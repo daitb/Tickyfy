@@ -151,6 +151,35 @@ export default function App({ initialPage }: AppProps) {
   );
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+  // Extract IDs from URL path when location changes
+  useEffect(() => {
+    const path = location.pathname;
+    
+    // Extract eventId from URL
+    if (path.startsWith("/event/")) {
+      const eventId = path.split("/event/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
+    
+    // Extract orderId from URL
+    if (path.startsWith("/order/")) {
+      const orderId = path.split("/order/")[1]?.split("/")[0];
+      if (orderId) {
+        setSelectedOrderId(orderId);
+        setCurrentPage("order-detail");
+      }
+    }
+    
+    // Extract ticketId from URL
+    if (path.startsWith("/ticket/")) {
+      const ticketId = path.split("/ticket/")[1]?.split("/")[0];
+      if (ticketId) {
+        setSelectedTicketId(ticketId);
+        setCurrentPage("ticket-detail");
+      }
+    }
+  }, [location.pathname]);
+
   // Check authentication on mount and when localStorage changes
   useEffect(() => {
     const checkAuth = () => {

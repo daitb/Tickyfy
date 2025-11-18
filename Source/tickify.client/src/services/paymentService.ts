@@ -43,6 +43,19 @@ export async function verifyPayment(paymentId: number) {
 }
 
 /**
+ * Verify payment from return URL parameters (when webhook is not received)
+ * This is more reliable for localhost development where webhooks can't reach the server
+ */
+export async function verifyPaymentFromReturnUrl(paymentId: number, queryParams: URLSearchParams) {
+  // Convert URLSearchParams to query string
+  const queryString = queryParams.toString();
+  const res = await apiClient.post<{ success: boolean }>(
+    `/payment/${paymentId}/verify-return-url${queryString ? `?${queryString}` : ''}`
+  );
+  return res.data.success;
+}
+
+/**
  * Lấy danh sách payment theo booking
  */
 export async function getPaymentsByBooking(bookingId: number) {
