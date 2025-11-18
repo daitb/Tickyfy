@@ -25,9 +25,20 @@ public sealed class ReviewController : ControllerBase
     public async Task<IActionResult> GetByEvent([FromRoute] int eventId)
         => Ok(await _service.GetByEventAsync(eventId));
 
+    // Lấy review theo ID (public)
+    [AllowAnonymous]
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById([FromRoute] int id)
+    {
+        var review = await _service.GetByIdAsync(id);
+        if (review == null)
+            return NotFound();
+        return Ok(review);
+    }
+
     // Lấy reviews của tôi (user)
     [Authorize]
-    [HttpGet("my")]
+    [HttpGet("my-reviews")]
     public async Task<IActionResult> GetMine()
         => Ok(await _service.GetMineAsync(User));
 

@@ -1,63 +1,77 @@
-// services/reviewService.ts
 import apiClient from "./apiClient";
 
-export interface Review {
+export interface ReviewDto {
   id: number;
   userId: number;
+  userName: string;
+  userAvatar?: string;
   eventId: number;
-  rating: number; // 1-5
-  comment?: string | null;
+  eventTitle: string;
+  rating: number;
+  comment?: string;
   createdAt: string;
-  updatedAt?: string | null;
+  updatedAt?: string;
 }
 
-/**
- * Lấy danh sách review theo Event
- * GET /api/review/event/{eventId}
- */
-export async function getReviewsByEvent(eventId: number) {
-  const res = await apiClient.get<Review[]>(`/review/event/${eventId}`);
-  return res.data;
-}
-
-/**
- * User tạo review
- * POST /api/review
- */
-export async function createReview(body: {
+export interface CreateReviewDto {
   eventId: number;
   rating: number;
   comment?: string;
-}) {
-  const res = await apiClient.post<Review>("/review", body);
-  return res.data;
 }
 
-/**
- * User xem review của chính mình
- * GET /api/review/my
- */
-export async function getMyReviews() {
-  const res = await apiClient.get<Review[]>("/review/my");
-  return res.data;
+export interface UpdateReviewDto {
+  rating: number;
+  comment?: string;
 }
 
-/**
- * User cập nhật review của mình
- * PUT /api/review/{id}
- */
-export async function updateMyReview(
-  id: number,
-  body: { rating: number; comment?: string }
-) {
-  const res = await apiClient.put<Review>(`/review/${id}`, body);
-  return res.data;
+// ===== REVIEW SERVICE =====
+class ReviewService {
+  /**
+   * Create a new review
+   */
+  async createReview(data: CreateReviewDto): Promise<ReviewDto> {
+    const response = await apiClient.post<ReviewDto>("/Review", data);
+    return response.data;
+  }
+
+  /**
+   * Get review by ID
+   */
+  async getReviewById(reviewId: number): Promise<ReviewDto> {
+    const response = await apiClient.get<ReviewDto>(`/Review/${reviewId}`);
+    return response.data;
+  }
+
+  /**
+   * Get reviews for an event
+   */
+  async getEventReviews(eventId: number): Promise<ReviewDto[]> {
+    const response = await apiClient.get<ReviewDto[]>(`/Review/event/${eventId}`);
+    return response.data;
+  }
+
+  /**
+   * Get current user's reviews
+   */
+  async getMyReviews(): Promise<ReviewDto[]> {
+    const response = await apiClient.get<ReviewDto[]>("/Review/my-reviews");
+    return response.data;
+  }
+
+  /**
+   * Update a review
+   */
+  async updateReview(reviewId: number, data: UpdateReviewDto): Promise<ReviewDto> {
+    const response = await apiClient.put<ReviewDto>(`/Review/${reviewId}`, data);
+    return response.data;
+  }
+
+  /**
+   * Delete a review
+   */
+  async deleteReview(reviewId: number): Promise<void> {
+    await apiClient.delete(`/Review/${reviewId}`);
+  }
 }
 
-/**
- * User xoá review của mình
- * DELETE /api/review/{id}
- */
-export async function deleteMyReview(id: number) {
-  await apiClient.delete(`/review/${id}`);
-}
+export const reviewService = new ReviewService();
