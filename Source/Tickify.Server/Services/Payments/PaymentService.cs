@@ -109,6 +109,30 @@ public sealed class PaymentService : IPaymentService
     public Task<bool> VerifyAsync(int paymentId, CancellationToken ct)
         => (_providers.First()).VerifyAsync(paymentId, ct);
 
+    public async Task<bool> VerifyFromReturnUrlAsync(int paymentId, IQueryCollection queryParams, CancellationToken ct)
+    {
+        // Get payment to determine which provider to use
+        var payment = await _payments.GetAsync(paymentId, ct);
+        if (payment == null)
+        {
+            Console.WriteLine($"[PaymentService] Payment {paymentId} not found for return URL verification");
+            return false;
+        }
+        
+        // Find the provider that matches the payment gateway
+        var provider = _providers.FirstOrDefault(p => p.Name.Equals(payment.PaymentGateway, StringComparison.OrdinalIgnoreCase))
+                       ?? _providers.FirstOrDefault(p => p.Name.Equals(_cfg["Payments:DefaultProvider"], StringComparison.OrdinalIgnoreCase))
+                       ?? _providers.First();
+        
+        if (provider == null)
+        {
+            Console.WriteLine($"[PaymentService] No provider found for payment {paymentId}");
+            return false;
+        }
+        
+        return await provider.VerifyFromReturnUrlAsync(paymentId, queryParams, ct);
+    }
+
     public async Task<bool> RefundAsync(RefundDto dto, CancellationToken ct)
     {
         var payment = await _payments.GetAsync(dto.PaymentId, ct) ?? throw new InvalidOperationException("Payment not found");

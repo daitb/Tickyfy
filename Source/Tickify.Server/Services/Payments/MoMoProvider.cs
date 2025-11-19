@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Tickify.Data;
 using Tickify.DTOs.Payment;
 using Tickify.Extensions;
 using Tickify.Interfaces.Repositories;
@@ -19,21 +21,157 @@ public sealed class MoMoProvider : IPaymentProvider
     private readonly HttpClient _http;
     private readonly IPaymentRepository _payments;
     private readonly IBookingRepository _bookings;
+    private readonly ITicketRepository _tickets;
+    private readonly ApplicationDbContext _context;
 
     public MoMoProvider(
         IOptions<MomoOptionModel> options,
         IHttpClientFactory hf,
         IPaymentRepository payments,
-        IBookingRepository bookings)
+        IBookingRepository bookings,
+        ITicketRepository tickets,
+        ApplicationDbContext context)
     {
         _opt = options.Value;
         _http = hf.CreateClient();
         _payments = payments;
         _bookings = bookings;
+        _tickets = tickets;
+        _context = context;
     }
 
-    public Task<bool> VerifyAsync(int paymentId, CancellationToken ct)
-        => _payments.ExistsAsync(paymentId, PaymentStatus.Completed, ct);
+    public async Task<bool> VerifyAsync(int paymentId, CancellationToken ct)
+    {
+        // Check if payment is completed
+        var payment = await _payments.GetAsync(paymentId, ct);
+        if (payment == null) return false;
+        
+        // Get booking to check status
+        var booking = await _bookings.GetAsync(payment.BookingId, ct);
+        if (booking == null) return false;
+        
+        // If payment is completed, confirm booking and create tickets if needed
+        if (payment.Status == PaymentStatus.Completed)
+        {
+            // If booking is still pending, confirm it (webhook might have missed)
+            if (booking.Status == BookingStatus.Pending)
+            {
+                booking.Status = BookingStatus.Confirmed;
+                booking.ExpiresAt = null;
+                await _bookings.UpdateAsync(booking, ct);
+                Console.WriteLine($"[MoMo Verify] Confirmed booking {booking.Id} for completed payment {paymentId}");
+            }
+            
+            // Ensure tickets are created if booking is confirmed
+            await CreateTicketsForBookingAsync(booking.Id, ct);
+            
+            return true;
+        }
+        
+        // If booking is already confirmed but payment status is still pending,
+        // update payment status to completed (webhook might have processed booking but not payment)
+        if (booking.Status == BookingStatus.Confirmed)
+        {
+            if (payment.Status == PaymentStatus.Pending)
+            {
+                payment.Status = PaymentStatus.Completed;
+                payment.PaidAt = DateTime.UtcNow;
+                await _payments.UpdateAsync(payment, ct);
+                Console.WriteLine($"[MoMo Verify] Updated payment {paymentId} to Completed for confirmed booking {booking.Id}");
+            }
+            
+            // Ensure tickets are created
+            await CreateTicketsForBookingAsync(booking.Id, ct);
+            
+            return true;
+        }
+        
+        return false;
+    }
+
+    public async Task<bool> VerifyFromReturnUrlAsync(int paymentId, IQueryCollection queryParams, CancellationToken ct)
+    {
+        try
+        {
+            // MoMo return URL typically doesn't include all the parameters needed for verification
+            // We'll check if we have resultCode or errorCode in the query params
+            var resultCode = queryParams["resultCode"].ToString();
+            var errorCode = queryParams["errorCode"].ToString();
+            var orderId = queryParams["orderId"].ToString();
+            var amount = queryParams["amount"].ToString();
+            
+            // Extract paymentId from orderId if needed
+            int extractedPaymentId = paymentId;
+            if (!string.IsNullOrEmpty(orderId) && orderId.Contains("_"))
+            {
+                var parts = orderId.Split('_');
+                if (parts.Length > 0 && int.TryParse(parts[0], out var parsedId))
+                {
+                    extractedPaymentId = parsedId;
+                }
+            }
+            
+            // Get payment record
+            var payment = await _payments.GetAsync(extractedPaymentId, ct);
+            if (payment is null)
+            {
+                Console.WriteLine($"[MoMo VerifyFromReturnUrl] Payment {extractedPaymentId} not found");
+                return false;
+            }
+            
+            // Check if we have success indicators
+            var isSuccess = (!string.IsNullOrEmpty(resultCode) && resultCode == "0") ||
+                           (!string.IsNullOrEmpty(errorCode) && errorCode == "0");
+            
+            if (isSuccess)
+            {
+                // Update payment status
+                if (payment.Status == PaymentStatus.Pending)
+                {
+                    payment.Status = PaymentStatus.Completed;
+                    payment.PaidAt = DateTime.UtcNow;
+                    var transId = queryParams["transId"].ToString();
+                    if (!string.IsNullOrEmpty(transId))
+                    {
+                        payment.TransactionId = transId;
+                    }
+                    await _payments.UpdateAsync(payment, ct);
+                }
+                
+                // Update booking status
+                var booking = await _bookings.GetAsync(payment.BookingId, ct);
+                if (booking != null && booking.Status == BookingStatus.Pending)
+                {
+                    booking.Status = BookingStatus.Confirmed;
+                    booking.ExpiresAt = null;
+                    await _bookings.UpdateAsync(booking, ct);
+                    
+                    // Create tickets for the confirmed booking
+                    await CreateTicketsForBookingAsync(booking.Id, ct);
+                }
+                
+                Console.WriteLine($"[MoMo VerifyFromReturnUrl] Payment {extractedPaymentId} completed successfully from return URL");
+                return true;
+            }
+            else
+            {
+                // If we have explicit failure codes, mark as failed
+                if (!string.IsNullOrEmpty(resultCode) && resultCode != "0")
+                {
+                    payment.Status = PaymentStatus.Failed;
+                    await _payments.UpdateAsync(payment, ct);
+                    Console.WriteLine($"[MoMo VerifyFromReturnUrl] Payment {extractedPaymentId} failed. Result code: {resultCode}");
+                }
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MoMo VerifyFromReturnUrl] Exception: {ex.Message}");
+            Console.WriteLine($"[MoMo VerifyFromReturnUrl] StackTrace: {ex.StackTrace}");
+            return false;
+        }
+    }
 
     public Task<bool> RefundAsync(int paymentId, decimal amount, string reason, CancellationToken ct)
         => Task.FromResult(false); // stub
@@ -236,6 +374,9 @@ public sealed class MoMoProvider : IPaymentProvider
                 booking.Status = BookingStatus.Confirmed;
                 booking.ExpiresAt = null;
                 await _bookings.UpdateAsync(booking, ct);
+
+                // Create tickets for the confirmed booking
+                await CreateTicketsForBookingAsync(booking.Id, ct);
             }
             return true;
         }
@@ -245,6 +386,97 @@ public sealed class MoMoProvider : IPaymentProvider
             await _payments.UpdateAsync(payment, ct);
             return false;
         }
+    }
+
+    private async Task CreateTicketsForBookingAsync(int bookingId, CancellationToken ct)
+    {
+        // Get booking with event and existing tickets
+        var booking = await _context.Bookings
+            .Include(b => b.Event)
+            .Include(b => b.Tickets)
+            .FirstOrDefaultAsync(b => b.Id == bookingId, ct);
+
+        if (booking == null)
+        {
+            Console.WriteLine($"[MoMo] Booking {bookingId} not found for ticket creation");
+            return;
+        }
+
+        // Check if tickets already exist
+        if (booking.Tickets != null && booking.Tickets.Any())
+        {
+            Console.WriteLine($"[MoMo] Tickets already exist for booking {bookingId}");
+            return;
+        }
+
+        // Get all ticket types for this event
+        var ticketTypes = await _context.TicketTypes
+            .Where(tt => tt.EventId == booking.EventId && tt.IsActive)
+            .ToListAsync(ct);
+
+        if (!ticketTypes.Any())
+        {
+            Console.WriteLine($"[MoMo] No ticket types found for event {booking.EventId}");
+            return;
+        }
+
+        // Find the ticket type that matches the booking amount
+        // Calculate quantity: TotalAmount / Price (considering discount)
+        // We'll use the first ticket type that matches the price per ticket
+        var pricePerTicket = booking.TotalAmount + booking.DiscountAmount; // Original total before discount
+        TicketType? selectedTicketType = null;
+        int quantity = 1;
+
+        // Try to find ticket type by matching price
+        foreach (var ticketType in ticketTypes.OrderByDescending(tt => tt.Price))
+        {
+            var calculatedQuantity = (int)Math.Round(pricePerTicket / ticketType.Price);
+            if (calculatedQuantity > 0 && Math.Abs(pricePerTicket - (ticketType.Price * calculatedQuantity)) < 0.01m)
+            {
+                selectedTicketType = ticketType;
+                quantity = calculatedQuantity;
+                break;
+            }
+        }
+
+        // If no exact match, use the most expensive ticket type and calculate quantity
+        if (selectedTicketType == null)
+        {
+            selectedTicketType = ticketTypes.OrderByDescending(tt => tt.Price).First();
+            quantity = (int)Math.Ceiling(pricePerTicket / selectedTicketType.Price);
+            if (quantity <= 0) quantity = 1;
+        }
+
+        // Note: Seat assignment is skipped here because we don't have access to the original
+        // SeatIds from CreateBookingDto in the webhook. Seats should be assigned when booking
+        // is created or through a separate process. For now, tickets are created without seat assignment.
+        // TODO: Store SeatIds in Booking model or create a BookingSeats junction table to track seat assignments.
+
+        // Create tickets
+        var ticketsToCreate = new List<Ticket>();
+        for (int i = 0; i < quantity; i++)
+        {
+            var ticket = new Ticket
+            {
+                BookingId = bookingId,
+                TicketTypeId = selectedTicketType.Id,
+                TicketCode = GenerateTicketCode(bookingId, i + 1),
+                Price = selectedTicketType.Price,
+                Status = TicketStatus.Valid,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            ticketsToCreate.Add(ticket);
+        }
+
+        // Bulk create tickets
+        await _tickets.CreateBulkAsync(ticketsToCreate);
+        Console.WriteLine($"[MoMo] Created {ticketsToCreate.Count} tickets for booking {bookingId}");
+    }
+
+    private static string GenerateTicketCode(int bookingId, int ticketNumber)
+    {
+        return $"TK{bookingId:D6}{ticketNumber:D3}{DateTime.UtcNow:yyyyMMdd}";
     }
 
     private static string HmacSHA256(string key, string data)

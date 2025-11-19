@@ -6,24 +6,33 @@ import {
   TabsTrigger,
 } from "../components/ui/tabs";
 import { QRTicketCard } from "../components/QRTicketCard";
-import { mockOrders, mockEvents } from "../mockData";
-import type { Order } from "../types";
-import { ticketService } from "../services/ticketService";
+import { ticketService, type TicketDto } from "../services/ticketService";
 import { authService } from "../services/authService";
 
 interface MyTicketsProps {
-  orders: Order[];
+  orders: any[];
   onNavigate: (page: string) => void;
 }
 
 export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
   const [activeTab, setActiveTab] = useState("upcoming");
-  const [tickets, setTickets] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<TicketDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     loadTickets();
+  }, []);
+
+  // Reload tickets when page becomes visible (user navigates back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadTickets();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const loadTickets = async () => {
@@ -34,37 +43,74 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
         return;
       }
 
+      console.log("[MyTickets] Loading tickets from API...");
       const userTickets = await ticketService.getMyTickets();
-      setTickets(userTickets);
+      console.log("[MyTickets] Tickets loaded:", userTickets);
+      
+      if (userTickets && Array.isArray(userTickets)) {
+        setTickets(userTickets);
+        setError(""); // Clear any previous errors
+        if (userTickets.length === 0) {
+          setError(""); // Don't show error for empty tickets, just show empty state
+        }
+      } else {
+        console.warn("[MyTickets] Invalid tickets response:", userTickets);
+        setTickets([]);
+        setError("Unable to load tickets. Please try again.");
+      }
     } catch (err: any) {
-      console.error("Failed to load tickets:", err);
-      setError("Failed to load tickets");
+      console.error("[MyTickets] Failed to load tickets:", err);
+      setError(err.response?.data?.message || err.message || "Failed to load tickets");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Combine prop orders with mock orders, removing duplicates based on order ID
-  const allOrders = [
-    ...orders,
-    ...mockOrders.filter(
-      (mockOrder) => !orders.some((order) => order.id === mockOrder.id)
-    ),
-  ];
+  // Group tickets by booking
+  const ticketsByBooking = tickets.reduce((acc, ticket) => {
+    const bookingId = ticket.bookingId.toString();
+    if (!acc[bookingId]) {
+      acc[bookingId] = {
+        bookingId: ticket.bookingId,
+        bookingNumber: ticket.bookingNumber,
+        eventId: ticket.eventId,
+        eventTitle: ticket.eventTitle,
+        eventVenue: ticket.eventVenue,
+        eventStartDate: ticket.eventStartDate,
+        eventEndDate: ticket.eventEndDate,
+        createdAt: ticket.createdAt,
+        tickets: []
+      };
+    }
+    acc[bookingId].tickets.push(ticket);
+    return acc;
+  }, {} as Record<string, {
+    bookingId: number;
+    bookingNumber: string;
+    eventId: number;
+    eventTitle: string;
+    eventVenue: string;
+    eventStartDate: string;
+    eventEndDate: string;
+    createdAt: string;
+    tickets: TicketDto[];
+  }>);
+
+  const bookingGroups = Object.values(ticketsByBooking);
 
   const now = new Date();
-  const upcomingOrders = allOrders.filter((order) => {
-    const event = mockEvents.find((e) => e.id === order.eventId);
-    return event && new Date(event.date) >= now;
+  const upcomingBookings = bookingGroups.filter((group) => {
+    const eventDate = new Date(group.eventStartDate);
+    return eventDate >= now;
   });
 
-  const pastOrders = allOrders.filter((order) => {
-    const event = mockEvents.find((e) => e.id === order.eventId);
-    return event && new Date(event.date) < now;
+  const pastBookings = bookingGroups.filter((group) => {
+    const eventDate = new Date(group.eventStartDate);
+    return eventDate < now;
   });
 
-  const renderTickets = (ordersList: Order[]) => {
-    if (ordersList.length === 0) {
+  const renderTickets = (bookingGroupsList: typeof bookingGroups) => {
+    if (bookingGroupsList.length === 0) {
       return (
         <div className="text-center py-16">
           <div className="text-neutral-400 mb-4">
@@ -94,37 +140,58 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
 
     return (
       <div className="space-y-8">
-        {ordersList.map((order) => {
-          const event = mockEvents.find((e) => e.id === order.eventId);
-          if (!event) return null;
-
-          return (
-            <div key={order.id}>
-              <div className="mb-4">
-                <h3 className="mb-1">{event.title}</h3>
-                <p className="text-sm text-neutral-500">
-                  Order {order.id} •{" "}
-                  {new Date(order.createdAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {order.tickets.map((ticket) => (
-                  <QRTicketCard
-                    key={ticket.id}
-                    ticket={ticket}
-                    eventTitle={event.title}
-                    eventDate={event.date}
-                    eventVenue={event.venue}
-                  />
-                ))}
-              </div>
+        {bookingGroupsList.map((group) => (
+          <div key={group.bookingId}>
+            <div className="mb-4">
+              <h3 className="mb-1">{group.eventTitle}</h3>
+              <p className="text-sm text-neutral-500">
+                Booking {group.bookingNumber} •{" "}
+                {new Date(group.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
+              <p className="text-xs text-neutral-400 mt-1">
+                {group.eventVenue} • {new Date(group.eventStartDate).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit"
+                })}
+              </p>
             </div>
-          );
-        })}
+            <div className="flex items-center justify-between mb-4">
+              <div></div>
+              <button
+                onClick={() => onNavigate("order-detail", group.bookingId.toString())}
+                className="text-sm text-teal-600 hover:text-teal-700 underline"
+              >
+                View Order Details
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {group.tickets.map((ticket) => (
+                <QRTicketCard
+                  key={ticket.ticketId}
+                  ticket={{
+                    id: ticket.ticketId.toString(),
+                    tierName: ticket.ticketTypeName,
+                    price: ticket.price,
+                    qrCode: ticket.qrCode || ticket.ticketNumber,
+                    status: ticket.status.toLowerCase() as 'valid' | 'used' | 'cancelled',
+                    seatInfo: ticket.seatNumber || undefined,
+                    checkInTime: ticket.usedAt || undefined,
+                  }}
+                  eventTitle={group.eventTitle}
+                  eventDate={group.eventStartDate}
+                  eventVenue={group.eventVenue}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   };
@@ -141,8 +208,8 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
     );
   }
 
-  // Show error state
-  if (error) {
+  // Show error state (only if there's an actual error, not just empty tickets)
+  if (error && tickets.length === 0) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
@@ -166,16 +233,16 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-8">
             <TabsTrigger value="upcoming">
-              Upcoming ({upcomingOrders.length})
+              Upcoming ({upcomingBookings.length})
             </TabsTrigger>
-            <TabsTrigger value="past">Past ({pastOrders.length})</TabsTrigger>
+            <TabsTrigger value="past">Past ({pastBookings.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="upcoming">
-            {renderTickets(upcomingOrders)}
+            {renderTickets(upcomingBookings)}
           </TabsContent>
 
-          <TabsContent value="past">{renderTickets(pastOrders)}</TabsContent>
+          <TabsContent value="past">{renderTickets(pastBookings)}</TabsContent>
         </Tabs>
       </div>
     </div>

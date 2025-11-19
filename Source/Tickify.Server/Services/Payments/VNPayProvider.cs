@@ -2,6 +2,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
+using Tickify.Data;
 using Tickify.DTOs.Payment;
 using Tickify.Extensions;
 using Tickify.Interfaces.Repositories;
@@ -15,12 +17,165 @@ public sealed class VNPayProvider : IPaymentProvider
     private readonly IConfiguration _cfg;
     private readonly IPaymentRepository _payments;
     private readonly IBookingRepository _bookings;
+    private readonly ITicketRepository _tickets;
+    private readonly ApplicationDbContext _context;
 
-    public VNPayProvider(IConfiguration cfg, IPaymentRepository payments, IBookingRepository bookings)
-    { _cfg = cfg; _payments = payments; _bookings = bookings; }
+    public VNPayProvider(
+        IConfiguration cfg, 
+        IPaymentRepository payments, 
+        IBookingRepository bookings,
+        ITicketRepository tickets,
+        ApplicationDbContext context)
+    { 
+        _cfg = cfg; 
+        _payments = payments; 
+        _bookings = bookings;
+        _tickets = tickets;
+        _context = context;
+    }
 
-    public Task<bool> VerifyAsync(int paymentId, CancellationToken ct) =>
-        _payments.ExistsAsync(paymentId, PaymentStatus.Completed, ct);
+    public async Task<bool> VerifyAsync(int paymentId, CancellationToken ct)
+    {
+        // Check if payment is completed
+        var payment = await _payments.GetAsync(paymentId, ct);
+        if (payment == null) return false;
+        
+        // Get booking to check status
+        var booking = await _bookings.GetAsync(payment.BookingId, ct);
+        if (booking == null) return false;
+        
+        // If payment is completed, confirm booking and create tickets if needed
+        if (payment.Status == PaymentStatus.Completed)
+        {
+            // If booking is still pending, confirm it (webhook might have missed)
+            if (booking.Status == BookingStatus.Pending)
+            {
+                booking.Status = BookingStatus.Confirmed;
+                booking.ExpiresAt = null;
+                await _bookings.UpdateAsync(booking, ct);
+                Console.WriteLine($"[VNPay Verify] Confirmed booking {booking.Id} for completed payment {paymentId}");
+            }
+            
+            // Ensure tickets are created if booking is confirmed
+            await CreateTicketsForBookingAsync(booking.Id, ct);
+            
+            return true;
+        }
+        
+        // If booking is already confirmed but payment status is still pending,
+        // update payment status to completed (webhook might have processed booking but not payment)
+        if (booking.Status == BookingStatus.Confirmed)
+        {
+            if (payment.Status == PaymentStatus.Pending)
+            {
+                payment.Status = PaymentStatus.Completed;
+                payment.PaidAt = DateTime.UtcNow;
+                await _payments.UpdateAsync(payment, ct);
+                Console.WriteLine($"[VNPay Verify] Updated payment {paymentId} to Completed for confirmed booking {booking.Id}");
+            }
+            
+            // Ensure tickets are created
+            await CreateTicketsForBookingAsync(booking.Id, ct);
+            
+            return true;
+        }
+        
+        return false;
+    }
+
+    public async Task<bool> VerifyFromReturnUrlAsync(int paymentId, IQueryCollection queryParams, CancellationToken ct)
+    {
+        try
+        {
+            // Convert query collection to dictionary
+            var qp = queryParams.ToDictionary(k => k.Key, v => v.Value.ToString());
+            
+            if (!qp.TryGetValue("vnp_SecureHash", out var providedHash) || string.IsNullOrWhiteSpace(providedHash))
+            {
+                Console.WriteLine("[VNPay VerifyFromReturnUrl] Missing vnp_SecureHash");
+                return false;
+            }
+
+            // Filter out hash parameters for hash calculation
+            var filtered = new SortedDictionary<string, string>(
+                qp.Where(kv => !kv.Key.Equals("vnp_SecureHash", StringComparison.OrdinalIgnoreCase) &&
+                               !kv.Key.Equals("vnp_SecureHashType", StringComparison.OrdinalIgnoreCase))
+                  .ToDictionary(k => k.Key, v => v.Value), StringComparer.Ordinal);
+
+            // Build query string for hash verification
+            var data = string.Join("&", filtered.Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value)}"));
+            
+            // Get hash type (default to SHA256)
+            var hashType = qp.GetValueOrDefault("vnp_SecureHashType", "SHA256");
+            string calc;
+            if (hashType.Equals("SHA256", StringComparison.OrdinalIgnoreCase))
+            {
+                calc = HmacSHA256(_cfg["VNPay:HashSecret"]!, data);
+            }
+            else
+            {
+                calc = HmacSHA512(_cfg["VNPay:HashSecret"]!, data);
+            }
+            
+            // Verify hash
+            if (!string.Equals(calc, providedHash, StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"[VNPay VerifyFromReturnUrl] Hash mismatch. Calculated: {calc}, Provided: {providedHash}");
+                return false;
+            }
+
+            // Get response code
+            var rspCode = filtered.GetValueOrDefault("vnp_ResponseCode"); // "00" = success
+            
+            // Get payment record
+            var payment = await _payments.GetAsync(paymentId, ct);
+            if (payment is null)
+            {
+                Console.WriteLine($"[VNPay VerifyFromReturnUrl] Payment {paymentId} not found");
+                return false;
+            }
+
+            // Save full response
+            payment.PaymentResponse = System.Text.Json.JsonSerializer.Serialize(filtered);
+
+            // Process based on response code
+            if (rspCode == "00")
+            {
+                payment.Status = PaymentStatus.Completed;
+                payment.TransactionId = filtered.GetValueOrDefault("vnp_TransactionNo");
+                payment.PaidAt = DateTime.UtcNow;
+                await _payments.UpdateAsync(payment, ct);
+
+                // Update booking status
+                var booking = await _bookings.GetAsync(payment.BookingId, ct);
+                if (booking != null && booking.Status == BookingStatus.Pending)
+                {
+                    booking.Status = BookingStatus.Confirmed;
+                    booking.ExpiresAt = null;
+                    await _bookings.UpdateAsync(booking, ct);
+
+                    // Create tickets for the confirmed booking
+                    await CreateTicketsForBookingAsync(booking.Id, ct);
+                }
+
+                Console.WriteLine($"[VNPay VerifyFromReturnUrl] Payment {paymentId} completed successfully from return URL");
+                return true;
+            }
+            else
+            {
+                payment.Status = PaymentStatus.Failed;
+                await _payments.UpdateAsync(payment, ct);
+                Console.WriteLine($"[VNPay VerifyFromReturnUrl] Payment {paymentId} failed. Response code: {rspCode}");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[VNPay VerifyFromReturnUrl] Exception: {ex.Message}");
+            Console.WriteLine($"[VNPay VerifyFromReturnUrl] StackTrace: {ex.StackTrace}");
+            return false;
+        }
+    }
 
     public Task<bool> RefundAsync(int paymentId, decimal amount, string reason, CancellationToken ct)
         => Task.FromResult(false); // tuỳ hợp đồng, để stub
@@ -228,6 +383,9 @@ public sealed class VNPayProvider : IPaymentProvider
                     booking.Status = BookingStatus.Confirmed;
                     booking.ExpiresAt = null;
                     await _bookings.UpdateAsync(booking, ct);
+
+                    // Create tickets for the confirmed booking
+                    await CreateTicketsForBookingAsync(booking.Id, ct);
                 }
 
                 Console.WriteLine($"[VNPay Webhook] Payment {paymentId} completed successfully");
@@ -264,5 +422,95 @@ public sealed class VNPayProvider : IPaymentProvider
         var hashBytes = h.ComputeHash(Encoding.UTF8.GetBytes(data));
         // VNPAY requires uppercase hex format
         return BitConverter.ToString(hashBytes).Replace("-", string.Empty).ToUpperInvariant();
+    }
+
+    private async Task CreateTicketsForBookingAsync(int bookingId, CancellationToken ct)
+    {
+        // Get booking with event and existing tickets
+        var booking = await _context.Bookings
+            .Include(b => b.Event)
+            .Include(b => b.Tickets)
+            .FirstOrDefaultAsync(b => b.Id == bookingId, ct);
+
+        if (booking == null)
+        {
+            Console.WriteLine($"[VNPay] Booking {bookingId} not found for ticket creation");
+            return;
+        }
+
+        // Check if tickets already exist
+        if (booking.Tickets != null && booking.Tickets.Any())
+        {
+            Console.WriteLine($"[VNPay] Tickets already exist for booking {bookingId}");
+            return;
+        }
+
+        // Get all ticket types for this event
+        var ticketTypes = await _context.TicketTypes
+            .Where(tt => tt.EventId == booking.EventId && tt.IsActive)
+            .ToListAsync(ct);
+
+        if (!ticketTypes.Any())
+        {
+            Console.WriteLine($"[VNPay] No ticket types found for event {booking.EventId}");
+            return;
+        }
+
+        // Find the ticket type that matches the booking amount
+        // Calculate quantity: TotalAmount / Price (considering discount)
+        var pricePerTicket = booking.TotalAmount + booking.DiscountAmount; // Original total before discount
+        TicketType? selectedTicketType = null;
+        int quantity = 1;
+
+        // Try to find ticket type by matching price
+        foreach (var ticketType in ticketTypes.OrderByDescending(tt => tt.Price))
+        {
+            var calculatedQuantity = (int)Math.Round(pricePerTicket / ticketType.Price);
+            if (calculatedQuantity > 0 && Math.Abs(pricePerTicket - (ticketType.Price * calculatedQuantity)) < 0.01m)
+            {
+                selectedTicketType = ticketType;
+                quantity = calculatedQuantity;
+                break;
+            }
+        }
+
+        // If no exact match, use the most expensive ticket type and calculate quantity
+        if (selectedTicketType == null)
+        {
+            selectedTicketType = ticketTypes.OrderByDescending(tt => tt.Price).First();
+            quantity = (int)Math.Ceiling(pricePerTicket / selectedTicketType.Price);
+            if (quantity <= 0) quantity = 1;
+        }
+
+        // Note: Seat assignment is skipped here because we don't have access to the original
+        // SeatIds from CreateBookingDto in the webhook. Seats should be assigned when booking
+        // is created or through a separate process. For now, tickets are created without seat assignment.
+        // TODO: Store SeatIds in Booking model or create a BookingSeats junction table to track seat assignments.
+
+        // Create tickets
+        var ticketsToCreate = new List<Ticket>();
+        for (int i = 0; i < quantity; i++)
+        {
+            var ticket = new Ticket
+            {
+                BookingId = bookingId,
+                TicketTypeId = selectedTicketType.Id,
+                TicketCode = GenerateTicketCode(bookingId, i + 1),
+                Price = selectedTicketType.Price,
+                Status = TicketStatus.Valid,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            ticketsToCreate.Add(ticket);
+        }
+
+        // Bulk create tickets
+        await _tickets.CreateBulkAsync(ticketsToCreate);
+        Console.WriteLine($"[VNPay] Created {ticketsToCreate.Count} tickets for booking {bookingId}");
+    }
+
+    private static string GenerateTicketCode(int bookingId, int ticketNumber)
+    {
+        return $"TK{bookingId:D6}{ticketNumber:D3}{DateTime.UtcNow:yyyyMMdd}";
     }
 }

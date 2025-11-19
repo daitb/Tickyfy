@@ -6,6 +6,7 @@ using Tickify.DTOs.Payment;
 using Tickify.Interfaces.Repositories;
 using Tickify.Models.Momo; 
 using Tickify.Services.Payments;
+using AutoMapper;
 
 namespace Tickify.Controllers;
 
@@ -14,7 +15,12 @@ namespace Tickify.Controllers;
 public sealed class PaymentController : ControllerBase
 {
     private readonly IPaymentService _payments;
-    public PaymentController(IPaymentService payments) => _payments = payments;
+    private readonly IMapper _mapper;
+    public PaymentController(IPaymentService payments, IMapper mapper)
+    {
+        _payments = payments;
+        _mapper = mapper;
+    }
 
     // POST /api/payment/create-intent
     [HttpPost("create-intent")]
@@ -151,15 +157,30 @@ public sealed class PaymentController : ControllerBase
         return Ok(model);
     }
 
-    // GET /api/payments/{id}
+    // GET /api/payment/{id}
     [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById([FromRoute] int id, [FromServices] IPaymentRepository repo, CancellationToken ct)
-        => Ok(await repo.GetAsync(id, ct));
+    [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<PaymentDto>>> GetById([FromRoute] int id, [FromServices] IPaymentRepository repo, CancellationToken ct)
+    {
+        var payment = await repo.GetAsync(id, ct);
+        if (payment == null)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse("Payment not found"));
+        }
+        var dto = _mapper.Map<PaymentDto>(payment);
+        return Ok(ApiResponse<PaymentDto>.SuccessResponse(dto));
+    }
 
-    // GET /api/payments/booking/{bookingId}
+    // GET /api/payment/booking/{bookingId}
     [HttpGet("booking/{bookingId:int}")]
-    public async Task<IActionResult> GetByBooking([FromRoute] int bookingId, [FromServices] IPaymentRepository repo, CancellationToken ct)
-        => Ok(await repo.ListByBookingAsync(bookingId, ct));
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<PaymentDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IEnumerable<PaymentDto>>>> GetByBooking([FromRoute] int bookingId, [FromServices] IPaymentRepository repo, CancellationToken ct)
+    {
+        var payments = await repo.ListByBookingAsync(bookingId, ct);
+        var dtos = _mapper.Map<IEnumerable<PaymentDto>>(payments);
+        return Ok(ApiResponse<IEnumerable<PaymentDto>>.SuccessResponse(dtos));
+    }
 
     // POST /api/payment/{id}/verify
     [HttpPost("{id:int}/verify")]
@@ -170,6 +191,20 @@ public sealed class PaymentController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(
             new { success },
             success ? "Payment verified successfully" : "Payment verification failed"
+        ));
+    }
+
+    // POST /api/payment/{id}/verify-return-url
+    // Verify payment from return URL parameters (when webhook is not received)
+    [HttpPost("{id:int}/verify-return-url")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<object>>> VerifyFromReturnUrl([FromRoute] int id, CancellationToken ct)
+    {
+        var success = await _payments.VerifyFromReturnUrlAsync(id, Request.Query, ct);
+        return Ok(ApiResponse<object>.SuccessResponse(
+            new { success },
+            success ? "Payment verified successfully from return URL" : "Payment verification from return URL failed"
         ));
     }
 }

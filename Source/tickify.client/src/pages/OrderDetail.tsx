@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Calendar,
   MapPin,
@@ -8,6 +8,7 @@ import {
   Clock,
   ChevronRight,
   ExternalLink,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
@@ -19,7 +20,10 @@ import {
 import { Badge } from "../components/ui/badge";
 import { Separator } from "../components/ui/separator";
 import type { Order } from "../types";
-import { mockEvents } from "../mockData";
+import { eventService } from "../services/eventService";
+import { ticketService } from "../services/ticketService";
+import { getPaymentsByBooking } from "../services/paymentService";
+import type { Event } from "../types";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 
 interface OrderDetailProps {
@@ -28,18 +32,149 @@ interface OrderDetailProps {
   onNavigate: (page: string, eventId?: string) => void;
 }
 
-export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
-  // Find order from orders list - use first order if orderId not provided
-  const currentOrder = orderId
-    ? orders?.find((o) => o.id === orderId) || orders?.[0]
-    : orders?.[0];
+interface PaymentInfo {
+  id: number;
+  bookingId: number;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  status: string;
+  createdAt: string;
+  paidAt?: string;
+  transactionId?: string;
+  paymentGateway?: string;
+}
 
-  if (!currentOrder) {
+export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [event, setEvent] = useState<Event | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [payments, setPayments] = useState<PaymentInfo[]>([]);
+
+  useEffect(() => {
+    const loadOrderData = async () => {
+      if (!orderId) {
+        setError("Order ID is required");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Get tickets for this booking/order
+        console.log("[OrderDetail] Loading tickets for booking:", orderId);
+        const userTickets = await ticketService.getMyTickets();
+        console.log("[OrderDetail] All user tickets:", userTickets);
+        
+        const orderTickets = userTickets.filter((t: any) => 
+          t.bookingId?.toString() === orderId || 
+          t.bookingNumber === orderId
+        );
+        
+        console.log("[OrderDetail] Filtered tickets for this order:", orderTickets);
+        
+        if (orderTickets.length === 0) {
+          setError(`No tickets found for booking ${orderId}. The booking may not be confirmed yet or tickets may not have been created.`);
+          setIsLoading(false);
+          return;
+        }
+
+        setTickets(orderTickets);
+        
+        // Load event details from first ticket
+        const firstTicket = orderTickets[0];
+        if (firstTicket?.eventId) {
+          try {
+            console.log("[OrderDetail] Loading event:", firstTicket.eventId);
+            const eventData = await eventService.getEventById(Number(firstTicket.eventId));
+            console.log("[OrderDetail] Event loaded:", eventData);
+            setEvent(eventData);
+          } catch (err) {
+            console.error("[OrderDetail] Failed to load event:", err);
+            // If event load fails, create a minimal event object from ticket data
+            if (firstTicket.eventTitle) {
+              setEvent({
+                id: firstTicket.eventId.toString(),
+                title: firstTicket.eventTitle,
+                venue: firstTicket.eventVenue || "Venue TBD",
+                city: "",
+                date: firstTicket.eventStartDate || new Date().toISOString(),
+                time: "",
+                image: "",
+                description: "",
+                category: "",
+                price: firstTicket.price || 0,
+                capacity: 0,
+                available: 0,
+              } as Event);
+            }
+          }
+        } else if (firstTicket?.eventTitle) {
+          // Create event from ticket data if eventId is missing
+          setEvent({
+            id: firstTicket.eventId?.toString() || "",
+            title: firstTicket.eventTitle,
+            venue: firstTicket.eventVenue || "Venue TBD",
+            city: "",
+            date: firstTicket.eventStartDate || new Date().toISOString(),
+            time: "",
+            image: "",
+            description: "",
+            category: "",
+            price: firstTicket.price || 0,
+            capacity: 0,
+            available: 0,
+          } as Event);
+        }
+        
+        // Load payment information
+        try {
+          const paymentData = await getPaymentsByBooking(Number(orderId));
+          if (Array.isArray(paymentData)) {
+            setPayments(paymentData);
+          } else if (paymentData) {
+            setPayments([paymentData]);
+          }
+        } catch (err) {
+          console.error("Failed to load payment information:", err);
+          // Don't set error, payment info is optional
+        }
+      } catch (err: any) {
+        console.error("Failed to load order:", err);
+        setError(err.message || "Failed to load order");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadOrderData();
+  }, [orderId]);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral-50 py-8">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center py-16">
-            <h2 className="text-neutral-900 mb-4">Order not found</h2>
+            <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-neutral-600">Loading order...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !tickets.length) {
+    return (
+      <div className="min-h-screen bg-neutral-50 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center py-16">
+            <h2 className="text-neutral-900 mb-4">{error || "Order not found"}</h2>
+            <p className="text-neutral-600 mb-4">
+              {!tickets.length && !error && "No tickets found for this booking. Please ensure the booking is confirmed and tickets have been created."}
+            </p>
             <Button onClick={() => onNavigate("my-tickets")}>
               Back to My Tickets
             </Button>
@@ -48,23 +183,41 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
       </div>
     );
   }
-
-  const event = mockEvents.find((e) => e.id === currentOrder.eventId);
 
   if (!event) {
     return (
       <div className="min-h-screen bg-neutral-50 py-8">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center py-16">
-            <h2 className="text-neutral-900 mb-4">Event not found</h2>
-            <Button onClick={() => onNavigate("my-tickets")}>
-              Back to My Tickets
-            </Button>
+            <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-neutral-600">Loading event details...</p>
           </div>
         </div>
       </div>
     );
   }
+
+  // Create order object from tickets for compatibility
+  const firstTicket = tickets[0];
+  const currentOrder = {
+    id: orderId,
+    eventId: firstTicket.eventId?.toString() || "",
+    tickets: tickets.map((t: any) => ({
+      id: t.ticketId?.toString() || t.id?.toString(),
+      tierName: t.ticketTypeName || "General",
+      price: t.price || 0,
+      status: t.status?.toLowerCase() || "valid",
+      seatInfo: t.seatNumber || undefined,
+      qrCode: t.qrCode || t.ticketNumber,
+      checkInTime: t.usedAt || t.checkedInAt || undefined,
+    })),
+    total: tickets.reduce((sum: number, t: any) => sum + (t.price || 0), 0),
+    subtotal: tickets.reduce((sum: number, t: any) => sum + (t.price || 0), 0),
+    serviceFee: 0,
+    status: "completed" as const,
+    createdAt: firstTicket.createdAt || new Date().toISOString(),
+    paymentMethod: payments[0]?.paymentMethod || payments[0]?.paymentGateway || undefined,
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -160,11 +313,32 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
               {/* Event Image */}
               <div className="md:w-96 flex-shrink-0">
                 <div className="aspect-[16/10] rounded-lg overflow-hidden bg-neutral-100">
-                  <ImageWithFallback
-                    src={event.image}
-                    alt={event.title}
-                    className="w-full h-full object-cover"
-                  />
+                  {event.image ? (
+                    <ImageWithFallback
+                      src={event.image}
+                      alt={event.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-100 to-teal-200">
+                      <div className="text-center text-teal-600">
+                        <svg
+                          className="mx-auto h-16 w-16 mb-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                          />
+                        </svg>
+                        <p className="text-sm font-medium">{event.title}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -206,6 +380,64 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
                     {formatPrice(currentOrder.total)}
                   </div>
                 </div>
+                
+                {payments.length > 0 && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-neutral-600 mb-2">
+                        <CreditCard size={16} />
+                        <span className="text-sm font-medium">Payment Information</span>
+                      </div>
+                      {payments.map((payment) => (
+                        <div key={payment.id} className="text-sm space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-neutral-600">Status:</span>
+                            <Badge 
+                              className={
+                                payment.status === "Completed" 
+                                  ? "bg-green-100 text-green-700"
+                                  : payment.status === "Failed"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-yellow-100 text-yellow-700"
+                              }
+                            >
+                              {payment.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-neutral-600">Method:</span>
+                            <span className="text-neutral-900">
+                              {payment.paymentMethod || payment.paymentGateway || 'N/A'}
+                            </span>
+                          </div>
+                          {payment.transactionId && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-neutral-600">Transaction ID:</span>
+                              <span className="text-neutral-700 font-mono text-xs">
+                                {payment.transactionId}
+                              </span>
+                            </div>
+                          )}
+                          {payment.paidAt && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-neutral-600">Paid At:</span>
+                              <span className="text-neutral-700 text-xs">
+                                {new Date(payment.paidAt).toLocaleString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>

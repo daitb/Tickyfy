@@ -33,7 +33,7 @@ public sealed class RefundController : ControllerBase
 
     // 4) Danh sách của tôi
     [Authorize]
-    [HttpGet("my")]
+    [HttpGet("my-refunds")]
     public async Task<IActionResult> GetMine()
         => Ok(await _service.GetMineAsync(User));
 

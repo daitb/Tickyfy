@@ -32,10 +32,10 @@ export async function createRefundRequest(body: {
 
 /**
  * User xem danh sách yêu cầu hoàn tiền của mình
- * GET /api/refund/my
+ * GET /api/refund/my-refunds
  */
 export async function getMyRefundRequests() {
-  const res = await apiClient.get<RefundRequest[]>("/refund/my");
+  const res = await apiClient.get<RefundRequest[]>("/refund/my-refunds");
   return res.data;
 }
 
