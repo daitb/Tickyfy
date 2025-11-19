@@ -5,16 +5,6 @@ public class UpdateRoleDto
     public string Role { get; set; } = string.Empty;
 }
 
-public class UserListDto
-{
-    public int UserId { get; set; }
-    public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
-    public bool IsEmailVerified { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
-
 public class OrganizerRequestDto
 {
     public int RequestId { get; set; }

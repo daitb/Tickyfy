@@ -21,6 +21,4 @@ public interface IAuthService
     Task ChangePasswordAsync(int userId, ChangePasswordDto changePasswordDto);
 
     Task<LoginResponse> ExternalLoginAsync(ExternalLoginDto externalLoginDto);
-
-    Task RequestOrganizerRoleAsync(int userId, OrganizerRequestDto requestDto);
 }
