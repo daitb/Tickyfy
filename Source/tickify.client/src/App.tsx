@@ -35,6 +35,8 @@ import { PasswordChange } from "./pages/PasswordChange";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ForgotPassword } from "./pages/ForgotPassword";
+import { ChatPage } from "./pages/ChatPage";
+import { StaffChatPage } from "./pages/StaffChatPage";
 import { BecomeOrganizer } from "./pages/BecomeOrganizer";
 import { UserManagement } from "./pages/UserManagement";
 import { Header } from "./components/Header";
@@ -77,6 +79,8 @@ type Page =
   | "event-reviews"
   | "refund-request"
   | "admin-dashboard"
+  | "chat"
+  | "staff-chat"
   | "user-management"
   | "become-organizer"
   | "login"
@@ -123,6 +127,8 @@ export default function App() {
     if (path === "/event-reviews") return "event-reviews";
     if (path === "/refund-request") return "refund-request";
     if (path === "/admin-dashboard") return "admin-dashboard";
+    if (path === "/chat") return "chat";
+    if (path === "/staff-chat") return "staff-chat";
     if (path === "/user-management") return "user-management";
     if (path === "/become-organizer") return "become-organizer";
     if (path === "/login") return "login";
@@ -411,6 +417,11 @@ export default function App() {
       case "admin-dashboard":
         return <AdminDashboard onNavigate={handleNavigate} />;
 
+      case "chat":
+        return <ChatPage />;
+
+      case "staff-chat":
+        return <StaffChatPage />;
       case "user-management":
         return <UserManagement onNavigate={handleNavigate} />;
 
