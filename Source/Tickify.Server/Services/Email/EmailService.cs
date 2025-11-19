@@ -150,4 +150,102 @@ public class EmailService : IEmailService
             templateData
         );
     }
+
+    #region Organizer Emails
+
+    /// <summary>
+    /// Send welcome email to new organizer
+    /// </summary>
+    public async Task SendOrganizerWelcomeEmailAsync(string to, string userName, string companyName)
+    {
+        var htmlBody = $@"
+            <h2>Welcome to Tickify Organizers, {userName}!</h2>
+            <p>Your organizer account for <strong>{companyName}</strong> has been created successfully.</p>
+            <p>Your profile is currently pending verification. Our team will review your information shortly.</p>
+            <p>Once verified, you'll be able to:</p>
+            <ul>
+                <li>Create and manage events</li>
+                <li>Track ticket sales and revenue</li>
+                <li>Access detailed analytics</li>
+            </ul>
+            <p>Thank you for choosing Tickify!</p>
+        ";
+
+        await SendEmailAsync(to, "Welcome to Tickify Organizers", htmlBody);
+    }
+
+    /// Send verification confirmation email to organizer
+    public async Task SendOrganizerVerificationEmailAsync(string to, string userName, string companyName)
+    {
+        var htmlBody = $@"
+            <h2>Congratulations, {userName}!</h2>
+            <p>Your organizer account for <strong>{companyName}</strong> has been verified.</p>
+            <p>You can now start creating events and selling tickets on Tickify.</p>
+            <p>Get started by creating your first event in the organizer dashboard.</p>
+            <p>Best regards,<br>Tickify Team</p>
+        ";
+
+        await SendEmailAsync(to, "Your Organizer Account is Verified", htmlBody);
+    }
+
+    #endregion
+
+    #region Support Ticket Emails
+
+    /// Send confirmation email when support ticket is created
+    public async Task SendSupportTicketConfirmationEmailAsync(string to, string userName, string ticketNumber, string subject)
+    {
+        var htmlBody = $@"
+            <h2>Support Ticket Created - #{ticketNumber}</h2>
+            <p>Hi {userName},</p>
+            <p>We've received your support request:</p>
+            <p><strong>Ticket #:</strong> {ticketNumber}<br>
+            <strong>Subject:</strong> {subject}</p>
+            <p>Our support team will review your request and get back to you as soon as possible.</p>
+            <p>You can track your ticket status in your account dashboard.</p>
+            <p>Thank you,<br>Tickify Support Team</p>
+        ";
+
+        await SendEmailAsync(to, $"Support Ticket #{ticketNumber} Created", htmlBody);
+    }
+
+    /// Send email when support ticket is updated with a new message
+    public async Task SendSupportTicketUpdateEmailAsync(string to, string userName, string ticketNumber, string subject, string message, bool isStaffResponse)
+    {
+        var messageType = isStaffResponse ? "Our support team has replied" : "Your message has been received";
+        
+        var htmlBody = $@"
+            <h2>Support Ticket Update - #{ticketNumber}</h2>
+            <p>Hi {userName},</p>
+            <p>{messageType} to your support ticket:</p>
+            <p><strong>Ticket #:</strong> {ticketNumber}<br>
+            <strong>Subject:</strong> {subject}</p>
+            <hr>
+            <p>{message}</p>
+            <hr>
+            <p>You can view the full conversation in your account dashboard.</p>
+            <p>Thank you,<br>Tickify Support Team</p>
+        ";
+
+        await SendEmailAsync(to, $"Support Ticket #{ticketNumber} Updated", htmlBody);
+    }
+
+    /// Send email when support ticket is resolved
+    public async Task SendSupportTicketResolvedEmailAsync(string to, string userName, string ticketNumber, string subject)
+    {
+        var htmlBody = $@"
+            <h2>Support Ticket Resolved - #{ticketNumber}</h2>
+            <p>Hi {userName},</p>
+            <p>Your support ticket has been marked as resolved:</p>
+            <p><strong>Ticket #:</strong> {ticketNumber}<br>
+            <strong>Subject:</strong> {subject}</p>
+            <p>If you have any additional questions or concerns, please feel free to create a new support ticket.</p>
+            <p>Thank you for using Tickify!</p>
+            <p>Best regards,<br>Tickify Support Team</p>
+        ";
+
+        await SendEmailAsync(to, $"Support Ticket #{ticketNumber} Resolved", htmlBody);
+    }
+
+    #endregion
 }

@@ -100,6 +100,11 @@ namespace Tickify
             builder.Services.AddScoped<Tickify.Repositories.ISeatMapRepository, Tickify.Repositories.SeatMapRepository>();
             builder.Services.AddScoped<Tickify.Services.ISeatMapService, Tickify.Services.SeatMapService>();
 
+            // Category, Organizer & Support Services (Developer 2 - Week 2)
+            builder.Services.AddScoped<ICategoryService, CategoryService>();
+            builder.Services.AddScoped<IOrganizerService, OrganizerService>();
+            builder.Services.AddScoped<ISupportService, SupportService>();
+
             // ============================================
             // 4. JWT AUTHENTICATION CONFIGURATION
             // Cấu hình xác thực JWT token
