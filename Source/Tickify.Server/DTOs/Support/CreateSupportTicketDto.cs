@@ -2,9 +2,8 @@ namespace Tickify.DTOs.Support;
 
 public class CreateSupportTicketDto
 {
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Priority { get; set; } = "Medium";
-    public int? RelatedEventId { get; set; }
-    public int? RelatedBookingId { get; set; }
+    public string Message { get; set; } = string.Empty;
 }
