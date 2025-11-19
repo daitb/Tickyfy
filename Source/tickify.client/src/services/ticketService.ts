@@ -1,19 +1,26 @@
 import apiClient from "./apiClient";
 
 // ===== INTERFACES =====
+// Matches TicketDetailDto from backend
 export interface TicketDto {
-  ticketId: string;
-  bookingId: string;
-  eventId: string;
-  userId: string;
-  ticketTypeId: string;
-  seatNumber?: string;
-  qrCode: string;
-  status: string;
+  ticketId: number;
+  ticketNumber: string;
+  bookingId: number;
+  bookingNumber: string;
+  eventId: number;
+  eventTitle: string;
+  eventVenue: string;
+  eventStartDate: string;
+  eventEndDate: string;
+  ticketTypeName: string;
   price: number;
-  isCheckedIn: boolean;
-  checkedInAt?: string;
-  event?: any;
+  seatId?: number;
+  seatNumber?: string;
+  status: string;
+  qrCode?: string;
+  isUsed: boolean;
+  usedAt?: string;
+  createdAt: string;
 }
 
 export interface TransferTicketDto {

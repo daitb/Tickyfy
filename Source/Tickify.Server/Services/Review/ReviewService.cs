@@ -9,6 +9,7 @@ namespace Tickify.Services.Reviews;
 public interface IReviewService
 {
     Task<Review> CreateAsync(CreateReviewDto dto, ClaimsPrincipal user);
+    Task<Review?> GetByIdAsync(int id);
     Task<IEnumerable<Review>> GetByEventAsync(int eventId);
     Task<IEnumerable<Review>> GetMineAsync(ClaimsPrincipal user);
     Task<Review> UpdateMineAsync(int id, UpdateReviewDto dto, ClaimsPrincipal user);
@@ -18,12 +19,57 @@ public interface IReviewService
 public sealed class ReviewService : IReviewService
 {
     private readonly IReviewRepository _reviews;
+    private readonly ITicketRepository _tickets;
+    private readonly ITicketScanRepository _ticketScans;
 
-    public ReviewService(IReviewRepository reviews) => _reviews = reviews;
+    public ReviewService(
+        IReviewRepository reviews,
+        ITicketRepository tickets,
+        ITicketScanRepository ticketScans)
+    {
+        _reviews = reviews;
+        _tickets = tickets;
+        _ticketScans = ticketScans;
+    }
 
     public async Task<Review> CreateAsync(CreateReviewDto dto, ClaimsPrincipal user)
     {
         var uid = GetUserId(user);
+        
+        // Validate that user attended the event (has scanned tickets)
+        var userTickets = await _tickets.GetByUserIdAsync(uid);
+        var eventTickets = userTickets.Where(t => t.Booking?.EventId == dto.EventId).ToList();
+        
+        if (!eventTickets.Any())
+        {
+            throw new InvalidOperationException("You must have tickets for this event to review it.");
+        }
+
+        // Check if any ticket was scanned (user attended)
+        var hasAttended = false;
+        foreach (var ticket in eventTickets)
+        {
+            var scans = await _ticketScans.GetByTicketIdAsync(ticket.Id);
+            if (scans.Any(s => s.IsValid))
+            {
+                hasAttended = true;
+                break;
+            }
+        }
+
+        if (!hasAttended)
+        {
+            throw new InvalidOperationException("You must have attended the event (ticket scanned) to submit a review.");
+        }
+
+        // Check if user already reviewed this event
+        var existingReview = (await _reviews.GetByUserIdAsync(uid))
+            .FirstOrDefault(r => r.EventId == dto.EventId);
+        if (existingReview != null)
+        {
+            throw new InvalidOperationException("You have already reviewed this event. Please update your existing review instead.");
+        }
+
         var entity = new Review
         {
             EventId = dto.EventId,
@@ -31,8 +77,17 @@ public sealed class ReviewService : IReviewService
             Rating = dto.Rating,
             Comment = dto.Comment
         };
-        return await _reviews.CreateAsync(entity);
+        
+        var review = await _reviews.CreateAsync(entity);
+        
+        // Recalculate event average rating (Event doesn't have AverageRating field, it's calculated on the fly)
+        // This is handled in EventService when fetching event details
+        
+        return review;
     }
+
+    public Task<Review?> GetByIdAsync(int id)
+        => _reviews.GetByIdAsync(id);
 
     public Task<IEnumerable<Review>> GetByEventAsync(int eventId)
         => _reviews.GetByEventIdAsync(eventId);
@@ -48,11 +103,27 @@ public sealed class ReviewService : IReviewService
         mine.Rating = dto.Rating;
         mine.Comment = dto.Comment;
         mine.UpdatedAt = DateTime.UtcNow;
-        return await _reviews.UpdateAsync(mine);
+        
+        var updated = await _reviews.UpdateAsync(mine);
+        
+        // Recalculate event average rating
+        // This is handled in EventService when fetching event details
+        
+        return updated;
     }
 
-    public Task<bool> DeleteMineAsync(int id, ClaimsPrincipal user)
-        => _reviews.DeleteAsync(id, GetUserId(user), isAdmin: false);
+    public async Task<bool> DeleteMineAsync(int id, ClaimsPrincipal user)
+    {
+        var deleted = await _reviews.DeleteAsync(id, GetUserId(user), isAdmin: false);
+        
+        if (deleted)
+        {
+            // Recalculate event average rating
+            // This is handled in EventService when fetching event details
+        }
+        
+        return deleted;
+    }
 
     private static int GetUserId(ClaimsPrincipal user)
     {

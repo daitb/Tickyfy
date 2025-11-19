@@ -66,6 +66,10 @@ namespace Tickify
             builder.Services.AddHttpClient();
             builder.Services.AddHttpContextAccessor();
 
+            // [ADD] Configure MoMo options from appsettings.json
+            builder.Services.Configure<Tickify.Models.Momo.MomoOptionModel>(
+                builder.Configuration.GetSection("MomoAPI"));
+
             // [ADD] Đăng ký Payment/Refund theo Week 2 (không ảnh hưởng module khác)
             builder.Services.AddScoped<IReviewRepository, EfReviewRepository>();
             builder.Services.AddScoped<IBookingRepository, EfBookingRepository>(); // <-- THÊM DÒNG NÀY

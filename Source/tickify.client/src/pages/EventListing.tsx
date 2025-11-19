@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EventCard } from '../components/EventCard';
 import { FilterBar } from '../components/FilterBar';
 import type { FilterBarState } from '../components/FilterBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { mockEvents } from '../mockData';
+import { eventService } from '../services/eventService';
 import type { SortOption } from '../types';
 import { useTranslation } from 'react-i18next';
 
@@ -15,9 +15,14 @@ export function EventListing({ onNavigate }: EventListingProps) {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<FilterBarState>({});
   const [sortBy, setSortBy] = useState<SortOption>('popularity');
+  const [events, setEvents] = useState<any[]>([]);
 
-  // Filter events
-  let filteredEvents = [...mockEvents];
+  useEffect(() => {
+    eventService.getEvents().then((data) => setEvents(data || [])).catch(() => setEvents([]));
+  }, []);
+
+  // Filter events (from backend)
+  let filteredEvents = [...events];
 
   // Filter by date range
   if (filters.dateRange?.from) {
@@ -46,7 +51,7 @@ export function EventListing({ onNavigate }: EventListingProps) {
   // Filter by free events
   if (filters.isFree) {
     filteredEvents = filteredEvents.filter(e => 
-      e.ticketTiers.some(tier => tier.price === 0)
+      e.ticketTiers.some((tier: any) => tier.price === 0)
     );
   }
 
@@ -62,14 +67,14 @@ export function EventListing({ onNavigate }: EventListingProps) {
     filteredEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   } else if (sortBy === 'price-asc') {
     filteredEvents.sort((a, b) => {
-      const aMin = Math.min(...a.ticketTiers.map(t => t.price));
-      const bMin = Math.min(...b.ticketTiers.map(t => t.price));
+      const aMin = Math.min(...a.ticketTiers.map((t: any) => t.price));
+      const bMin = Math.min(...b.ticketTiers.map((t: any) => t.price));
       return aMin - bMin;
     });
   } else if (sortBy === 'price-desc') {
     filteredEvents.sort((a, b) => {
-      const aMin = Math.min(...a.ticketTiers.map(t => t.price));
-      const bMin = Math.min(...b.ticketTiers.map(t => t.price));
+      const aMin = Math.min(...a.ticketTiers.map((t: any) => t.price));
+      const bMin = Math.min(...b.ticketTiers.map((t: any) => t.price));
       return bMin - aMin;
     });
   }

@@ -193,12 +193,7 @@ export default function EventDetailPage() {
 
         {/* Event Highlights */}
         <div className="mt-8">
-          <EventHighlights highlights={[
-            { icon: 'music', title: 'Multiple Stages', description: '5 stages featuring diverse music genres' },
-            { icon: 'users', title: 'World-Class Artists', description: '50+ international and local performers' },
-            { icon: 'tent', title: 'Camping Available', description: 'Premium camping experience included' },
-            { icon: 'utensils', title: 'Food & Drinks', description: '30+ food vendors and bars' }
-          ]} />
+          <EventHighlights highlights={[]} />
         </div>
 
         {/* Location Map */}
@@ -247,22 +242,14 @@ export default function EventDetailPage() {
 
         {/* FAQ Section */}
         <div className="mt-8">
-          <FAQSection faqs={[
-            { question: 'What time does the festival start?', answer: 'Gates open at 12:00 PM each day. The first performance starts at 1:00 PM.' },
-            { question: 'Is parking available?', answer: 'Yes, we have on-site parking available for $20 per day. Pre-booking is recommended.' },
-            { question: 'Can I bring food and drinks?', answer: 'Outside food and beverages are not permitted. We have a wide variety of food vendors on-site.' },
-            { question: 'What should I bring?', answer: 'Bring sunscreen, comfortable shoes, a hat, and a refillable water bottle. Blankets and lawn chairs are allowed.' },
-            { question: 'Are pets allowed?', answer: 'For safety reasons, only service animals are permitted at the festival.' }
-          ]} />
+          <FAQSection faqs={[]} />
         </div>
 
         {/* Related Events */}
         <div className="mt-8 mb-12">
-          <RelatedEvents 
-            currentEventId={id || '1'}
-            relatedEvents={[]}
-            onEventClick={(eventId) => navigate(`/events/${eventId}`)}
-          />
+          <RelatedEvents currentEventId={id || '1'} relatedEvents={[]} onEventClick={function (eventId: string): void {
+            throw new Error('Function not implemented.');
+          } } />
         </div>
       </div>
     </div>

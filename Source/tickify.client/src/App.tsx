@@ -161,17 +161,36 @@ export default function App() {
     setCurrentPage(page);
 
     // Extract IDs from URL params
-    const pathParts = location.pathname.split("/");
-    if (location.pathname.startsWith("/event/") && pathParts[2]) {
-      setSelectedEventId(pathParts[2]);
-    } else if (location.pathname.startsWith("/order/") && pathParts[2]) {
-      setSelectedOrderId(pathParts[2]);
-    } else if (location.pathname.startsWith("/ticket/") && pathParts[2]) {
-      setSelectedTicketId(pathParts[2]);
-    } else if (location.pathname.startsWith("/transfer-ticket/") && pathParts[2]) {
-      setSelectedTicketId(pathParts[2]);
-    } else if (location.pathname.startsWith("/event-analytics/") && pathParts[2]) {
-      setSelectedEventId(pathParts[2]);
+    const path = location.pathname;
+    
+    // Extract eventId from URL
+    if (path.startsWith("/event/")) {
+      const eventId = path.split("/event/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
+    
+    // Extract orderId from URL
+    if (path.startsWith("/order/")) {
+      const orderId = path.split("/order/")[1]?.split("/")[0];
+      if (orderId) setSelectedOrderId(orderId);
+    }
+    
+    // Extract ticketId from URL
+    if (path.startsWith("/ticket/")) {
+      const ticketId = path.split("/ticket/")[1]?.split("/")[0];
+      if (ticketId) setSelectedTicketId(ticketId);
+    }
+    
+    // Extract ticketId from transfer-ticket URL
+    if (path.startsWith("/transfer-ticket/")) {
+      const ticketId = path.split("/transfer-ticket/")[1]?.split("/")[0];
+      if (ticketId) setSelectedTicketId(ticketId);
+    }
+    
+    // Extract eventId from event-analytics URL
+    if (path.startsWith("/event-analytics/")) {
+      const eventId = path.split("/event-analytics/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
     }
   }, [location.pathname]);
 

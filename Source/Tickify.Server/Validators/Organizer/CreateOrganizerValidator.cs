@@ -17,10 +17,10 @@ public class CreateOrganizerValidator : AbstractValidator<CreateOrganizerDto>
             .MinimumLength(2).WithMessage("Tên công ty phải có ít nhất 2 ký tự")
             .MaximumLength(200).WithMessage("Tên công ty không được dài quá 200 ký tự");
 
-        // PhoneNumber validation (optional)
-        RuleFor(x => x.PhoneNumber)
+        // CompanyPhone validation (optional)
+        RuleFor(x => x.CompanyPhone)
             .Matches(@"^(0|\+84)[0-9]{9}$").WithMessage("Số điện thoại công ty không đúng định dạng")
-            .When(x => !string.IsNullOrEmpty(x.PhoneNumber));
+            .When(x => !string.IsNullOrEmpty(x.CompanyPhone));
 
         // Website validation (optional)
         RuleFor(x => x.Website)
