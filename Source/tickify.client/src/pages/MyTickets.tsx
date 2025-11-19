@@ -167,7 +167,7 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
             <div className="flex items-center justify-between mb-4">
               <div></div>
               <button
-                onClick={() => onNavigate("order-detail", group.bookingId.toString())}
+                onClick={() => onNavigate("order-detail")}
                 className="text-sm text-teal-600 hover:text-teal-700 underline"
               >
                 View Order Details
@@ -179,6 +179,7 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
                   key={ticket.ticketId}
                   ticket={{
                     id: ticket.ticketId.toString(),
+                    tierId: ticket.ticketId.toString(),
                     tierName: ticket.ticketTypeName,
                     price: ticket.price,
                     qrCode: ticket.qrCode || ticket.ticketNumber,
