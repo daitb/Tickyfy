@@ -6,6 +6,7 @@ import { ArrowRight, TrendingUp, Star } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { mockEvents, categories } from '../mockData';
 import type { Category } from '../types';
+import { useTranslation } from 'react-i18next';
 
 interface HomeProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -13,6 +14,7 @@ interface HomeProps {
 }
 
 export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
+  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
 
   const handleViewDetails = (eventId: string) => {
@@ -48,7 +50,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
               }`}
               onClick={() => setSelectedCategory('all')}
             >
-              All Events
+              {t('home.categories.all')}
             </Badge>
             {categories.map((category) => (
               <Badge
@@ -74,14 +76,14 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <Star className="text-teal-500" size={28} />
-              <h2 className="text-neutral-900">Special Events</h2>
+              <h2 className="text-neutral-900">{t('home.specialEvents')}</h2>
             </div>
             <Button 
               variant="ghost" 
               onClick={() => onNavigate('listing')}
               className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
             >
-              View All
+              {t('common.viewAll')}
               <ArrowRight size={16} className="ml-2" />
             </Button>
           </div>
@@ -104,7 +106,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <TrendingUp className="text-teal-500" size={28} />
-              <h2 className="text-neutral-900">Trending Events</h2>
+              <h2 className="text-neutral-900">{t('home.trendingEvents')}</h2>
             </div>
           </div>
 
@@ -125,14 +127,14 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-neutral-900">
-              {selectedCategory === 'all' ? 'Upcoming Events' : `${selectedCategory} Events`}
+              {selectedCategory === 'all' ? t('home.upcomingEvents') : `${selectedCategory} ${t('home.events')}`}
             </h2>
             <Button 
               variant="ghost" 
               onClick={() => onNavigate('listing')}
               className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
             >
-              View All
+              {t('common.viewAll')}
               <ArrowRight size={16} className="ml-2" />
             </Button>
           </div>

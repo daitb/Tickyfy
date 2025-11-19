@@ -400,4 +400,55 @@ public class AuthService : IAuthService
             ExpiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes)
         };
     }
+
+    public async Task RequestOrganizerRoleAsync(int userId, OrganizerRequestDto requestDto)
+    {
+        var user = await _userRepository.GetUserByIdAsync(userId);
+        if (user == null)
+        {
+            throw new NotFoundException("Người dùng không tồn tại");
+        }
+
+        // Check if user already has organizer role
+        var organizerRole = await _roleRepository.GetRoleByNameAsync("Organizer");
+        if (organizerRole != null)
+        {
+            var existingRole = await _userRoleRepository.GetUserRoleAsync(userId, organizerRole.Id);
+            if (existingRole != null)
+            {
+                throw new BadRequestException("Bạn đã là Organizer");
+            }
+        }
+
+        // Check if there's already a pending request
+        var existingRequest = await _userRepository.GetPendingOrganizerRequestAsync(userId);
+        if (existingRequest != null)
+        {
+            throw new BadRequestException("Bạn đã có yêu cầu đang chờ xử lý");
+        }
+
+        // Create new organizer request
+        var organizerRequest = new OrganizerRequest
+        {
+            UserId = userId,
+            OrganizationName = requestDto.OrganizationName,
+            BusinessRegistration = requestDto.BusinessRegistration,
+            PhoneNumber = requestDto.PhoneNumber,
+            Address = requestDto.Address,
+            Description = requestDto.Description,
+            Status = "Pending",
+            RequestedAt = DateTime.UtcNow
+        };
+
+        await _userRepository.AddOrganizerRequestAsync(organizerRequest);
+        await _userRepository.SaveChangesAsync();
+
+        // Send notification to admins
+        var adminUsers = await _userRepository.GetUsersByRoleAsync("Admin");
+        foreach (var admin in adminUsers)
+        {
+            // TODO: Send email notification to admin
+            // For now, we'll skip email notification
+        }
+    }
 }

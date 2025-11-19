@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from 'react-i18next';
 import { Trash2, Tag, ShoppingBag, AlertCircle, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -16,6 +17,7 @@ interface CartProps {
 }
 
 export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
+  const { t } = useTranslation();
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [isValidatingPromo, setIsValidatingPromo] = useState(false);
@@ -95,17 +97,16 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
             size={64}
             strokeWidth={1.5}
           />
-          <h2 className="mb-2">Your cart is empty</h2>
+          <h2 className="mb-2">{t('booking.cart.empty')}</h2>
           <p className="text-neutral-600 mb-6 max-w-md mx-auto">
-            Start exploring amazing events and add tickets to your cart to get
-            started!
+            {t('booking.cart.emptyMessage')}
           </p>
           <Button
             onClick={() => onNavigate("home")}
             className="bg-teal-500 hover:bg-teal-600"
           >
             <ArrowLeft size={16} className="mr-2" />
-            Browse Events
+            {t('booking.cart.browseEvents')}
           </Button>
         </div>
       </div>
@@ -117,9 +118,9 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
       <div className="max-w-5xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="mb-2">Shopping Cart</h1>
+          <h1 className="mb-2">{t('booking.cart.title')}</h1>
           <p className="text-neutral-600">
-            {items.length} {items.length === 1 ? "item" : "items"} in your cart
+            {items.length} {items.length === 1 ? t('booking.cart.item') : t('booking.cart.items')} {t('booking.cart.inCart')}
           </p>
         </div>
 
@@ -166,13 +167,13 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
                   <div className="bg-neutral-50 rounded-lg p-4 mb-4">
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <span className="text-neutral-500">Date</span>
+                        <span className="text-neutral-500">{t('common.date')}</span>
                         <p className="text-neutral-900">
                           {formatDate(item.eventDate)}
                         </p>
                       </div>
                       <div>
-                        <span className="text-neutral-500">Venue</span>
+                        <span className="text-neutral-500">{t('common.venue')}</span>
                         <p className="text-neutral-900">{item.eventVenue}</p>
                       </div>
                     </div>
@@ -184,7 +185,7 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-sm text-neutral-500 mb-1">
-                        Ticket Type
+                        {t('booking.ticketType')}
                       </div>
                       <div className="text-neutral-900">{item.tierName}</div>
                       <div className="text-sm text-neutral-600 mt-1">
@@ -193,7 +194,7 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
                     </div>
                     <div className="text-right">
                       <div className="text-sm text-neutral-500 mb-1">
-                        Subtotal
+                        {t('booking.subtotal')}
                       </div>
                       <div className="text-neutral-900">
                         {formatPrice(item.price * item.quantity)}
@@ -219,7 +220,7 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
               </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Enter promo code"
+                  placeholder={t('booking.cart.enterPromoCode')}
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                   className="flex-1"
@@ -230,14 +231,14 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
                   className="border-teal-500 text-teal-600 hover:bg-teal-50"
                   disabled={isValidatingPromo}
                 >
-                  {isValidatingPromo ? "Checking..." : "Apply"}
+                  {isValidatingPromo ? t('common.checking') : t('common.apply')}
                 </Button>
               </div>
               {discount > 0 && (
                 <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
                   <AlertCircle className="text-green-600" size={16} />
                   <p className="text-sm text-green-700">
-                    Promo code applied! You saved {formatPrice(discount)}
+                    {t('booking.cart.promoApplied')} {formatPrice(discount)}
                   </p>
                 </div>
               )}
@@ -264,7 +265,7 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
                 className="w-full bg-teal-500 hover:bg-teal-600"
                 size="lg"
               >
-                Proceed to Checkout
+                {t('booking.cart.proceedToCheckout')}
               </Button>
 
               <Button
@@ -273,7 +274,7 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
                 className="w-full"
               >
                 <ArrowLeft size={16} className="mr-2" />
-                Continue Shopping
+                {t('booking.cart.continueShopping')}
               </Button>
 
               {/* Trust Indicators */}

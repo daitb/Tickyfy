@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Send, User, Mail, AlertTriangle, CheckCircle, Ticket as TicketIcon, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -33,6 +34,7 @@ const STEPS = [
 ];
 
 export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketProps) {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedTicket, setSelectedTicket] = useState<OrderTicket & { eventTitle: string; eventDate: string; eventVenue: string } | null>(null);
   const [formData, setFormData] = useState<TransferFormData>({

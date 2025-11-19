@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Eye,
   EyeOff,
@@ -34,6 +35,7 @@ interface PasswordChangeProps {
 }
 
 export function PasswordChange({ onNavigate }: PasswordChangeProps) {
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

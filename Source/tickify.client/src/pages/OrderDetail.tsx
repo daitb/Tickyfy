@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from 'react-i18next';
 import {
   Calendar,
   MapPin,
@@ -29,6 +30,7 @@ interface OrderDetailProps {
 }
 
 export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
+  const { t } = useTranslation();
   // Find order from orders list - use first order if orderId not provided
   const currentOrder = orderId
     ? orders?.find((o) => o.id === orderId) || orders?.[0]

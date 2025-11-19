@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Calendar, MapPin, Clock, Users, Tag, Share2, Heart } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import LocationMap from '../components/event-detail/LocationMap';
@@ -41,6 +42,7 @@ Premium camping options are available for the full festival experience. VIP pack
 };
 
 export default function EventDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const [isSaved, setIsSaved] = useState(false);

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Save,
   Eye,
@@ -54,6 +55,7 @@ interface TicketType {
 }
 
 export function EditEvent({ eventId, onNavigate }: EditEventProps) {
+  const { t } = useTranslation();
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);

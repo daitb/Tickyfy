@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   User,
   CheckCircle,
@@ -41,6 +42,7 @@ interface UserProfileProps {
 }
 
 export function UserProfile({ onNavigate }: UserProfileProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

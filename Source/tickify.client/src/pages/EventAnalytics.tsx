@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   DollarSign,
   Ticket,
@@ -102,6 +103,7 @@ const recentTransactions = [
 ];
 
 export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
+  const { t } = useTranslation();
   const [dateRange, setDateRange] = useState<DateRange>('7days');
 
   // Get event data

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import {
   Calendar,
   MapPin,
@@ -32,6 +33,7 @@ export function TicketDetail({
   orders,
   onNavigate,
 }: TicketDetailProps) {
+  const { t } = useTranslation();
   // Find ticket from orders list if not provided
   let currentTicket: any = null;
   let currentOrder: any = null;

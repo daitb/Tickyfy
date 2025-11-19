@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Bell,
   Ticket,
@@ -120,6 +121,7 @@ const mockNotifications: Notification[] = [
 ];
 
 export function Notifications({ onNavigate }: NotificationsProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('all');
   const [notifications, setNotifications] = useState(mockNotifications);
   const [showSettings, setShowSettings] = useState(false);

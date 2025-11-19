@@ -35,8 +35,11 @@ import { PasswordChange } from "./pages/PasswordChange";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ForgotPassword } from "./pages/ForgotPassword";
+import { BecomeOrganizer } from "./pages/BecomeOrganizer";
+import { UserManagement } from "./pages/UserManagement";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import type { CartItem, Order } from "./types";
 import { mockOrders } from "./mockData";
 import { authService } from "./services/authService";
@@ -74,15 +77,13 @@ type Page =
   | "event-reviews"
   | "refund-request"
   | "admin-dashboard"
+  | "user-management"
+  | "become-organizer"
   | "login"
   | "register"
   | "forgot-password";
 
-interface AppProps {
-  initialPage?: string;
-}
-
-export default function App({ initialPage }: AppProps) {
+export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -122,6 +123,8 @@ export default function App({ initialPage }: AppProps) {
     if (path === "/event-reviews") return "event-reviews";
     if (path === "/refund-request") return "refund-request";
     if (path === "/admin-dashboard") return "admin-dashboard";
+    if (path === "/user-management") return "user-management";
+    if (path === "/become-organizer") return "become-organizer";
     if (path === "/login") return "login";
     if (path === "/register") return "register";
     if (path === "/forgot-password") return "forgot-password";
@@ -130,7 +133,7 @@ export default function App({ initialPage }: AppProps) {
   };
 
   const [currentPage, setCurrentPage] = useState<Page>(() => {
-    return (initialPage as Page) || getPageFromPath();
+    return getPageFromPath();
   });
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -141,15 +144,36 @@ export default function App({ initialPage }: AppProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(
     authService.isAuthenticated()
   );
-  const [userRole, setUserRole] = useState<"user" | "organizer" | "admin">(
+  const [userRole, setUserRole] = useState<"guest" | "user" | "organizer" | "staff" | "admin">(
     () => {
       const user = authService.getCurrentUser();
+      if (!user) return "guest";
       return (
-        (user?.role?.toLowerCase() as "user" | "organizer" | "admin") || "user"
+        (user?.role?.toLowerCase() as "guest" | "user" | "organizer" | "staff" | "admin") || "user"
       );
     }
   );
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Sync page state with URL on mount and URL changes
+  useEffect(() => {
+    const page = getPageFromPath();
+    setCurrentPage(page);
+
+    // Extract IDs from URL params
+    const pathParts = location.pathname.split("/");
+    if (location.pathname.startsWith("/event/") && pathParts[2]) {
+      setSelectedEventId(pathParts[2]);
+    } else if (location.pathname.startsWith("/order/") && pathParts[2]) {
+      setSelectedOrderId(pathParts[2]);
+    } else if (location.pathname.startsWith("/ticket/") && pathParts[2]) {
+      setSelectedTicketId(pathParts[2]);
+    } else if (location.pathname.startsWith("/transfer-ticket/") && pathParts[2]) {
+      setSelectedTicketId(pathParts[2]);
+    } else if (location.pathname.startsWith("/event-analytics/") && pathParts[2]) {
+      setSelectedEventId(pathParts[2]);
+    }
+  }, [location.pathname]);
 
   // Check authentication on mount and when localStorage changes
   useEffect(() => {
@@ -161,12 +185,12 @@ export default function App({ initialPage }: AppProps) {
         const user = authService.getCurrentUser();
         if (user) {
           setUserRole(
-            (user.role?.toLowerCase() as "user" | "organizer" | "admin") ||
+            (user.role?.toLowerCase() as "guest" | "user" | "organizer" | "staff" | "admin") ||
               "user"
           );
         }
       } else {
-        setUserRole("user");
+        setUserRole("guest");
       }
     };
 
@@ -368,6 +392,12 @@ export default function App({ initialPage }: AppProps) {
       case "admin-dashboard":
         return <AdminDashboard onNavigate={handleNavigate} />;
 
+      case "user-management":
+        return <UserManagement onNavigate={handleNavigate} />;
+
+      case "become-organizer":
+        return <BecomeOrganizer onNavigate={handleNavigate} />;
+
       case "login":
         return <Login onNavigate={handleNavigate} />;
 
@@ -389,18 +419,20 @@ export default function App({ initialPage }: AppProps) {
     currentPage === "forgot-password";
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {!isStandalonePage && (
-        <Header
-          onNavigate={handleNavigate}
-          currentPage={currentPage}
-          isAuthenticated={isAuthenticated}
-          userRole={userRole}
-          onSearchOpenChange={setIsSearchOpen}
-        />
-      )}
-      <main className="flex-1">{renderPage()}</main>
-      {!isStandalonePage && <Footer />}
-    </div>
+    <ProtectedRoute>
+      <div className="min-h-screen flex flex-col">
+        {!isStandalonePage && (
+          <Header
+            onNavigate={handleNavigate}
+            currentPage={currentPage}
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+            onSearchOpenChange={setIsSearchOpen}
+          />
+        )}
+        <main className="flex-1">{renderPage()}</main>
+        {!isStandalonePage && <Footer />}
+      </div>
+    </ProtectedRoute>
   );
 }

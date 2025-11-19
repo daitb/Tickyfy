@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Star,
   Upload,
@@ -48,6 +49,7 @@ const categoryRatings = [
 ];
 
 export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps) {
+  const { t } = useTranslation();
   const [overallRating, setOverallRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [reviewTitle, setReviewTitle] = useState('');

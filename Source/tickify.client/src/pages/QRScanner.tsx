@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Info,
@@ -80,6 +81,7 @@ const mockScans: ScanResult[] = [
 ];
 
 export function QRScanner({ eventId, onNavigate }: QRScannerProps) {
+  const { t } = useTranslation();
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [zoom, setZoom] = useState(1);

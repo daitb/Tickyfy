@@ -59,6 +59,7 @@ namespace Tickify
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IFileUploadService, FileUploadService>();
             builder.Services.AddScoped<Tickify.Services.Reviews.IReviewService, Tickify.Services.Reviews.ReviewService>();
+            builder.Services.AddScoped<Tickify.Interfaces.Services.IAdminService, Tickify.Services.AdminService>();
 
 
             // [ADD] HttpClient + HttpContextAccessor (MoMoProvider dùng HttpClient; controller cần lấy IP)

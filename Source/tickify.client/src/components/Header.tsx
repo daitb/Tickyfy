@@ -8,6 +8,9 @@ import {
   LayoutDashboard,
   Calendar,
   LogOut,
+  QrCode,
+  History,
+  UserCog,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { InlineSearchBar } from "./InlineSearchBar";
@@ -21,12 +24,14 @@ import {
 } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { authService } from "../services/authService";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useTranslation } from "react-i18next";
 
 interface HeaderProps {
   onNavigate: (page: string, eventId?: string) => void;
   currentPage: string;
   isAuthenticated?: boolean;
-  userRole?: "user" | "organizer" | "admin";
+  userRole?: "guest" | "user" | "organizer" | "staff" | "admin";
   onSearchOpenChange?: (isOpen: boolean) => void;
 }
 
@@ -37,6 +42,8 @@ export function Header({
   userRole = "user",
   onSearchOpenChange,
 }: HeaderProps) {
+  const { t } = useTranslation();
+  
   const handleEventClick = (eventId: string) => {
     onNavigate("event-detail", eventId);
   };
@@ -58,7 +65,7 @@ export function Header({
           {/* Logo */}
           <button
             onClick={() => onNavigate("home")}
-            className="flex items-center gap-2 hover:opacity-90 transition-opacity flex-shrink-0"
+            className="cursor-pointer flex items-center gap-2 hover:opacity-90 transition-opacity flex-shrink-0"
           >
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
               <Ticket className="text-teal-500" size={24} />
@@ -78,6 +85,11 @@ export function Header({
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Language Switcher */}
+            <div className="hover:bg-teal-600 rounded-lg">
+              <LanguageSwitcher/>
+            </div>        
+            
             {/* Create Event Button - Only for Organizers */}
             {isAuthenticated && userRole === "organizer" && (
               <Button
@@ -87,7 +99,7 @@ export function Header({
                 className="bg-white text-teal-600 hover:bg-neutral-100 gap-2 hidden lg:flex"
               >
                 <Plus size={18} />
-                Create Event
+                {t('header.becomeOrganizer')}
               </Button>
             )}
 
@@ -96,12 +108,12 @@ export function Header({
               onClick={() => onNavigate("my-tickets")}
               variant="ghost"
               size="sm"
-              className={`gap-2 text-white hover:bg-teal-600 ${
+              className={`cursor-pointer gap-2 text-white hover:bg-teal-600 ${
                 currentPage === "my-tickets" ? "bg-teal-600" : ""
               }`}
             >
               <Ticket size={18} />
-              <span className="hidden sm:inline">My Tickets</span>
+              <span className="hidden sm:inline">{t('header.myTickets')}</span>
             </Button>
 
             {/* Account Dropdown */}
@@ -111,7 +123,7 @@ export function Header({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="gap-2 text-white hover:bg-teal-600"
+                    className="cursor-pointer gap-2 text-white hover:bg-teal-600"
                   >
                     <Avatar className="w-7 h-7">
                       <AvatarFallback className="bg-white text-teal-600 text-sm font-semibold">
@@ -129,7 +141,7 @@ export function Header({
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={() => onNavigate("my-tickets")}>
                     <Ticket size={16} className="mr-2" />
-                    My Tickets
+                    {t('header.myTickets')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onNavigate("wishlist")}>
                     <Heart size={16} className="mr-2" />
@@ -162,6 +174,23 @@ export function Header({
                       </DropdownMenuItem>
                     </>
                   )}
+                  {(userRole === "staff" || userRole === "organizer" || userRole === "admin") && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("qr-scanner")}
+                      >
+                        <QrCode size={16} className="mr-2" />
+                        QR Scanner
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("scan-history")}
+                      >
+                        <History size={16} className="mr-2" />
+                        Scan History
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   {userRole === "admin" && (
                     <>
                       <DropdownMenuSeparator />
@@ -169,14 +198,31 @@ export function Header({
                         onClick={() => onNavigate("admin-dashboard")}
                       >
                         <Shield size={16} className="mr-2" />
-                        Admin Dashboard
+                        {t('header.adminPanel')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("user-management")}
+                      >
+                        <UserCog size={16} className="mr-2" />
+                        {t('header.userManagement')}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {userRole === "user" && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("become-organizer")}
+                      >
+                        <Plus size={16} className="mr-2" />
+                        {t('header.becomeOrganizer')}
                       </DropdownMenuItem>
                     </>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => onNavigate("user-profile")}>
                     <User size={16} className="mr-2" />
-                    Profile & Settings
+                    {t('header.profile')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => {
@@ -186,7 +232,7 @@ export function Header({
                     className="text-red-600 focus:text-red-600"
                   >
                     <LogOut size={16} className="mr-2" />
-                    Sign Out
+                    {t('header.logout')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -197,7 +243,7 @@ export function Header({
                 size="sm"
                 className="bg-white text-teal-600 hover:bg-neutral-100"
               >
-                Sign In
+                {t('header.login')}
               </Button>
             )}
           </div>
