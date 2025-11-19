@@ -3,12 +3,14 @@ import { Mail, ArrowLeft, Ticket } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { useTranslation } from 'react-i18next';
 
 interface ForgotPasswordProps {
   onNavigate: (page: string) => void;
 }
 
 export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
@@ -50,22 +52,22 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
               <>
                 {/* Header */}
                 <div className="text-center mb-8">
-                  <h1 className="text-neutral-900 mb-2">Reset your password</h1>
+                  <h1 className="text-neutral-900 mb-2">{t('auth.forgotPasswordTitle')}</h1>
                   <p className="text-sm text-neutral-600">
-                    Enter your email address and we'll send you a link to reset your password
+                    {t('auth.forgotPasswordSubtitle')}
                   </p>
                 </div>
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">{t('auth.email')}</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                       <Input
                         id="email"
                         type="email"
-                        placeholder="Enter your email"
+                        placeholder={t('auth.emailPlaceholder')}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="pl-10"
@@ -79,7 +81,7 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
                     className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                     disabled={isLoading}
                   >
-                    {isLoading ? 'Sending...' : 'Send reset link'}
+                    {isLoading ? t('auth.sending') : t('auth.sendResetLink')}
                   </Button>
 
                   <button
@@ -88,7 +90,7 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
                     className="w-full flex items-center justify-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
                   >
                     <ArrowLeft size={16} />
-                    Back to sign in
+                    {t('auth.backToLogin')}
                   </button>
                 </form>
               </>

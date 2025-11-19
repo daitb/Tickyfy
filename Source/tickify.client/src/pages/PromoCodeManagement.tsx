@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Tag,
   Plus,
@@ -121,6 +122,7 @@ const mockPromoCodes: PromoCode[] = [
 ];
 
 export function PromoCodeManagement({ onNavigate }: PromoCodeManagementProps) {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);

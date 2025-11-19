@@ -1,8 +1,4 @@
 export interface Event {
-  fullDescription: string;
-  highlights: any;
-  venueDetails: any;
-  faqs: any;
   id: string;
   title: string;
   slug: string;

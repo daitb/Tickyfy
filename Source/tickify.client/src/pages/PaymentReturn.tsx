@@ -335,16 +335,8 @@ export default function PaymentReturn() {
               <Button
                 onClick={() => paymentId && verifyPaymentStatus(paymentId, true)}
                 className="w-full bg-teal-500 hover:bg-teal-600"
-                disabled={status === "verifying"}
               >
-                {status === "verifying" ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Checking...
-                  </>
-                ) : (
-                  "Check Status Again"
-                )}
+                Check Status Again
               </Button>
               <div className="flex gap-3">
                 <Button

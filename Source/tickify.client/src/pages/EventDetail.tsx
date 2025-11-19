@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Calendar, MapPin, User, Minus, Plus, Clock, Share2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { MiniCartBar } from '../components/MiniCartBar';
@@ -15,7 +16,7 @@ import ShareButtons from '../components/event-detail/ShareButtons';
 import RelatedEvents from '../components/event-detail/RelatedEvents';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { eventService } from '../services/eventService';
-import { CartItem } from '../types';
+import type { CartItem } from '../types';
 
 interface EventDetailProps {
   eventId: string;
@@ -24,6 +25,7 @@ interface EventDetailProps {
 }
 
 export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailProps) {
+  const { t } = useTranslation();
   const [event, setEvent] = useState<any | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [showTimer, setShowTimer] = useState(false);
@@ -55,9 +57,9 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2>Event not found</h2>
+          <h2>{t('events.eventNotFound')}</h2>
           <Button onClick={() => onNavigate('home')} className="mt-4">
-            Return Home
+            {t('common.returnHome')}
           </Button>
         </div>
       </div>
@@ -65,7 +67,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
   }
 
   const handleQuantityChange = (tierId: string, delta: number) => {
-    const tier = event.ticketTiers.find(t => t.id === tierId);
+    const tier = event.ticketTiers.find((t: any) => t.id === tierId);
     if (!tier) return;
 
     const currentQty = quantities[tierId] || 0;
@@ -79,14 +81,14 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
   };
 
   const totalItems = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
-  const subtotal = event.ticketTiers.reduce((sum, tier) => {
+  const subtotal = event.ticketTiers.reduce((sum: number, tier: any) => {
     return sum + (tier.price * (quantities[tier.id] || 0));
   }, 0);
 
   const handleCheckout = () => {
     const items: CartItem[] = event.ticketTiers
-      .filter(tier => quantities[tier.id] > 0)
-      .map(tier => ({
+      .filter((tier: any) => quantities[tier.id] > 0)
+      .map((tier: any) => ({
         eventId: event.id,
         eventTitle: event.title,
         eventDate: event.date,
@@ -140,7 +142,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                 className="bg-white/90 hover:bg-white backdrop-blur-sm"
               >
                 <Share2 size={16} className="mr-2" />
-                Share
+                {t('common.share')}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 border-0 shadow-xl" align="end">
@@ -166,7 +168,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                 <div className="flex items-start gap-3">
                   <Calendar className="text-teal-500 mt-1 flex-shrink-0" size={20} />
                   <div>
-                    <div className="text-sm text-neutral-500">Date & Time</div>
+                    <div className="text-sm text-neutral-500">{t('events.dateTime')}</div>
                     <div className="text-neutral-900">
                       {formatDate(event.date)}
                     </div>
@@ -177,7 +179,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                 <div className="flex items-start gap-3">
                   <MapPin className="text-teal-500 mt-1 flex-shrink-0" size={20} />
                   <div>
-                    <div className="text-sm text-neutral-500">Venue</div>
+                    <div className="text-sm text-neutral-500">{t('common.venue')}</div>
                     <div className="text-neutral-900">{event.venue}</div>
                     <div className="text-neutral-600">{event.city}</div>
                   </div>
@@ -187,7 +189,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
               <Separator className="my-8" />
 
               <div>
-                <h3 className="mb-4">About This Event</h3>
+                <h3 className="mb-4">{t('events.aboutThisEvent')}</h3>
                 <div className="text-neutral-600 leading-relaxed space-y-4 whitespace-pre-line">
                   {event.fullDescription || event.description}
                 </div>
@@ -197,7 +199,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
 
               {/* Organizer */}
               <div>
-                <h3 className="mb-4">Organizer</h3>
+                <h3 className="mb-4">{t('events.organizer')}</h3>
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
                     <AvatarFallback className="bg-teal-100 text-teal-600">
@@ -206,7 +208,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                   </Avatar>
                   <div>
                     <div className="text-neutral-900">{event.organizerName}</div>
-                    <div className="text-sm text-neutral-500">Event Organizer</div>
+                    <div className="text-sm text-neutral-500">{t('events.eventOrganizer')}</div>
                   </div>
                 </div>
               </div>
@@ -246,10 +248,10 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
           {/* Ticket Selection Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl p-6 shadow-lg sticky top-20">
-              <h3 className="mb-6">Select Tickets</h3>
+              <h3 className="mb-6">{t('events.selectTickets')}</h3>
 
               <div className="space-y-4">
-                {event.ticketTiers.map((tier) => (
+                {event.ticketTiers.map((tier: any) => (
                   <div
                     key={tier.id}
                     className={`border rounded-xl p-4 transition-all ${
@@ -275,9 +277,9 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                     <div className="flex items-center justify-between mt-4">
                       <div className="text-sm text-neutral-500">
                         {tier.available > 0 ? (
-                          `${tier.available} available`
+                          `${tier.available} ${t('events.available')}`
                         ) : (
-                          <span className="text-red-600">Sold Out</span>
+                          <span className="text-red-600">{t('events.soldOut')}</span>
                         )}
                       </div>
 

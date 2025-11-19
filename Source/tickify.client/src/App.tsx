@@ -37,8 +37,11 @@ import { Register } from "./pages/Register";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ChatPage } from "./pages/ChatPage";
 import { StaffChatPage } from "./pages/StaffChatPage";
+import { BecomeOrganizer } from "./pages/BecomeOrganizer";
+import { UserManagement } from "./pages/UserManagement";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import type { CartItem, Order } from "./types";
 import { mockOrders } from "./mockData";
 import { authService } from "./services/authService";
@@ -78,15 +81,13 @@ type Page =
   | "admin-dashboard"
   | "chat"
   | "staff-chat"
+  | "user-management"
+  | "become-organizer"
   | "login"
   | "register"
   | "forgot-password";
 
-interface AppProps {
-  initialPage?: string;
-}
-
-export default function App({ initialPage }: AppProps) {
+export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -128,6 +129,8 @@ export default function App({ initialPage }: AppProps) {
     if (path === "/admin-dashboard") return "admin-dashboard";
     if (path === "/chat") return "chat";
     if (path === "/staff-chat") return "staff-chat";
+    if (path === "/user-management") return "user-management";
+    if (path === "/become-organizer") return "become-organizer";
     if (path === "/login") return "login";
     if (path === "/register") return "register";
     if (path === "/forgot-password") return "forgot-password";
@@ -136,7 +139,7 @@ export default function App({ initialPage }: AppProps) {
   };
 
   const [currentPage, setCurrentPage] = useState<Page>(() => {
-    return (initialPage as Page) || getPageFromPath();
+    return getPageFromPath();
   });
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -147,18 +150,23 @@ export default function App({ initialPage }: AppProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(
     authService.isAuthenticated()
   );
-  const [userRole, setUserRole] = useState<"user" | "organizer" | "admin">(
+  const [userRole, setUserRole] = useState<"guest" | "user" | "organizer" | "staff" | "admin">(
     () => {
       const user = authService.getCurrentUser();
+      if (!user) return "guest";
       return (
-        (user?.role?.toLowerCase() as "user" | "organizer" | "admin") || "user"
+        (user?.role?.toLowerCase() as "guest" | "user" | "organizer" | "staff" | "admin") || "user"
       );
     }
   );
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Extract IDs from URL path when location changes
+  // Sync page state with URL on mount and URL changes
   useEffect(() => {
+    const page = getPageFromPath();
+    setCurrentPage(page);
+
+    // Extract IDs from URL params
     const path = location.pathname;
     
     // Extract eventId from URL
@@ -170,19 +178,25 @@ export default function App({ initialPage }: AppProps) {
     // Extract orderId from URL
     if (path.startsWith("/order/")) {
       const orderId = path.split("/order/")[1]?.split("/")[0];
-      if (orderId) {
-        setSelectedOrderId(orderId);
-        setCurrentPage("order-detail");
-      }
+      if (orderId) setSelectedOrderId(orderId);
     }
     
     // Extract ticketId from URL
     if (path.startsWith("/ticket/")) {
       const ticketId = path.split("/ticket/")[1]?.split("/")[0];
-      if (ticketId) {
-        setSelectedTicketId(ticketId);
-        setCurrentPage("ticket-detail");
-      }
+      if (ticketId) setSelectedTicketId(ticketId);
+    }
+    
+    // Extract ticketId from transfer-ticket URL
+    if (path.startsWith("/transfer-ticket/")) {
+      const ticketId = path.split("/transfer-ticket/")[1]?.split("/")[0];
+      if (ticketId) setSelectedTicketId(ticketId);
+    }
+    
+    // Extract eventId from event-analytics URL
+    if (path.startsWith("/event-analytics/")) {
+      const eventId = path.split("/event-analytics/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
     }
   }, [location.pathname]);
 
@@ -196,12 +210,12 @@ export default function App({ initialPage }: AppProps) {
         const user = authService.getCurrentUser();
         if (user) {
           setUserRole(
-            (user.role?.toLowerCase() as "user" | "organizer" | "admin") ||
+            (user.role?.toLowerCase() as "guest" | "user" | "organizer" | "staff" | "admin") ||
               "user"
           );
         }
       } else {
-        setUserRole("user");
+        setUserRole("guest");
       }
     };
 
@@ -408,6 +422,11 @@ export default function App({ initialPage }: AppProps) {
 
       case "staff-chat":
         return <StaffChatPage />;
+      case "user-management":
+        return <UserManagement onNavigate={handleNavigate} />;
+
+      case "become-organizer":
+        return <BecomeOrganizer onNavigate={handleNavigate} />;
 
       case "login":
         return <Login onNavigate={handleNavigate} />;
@@ -430,18 +449,20 @@ export default function App({ initialPage }: AppProps) {
     currentPage === "forgot-password";
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {!isStandalonePage && (
-        <Header
-          onNavigate={handleNavigate}
-          currentPage={currentPage}
-          isAuthenticated={isAuthenticated}
-          userRole={userRole}
-          onSearchOpenChange={setIsSearchOpen}
-        />
-      )}
-      <main className="flex-1">{renderPage()}</main>
-      {!isStandalonePage && <Footer />}
-    </div>
+    <ProtectedRoute>
+      <div className="min-h-screen flex flex-col">
+        {!isStandalonePage && (
+          <Header
+            onNavigate={handleNavigate}
+            currentPage={currentPage}
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+            onSearchOpenChange={setIsSearchOpen}
+          />
+        )}
+        <main className="flex-1">{renderPage()}</main>
+        {!isStandalonePage && <Footer />}
+      </div>
+    </ProtectedRoute>
   );
 }

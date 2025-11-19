@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, X, Info, Mail, AlertCircle, Loader2, ArrowLeft, Copy } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -21,6 +22,7 @@ interface EmailVerificationProps {
 type VerificationStatus = 'loading' | 'success' | 'expired' | 'invalid' | 'already-verified' | 'error';
 
 export function EmailVerification({ token, onNavigate }: EmailVerificationProps) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<VerificationStatus>('loading');
   const [email, setEmail] = useState('john.doe@example.com');
   const [resendCountdown, setResendCountdown] = useState(0);

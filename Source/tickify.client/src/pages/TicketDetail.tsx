@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import {
   Calendar,
   MapPin,
@@ -19,7 +20,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "../components/ui/accordion";
-import { Order, OrderTicket } from "../types";
+import type { Order, OrderTicket } from "../types";
 import { mockEvents, mockOrders } from "../mockData";
 
 interface TicketDetailProps {
@@ -33,6 +34,7 @@ export function TicketDetail({
   orders,
   onNavigate,
 }: TicketDetailProps) {
+  const { t } = useTranslation();
   // Find ticket from orders list if not provided
   let currentTicket: any = null;
   let currentOrder: any = null;

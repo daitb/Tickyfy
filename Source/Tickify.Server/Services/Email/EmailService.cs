@@ -154,38 +154,43 @@ public class EmailService : IEmailService
     #region Organizer Emails
 
     /// <summary>
-    /// Send welcome email to new organizer
+    /// Gửi email chào mừng organizer mới
+    /// Template: OrganizerWelcome.html
     /// </summary>
     public async Task SendOrganizerWelcomeEmailAsync(string to, string userName, string companyName)
     {
-        var htmlBody = $@"
-            <h2>Welcome to Tickify Organizers, {userName}!</h2>
-            <p>Your organizer account for <strong>{companyName}</strong> has been created successfully.</p>
-            <p>Your profile is currently pending verification. Our team will review your information shortly.</p>
-            <p>Once verified, you'll be able to:</p>
-            <ul>
-                <li>Create and manage events</li>
-                <li>Track ticket sales and revenue</li>
-                <li>Access detailed analytics</li>
-            </ul>
-            <p>Thank you for choosing Tickify!</p>
-        ";
+        var templateData = new Dictionary<string, string>
+        {
+            { "UserName", userName },
+            { "CompanyName", companyName }
+        };
 
-        await SendEmailAsync(to, "Welcome to Tickify Organizers", htmlBody);
+        await SendEmailFromTemplateAsync(
+            to,
+            "Chào mừng đến với Tickify - Organizer Platform",
+            "OrganizerWelcome",
+            templateData
+        );
     }
 
-    /// Send verification confirmation email to organizer
+    /// <summary>
+    /// Gửi email xác nhận organizer đã được verify
+    /// Template: OrganizerVerification.html
+    /// </summary>
     public async Task SendOrganizerVerificationEmailAsync(string to, string userName, string companyName)
     {
-        var htmlBody = $@"
-            <h2>Congratulations, {userName}!</h2>
-            <p>Your organizer account for <strong>{companyName}</strong> has been verified.</p>
-            <p>You can now start creating events and selling tickets on Tickify.</p>
-            <p>Get started by creating your first event in the organizer dashboard.</p>
-            <p>Best regards,<br>Tickify Team</p>
-        ";
+        var templateData = new Dictionary<string, string>
+        {
+            { "UserName", userName },
+            { "CompanyName", companyName }
+        };
 
-        await SendEmailAsync(to, "Your Organizer Account is Verified", htmlBody);
+        await SendEmailFromTemplateAsync(
+            to,
+            "Tài khoản Organizer đã được xác thực",
+            "OrganizerVerification",
+            templateData
+        );
     }
 
     #endregion

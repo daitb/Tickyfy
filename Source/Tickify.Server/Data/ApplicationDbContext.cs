@@ -38,6 +38,7 @@ namespace Tickify.Data
         public DbSet<Waitlist> Waitlists { get; set; }
         public DbSet<TicketTransfer> TicketTransfers { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<OrganizerRequest> OrganizerRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -672,6 +673,31 @@ namespace Tickify.Data
 
             modelBuilder.Entity<RefreshToken>()
                 .HasIndex(rt => new { rt.UserId, rt.IsRevoked });
+
+            // OrganizerRequest - Primary key
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasKey(or => or.RequestId);
+
+            // OrganizerRequest - User relationship
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasOne(or => or.User)
+                .WithMany()
+                .HasForeignKey(or => or.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // OrganizerRequest - ReviewedByAdmin relationship
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasOne(or => or.ReviewedByAdmin)
+                .WithMany()
+                .HasForeignKey(or => or.ReviewedByAdminId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // OrganizerRequest - Indexes
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasIndex(or => or.UserId);
+
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasIndex(or => or.Status);
         }
     }
 }

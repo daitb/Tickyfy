@@ -82,6 +82,16 @@ class AuthService {
     // Dispatch custom event to notify app of auth change
     window.dispatchEvent(new Event("auth-change"));
 
+    // Check for redirect URL and redirect after successful login
+    const redirectUrl = sessionStorage.getItem("redirectAfterLogin");
+    if (redirectUrl) {
+      sessionStorage.removeItem("redirectAfterLogin");
+      // Use setTimeout to ensure state updates complete
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 100);
+    }
+
     return loginResponse;
   }
 

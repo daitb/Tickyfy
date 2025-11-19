@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Heart, Calendar, MapPin } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -21,6 +22,7 @@ interface WishlistProps {
 }
 
 export function Wishlist({ wishlistItems, onNavigate }: WishlistProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('all');
   const [sortBy, setSortBy] = useState('date-added');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);

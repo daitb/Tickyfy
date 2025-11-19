@@ -1,4 +1,6 @@
+
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
@@ -31,6 +33,7 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -95,18 +98,18 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Shield className="text-orange-500" size={32} />
-              <h1>Admin Dashboard</h1>
+              <h1>{t('admin.dashboard.title')}</h1>
             </div>
-            <p className="text-neutral-600">Platform management and analytics</p>
+            <p className="text-neutral-600">{t('admin.dashboard.subtitle')}</p>
           </div>
           <div className="flex gap-3">
             <Button variant="outline" size="sm">
               <Download size={16} className="mr-2" />
-              Export Report
+              {t('admin.exportReport')}
             </Button>
             <Button variant="outline" size="sm">
               <Settings size={16} className="mr-2" />
-              Settings
+              {t('common.settings')}
             </Button>
           </div>
         </div>

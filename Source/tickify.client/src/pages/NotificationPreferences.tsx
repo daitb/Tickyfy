@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, Bell, Mail, Smartphone, MessageSquare, Clock, Lock, Eye } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -55,6 +56,7 @@ interface NotificationSettings {
 }
 
 export function NotificationPreferences({ onNavigate }: NotificationPreferencesProps) {
+  const { t } = useTranslation();
   const [enableAll, setEnableAll] = useState(true);
   const [doNotDisturb, setDoNotDisturb] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

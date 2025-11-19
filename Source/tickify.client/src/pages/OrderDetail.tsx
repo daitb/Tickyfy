@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from 'react-i18next';
 import {
   Calendar,
   MapPin,
@@ -46,6 +47,7 @@ interface PaymentInfo {
 }
 
 export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
+  const { t } = useTranslation();
   const [tickets, setTickets] = useState<any[]>([]);
   const [event, setEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,7 +111,7 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
                 price: firstTicket.price || 0,
                 capacity: 0,
                 available: 0,
-              } as Event);
+              } as unknown as Event);
             }
           }
         } else if (firstTicket?.eventTitle) {
@@ -127,7 +129,7 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
             price: firstTicket.price || 0,
             capacity: 0,
             available: 0,
-          } as Event);
+          } as unknown as Event);
         }
         
         // Load payment information

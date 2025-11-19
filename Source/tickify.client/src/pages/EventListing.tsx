@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { EventCard } from '../components/EventCard';
-import { FilterBar, FilterBarState } from '../components/FilterBar';
+import { FilterBar } from '../components/FilterBar';
+import type { FilterBarState } from '../components/FilterBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { eventService } from '../services/eventService';
-import { SortOption } from '../types';
+import type { SortOption } from '../types';
+import { useTranslation } from 'react-i18next';
 
 interface EventListingProps {
   onNavigate: (page: string, eventId?: string) => void;
 }
 
 export function EventListing({ onNavigate }: EventListingProps) {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<FilterBarState>({});
   const [sortBy, setSortBy] = useState<SortOption>('popularity');
   const [events, setEvents] = useState<any[]>([]);
@@ -48,7 +51,7 @@ export function EventListing({ onNavigate }: EventListingProps) {
   // Filter by free events
   if (filters.isFree) {
     filteredEvents = filteredEvents.filter(e => 
-      e.ticketTiers.some(tier => tier.price === 0)
+      e.ticketTiers.some((tier: any) => tier.price === 0)
     );
   }
 
@@ -64,14 +67,14 @@ export function EventListing({ onNavigate }: EventListingProps) {
     filteredEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   } else if (sortBy === 'price-asc') {
     filteredEvents.sort((a, b) => {
-      const aMin = Math.min(...a.ticketTiers.map(t => t.price));
-      const bMin = Math.min(...b.ticketTiers.map(t => t.price));
+      const aMin = Math.min(...a.ticketTiers.map((t: any) => t.price));
+      const bMin = Math.min(...b.ticketTiers.map((t: any) => t.price));
       return aMin - bMin;
     });
   } else if (sortBy === 'price-desc') {
     filteredEvents.sort((a, b) => {
-      const aMin = Math.min(...a.ticketTiers.map(t => t.price));
-      const bMin = Math.min(...b.ticketTiers.map(t => t.price));
+      const aMin = Math.min(...a.ticketTiers.map((t: any) => t.price));
+      const bMin = Math.min(...b.ticketTiers.map((t: any) => t.price));
       return bMin - aMin;
     });
   }
@@ -89,16 +92,16 @@ export function EventListing({ onNavigate }: EventListingProps) {
         {/* Sort Control */}
         <div className="flex items-center justify-end mb-6">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-600">Sort by:</span>
+            <span className="text-sm text-neutral-600">{t('events.sortBy')}:</span>
             <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="popularity">Popularity</SelectItem>
-                <SelectItem value="date">Date</SelectItem>
-                <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                <SelectItem value="popularity">{t('events.sort.popularity')}</SelectItem>
+                <SelectItem value="date">{t('events.sort.date')}</SelectItem>
+                <SelectItem value="price-asc">{t('events.sort.priceLowToHigh')}</SelectItem>
+                <SelectItem value="price-desc">{t('events.sort.priceHighToLow')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -135,8 +138,8 @@ export function EventListing({ onNavigate }: EventListingProps) {
                 />
               </svg>
             </div>
-            <h3 className="text-neutral-900 mb-2">No events found</h3>
-            <p className="text-neutral-600">Try adjusting your filters</p>
+            <h3 className="text-neutral-900 mb-2">{t('events.noEventsFound')}</h3>
+            <p className="text-neutral-600">{t('events.tryAdjustingFilters')}</p>
           </div>
         )}
       </div>
