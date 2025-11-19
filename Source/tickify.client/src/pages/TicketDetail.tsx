@@ -20,7 +20,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "../components/ui/accordion";
-import { Order, OrderTicket } from "../types";
+import type { Order, OrderTicket } from "../types";
 import { mockEvents, mockOrders } from "../mockData";
 
 interface TicketDetailProps {

@@ -8,11 +8,11 @@ import { ProgressSteps } from "../components/ProgressSteps";
 import { FeeBreakdown } from "../components/FeeBreakdown";
 import {
   PaymentMethodSelector,
-  PaymentMethod,
+  type PaymentMethod,
 } from "../components/PaymentMethodSelector";
 import { Separator } from "../components/ui/separator";
 import { eventService } from "../services/eventService";
-import { CartItem, Order } from "../types";
+import type { CartItem, Order } from "../types";
 import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
 import { createPaymentIntent } from "../services/paymentService";
@@ -154,8 +154,8 @@ export function Checkout({
 
       // Create booking via API with numeric IDs
       const booking = await bookingService.createBooking({
-        eventId: eventId,
-        ticketTypeId: ticketTypeId,
+        eventId: String(eventId),
+        ticketTypeId: String(ticketTypeId),
         quantity: totalQuantity,
       });
 

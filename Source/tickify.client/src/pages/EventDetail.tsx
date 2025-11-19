@@ -16,7 +16,7 @@ import ShareButtons from '../components/event-detail/ShareButtons';
 import RelatedEvents from '../components/event-detail/RelatedEvents';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { eventService } from '../services/eventService';
-import { CartItem } from '../types';
+import type { CartItem } from '../types';
 
 interface EventDetailProps {
   eventId: string;
@@ -67,7 +67,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
   }
 
   const handleQuantityChange = (tierId: string, delta: number) => {
-    const tier = event.ticketTiers.find(t => t.id === tierId);
+    const tier = event.ticketTiers.find((t: any) => t.id === tierId);
     if (!tier) return;
 
     const currentQty = quantities[tierId] || 0;
@@ -81,14 +81,14 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
   };
 
   const totalItems = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
-  const subtotal = event.ticketTiers.reduce((sum, tier) => {
+  const subtotal = event.ticketTiers.reduce((sum: number, tier: any) => {
     return sum + (tier.price * (quantities[tier.id] || 0));
   }, 0);
 
   const handleCheckout = () => {
     const items: CartItem[] = event.ticketTiers
-      .filter(tier => quantities[tier.id] > 0)
-      .map(tier => ({
+      .filter((tier: any) => quantities[tier.id] > 0)
+      .map((tier: any) => ({
         eventId: event.id,
         eventTitle: event.title,
         eventDate: event.date,
@@ -251,7 +251,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
               <h3 className="mb-6">{t('events.selectTickets')}</h3>
 
               <div className="space-y-4">
-                {event.ticketTiers.map((tier) => (
+                {event.ticketTiers.map((tier: any) => (
                   <div
                     key={tier.id}
                     className={`border rounded-xl p-4 transition-all ${

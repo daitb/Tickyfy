@@ -5,7 +5,7 @@ import { Badge } from '../components/ui/badge';
 import { ArrowRight, TrendingUp, Star } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { eventService } from '../services/eventService';
-import { Category } from '../types';
+import type { Category } from '../types';
 import { useTranslation } from 'react-i18next';
 
 interface HomeProps {
