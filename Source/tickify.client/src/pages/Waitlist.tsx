@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Clock, Calendar, MapPin, PartyPopper, Info } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -22,6 +23,7 @@ interface WaitlistProps {
 }
 
 export function Waitlist({ waitlistEntries, onNavigate }: WaitlistProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('all');
 
   // Use provided waitlist or mock data

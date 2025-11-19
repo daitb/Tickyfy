@@ -171,4 +171,27 @@ public class AuthController : ControllerBase
             throw;
         }
     }
+
+    [HttpPost("request-organizer-role")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RequestOrganizerRole([FromBody] OrganizerRequestDto requestDto)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(ApiResponse<object?>.FailureResponse("Không thể xác định người dùng"));
+        }
+
+        await _authService.RequestOrganizerRoleAsync(userId, requestDto);
+        
+        _logger.LogInformation("User {UserId} requested organizer role", userId);
+        
+        return Ok(ApiResponse<object?>.SuccessResponse(
+            null,
+            "Yêu cầu trở thành Organizer đã được gửi. Admin sẽ xem xét và phê duyệt sớm nhất."
+        ));
+    }
 }

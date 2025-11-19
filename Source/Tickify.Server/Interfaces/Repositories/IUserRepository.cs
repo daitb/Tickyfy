@@ -16,4 +16,7 @@ public interface IUserRepository
     Task<User?> GetUserByProviderAsync(string provider, string providerId);
     Task<int> GetTotalBookingsCountAsync(int userId);
     Task<int> GetTotalEventsAttendedCountAsync(int userId);
+    Task<OrganizerRequest?> GetPendingOrganizerRequestAsync(int userId);
+    Task AddOrganizerRequestAsync(OrganizerRequest request);
+    Task<List<User>> GetUsersByRoleAsync(string roleName);
 }

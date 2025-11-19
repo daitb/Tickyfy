@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Upload, Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -15,6 +16,7 @@ interface OrganizerWizardProps {
 }
 
 export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
   const [eventData, setEventData] = useState<Partial<Event>>({
     category: 'Music',

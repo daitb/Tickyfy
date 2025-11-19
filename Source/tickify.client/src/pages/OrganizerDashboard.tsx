@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
@@ -13,6 +14,7 @@ interface OrganizerDashboardProps {
 }
 
 export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('overview');
 
   // Mock data for charts
@@ -56,8 +58,8 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="mb-2">Organizer Dashboard</h1>
-            <p className="text-neutral-600">Manage your events and track performance</p>
+            <h1 className="mb-2">{t('organizer.dashboard.title')}</h1>
+            <p className="text-neutral-600">{t('organizer.dashboard.subtitle')}</p>
           </div>
           <Button
             onClick={() => onNavigate('organizer-wizard')}
@@ -65,16 +67,16 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
             size="lg"
           >
             <Plus size={20} className="mr-2" />
-            Create New Event
+            {t('organizer.createNewEvent')}
           </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-8">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="events">Events</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="overview">{t('organizer.dashboard.overview')}</TabsTrigger>
+            <TabsTrigger value="events">{t('organizer.dashboard.events')}</TabsTrigger>
+            <TabsTrigger value="orders">{t('organizer.dashboard.orders')}</TabsTrigger>
+            <TabsTrigger value="analytics">{t('organizer.dashboard.analytics')}</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -83,7 +85,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm text-neutral-600">Total Revenue</CardTitle>
+                  <CardTitle className="text-sm text-neutral-600">{t('organizer.dashboard.totalRevenue')}</CardTitle>
                   <DollarSign className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>

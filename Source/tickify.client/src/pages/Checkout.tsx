@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from 'react-i18next';
 import { Lock, CheckCircle, ShoppingBag } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -27,6 +28,7 @@ export function Checkout({
   onNavigate,
   onCompleteOrder,
 }: CheckoutProps) {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     email: "",
@@ -39,9 +41,9 @@ export function Checkout({
   const [error, setError] = useState("");
   const [eventsMap, setEventsMap] = useState<Record<number, any>>({});
   const steps = [
-    { number: 1, label: "Information" },
-    { number: 2, label: "Payment" },
-    { number: 3, label: "Review" },
+    { number: 1, label: t('booking.checkout.step1') },
+    { number: 2, label: t('booking.checkout.step2') },
+    { number: 3, label: t('booking.checkout.step3') },
   ];
 
   // Utility: extract trailing numeric ID from strings like 'evt-1' or return number as-is
@@ -80,15 +82,15 @@ export function Checkout({
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <ShoppingBag className="mx-auto mb-4 text-neutral-400" size={48} />
-          <h2 className="mb-2">Your cart is empty</h2>
+          <h2 className="mb-2">{t('booking.checkout.cartEmpty')}</h2>
           <p className="text-neutral-600 mb-6">
-            Add some tickets to get started!
+            {t('booking.checkout.cartEmptyMessage')}
           </p>
           <Button
             onClick={() => onNavigate("home")}
             className="bg-teal-500 hover:bg-teal-600"
           >
-            Browse Events
+            {t('booking.cart.browseEvents')}
           </Button>
         </div>
       </div>
@@ -132,7 +134,7 @@ export function Checkout({
     try {
       // Check if user is authenticated
       if (!authService.isAuthenticated()) {
-        setError("Please login to complete your booking");
+        setError(t('booking.checkout.loginRequired'));
         onNavigate("login");
         return;
       }
@@ -243,9 +245,9 @@ export function Checkout({
       <div className="max-w-5xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="mb-2">Checkout</h1>
+          <h1 className="mb-2">{t('booking.checkout.title')}</h1>
           <p className="text-neutral-600">
-            Complete your purchase in just a few steps
+            {t('booking.checkout.subtitle')}
           </p>
         </div>
 
@@ -266,19 +268,18 @@ export function Checkout({
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="mb-6">Contact Information</h3>
+                    <h3 className="mb-6">{t('booking.checkout.contactInformation')}</h3>
                     <p className="text-neutral-600 mb-6">
-                      We'll send your tickets to this email address. Make sure
-                      it's correct!
+                      {t('booking.checkout.contactMessage')}
                     </p>
 
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="email">Email Address *</Label>
+                        <Label htmlFor="email">{t('booking.checkout.emailAddress')} *</Label>
                         <Input
                           id="email"
                           type="email"
-                          placeholder="you@example.com"
+                          placeholder={t('booking.checkout.emailPlaceholder')}
                           value={formData.email}
                           onChange={(e) =>
                             handleInputChange("email", e.target.value)
@@ -286,16 +287,16 @@ export function Checkout({
                           className="mt-2"
                         />
                         <p className="text-xs text-neutral-500 mt-2">
-                          📧 Your tickets and receipt will be sent here
+                          {t('booking.checkout.emailNote')}
                         </p>
                       </div>
 
                       <div>
-                        <Label htmlFor="name">Full Name *</Label>
+                        <Label htmlFor="name">{t('booking.checkout.fullName')} *</Label>
                         <Input
                           id="name"
                           type="text"
-                          placeholder="Nguyen Van A"
+                          placeholder={t('booking.checkout.fullNamePlaceholder')}
                           value={formData.name}
                           onChange={(e) =>
                             handleInputChange("name", e.target.value)
@@ -303,16 +304,16 @@ export function Checkout({
                           className="mt-2"
                         />
                         <p className="text-xs text-neutral-500 mt-2">
-                          Name as it appears on your ID
+                          {t('booking.checkout.fullNameNote')}
                         </p>
                       </div>
 
                       <div>
-                        <Label htmlFor="phone">Phone Number *</Label>
+                        <Label htmlFor="phone">{t('booking.checkout.phoneNumber')} *</Label>
                         <Input
                           id="phone"
                           type="tel"
-                          placeholder="09xx xxx xxx"
+                          placeholder={t('booking.checkout.phonePlaceholder')}
                           value={formData.phone}
                           onChange={(e) =>
                             handleInputChange("phone", e.target.value)
@@ -320,7 +321,7 @@ export function Checkout({
                           className="mt-2"
                         />
                         <p className="text-xs text-neutral-500 mt-2">
-                          For order updates and confirmations
+                          {t('booking.checkout.phoneNote')}
                         </p>
                       </div>
                     </div>
@@ -333,10 +334,9 @@ export function Checkout({
                         size={18}
                       />
                       <div className="text-sm text-teal-700">
-                        <p className="mb-1">Your information is secure</p>
+                        <p className="mb-1">{t('booking.checkout.secureInfo')}</p>
                         <p className="text-xs">
-                          We use industry-standard encryption to protect your
-                          personal data.
+                          {t('booking.checkout.secureInfoNote')}
                         </p>
                       </div>
                     </div>
@@ -359,11 +359,9 @@ export function Checkout({
                         size={18}
                       />
                       <div className="text-sm text-teal-700">
-                        <p className="mb-1">Your payment is secure</p>
+                        <p className="mb-1">{t('booking.checkout.securePayment')}</p>
                         <p className="text-xs">
-                          All transactions are encrypted and processed securely
-                          through our trusted payment partners. We never store
-                          your full payment details.
+                          {t('booking.checkout.securePaymentNote')}
                         </p>
                       </div>
                     </div>
@@ -375,23 +373,23 @@ export function Checkout({
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="mb-6">Review Your Order</h3>
+                    <h3 className="mb-6">{t('booking.checkout.reviewOrder')}</h3>
                     <p className="text-neutral-600 mb-6">
-                      Please review all details before completing your purchase.
+                      {t('booking.checkout.reviewMessage')}
                     </p>
 
                     <div className="space-y-4">
                       {/* Contact Info */}
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <div className="flex items-start justify-between mb-3">
-                          <h4>Contact Information</h4>
+                          <h4>{t('booking.checkout.contactInformation')}</h4>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setCurrentStep(1)}
                             className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
                           >
-                            Edit
+                            {t('booking.checkout.edit')}
                           </Button>
                         </div>
                         <div className="text-sm text-neutral-600 space-y-1">
@@ -403,7 +401,7 @@ export function Checkout({
 
                       {/* Items */}
                       <div className="bg-neutral-50 rounded-xl p-5">
-                        <h4 className="mb-4">Ticket Summary</h4>
+                        <h4 className="mb-4">{t('booking.checkout.ticketSummary')}</h4>
                         <div className="space-y-3">
                           {items.map((item, index) => {
                                                   const numericEventId = extractTrailingNumber(item.eventId);
@@ -427,7 +425,7 @@ export function Checkout({
                                       {formatPrice(item.price * item.quantity)}
                                     </div>
                                     <div className="text-sm text-neutral-500 mt-1">
-                                      Qty: {item.quantity}
+                                      {t('booking.quantity')}: {item.quantity}
                                     </div>
                                   </div>
                                 </div>
@@ -443,14 +441,14 @@ export function Checkout({
                       {/* Payment Method */}
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <div className="flex items-start justify-between mb-3">
-                          <h4>Payment Method</h4>
+                          <h4>{t('booking.checkout.paymentMethod')}</h4>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setCurrentStep(2)}
                             className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
                           >
-                            Edit
+                            {t('booking.checkout.edit')}
                           </Button>
                         </div>
                         <div className="text-sm text-neutral-600">
@@ -461,10 +459,7 @@ export function Checkout({
                       {/* Terms */}
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                         <p className="text-sm text-amber-800">
-                          <strong>Important:</strong> By completing this
-                          purchase, you agree to our Terms of Service and
-                          acknowledge our Refund Policy. Please review the
-                          event's specific policies before proceeding.
+                          <strong>{t('booking.checkout.importantNote')}</strong> {t('booking.checkout.termsNote')}
                         </p>
                       </div>
                     </div>
@@ -480,7 +475,7 @@ export function Checkout({
                     onClick={handleBack}
                     className="flex-1"
                   >
-                    Back
+                    {t('booking.checkout.back')}
                   </Button>
                 )}
                 {currentStep < 3 ? (
@@ -489,7 +484,7 @@ export function Checkout({
                     disabled={!isStepValid()}
                     className="flex-1 bg-teal-500 hover:bg-teal-600"
                   >
-                    Continue to {steps[currentStep].label}
+                    {t('booking.checkout.continueTo')} {steps[currentStep].label}
                   </Button>
                 ) : (
                   <Button
@@ -499,8 +494,8 @@ export function Checkout({
                   >
                     <Lock size={16} className="mr-2" />
                     {isProcessing
-                      ? "Processing..."
-                      : `Complete Payment - ${formatPrice(total)}`}
+                      ? t('booking.checkout.processing')
+                      : `${t('booking.checkout.completePayment')} - ${formatPrice(total)}`}
                   </Button>
                 )}
               </div>
@@ -514,7 +509,7 @@ export function Checkout({
 
               {/* Order Items Preview */}
               <div className="mt-4 bg-white rounded-xl p-5 shadow-sm">
-                <h4 className="mb-4">Order Items</h4>
+                <h4 className="mb-4">{t('booking.checkout.orderItems')}</h4>
                 <div className="space-y-3">
                   {items.map((item, index) => (
                     <div key={index} className="text-sm">

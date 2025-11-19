@@ -116,4 +116,24 @@ public class UserRepository : IUserRepository
             .Distinct()
             .CountAsync();
     }
+
+    public async Task<OrganizerRequest?> GetPendingOrganizerRequestAsync(int userId)
+    {
+        return await _context.OrganizerRequests
+            .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == "Pending");
+    }
+
+    public async Task AddOrganizerRequestAsync(OrganizerRequest request)
+    {
+        await _context.OrganizerRequests.AddAsync(request);
+    }
+
+    public async Task<List<User>> GetUsersByRoleAsync(string roleName)
+    {
+        return await _context.Users
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+            .Where(u => u.UserRoles.Any(ur => ur.Role.Name == roleName))
+            .ToListAsync();
+    }
 }

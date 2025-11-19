@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Calendar, Ticket, DollarSign, Plus, MoreVertical, Eye, Edit, 
   Copy, Trash2, XCircle, LayoutGrid, List, Search, TrendingUp, Filter
@@ -63,6 +64,7 @@ interface EventWithStats {
 }
 
 export function EventManagement({ onNavigate }: EventManagementProps) {
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');

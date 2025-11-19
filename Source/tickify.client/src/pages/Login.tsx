@@ -6,6 +6,7 @@ import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { Separator } from "../components/ui/separator";
 import { authService } from "../services/authService";
+import { useTranslation } from "react-i18next";
 
 // Declare Google types
 declare global {
@@ -27,6 +28,7 @@ interface LoginProps {
 }
 
 export function Login({ onNavigate }: LoginProps) {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -179,9 +181,9 @@ export function Login({ onNavigate }: LoginProps) {
           <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 md:p-8">
             {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-neutral-900 mb-2">Welcome back</h1>
+              <h1 className="text-neutral-900 mb-2">{t('auth.login')}</h1>
               <p className="text-sm text-neutral-600">
-                Sign in to your account to continue
+                {t('auth.loginSubtitle', 'Sign in to your account to continue')}
               </p>
             </div>
 
@@ -226,7 +228,7 @@ export function Login({ onNavigate }: LoginProps) {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t('auth.email')}</Label>
                 <div className="relative">
                   <Mail
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
@@ -235,7 +237,7 @@ export function Login({ onNavigate }: LoginProps) {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder={t('auth.emailPlaceholder', 'Enter your email')}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
@@ -245,7 +247,7 @@ export function Login({ onNavigate }: LoginProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t('auth.password')}</Label>
                 <div className="relative">
                   <Lock
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
@@ -254,7 +256,7 @@ export function Login({ onNavigate }: LoginProps) {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
+                    placeholder={t('auth.passwordPlaceholder', 'Enter your password')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10"
@@ -283,7 +285,7 @@ export function Login({ onNavigate }: LoginProps) {
                     htmlFor="remember"
                     className="text-sm text-neutral-700 cursor-pointer"
                   >
-                    Remember me
+                    {t('auth.rememberMe', 'Remember me')}
                   </label>
                 </div>
                 <button
@@ -291,7 +293,7 @@ export function Login({ onNavigate }: LoginProps) {
                   onClick={() => onNavigate("forgot-password")}
                   className="text-sm text-orange-500 hover:text-orange-600 transition-colors"
                 >
-                  Forgot password?
+                  {t('auth.forgotPassword')}
                 </button>
               </div>
 
@@ -300,7 +302,7 @@ export function Login({ onNavigate }: LoginProps) {
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                 disabled={isLoading}
               >
-                {isLoading ? "Signing in..." : "Sign in"}
+                {isLoading ? t('auth.signingIn', 'Signing in...') : t('auth.signIn')}
               </Button>
             </form>
           </div>
@@ -308,12 +310,12 @@ export function Login({ onNavigate }: LoginProps) {
           {/* Sign Up Link */}
           <div className="text-center mt-6">
             <p className="text-sm text-neutral-600">
-              Don't have an account?{" "}
+              {t('auth.dontHaveAccount')}{" "}
               <button
                 onClick={() => onNavigate("register")}
                 className="text-orange-500 hover:text-orange-600 transition-colors"
               >
-                Sign up
+                {t('auth.signUp')}
               </button>
             </p>
           </div>

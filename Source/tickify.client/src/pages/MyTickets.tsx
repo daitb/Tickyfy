@@ -8,6 +8,7 @@ import {
 import { QRTicketCard } from "../components/QRTicketCard";
 import { ticketService, type TicketDto } from "../services/ticketService";
 import { authService } from "../services/authService";
+import { useTranslation } from 'react-i18next';
 
 interface MyTicketsProps {
   orders: any[];
@@ -15,6 +16,7 @@ interface MyTicketsProps {
 }
 
 export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("upcoming");
   const [tickets, setTickets] = useState<TicketDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,11 +130,11 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
               />
             </svg>
           </div>
-          <h3 className="text-neutral-900 mb-2">No tickets found</h3>
+          <h3 className="text-neutral-900 mb-2">{t('booking.myTickets.noTickets')}</h3>
           <p className="text-neutral-600">
             {activeTab === "upcoming"
-              ? "You don't have any upcoming events"
-              : "You don't have any past events"}
+              ? t('booking.myTickets.noUpcoming')
+              : t('booking.myTickets.noPast')}
           </p>
         </div>
       );
@@ -218,7 +220,7 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
             onClick={loadTickets}
             className="text-teal-500 hover:text-teal-600"
           >
-            Try again
+            {t('common.tryAgain')}
           </button>
         </div>
       </div>
@@ -228,14 +230,14 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="mb-8">My Tickets</h1>
+        <h1 className="mb-8">{t('booking.myTickets.title')}</h1>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-8">
             <TabsTrigger value="upcoming">
-              Upcoming ({upcomingBookings.length})
+              {t('booking.myTickets.upcoming')} ({upcomingBookings.length})
             </TabsTrigger>
-            <TabsTrigger value="past">Past ({pastBookings.length})</TabsTrigger>
+            <TabsTrigger value="past">{t('booking.myTickets.past')} ({pastBookings.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="upcoming">
