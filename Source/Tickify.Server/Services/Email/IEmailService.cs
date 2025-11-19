@@ -15,4 +15,8 @@ public interface IEmailService
     Task SendPasswordResetEmailAsync(string to, string userName, string resetUrl);
 
     Task SendWelcomeEmailAsync(string to, string userName);
+
+    Task SendOrganizerWelcomeEmailAsync(string to, string userName, string companyName);
+
+    Task SendOrganizerVerificationEmailAsync(string to, string userName, string companyName);
 }

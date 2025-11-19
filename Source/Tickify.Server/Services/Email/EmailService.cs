@@ -150,4 +150,44 @@ public class EmailService : IEmailService
             templateData
         );
     }
+
+    /// <summary>
+    /// Gửi email chào mừng organizer mới
+    /// Template: OrganizerWelcome.html
+    /// </summary>
+    public async Task SendOrganizerWelcomeEmailAsync(string to, string userName, string companyName)
+    {
+        var templateData = new Dictionary<string, string>
+        {
+            { "UserName", userName },
+            { "CompanyName", companyName }
+        };
+
+        await SendEmailFromTemplateAsync(
+            to,
+            "Chào mừng đến với Tickify - Organizer Platform",
+            "OrganizerWelcome",
+            templateData
+        );
+    }
+
+    /// <summary>
+    /// Gửi email xác nhận organizer đã được verify
+    /// Template: OrganizerVerification.html
+    /// </summary>
+    public async Task SendOrganizerVerificationEmailAsync(string to, string userName, string companyName)
+    {
+        var templateData = new Dictionary<string, string>
+        {
+            { "UserName", userName },
+            { "CompanyName", companyName }
+        };
+
+        await SendEmailFromTemplateAsync(
+            to,
+            "Tài khoản Organizer đã được xác thực",
+            "OrganizerVerification",
+            templateData
+        );
+    }
 }
