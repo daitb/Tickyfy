@@ -12,7 +12,8 @@ using Tickify.Services.Auth;
 // [ADD] using cho DI của Payment/Refund/Repositories
 using Tickify.Services.Payments;              // PaymentService, VNPayProvider, MoMoProvider
 using Tickify.Services.Refunds;              // RefundService
-using Tickify.Repositories;                  // EfPaymentRepository, EfRefundRequestRepository
+using Tickify.Services.Payouts;              // PayoutService
+using Tickify.Repositories;                  // EfPaymentRepository, EfRefundRequestRepository, EfPayoutRepository
 using Tickify.Interfaces.Repositories;
 using Tickify.Interfaces.Services;
 using Tickify.Services;       // IBookingRepository, IPaymentRepository, IRefundRequestRepository
@@ -79,6 +80,10 @@ namespace Tickify
             builder.Services.AddScoped<IPaymentProvider, MoMoProvider>();
             builder.Services.AddScoped<IRefundService, RefundService>();
 
+            // Payout Services & Repositories
+            builder.Services.AddScoped<IPayoutRepository, EfPayoutRepository>();
+            builder.Services.AddScoped<Services.Payouts.IPayoutService, Services.Payouts.PayoutService>();
+
             // [NOTE] Nếu IBookingRepository CHƯA được đăng ký ở nơi khác thì thêm dòng dưới:
             // builder.Services.AddScoped<IBookingRepository, EfBookingRepository>(); // <-- chỉ bật nếu bạn đã có EfBookingRepository
 
@@ -104,6 +109,10 @@ namespace Tickify
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IOrganizerService, OrganizerService>();
             builder.Services.AddScoped<ISupportService, SupportService>();
+
+            // Chat Services & Repositories
+            builder.Services.AddScoped<IChatRepository, EfChatRepository>();
+            builder.Services.AddScoped<IChatService, ChatService>();
 
             // ============================================
             // 4. JWT AUTHENTICATION CONFIGURATION
@@ -142,16 +151,16 @@ namespace Tickify
                     ClockSkew = TimeSpan.Zero // Token hết hạn chính xác
                 };
 
-                // [ADD] Cho phép đọc token từ query nếu cần cho SignalR/webhooks (tắt nếu không dùng)
-                // options.Events = new JwtBearerEvents
-                // {
-                //     OnMessageReceived = ctx => {
-                //         var accessToken = ctx.Request.Query["access_token"];
-                //         if (!string.IsNullOrEmpty(accessToken) && ctx.HttpContext.Request.Path.StartsWithSegments("/hub"))
-                //             ctx.Token = accessToken;
-                //         return Task.CompletedTask;
-                //     }
-                // };
+                // [ADD] Cho phép đọc token từ query cho SignalR
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = ctx => {
+                        var accessToken = ctx.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(accessToken) && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                            ctx.Token = accessToken;
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
             builder.Services.AddAuthorization();
@@ -175,7 +184,12 @@ namespace Tickify
             });
 
             // ============================================
-            // 6. CONTROLLERS & JSON OPTIONS
+            // 6. SIGNALR CONFIGURATION (Real-time chat)
+            // ============================================
+            builder.Services.AddSignalR();
+
+            // ============================================
+            // 7. CONTROLLERS & JSON OPTIONS
             // ============================================
             builder.Services.AddControllers()
                 .AddJsonOptions(options =>
@@ -187,7 +201,7 @@ namespace Tickify
                 });
 
             // ============================================
-            // 7. SWAGGER CONFIGURATION
+            // 8. SWAGGER CONFIGURATION
             // API documentation với JWT support
             // ============================================
             builder.Services.AddEndpointsApiExplorer();
@@ -263,6 +277,9 @@ namespace Tickify
             app.UseAuthorization();
 
             app.MapControllers();
+
+            // Map SignalR hub
+            app.MapHub<Tickify.Hubs.ChatHub>("/hubs/chat");
 
             app.Run();
         }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
@@ -10,9 +10,21 @@ import { Switch } from '../components/ui/switch';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { 
   Shield, Users, Calendar, DollarSign, TrendingUp, TrendingDown, 
-  Eye, AlertCircle, CheckCircle, XCircle, Search, Filter, Download, Settings 
+  Eye, AlertCircle, CheckCircle, XCircle, Search, Filter, Download, Settings,
+  Clock
 } from 'lucide-react';
 import { mockEvents, mockOrders } from '../mockData';
+import { payoutService, type PayoutDto, type ApprovePayoutDto, type RejectPayoutDto } from '../services/payoutService';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
+import { Textarea } from '../components/ui/textarea';
+import { Label } from '../components/ui/label';
 
 interface AdminDashboardProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -105,6 +117,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             <TabsTrigger value="events">Events</TabsTrigger>
             <TabsTrigger value="organizers">Organizers</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="payouts">Payouts</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
@@ -446,6 +459,19 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             </Card>
           </TabsContent>
 
+          {/* Payouts Tab */}
+          <TabsContent value="payouts">
+            <Card>
+              <CardHeader>
+                <CardTitle>Payout Management</CardTitle>
+                <CardDescription>Review and approve organizer payout requests</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AdminPayoutsManagement />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -506,6 +532,290 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </TabsContent>
         </Tabs>
       </div>
+    </div>
+  );
+}
+
+// Admin Payouts Management Component
+function AdminPayoutsManagement() {
+  const [payouts, setPayouts] = useState<PayoutDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPayout, setSelectedPayout] = useState<PayoutDto | null>(null);
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [approveNotes, setApproveNotes] = useState('');
+  const [rejectReason, setRejectReason] = useState('');
+  const [transactionId, setTransactionId] = useState('');
+
+  useEffect(() => {
+    loadPayouts();
+  }, []);
+
+  const loadPayouts = async () => {
+    try {
+      setLoading(true);
+      const data = await payoutService.getAllPayouts();
+      setPayouts(data);
+    } catch (err: any) {
+      console.error('Failed to load payouts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!selectedPayout) return;
+    try {
+      const dto: ApprovePayoutDto = {
+        notes: approveNotes,
+        transactionId: transactionId || undefined,
+      };
+      await payoutService.approvePayout(selectedPayout.payoutId, dto);
+      setShowApproveDialog(false);
+      setSelectedPayout(null);
+      setApproveNotes('');
+      setTransactionId('');
+      await loadPayouts();
+    } catch (err: any) {
+      console.error('Failed to approve payout:', err);
+      alert(err.message || 'Failed to approve payout');
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedPayout || !rejectReason) return;
+    try {
+      const dto: RejectPayoutDto = {
+        reason: rejectReason,
+        notes: '',
+      };
+      await payoutService.rejectPayout(selectedPayout.payoutId, dto);
+      setShowRejectDialog(false);
+      setSelectedPayout(null);
+      setRejectReason('');
+      await loadPayouts();
+    } catch (err: any) {
+      console.error('Failed to reject payout:', err);
+      alert(err.message || 'Failed to reject payout');
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+    }).format(price);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return (
+          <Badge className="bg-yellow-100 text-yellow-700">
+            <Clock size={12} className="mr-1" />
+            Pending
+          </Badge>
+        );
+      case 'approved':
+        return (
+          <Badge className="bg-blue-100 text-blue-700">
+            <CheckCircle size={12} className="mr-1" />
+            Approved
+          </Badge>
+        );
+      case 'processed':
+        return (
+          <Badge className="bg-green-100 text-green-700">
+            <CheckCircle size={12} className="mr-1" />
+            Processed
+          </Badge>
+        );
+      case 'rejected':
+        return (
+          <Badge className="bg-red-100 text-red-700">
+            <XCircle size={12} className="mr-1" />
+            Rejected
+          </Badge>
+        );
+      default:
+        return <Badge>{status}</Badge>;
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-8">Loading payouts...</div>;
+  }
+
+  const pendingPayouts = payouts.filter(p => p.status.toLowerCase() === 'pending');
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-neutral-600">Total Payouts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl">{payouts.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-neutral-600">Pending</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl text-yellow-600">{pendingPayouts.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-neutral-600">Total Amount</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl">{formatPrice(payouts.reduce((sum, p) => sum + p.amount, 0))}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Payouts Table */}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>ID</TableHead>
+            <TableHead>Organizer</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Requested</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {payouts.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-8 text-neutral-500">
+                No payout requests
+              </TableCell>
+            </TableRow>
+          ) : (
+            payouts.map((payout) => (
+              <TableRow key={payout.payoutId}>
+                <TableCell className="font-medium">#{payout.payoutId}</TableCell>
+                <TableCell>{payout.organizerName}</TableCell>
+                <TableCell>{formatPrice(payout.amount)}</TableCell>
+                <TableCell>{getStatusBadge(payout.status)}</TableCell>
+                <TableCell>
+                  {new Date(payout.requestedAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {payout.status.toLowerCase() === 'pending' && (
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-green-600 border-green-600 hover:bg-green-50"
+                        onClick={() => {
+                          setSelectedPayout(payout);
+                          setShowApproveDialog(true);
+                        }}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
+                        onClick={() => {
+                          setSelectedPayout(payout);
+                          setShowRejectDialog(true);
+                        }}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+
+      {/* Approve Dialog */}
+      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Payout</DialogTitle>
+            <DialogDescription>
+              Approve payout request #{selectedPayout?.payoutId} for {formatPrice(selectedPayout?.amount || 0)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="transactionId">Transaction ID (Optional)</Label>
+              <Input
+                id="transactionId"
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                placeholder="Bank transfer transaction ID"
+              />
+            </div>
+            <div>
+              <Label htmlFor="approveNotes">Notes (Optional)</Label>
+              <Textarea
+                id="approveNotes"
+                value={approveNotes}
+                onChange={(e) => setApproveNotes(e.target.value)}
+                placeholder="Additional notes..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleApprove} className="bg-green-500 hover:bg-green-600">
+              Approve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Payout</DialogTitle>
+            <DialogDescription>
+              Reject payout request #{selectedPayout?.payoutId} for {formatPrice(selectedPayout?.amount || 0)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="rejectReason">Reason *</Label>
+              <Textarea
+                id="rejectReason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Reason for rejection..."
+                required
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleReject}
+              className="bg-red-500 hover:bg-red-600"
+              disabled={!rejectReason}
+            >
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

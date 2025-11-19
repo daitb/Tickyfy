@@ -38,6 +38,8 @@ export function AppRoutes() {
     { path: "/event-reviews", page: "event-reviews" },
     { path: "/refund-request", page: "refund-request" },
     { path: "/admin-dashboard", page: "admin-dashboard" },
+    { path: "/chat", page: "chat" },
+    { path: "/staff-chat", page: "staff-chat" },
     { path: "/login", page: "login" },
     { path: "/register", page: "register" },
     { path: "/forgot-password", page: "forgot-password" },

@@ -23,6 +23,8 @@ namespace Tickify.Data
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<SupportTicket> SupportTickets { get; set; }
         public DbSet<SupportMessage> SupportMessages { get; set; }
+        public DbSet<ChatConversation> ChatConversations { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<RefundRequest> RefundRequests { get; set; }
         public DbSet<SystemSetting> SystemSettings { get; set; }
         public DbSet<Payout> Payouts { get; set; }
@@ -188,6 +190,34 @@ namespace Tickify.Data
                 .HasOne(sm => sm.SupportTicket)
                 .WithMany(st => st.Messages)
                 .HasForeignKey(sm => sm.SupportTicketId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ChatConversation - User relationship
+            modelBuilder.Entity<ChatConversation>()
+                .HasOne(cc => cc.User)
+                .WithMany()
+                .HasForeignKey(cc => cc.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ChatConversation - Staff relationship
+            modelBuilder.Entity<ChatConversation>()
+                .HasOne(cc => cc.Staff)
+                .WithMany()
+                .HasForeignKey(cc => cc.StaffId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ChatConversation - ChatMessage relationship
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(cm => cm.ChatConversation)
+                .WithMany(cc => cc.Messages)
+                .HasForeignKey(cm => cm.ChatConversationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ChatMessage - Sender relationship
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(cm => cm.Sender)
+                .WithMany()
+                .HasForeignKey(cm => cm.SenderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // RefundRequest - Booking relationship

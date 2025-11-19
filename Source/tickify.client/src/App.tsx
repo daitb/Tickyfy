@@ -35,6 +35,8 @@ import { PasswordChange } from "./pages/PasswordChange";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ForgotPassword } from "./pages/ForgotPassword";
+import { ChatPage } from "./pages/ChatPage";
+import { StaffChatPage } from "./pages/StaffChatPage";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import type { CartItem, Order } from "./types";
@@ -74,6 +76,8 @@ type Page =
   | "event-reviews"
   | "refund-request"
   | "admin-dashboard"
+  | "chat"
+  | "staff-chat"
   | "login"
   | "register"
   | "forgot-password";
@@ -122,6 +126,8 @@ export default function App({ initialPage }: AppProps) {
     if (path === "/event-reviews") return "event-reviews";
     if (path === "/refund-request") return "refund-request";
     if (path === "/admin-dashboard") return "admin-dashboard";
+    if (path === "/chat") return "chat";
+    if (path === "/staff-chat") return "staff-chat";
     if (path === "/login") return "login";
     if (path === "/register") return "register";
     if (path === "/forgot-password") return "forgot-password";
@@ -396,6 +402,12 @@ export default function App({ initialPage }: AppProps) {
 
       case "admin-dashboard":
         return <AdminDashboard onNavigate={handleNavigate} />;
+
+      case "chat":
+        return <ChatPage />;
+
+      case "staff-chat":
+        return <StaffChatPage />;
 
       case "login":
         return <Login onNavigate={handleNavigate} />;
