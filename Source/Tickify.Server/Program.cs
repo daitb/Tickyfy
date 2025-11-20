@@ -257,6 +257,9 @@ namespace Tickify
             // Exception handling (phải đặt đầu tiên)
             app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+            // Rate limiting (đặt sau exception handling, trước authentication)
+            app.UseMiddleware<RateLimitingMiddleware>();
+
             // Swagger (chỉ trong Development)
             if (app.Environment.IsDevelopment())
             {

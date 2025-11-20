@@ -4,7 +4,7 @@ using Tickify.Common;
 using Tickify.DTOs.Payout;
 using Tickify.Services.Payouts;
 
-namespace Tickify.Api.Controllers;
+namespace Tickify.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

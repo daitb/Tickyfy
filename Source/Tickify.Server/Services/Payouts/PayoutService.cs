@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Tickify.Data;
 using Tickify.DTOs.Payout;
 using Tickify.Interfaces.Repositories;
 using Tickify.Models;
+using Tickify.Services.Email;
 
 namespace Tickify.Services.Payouts;
 
@@ -13,17 +15,23 @@ public sealed class PayoutService : IPayoutService
     private readonly IEventRepository _eventRepo;
     private readonly IBookingRepository _bookingRepo;
     private readonly ApplicationDbContext _db;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<PayoutService> _logger;
 
     public PayoutService(
         IPayoutRepository payoutRepo,
         IEventRepository eventRepo,
         IBookingRepository bookingRepo,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        IEmailService emailService,
+        ILogger<PayoutService> logger)
     {
         _payoutRepo = payoutRepo;
         _eventRepo = eventRepo;
         _bookingRepo = bookingRepo;
         _db = db;
+        _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<PayoutDto> RequestPayoutAsync(RequestPayoutDto dto, ClaimsPrincipal user)
@@ -75,6 +83,34 @@ public sealed class PayoutService : IPayoutService
         };
 
         var created = await _payoutRepo.CreateAsync(payout);
+
+        // Send email notification to organizer
+        try
+        {
+            var organizerWithUser = await _db.Organizers
+                .Include(o => o.User)
+                .FirstOrDefaultAsync(o => o.Id == organizer.Id);
+
+            if (organizerWithUser?.User != null)
+            {
+                await _emailService.SendEmailAsync(
+                    organizerWithUser.User.Email,
+                    "Payout Request Received",
+                    $"<h2>Payout Request Received</h2>" +
+                    $"<p>Your payout request for <strong>{dto.Amount:N0} VND</strong> has been received.</p>" +
+                    $"<p><strong>Event:</strong> {eventEntity.Title}</p>" +
+                    $"<p><strong>Bank:</strong> {dto.BankName}</p>" +
+                    $"<p><strong>Account:</strong> {dto.BankAccountNumber}</p>" +
+                    $"<p>We will review your request and process it within 3-5 business days.</p>"
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[PayoutService] Failed to send email notification for payout request {PayoutId}", created.Id);
+            // Don't throw - email failure shouldn't block payout request creation
+        }
+
         return MapToDto(created);
     }
 
@@ -126,7 +162,11 @@ public sealed class PayoutService : IPayoutService
         if (!admin.IsInRole("Admin"))
             throw new UnauthorizedAccessException("Only admins can approve payouts");
 
-        var payout = await _payoutRepo.GetByIdAsync(id)
+        // Load payout with related data
+        var payout = await _db.Payouts
+            .Include(p => p.Organizer)
+                .ThenInclude(o => o!.User)
+            .FirstOrDefaultAsync(p => p.Id == id)
             ?? throw new InvalidOperationException("Payout not found");
 
         if (payout.Status != "Pending")
@@ -141,6 +181,29 @@ public sealed class PayoutService : IPayoutService
         // For now, we'll mark it as approved and can be processed later
 
         var updated = await _payoutRepo.UpdateAsync(payout);
+
+        // Send email notification to organizer
+        try
+        {
+            if (payout.Organizer?.User != null)
+            {
+                await _emailService.SendEmailAsync(
+                    payout.Organizer.User.Email,
+                    "Payout Request Approved",
+                    $"<h2>Payout Request Approved</h2>" +
+                    $"<p>Your payout request for <strong>{payout.Amount:N0} VND</strong> has been approved.</p>" +
+                    $"<p><strong>Bank:</strong> {payout.BankName}</p>" +
+                    $"<p><strong>Account:</strong> {payout.BankAccountNumber}</p>" +
+                    $"<p>The funds will be transferred to your account within 3-5 business days.</p>" +
+                    (!string.IsNullOrEmpty(dto.Notes) ? $"<p><strong>Notes:</strong> {dto.Notes}</p>" : "")
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[PayoutService] Failed to send email notification for approved payout {PayoutId}", id);
+        }
+
         return MapToDto(updated);
     }
 
@@ -149,7 +212,14 @@ public sealed class PayoutService : IPayoutService
         if (!admin.IsInRole("Admin"))
             throw new UnauthorizedAccessException("Only admins can reject payouts");
 
-        var payout = await _payoutRepo.GetByIdAsync(id)
+        if (string.IsNullOrWhiteSpace(dto.Reason))
+            throw new InvalidOperationException("Rejection reason is required");
+
+        // Load payout with related data
+        var payout = await _db.Payouts
+            .Include(p => p.Organizer)
+                .ThenInclude(o => o!.User)
+            .FirstOrDefaultAsync(p => p.Id == id)
             ?? throw new InvalidOperationException("Payout not found");
 
         if (payout.Status != "Pending")
@@ -158,9 +228,31 @@ public sealed class PayoutService : IPayoutService
         payout.Status = "Rejected";
         payout.ProcessedByStaffId = GetUserId(admin);
         payout.ProcessedAt = DateTime.UtcNow;
-        payout.Notes = dto.Reason + (string.IsNullOrEmpty(dto.Notes) ? "" : $"\n{dto.Notes}");
+        payout.Notes = dto.Reason.Trim() + (string.IsNullOrEmpty(dto.Notes) ? "" : $"\n{dto.Notes}");
 
         var updated = await _payoutRepo.UpdateAsync(payout);
+
+        // Send email notification to organizer
+        try
+        {
+            if (payout.Organizer?.User != null)
+            {
+                await _emailService.SendEmailAsync(
+                    payout.Organizer.User.Email,
+                    "Payout Request Rejected",
+                    $"<h2>Payout Request Rejected</h2>" +
+                    $"<p>We regret to inform you that your payout request for <strong>{payout.Amount:N0} VND</strong> has been rejected.</p>" +
+                    $"<p><strong>Reason:</strong> {dto.Reason}</p>" +
+                    (!string.IsNullOrEmpty(dto.Notes) ? $"<p><strong>Additional Notes:</strong> {dto.Notes}</p>" : "") +
+                    $"<p>If you have any questions or concerns, please contact our support team.</p>"
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[PayoutService] Failed to send email notification for rejected payout {PayoutId}", id);
+        }
+
         return MapToDto(updated);
     }
 
