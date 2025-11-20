@@ -383,5 +383,140 @@
       "description": "Trang bạn tìm kiếm không tồn tại",
       "backHome": "Về trang chủ"
     }
+  },
+  "promoCode": {
+    "title": "Quản lý mã khuyến mãi",
+    "createNewCode": "Tạo mã mới",
+    "bulkImport": "Nhập hàng loạt",
+    "searchPlaceholder": "Tìm kiếm mã hoặc mô tả...",
+    "statusPlaceholder": "Trạng thái",
+    "filters": {
+      "allStatus": "Tất cả trạng thái",
+      "active": "Hoạt động",
+      "inactive": "Không hoạt động"
+    },
+    "stats": {
+      "totalCodes": "Tổng số mã",
+      "activeCodes": "Mã đang hoạt động",
+      "totalRedemptions": "Tổng lượt sử dụng",
+      "allPromoCodes": "Tất cả mã khuyến mãi",
+      "currentlyAvailable": "Đang khả dụng",
+      "timesUsed": "Lượt sử dụng",
+      "codesRedeemed": "Mã đã đổi"
+    },
+    "loading": "Đang tải mã khuyến mãi...",
+    "emptyState": {
+      "title": "Chưa có mã khuyến mãi",
+      "description": "Tạo mã khuyến mãi đầu tiên để bắt đầu"
+    },
+    "status": {
+      "active": "Hoạt động",
+      "inactive": "Không hoạt động"
+    },
+    "card": {
+      "validPeriod": "Thời hạn hợp lệ",
+      "minPurchase": "Giá trị tối thiểu:",
+      "usage": "Lượt sử dụng",
+      "used": "đã dùng",
+      "edit": "Sửa",
+      "stats": "Thống kê"
+    },
+    "createDialog": {
+      "title": "Tạo mã khuyến mãi",
+      "description": "Thiết lập mã giảm giá khuyến mãi mới",
+      "fields": {
+        "code": "Mã khuyến mãi",
+        "description": "Mô tả",
+        "discountPercent": "Phần trăm giảm giá (%)",
+        "discountAmount": "Số tiền giảm giá (VND)",
+        "maxUses": "Tổng lượt sử dụng tối đa",
+        "maxUsesPerUser": "Lượt sử dụng tối đa mỗi người",
+        "validFrom": "Có hiệu lực từ",
+        "validTo": "Có hiệu lực đến",
+        "minimumPurchase": "Giá trị mua hàng tối thiểu (VND)"
+      },
+      "placeholders": {
+        "code": "SUMMER2025",
+        "description": "Mô tả ngắn gọn về mã khuyến mãi này",
+        "discountPercent": "20",
+        "discountAmount": "50000",
+        "optional": "Tùy chọn"
+      },
+      "help": {
+        "codeFormat": "Chữ cái và số, 4-20 ký tự",
+        "discountPercent": "Để trống nếu dùng số tiền cố định",
+        "discountAmount": "Để trống nếu dùng phần trăm"
+      },
+      "buttons": {
+        "generate": "Tạo ngẫu nhiên",
+        "cancel": "Hủy",
+        "creating": "Đang tạo...",
+        "createAndActivate": "Tạo & Kích hoạt"
+      }
+    },
+    "editDialog": {
+      "title": "Sửa mã khuyến mãi",
+      "description": "Cập nhật chi tiết mã khuyến mãi",
+      "fields": {
+        "code": "Mã khuyến mãi",
+        "description": "Mô tả",
+        "discountPercent": "Phần trăm giảm giá (%)",
+        "discountAmount": "Số tiền giảm giá (VND)",
+        "maxUses": "Tổng lượt sử dụng tối đa",
+        "maxUsesPerUser": "Lượt sử dụng tối đa mỗi người",
+        "validFrom": "Có hiệu lực từ",
+        "validTo": "Có hiệu lực đến",
+        "minimumPurchase": "Giá trị mua hàng tối thiểu (VND)"
+      },
+      "placeholders": {
+        "code": "SUMMER2025",
+        "description": "Mô tả ngắn gọn về mã khuyến mãi này",
+        "discountPercent": "20",
+        "discountAmount": "50000",
+        "optional": "Tùy chọn"
+      },
+      "help": {
+        "codeFormat": "Chữ cái và số, 4-20 ký tự",
+        "discountPercent": "Để trống nếu dùng số tiền cố định",
+        "discountAmount": "Để trống nếu dùng phần trăm"
+      },
+      "buttons": {
+        "cancel": "Hủy",
+        "updating": "Đang cập nhật...",
+        "update": "Cập nhật mã"
+      }
+    },
+    "statsDialog": {
+      "title": "Thống kê mã khuyến mãi",
+      "totalUses": "Tổng lượt sử dụng",
+      "remaining": "Còn lại",
+      "moreStats": "Thống kê chi tiết hơn sẽ xuất hiện ở đây...",
+      "close": "Đóng"
+    },
+    "deleteDialog": {
+      "title": "Xóa mã khuyến mãi?",
+      "description": "Bạn có chắc chắn muốn xóa mã khuyến mãi này? Hành động này không thể hoàn tác.",
+      "cancel": "Hủy",
+      "confirm": "Xóa"
+    },
+    "accessRestricted": {
+      "title": "Truy cập bị hạn chế",
+      "description": "Bạn cần quyền Admin hoặc Organizer để quản lý mã khuyến mãi.",
+      "currentRole": "Vai trò hiện tại:"
+    },
+    "errors": {
+      "noPermission": "Bạn không có quyền xem mã khuyến mãi",
+      "pleaseLogin": "Vui lòng đăng nhập để xem mã khuyến mãi",
+      "loadFailed": "Không thể tải mã khuyến mãi",
+      "createFailed": "Tạo mã khuyến mãi thất bại",
+      "updateFailed": "Cập nhật mã khuyến mãi thất bại",
+      "deleteFailed": "Xóa mã khuyến mãi thất bại"
+    },
+    "notifications": {
+      "copiedToClipboard": "Đã sao chép mã khuyến mãi vào clipboard",
+      "createdSuccessfully": "Tạo mã khuyến mãi thành công",
+      "updatedSuccessfully": "Cập nhật mã khuyến mãi thành công",
+      "deletedSuccessfully": "Xóa mã khuyến mãi thành công"
+    }
   }
 }

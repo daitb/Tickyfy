@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Tag,
   Plus,
@@ -44,7 +45,7 @@ import { authService } from "../services/authService";
 import { toast } from "sonner";
 
 export function PromoCodeManagement() {
-  // const { t } = useTranslation();
+  const { t } = useTranslation();
   const currentUser = authService.getCurrentUser();
   const hasPromoCodeAccess =
     currentUser?.role === "Admin" || currentUser?.role === "Organizer";
@@ -72,12 +73,7 @@ export function PromoCodeManagement() {
     validTo: undefined,
   });
 
-  // Load promo codes on component mount
-  useEffect(() => {
-    loadPromoCodes();
-  }, []);
-
-  const loadPromoCodes = async () => {
+  const loadPromoCodes = useCallback(async () => {
     try {
       setLoading(true);
       console.log("Loading promo codes...");
@@ -89,19 +85,24 @@ export function PromoCodeManagement() {
       if (
         (error as { response?: { status?: number } }).response?.status === 403
       ) {
-        toast.error("You don't have permission to view promo codes");
+        toast.error(t("promoCode.errors.noPermission"));
       } else if (
         (error as { response?: { status?: number } }).response?.status === 401
       ) {
-        toast.error("Please log in to view promo codes");
+        toast.error(t("promoCode.errors.pleaseLogin"));
       } else {
-        toast.error("Failed to load promo codes");
+        toast.error(t("promoCode.errors.loadFailed"));
       }
       setPromoCodes([]); // Ensure promoCodes is always an array
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  // Load promo codes on component mount
+  useEffect(() => {
+    loadPromoCodes();
+  }, [loadPromoCodes]);
 
   const filteredCodes = (promoCodes || []).filter((code) => {
     const matchesSearch =
@@ -122,9 +123,13 @@ export function PromoCodeManagement() {
 
   const getStatusBadge = (isActive: boolean) => {
     return isActive ? (
-      <Badge className="bg-green-100 text-green-700">Active</Badge>
+      <Badge className="bg-green-100 text-green-700">
+        {t("promoCode.status.active")}
+      </Badge>
     ) : (
-      <Badge className="bg-neutral-200 text-neutral-700">Inactive</Badge>
+      <Badge className="bg-neutral-200 text-neutral-700">
+        {t("promoCode.status.inactive")}
+      </Badge>
     );
   };
 
@@ -139,7 +144,7 @@ export function PromoCodeManagement() {
 
   const copyToClipboard = (code: string) => {
     navigator.clipboard.writeText(code);
-    toast.success("Promo code copied to clipboard");
+    toast.success(t("promoCode.notifications.copiedToClipboard"));
   };
 
   const resetForm = () => {
@@ -161,7 +166,7 @@ export function PromoCodeManagement() {
       setSubmitting(true);
       const created = await promoCodeService.create(formData);
       console.log("Created promo code:", created);
-      toast.success("Promo code created successfully");
+      toast.success(t("promoCode.notifications.createdSuccessfully"));
       setShowCreateDialog(false);
       resetForm();
       loadPromoCodes();
@@ -176,7 +181,7 @@ export function PromoCodeManagement() {
         err.response?.data?.message ??
         err.response?.data?.errors ??
         err.message ??
-        "Failed to create promo code";
+        t("promoCode.errors.createFailed");
       toast.error(String(message));
     } finally {
       setSubmitting(false);
@@ -197,7 +202,7 @@ export function PromoCodeManagement() {
         updateData
       );
       console.log("Updated promo code:", updated);
-      toast.success("Promo code updated successfully");
+      toast.success(t("promoCode.notifications.updatedSuccessfully"));
       setShowEditDialog(false);
       resetForm();
       loadPromoCodes();
@@ -211,7 +216,7 @@ export function PromoCodeManagement() {
         err.response?.data?.message ??
         err.response?.data?.errors ??
         err.message ??
-        "Failed to update promo code";
+        t("promoCode.errors.updateFailed");
       toast.error(String(message));
     } finally {
       setSubmitting(false);
@@ -223,12 +228,12 @@ export function PromoCodeManagement() {
 
     try {
       await promoCodeService.delete(codeToDelete);
-      toast.success("Promo code deleted successfully");
+      toast.success(t("promoCode.notifications.deletedSuccessfully"));
       setCodeToDelete(null);
       loadPromoCodes();
     } catch (error) {
       console.error("Failed to delete promo code:", error);
-      toast.error("Failed to delete promo code");
+      toast.error(t("promoCode.errors.deleteFailed"));
     }
   };
 
@@ -258,12 +263,15 @@ export function PromoCodeManagement() {
                 className="mx-auto text-neutral-400 mb-4"
                 size={64}
               />
-              <h3 className="text-neutral-900 mb-2">Access Restricted</h3>
+              <h3 className="text-neutral-900 mb-2">
+                {t("promoCode.accessRestricted.title")}
+              </h3>
               <p className="text-neutral-600 mb-6">
-                You need Admin or Organizer privileges to manage promo codes.
+                {t("promoCode.accessRestricted.description")}
               </p>
               <p className="text-sm text-neutral-500">
-                Current role: {currentUser?.role || "Guest"}
+                {t("promoCode.accessRestricted.currentRole")}:{" "}
+                {currentUser?.role || "Guest"}
               </p>
             </div>
           </Card>
@@ -271,18 +279,18 @@ export function PromoCodeManagement() {
           <>
             {/* Top Action Bar */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-              <h1>Promo Code Management</h1>
+              <h1>{t("promoCode.title")}</h1>
               <div className="flex gap-3">
                 <Button variant="outline">
                   <Upload size={18} className="mr-2" />
-                  Bulk Import
+                  {t("promoCode.bulkImport")}
                 </Button>
                 <Button
                   onClick={() => setShowCreateDialog(true)}
                   className="bg-teal-500 hover:bg-teal-600"
                 >
                   <Plus size={18} className="mr-2" />
-                  Create New Code
+                  {t("promoCode.createNewCode")}
                 </Button>
               </div>
             </div>
@@ -292,7 +300,9 @@ export function PromoCodeManagement() {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="text-sm text-neutral-600">Total Codes</div>
+                    <div className="text-sm text-neutral-600">
+                      {t("promoCode.stats.totalCodes")}
+                    </div>
                     <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
                       <Tag className="text-teal-600" size={20} />
                     </div>
@@ -301,7 +311,7 @@ export function PromoCodeManagement() {
                     {totalCodes}
                   </div>
                   <div className="text-xs text-neutral-600">
-                    All promo codes
+                    {t("promoCode.stats.allPromoCodes")}
                   </div>
                 </CardContent>
               </Card>
@@ -309,7 +319,9 @@ export function PromoCodeManagement() {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="text-sm text-neutral-600">Active Codes</div>
+                    <div className="text-sm text-neutral-600">
+                      {t("promoCode.stats.activeCodes")}
+                    </div>
                     <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                       <CheckCircle className="text-green-600" size={20} />
                     </div>
@@ -318,7 +330,7 @@ export function PromoCodeManagement() {
                     {activeCodes}
                   </div>
                   <div className="text-xs text-neutral-600">
-                    Currently available
+                    {t("promoCode.stats.currentlyAvailable")}
                   </div>
                 </CardContent>
               </Card>
@@ -327,7 +339,7 @@ export function PromoCodeManagement() {
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="text-sm text-neutral-600">
-                      Total Redemptions
+                      {t("promoCode.stats.totalRedemptions")}
                     </div>
                     <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
                       <TrendingUp className="text-teal-600" size={20} />
@@ -336,7 +348,9 @@ export function PromoCodeManagement() {
                   <div className="text-2xl text-neutral-900 mb-1">
                     {totalRedemptions}
                   </div>
-                  <div className="text-xs text-neutral-600">Times used</div>
+                  <div className="text-xs text-neutral-600">
+                    {t("promoCode.stats.timesUsed")}
+                  </div>
                 </CardContent>
               </Card>
 
@@ -344,7 +358,7 @@ export function PromoCodeManagement() {
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="text-sm text-neutral-600">
-                      Total Redemptions
+                      {t("promoCode.stats.totalRedemptions")}
                     </div>
                     <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
                       <TrendingUp className="text-teal-600" size={20} />
@@ -353,7 +367,9 @@ export function PromoCodeManagement() {
                   <div className="text-2xl text-neutral-900 mb-1">
                     {totalRedemptions}
                   </div>
-                  <div className="text-xs text-neutral-600">Codes redeemed</div>
+                  <div className="text-xs text-neutral-600">
+                    {t("promoCode.stats.codesRedeemed")}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -363,19 +379,27 @@ export function PromoCodeManagement() {
               <CardContent className="p-4">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Input
-                    placeholder="Search code or description..."
+                    placeholder={t("promoCode.searchPlaceholder")}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="flex-1"
                   />
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-full sm:w-[180px]">
-                      <SelectValue placeholder="Status" />
+                      <SelectValue
+                        placeholder={t("promoCode.statusPlaceholder")}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="all">
+                        {t("promoCode.filters.allStatus")}
+                      </SelectItem>
+                      <SelectItem value="active">
+                        {t("promoCode.filters.active")}
+                      </SelectItem>
+                      <SelectItem value="inactive">
+                        {t("promoCode.filters.inactive")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -387,23 +411,25 @@ export function PromoCodeManagement() {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
                 <span className="ml-2 text-neutral-600">
-                  Loading promo codes...
+                  {t("promoCode.loading")}
                 </span>
               </div>
             ) : filteredCodes.length === 0 ? (
               <Card className="p-16">
                 <div className="text-center">
                   <Tag className="mx-auto text-neutral-400 mb-4" size={64} />
-                  <h3 className="text-neutral-900 mb-2">No promo codes yet</h3>
+                  <h3 className="text-neutral-900 mb-2">
+                    {t("promoCode.emptyState.title")}
+                  </h3>
                   <p className="text-neutral-600 mb-6">
-                    Create your first promo code to get started
+                    {t("promoCode.emptyState.description")}
                   </p>
                   <Button
                     onClick={() => setShowCreateDialog(true)}
                     className="bg-teal-500 hover:bg-teal-600"
                   >
                     <Plus size={18} className="mr-2" />
-                    Create Promo Code
+                    {t("promoCode.createNewCode")}
                   </Button>
                 </div>
               </Card>
@@ -450,7 +476,7 @@ export function PromoCodeManagement() {
                         <div className="text-sm space-y-1">
                           <div className="flex justify-between">
                             <span className="text-neutral-600">
-                              Valid period:
+                              {t("promoCode.card.validPeriod")}:
                             </span>
                             <span className="text-neutral-900">
                               {code.validFrom
@@ -465,7 +491,7 @@ export function PromoCodeManagement() {
                           {code.minimumPurchase && (
                             <div className="flex justify-between">
                               <span className="text-neutral-600">
-                                Min purchase:
+                                {t("promoCode.card.minPurchase")}:
                               </span>
                               <span className="text-neutral-900">
                                 {code.minimumPurchase.toLocaleString()}₫
@@ -476,9 +502,12 @@ export function PromoCodeManagement() {
 
                         <div>
                           <div className="flex justify-between text-sm mb-2">
-                            <span className="text-neutral-600">Usage</span>
+                            <span className="text-neutral-600">
+                              {t("promoCode.card.usage")}
+                            </span>
                             <span className="text-neutral-900">
-                              {code.currentUses}/{code.maxUses || "∞"} used
+                              {code.currentUses}/{code.maxUses || "∞"}{" "}
+                              {t("promoCode.card.used")}
                             </span>
                           </div>
                           {code.maxUses && (
@@ -497,7 +526,7 @@ export function PromoCodeManagement() {
                             className="flex-1"
                           >
                             <Edit size={14} className="mr-1" />
-                            Edit
+                            {t("promoCode.card.edit")}
                           </Button>
                           <Button
                             variant="outline"
@@ -509,7 +538,7 @@ export function PromoCodeManagement() {
                             }}
                           >
                             <Eye size={14} className="mr-1" />
-                            Stats
+                            {t("promoCode.card.stats")}
                           </Button>
                           <Button
                             variant="outline"
@@ -531,16 +560,17 @@ export function PromoCodeManagement() {
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Create Promo Code</DialogTitle>
+                  <DialogTitle>{t("promoCode.createDialog.title")}</DialogTitle>
                   <DialogDescription>
-                    Set up a new promotional discount code
+                    {t("promoCode.createDialog.description")}
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6">
                   <div>
                     <Label htmlFor="code">
-                      Promo Code <span className="text-red-500">*</span>
+                      {t("promoCode.createDialog.fields.code")}{" "}
+                      <span className="text-red-500">*</span>
                     </Label>
                     <div className="flex gap-2 mt-1">
                       <Input
@@ -552,21 +582,25 @@ export function PromoCodeManagement() {
                             code: e.target.value.toUpperCase(),
                           })
                         }
-                        placeholder="SUMMER2025"
+                        placeholder={t(
+                          "promoCode.createDialog.placeholders.code"
+                        )}
                         className="font-mono"
                         maxLength={20}
                       />
                       <Button variant="outline" onClick={generateRandomCode}>
-                        Generate
+                        {t("promoCode.createDialog.buttons.generate")}
                       </Button>
                     </div>
                     <p className="text-xs text-neutral-500 mt-1">
-                      Alphanumeric, 4-20 characters
+                      {t("promoCode.createDialog.help.codeFormat")}
                     </p>
                   </div>
 
                   <div>
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description">
+                      {t("promoCode.createDialog.fields.description")}
+                    </Label>
                     <Textarea
                       id="description"
                       value={formData.description || ""}
@@ -576,7 +610,9 @@ export function PromoCodeManagement() {
                           description: e.target.value,
                         })
                       }
-                      placeholder="Brief description of this promo code"
+                      placeholder={t(
+                        "promoCode.createDialog.placeholders.description"
+                      )}
                       maxLength={200}
                     />
                   </div>
@@ -584,7 +620,7 @@ export function PromoCodeManagement() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="discountPercent">
-                        Discount Percentage (%)
+                        {t("promoCode.createDialog.fields.discountPercent")}
                       </Label>
                       <Input
                         id="discountPercent"
@@ -599,17 +635,19 @@ export function PromoCodeManagement() {
                             discountAmount: undefined, // Clear the other discount field
                           })
                         }
-                        placeholder="20"
+                        placeholder={t(
+                          "promoCode.createDialog.placeholders.discountPercent"
+                        )}
                         min="0"
                         max="100"
                       />
                       <p className="text-xs text-neutral-500 mt-1">
-                        Leave empty if using fixed amount
+                        {t("promoCode.createDialog.help.discountPercent")}
                       </p>
                     </div>
                     <div>
                       <Label htmlFor="discountAmount">
-                        Discount Amount (VND)
+                        {t("promoCode.createDialog.fields.discountAmount")}
                       </Label>
                       <Input
                         id="discountAmount"
@@ -624,18 +662,22 @@ export function PromoCodeManagement() {
                             discountPercent: undefined, // Clear the other discount field
                           })
                         }
-                        placeholder="50000"
+                        placeholder={t(
+                          "promoCode.createDialog.placeholders.discountAmount"
+                        )}
                         min="0"
                       />
                       <p className="text-xs text-neutral-500 mt-1">
-                        Leave empty if using percentage
+                        {t("promoCode.createDialog.help.discountAmount")}
                       </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="maxUses">Max Total Uses</Label>
+                      <Label htmlFor="maxUses">
+                        {t("promoCode.createDialog.fields.maxUses")}
+                      </Label>
                       <Input
                         id="maxUses"
                         type="number"
@@ -648,12 +690,16 @@ export function PromoCodeManagement() {
                               : undefined,
                           })
                         }
-                        placeholder="Optional"
+                        placeholder={t(
+                          "promoCode.createDialog.placeholders.optional"
+                        )}
                         min="1"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="maxUsesPerUser">Max Uses Per User</Label>
+                      <Label htmlFor="maxUsesPerUser">
+                        {t("promoCode.createDialog.fields.maxUsesPerUser")}
+                      </Label>
                       <Input
                         id="maxUsesPerUser"
                         type="number"
@@ -666,7 +712,9 @@ export function PromoCodeManagement() {
                               : undefined,
                           })
                         }
-                        placeholder="Optional"
+                        placeholder={t(
+                          "promoCode.createDialog.placeholders.optional"
+                        )}
                         min="1"
                       />
                     </div>
@@ -674,7 +722,9 @@ export function PromoCodeManagement() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="validFrom">Valid From</Label>
+                      <Label htmlFor="validFrom">
+                        {t("promoCode.createDialog.fields.validFrom")}
+                      </Label>
                       <Input
                         id="validFrom"
                         type="datetime-local"
@@ -696,7 +746,9 @@ export function PromoCodeManagement() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="validTo">Valid To</Label>
+                      <Label htmlFor="validTo">
+                        {t("promoCode.createDialog.fields.validTo")}
+                      </Label>
                       <Input
                         id="validTo"
                         type="datetime-local"
@@ -721,7 +773,7 @@ export function PromoCodeManagement() {
 
                   <div>
                     <Label htmlFor="minimumPurchase">
-                      Minimum Purchase Amount (VND)
+                      {t("promoCode.createDialog.fields.minimumPurchase")}
                     </Label>
                     <Input
                       id="minimumPurchase"
@@ -735,7 +787,9 @@ export function PromoCodeManagement() {
                             : undefined,
                         })
                       }
-                      placeholder="Optional"
+                      placeholder={t(
+                        "promoCode.createDialog.placeholders.optional"
+                      )}
                       min="0"
                     />
                   </div>
@@ -747,7 +801,7 @@ export function PromoCodeManagement() {
                     onClick={() => setShowCreateDialog(false)}
                     disabled={submitting}
                   >
-                    Cancel
+                    {t("promoCode.createDialog.buttons.cancel")}
                   </Button>
                   <Button
                     className="bg-teal-500 hover:bg-teal-600"
@@ -757,10 +811,10 @@ export function PromoCodeManagement() {
                     {submitting ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating...
+                        {t("promoCode.createDialog.buttons.creating")}
                       </>
                     ) : (
-                      "Create & Activate"
+                      t("promoCode.createDialog.buttons.createAndActivate")
                     )}
                   </Button>
                 </DialogFooter>
@@ -771,16 +825,17 @@ export function PromoCodeManagement() {
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Edit Promo Code</DialogTitle>
+                  <DialogTitle>{t("promoCode.editDialog.title")}</DialogTitle>
                   <DialogDescription>
-                    Update the promo code details
+                    {t("promoCode.editDialog.description")}
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6">
                   <div>
                     <Label htmlFor="edit-code">
-                      Promo Code <span className="text-red-500">*</span>
+                      {t("promoCode.editDialog.fields.code")}{" "}
+                      <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="edit-code"
@@ -791,17 +846,19 @@ export function PromoCodeManagement() {
                           code: e.target.value.toUpperCase(),
                         })
                       }
-                      placeholder="SUMMER2025"
+                      placeholder={t("promoCode.editDialog.placeholders.code")}
                       className="font-mono"
                       maxLength={20}
                     />
                     <p className="text-xs text-neutral-500 mt-1">
-                      Alphanumeric, 4-20 characters
+                      {t("promoCode.editDialog.help.codeFormat")}
                     </p>
                   </div>
 
                   <div>
-                    <Label htmlFor="edit-description">Description</Label>
+                    <Label htmlFor="edit-description">
+                      {t("promoCode.editDialog.fields.description")}
+                    </Label>
                     <Textarea
                       id="edit-description"
                       value={formData.description || ""}
@@ -811,7 +868,9 @@ export function PromoCodeManagement() {
                           description: e.target.value,
                         })
                       }
-                      placeholder="Brief description of this promo code"
+                      placeholder={t(
+                        "promoCode.editDialog.placeholders.description"
+                      )}
                       maxLength={200}
                     />
                   </div>
@@ -819,7 +878,7 @@ export function PromoCodeManagement() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="edit-discountPercent">
-                        Discount Percentage (%)
+                        {t("promoCode.editDialog.fields.discountPercent")}
                       </Label>
                       <Input
                         id="edit-discountPercent"
@@ -834,17 +893,19 @@ export function PromoCodeManagement() {
                             discountAmount: undefined, // Clear the other discount field
                           })
                         }
-                        placeholder="20"
+                        placeholder={t(
+                          "promoCode.editDialog.placeholders.discountPercent"
+                        )}
                         min="0"
                         max="100"
                       />
                       <p className="text-xs text-neutral-500 mt-1">
-                        Leave empty if using fixed amount
+                        {t("promoCode.editDialog.help.discountPercent")}
                       </p>
                     </div>
                     <div>
                       <Label htmlFor="edit-discountAmount">
-                        Discount Amount (VND)
+                        {t("promoCode.editDialog.fields.discountAmount")}
                       </Label>
                       <Input
                         id="edit-discountAmount"
@@ -859,18 +920,22 @@ export function PromoCodeManagement() {
                             discountPercent: undefined, // Clear the other discount field
                           })
                         }
-                        placeholder="50000"
+                        placeholder={t(
+                          "promoCode.editDialog.placeholders.discountAmount"
+                        )}
                         min="0"
                       />
                       <p className="text-xs text-neutral-500 mt-1">
-                        Leave empty if using percentage
+                        {t("promoCode.editDialog.help.discountAmount")}
                       </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="edit-maxUses">Max Total Uses</Label>
+                      <Label htmlFor="edit-maxUses">
+                        {t("promoCode.editDialog.fields.maxUses")}
+                      </Label>
                       <Input
                         id="edit-maxUses"
                         type="number"
@@ -883,13 +948,15 @@ export function PromoCodeManagement() {
                               : undefined,
                           })
                         }
-                        placeholder="Optional"
+                        placeholder={t(
+                          "promoCode.editDialog.placeholders.optional"
+                        )}
                         min="1"
                       />
                     </div>
                     <div>
                       <Label htmlFor="edit-maxUsesPerUser">
-                        Max Uses Per User
+                        {t("promoCode.editDialog.fields.maxUsesPerUser")}
                       </Label>
                       <Input
                         id="edit-maxUsesPerUser"
@@ -903,7 +970,9 @@ export function PromoCodeManagement() {
                               : undefined,
                           })
                         }
-                        placeholder="Optional"
+                        placeholder={t(
+                          "promoCode.editDialog.placeholders.optional"
+                        )}
                         min="1"
                       />
                     </div>
@@ -911,7 +980,9 @@ export function PromoCodeManagement() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="edit-validFrom">Valid From</Label>
+                      <Label htmlFor="edit-validFrom">
+                        {t("promoCode.editDialog.fields.validFrom")}
+                      </Label>
                       <Input
                         id="edit-validFrom"
                         type="datetime-local"
@@ -933,7 +1004,9 @@ export function PromoCodeManagement() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="edit-validTo">Valid To</Label>
+                      <Label htmlFor="edit-validTo">
+                        {t("promoCode.editDialog.fields.validTo")}
+                      </Label>
                       <Input
                         id="edit-validTo"
                         type="datetime-local"
@@ -958,7 +1031,7 @@ export function PromoCodeManagement() {
 
                   <div>
                     <Label htmlFor="edit-minimumPurchase">
-                      Minimum Purchase Amount (VND)
+                      {t("promoCode.editDialog.fields.minimumPurchase")}
                     </Label>
                     <Input
                       id="edit-minimumPurchase"
@@ -972,7 +1045,9 @@ export function PromoCodeManagement() {
                             : undefined,
                         })
                       }
-                      placeholder="Optional"
+                      placeholder={t(
+                        "promoCode.editDialog.placeholders.optional"
+                      )}
                       min="0"
                     />
                   </div>
@@ -984,7 +1059,7 @@ export function PromoCodeManagement() {
                     onClick={() => setShowEditDialog(false)}
                     disabled={submitting}
                   >
-                    Cancel
+                    {t("promoCode.editDialog.buttons.cancel")}
                   </Button>
                   <Button
                     className="bg-teal-500 hover:bg-teal-600"
@@ -994,10 +1069,10 @@ export function PromoCodeManagement() {
                     {submitting ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Updating...
+                        {t("promoCode.editDialog.buttons.updating")}
                       </>
                     ) : (
-                      "Update Code"
+                      t("promoCode.editDialog.buttons.update")
                     )}
                   </Button>
                 </DialogFooter>
@@ -1008,7 +1083,7 @@ export function PromoCodeManagement() {
             <Dialog open={showStatsDialog} onOpenChange={setShowStatsDialog}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Promo Code Statistics</DialogTitle>
+                  <DialogTitle>{t("promoCode.statsDialog.title")}</DialogTitle>
                 </DialogHeader>
                 {selectedCode && (
                   <div className="space-y-4">
@@ -1022,7 +1097,7 @@ export function PromoCodeManagement() {
                       <Card>
                         <CardContent className="p-4">
                           <div className="text-sm text-neutral-600">
-                            Total Uses
+                            {t("promoCode.statsDialog.totalUses")}
                           </div>
                           <div className="text-2xl text-neutral-900">
                             {selectedCode.currentUses}
@@ -1032,7 +1107,7 @@ export function PromoCodeManagement() {
                       <Card>
                         <CardContent className="p-4">
                           <div className="text-sm text-neutral-600">
-                            Remaining
+                            {t("promoCode.statsDialog.remaining")}
                           </div>
                           <div className="text-2xl text-neutral-900">
                             {selectedCode.maxUses
@@ -1044,13 +1119,13 @@ export function PromoCodeManagement() {
                     </div>
 
                     <div className="text-sm text-neutral-600">
-                      More detailed statistics would appear here...
+                      {t("promoCode.statsDialog.moreStats")}
                     </div>
                   </div>
                 )}
                 <DialogFooter>
                   <Button onClick={() => setShowStatsDialog(false)}>
-                    Close
+                    {t("promoCode.statsDialog.close")}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1063,10 +1138,9 @@ export function PromoCodeManagement() {
             >
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Delete Promo Code?</DialogTitle>
+                  <DialogTitle>{t("promoCode.deleteDialog.title")}</DialogTitle>
                   <DialogDescription>
-                    Are you sure you want to delete this promo code? This action
-                    cannot be undone.
+                    {t("promoCode.deleteDialog.description")}
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -1074,13 +1148,13 @@ export function PromoCodeManagement() {
                     variant="outline"
                     onClick={() => setCodeToDelete(null)}
                   >
-                    Cancel
+                    {t("promoCode.deleteDialog.cancel")}
                   </Button>
                   <Button
                     className="bg-red-500 hover:bg-red-600"
                     onClick={handleDeleteCode}
                   >
-                    Delete
+                    {t("promoCode.deleteDialog.confirm")}
                   </Button>
                 </DialogFooter>
               </DialogContent>

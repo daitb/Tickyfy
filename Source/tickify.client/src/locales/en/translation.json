@@ -400,5 +400,140 @@
       "description": "The page you're looking for doesn't exist",
       "backHome": "Back to Home"
     }
+  },
+  "promoCode": {
+    "title": "Promo Code Management",
+    "createNewCode": "Create New Code",
+    "bulkImport": "Bulk Import",
+    "searchPlaceholder": "Search code or description...",
+    "statusPlaceholder": "Status",
+    "filters": {
+      "allStatus": "All Status",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "stats": {
+      "totalCodes": "Total Codes",
+      "activeCodes": "Active Codes",
+      "totalRedemptions": "Total Redemptions",
+      "allPromoCodes": "All promo codes",
+      "currentlyAvailable": "Currently available",
+      "timesUsed": "Times used",
+      "codesRedeemed": "Codes redeemed"
+    },
+    "loading": "Loading promo codes...",
+    "emptyState": {
+      "title": "No promo codes yet",
+      "description": "Create your first promo code to get started"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "card": {
+      "validPeriod": "Valid period",
+      "minPurchase": "Min purchase:",
+      "usage": "Usage",
+      "used": "used",
+      "edit": "Edit",
+      "stats": "Stats"
+    },
+    "createDialog": {
+      "title": "Create Promo Code",
+      "description": "Set up a new promotional discount code",
+      "fields": {
+        "code": "Promo Code",
+        "description": "Description",
+        "discountPercent": "Discount Percentage (%)",
+        "discountAmount": "Discount Amount (VND)",
+        "maxUses": "Max Total Uses",
+        "maxUsesPerUser": "Max Uses Per User",
+        "validFrom": "Valid From",
+        "validTo": "Valid To",
+        "minimumPurchase": "Minimum Purchase Amount (VND)"
+      },
+      "placeholders": {
+        "code": "SUMMER2025",
+        "description": "Brief description of this promo code",
+        "discountPercent": "20",
+        "discountAmount": "50000",
+        "optional": "Optional"
+      },
+      "help": {
+        "codeFormat": "Alphanumeric, 4-20 characters",
+        "discountPercent": "Leave empty if using fixed amount",
+        "discountAmount": "Leave empty if using percentage"
+      },
+      "buttons": {
+        "generate": "Generate",
+        "cancel": "Cancel",
+        "creating": "Creating...",
+        "createAndActivate": "Create & Activate"
+      }
+    },
+    "editDialog": {
+      "title": "Edit Promo Code",
+      "description": "Update the promo code details",
+      "fields": {
+        "code": "Promo Code",
+        "description": "Description",
+        "discountPercent": "Discount Percentage (%)",
+        "discountAmount": "Discount Amount (VND)",
+        "maxUses": "Max Total Uses",
+        "maxUsesPerUser": "Max Uses Per User",
+        "validFrom": "Valid From",
+        "validTo": "Valid To",
+        "minimumPurchase": "Minimum Purchase Amount (VND)"
+      },
+      "placeholders": {
+        "code": "SUMMER2025",
+        "description": "Brief description of this promo code",
+        "discountPercent": "20",
+        "discountAmount": "50000",
+        "optional": "Optional"
+      },
+      "help": {
+        "codeFormat": "Alphanumeric, 4-20 characters",
+        "discountPercent": "Leave empty if using fixed amount",
+        "discountAmount": "Leave empty if using percentage"
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "updating": "Updating...",
+        "update": "Update Code"
+      }
+    },
+    "statsDialog": {
+      "title": "Promo Code Statistics",
+      "totalUses": "Total Uses",
+      "remaining": "Remaining",
+      "moreStats": "More detailed statistics would appear here...",
+      "close": "Close"
+    },
+    "deleteDialog": {
+      "title": "Delete Promo Code?",
+      "description": "Are you sure you want to delete this promo code? This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "accessRestricted": {
+      "title": "Access Restricted",
+      "description": "You need Admin or Organizer privileges to manage promo codes.",
+      "currentRole": "Current role:"
+    },
+    "errors": {
+      "noPermission": "You don't have permission to view promo codes",
+      "pleaseLogin": "Please log in to view promo codes",
+      "loadFailed": "Failed to load promo codes",
+      "createFailed": "Failed to create promo code",
+      "updateFailed": "Failed to update promo code",
+      "deleteFailed": "Failed to delete promo code"
+    },
+    "notifications": {
+      "copiedToClipboard": "Promo code copied to clipboard",
+      "createdSuccessfully": "Promo code created successfully",
+      "updatedSuccessfully": "Promo code updated successfully",
+      "deletedSuccessfully": "Promo code deleted successfully"
+    }
   }
 }

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Save,
   Eye,
@@ -13,22 +13,28 @@ import {
   ChevronLeft,
   ChevronRight,
   Upload,
-} from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Switch } from '../components/ui/switch';
-import { Checkbox } from '../components/ui/checkbox';
+  Tag,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Switch } from "../components/ui/switch";
+import { Checkbox } from "../components/ui/checkbox";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../components/ui/select';
+} from "../components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -36,10 +42,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { mockEvents } from '../mockData';
+} from "../components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { mockEvents } from "../mockData";
+import { promoCodeService } from "../services/promoCodeService";
+import type { PromoCode } from "../services/promoCodeService";
 
 interface EditEventProps {
   eventId?: string;
@@ -59,7 +72,7 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState('basic');
+  const [activeTab, setActiveTab] = useState("basic");
 
   // Get event data
   const event = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
@@ -69,30 +82,47 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
     name: event.title,
     description: event.description,
     category: event.category,
-    eventType: 'public',
-    tags: ['music', 'concert'],
+    eventType: "public",
+    tags: ["music", "concert"],
     date: event.date,
     startTime: event.time,
-    endTime: '23:00',
-    timezone: 'Asia/Ho_Chi_Minh',
-    venueType: 'physical',
+    endTime: "23:00",
+    timezone: "Asia/Ho_Chi_Minh",
+    venueType: "physical",
     venueName: event.venue,
     address: event.venue,
     city: event.city,
-    district: '',
-    mapsLink: '',
-    onlineLink: '',
-    refundPolicy: 'full',
-    ageRestriction: 'all',
+    district: "",
+    mapsLink: "",
+    onlineLink: "",
+    refundPolicy: "full",
+    ageRestriction: "all",
     accessibility: [],
-    terms: '',
+    terms: "",
     publishImmediately: true,
   });
 
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([
-    { id: '1', name: 'VIP', price: 500000, quantity: 100, description: 'VIP access with premium seats' },
-    { id: '2', name: 'Standard', price: 250000, quantity: 400, description: 'General admission' },
+    {
+      id: "1",
+      name: "VIP",
+      price: 500000,
+      quantity: 100,
+      description: "VIP access with premium seats",
+    },
+    {
+      id: "2",
+      name: "Standard",
+      price: 250000,
+      quantity: 400,
+      description: "General admission",
+    },
   ]);
+
+  const [availablePromoCodes, setAvailablePromoCodes] = useState<PromoCode[]>(
+    []
+  );
+  const [selectedPromoCodes, setSelectedPromoCodes] = useState<number[]>([]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -106,9 +136,14 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
     setIsSaving(false);
     setHasUnsavedChanges(false);
     // Show success toast
-    console.log('Event saved:', { asDraft, formData });
+    console.log("Event saved:", {
+      asDraft,
+      formData,
+      ticketTypes,
+      selectedPromoCodes,
+    });
     if (!asDraft) {
-      onNavigate('event-management');
+      onNavigate("event-management");
     }
   };
 
@@ -116,17 +151,17 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
     if (hasUnsavedChanges) {
       setShowCancelDialog(true);
     } else {
-      onNavigate('event-management');
+      onNavigate("event-management");
     }
   };
 
   const addTicketType = () => {
     const newTicket: TicketType = {
       id: Date.now().toString(),
-      name: '',
+      name: "",
       price: 0,
       quantity: 0,
-      description: '',
+      description: "",
     };
     setTicketTypes([...ticketTypes, newTicket]);
     setHasUnsavedChanges(true);
@@ -144,6 +179,28 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
     setHasUnsavedChanges(true);
   };
 
+  // Load available promo codes
+  useEffect(() => {
+    const loadPromoCodes = async () => {
+      try {
+        const codes = await promoCodeService.getAll();
+        setAvailablePromoCodes(codes.filter((code) => code.isActive));
+      } catch (error) {
+        console.error("Failed to load promo codes:", error);
+      }
+    };
+    loadPromoCodes();
+  }, []);
+
+  const handlePromoCodeToggle = (promoCodeId: number) => {
+    setSelectedPromoCodes((prev) =>
+      prev.includes(promoCodeId)
+        ? prev.filter((id) => id !== promoCodeId)
+        : [...prev, promoCodeId]
+    );
+    setHasUnsavedChanges(true);
+  };
+
   const totalCapacity = ticketTypes.reduce((sum, t) => sum + t.quantity, 0);
 
   return (
@@ -151,11 +208,17 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-neutral-600 mb-4">
-          <button onClick={() => onNavigate('event-management')} className="hover:text-teal-600">
+          <button
+            onClick={() => onNavigate("event-management")}
+            className="hover:text-teal-600"
+          >
             My Events
           </button>
           <ChevronRight size={16} />
-          <button onClick={() => onNavigate('event-detail', event.id)} className="hover:text-teal-600">
+          <button
+            onClick={() => onNavigate("event-detail", event.id)}
+            className="hover:text-teal-600"
+          >
             {event.title}
           </button>
           <ChevronRight size={16} />
@@ -169,9 +232,14 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
               <h1>Edit Event</h1>
               <Badge className="bg-green-100 text-green-700">Published</Badge>
             </div>
-            <p className="text-sm text-neutral-600">Last saved: 2 minutes ago</p>
+            <p className="text-sm text-neutral-600">
+              Last saved: 2 minutes ago
+            </p>
           </div>
-          <Button variant="outline" onClick={() => onNavigate('event-detail', event.id)}>
+          <Button
+            variant="outline"
+            onClick={() => onNavigate("event-detail", event.id)}
+          >
             <Eye size={16} className="mr-2" />
             Preview Event
           </Button>
@@ -189,11 +257,12 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
 
         {/* Form Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6 mb-6">
+          <TabsList className="grid w-full grid-cols-7 mb-6">
             <TabsTrigger value="basic">Basic</TabsTrigger>
             <TabsTrigger value="datetime">Date & Time</TabsTrigger>
             <TabsTrigger value="location">Location</TabsTrigger>
             <TabsTrigger value="tickets">Tickets</TabsTrigger>
+            <TabsTrigger value="promo">Promo Codes</TabsTrigger>
             <TabsTrigger value="media">Media</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
@@ -212,7 +281,7 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
                     placeholder="Enter event name"
                   />
                 </div>
@@ -224,7 +293,9 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("description", e.target.value)
+                    }
                     placeholder="Describe your event..."
                     rows={6}
                     maxLength={1000}
@@ -237,7 +308,10 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="category">Category</Label>
-                    <Select value={formData.category} onValueChange={(v) => handleInputChange('category', v)}>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(v) => handleInputChange("category", v)}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -254,7 +328,10 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
 
                   <div>
                     <Label>Event Type</Label>
-                    <Select value={formData.eventType} onValueChange={(v) => handleInputChange('eventType', v)}>
+                    <Select
+                      value={formData.eventType}
+                      onValueChange={(v) => handleInputChange("eventType", v)}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -300,7 +377,7 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                     id="date"
                     type="date"
                     value={formData.date}
-                    onChange={(e) => handleInputChange('date', e.target.value)}
+                    onChange={(e) => handleInputChange("date", e.target.value)}
                   />
                 </div>
 
@@ -313,7 +390,9 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                       id="startTime"
                       type="time"
                       value={formData.startTime}
-                      onChange={(e) => handleInputChange('startTime', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("startTime", e.target.value)
+                      }
                     />
                   </div>
 
@@ -323,21 +402,32 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                       id="endTime"
                       type="time"
                       value={formData.endTime}
-                      onChange={(e) => handleInputChange('endTime', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("endTime", e.target.value)
+                      }
                     />
                   </div>
                 </div>
 
                 <div>
                   <Label htmlFor="timezone">Timezone</Label>
-                  <Select value={formData.timezone} onValueChange={(v) => handleInputChange('timezone', v)}>
+                  <Select
+                    value={formData.timezone}
+                    onValueChange={(v) => handleInputChange("timezone", v)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Asia/Ho_Chi_Minh">Asia/Ho Chi Minh (GMT+7)</SelectItem>
-                      <SelectItem value="Asia/Bangkok">Asia/Bangkok (GMT+7)</SelectItem>
-                      <SelectItem value="Asia/Singapore">Asia/Singapore (GMT+8)</SelectItem>
+                      <SelectItem value="Asia/Ho_Chi_Minh">
+                        Asia/Ho Chi Minh (GMT+7)
+                      </SelectItem>
+                      <SelectItem value="Asia/Bangkok">
+                        Asia/Bangkok (GMT+7)
+                      </SelectItem>
+                      <SelectItem value="Asia/Singapore">
+                        Asia/Singapore (GMT+8)
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -361,7 +451,10 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
               <CardContent className="space-y-6">
                 <div>
                   <Label>Venue Type</Label>
-                  <Select value={formData.venueType} onValueChange={(v) => handleInputChange('venueType', v)}>
+                  <Select
+                    value={formData.venueType}
+                    onValueChange={(v) => handleInputChange("venueType", v)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -373,14 +466,17 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                   </Select>
                 </div>
 
-                {(formData.venueType === 'physical' || formData.venueType === 'hybrid') && (
+                {(formData.venueType === "physical" ||
+                  formData.venueType === "hybrid") && (
                   <>
                     <div>
                       <Label htmlFor="venueName">Venue Name</Label>
                       <Input
                         id="venueName"
                         value={formData.venueName}
-                        onChange={(e) => handleInputChange('venueName', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("venueName", e.target.value)
+                        }
                         placeholder="Enter venue name"
                       />
                     </div>
@@ -390,7 +486,9 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                       <Input
                         id="address"
                         value={formData.address}
-                        onChange={(e) => handleInputChange('address', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("address", e.target.value)
+                        }
                         placeholder="Street address"
                       />
                     </div>
@@ -398,12 +496,17 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="city">City</Label>
-                        <Select value={formData.city} onValueChange={(v) => handleInputChange('city', v)}>
+                        <Select
+                          value={formData.city}
+                          onValueChange={(v) => handleInputChange("city", v)}
+                        >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Ho Chi Minh City">Ho Chi Minh City</SelectItem>
+                            <SelectItem value="Ho Chi Minh City">
+                              Ho Chi Minh City
+                            </SelectItem>
                             <SelectItem value="Hanoi">Hanoi</SelectItem>
                             <SelectItem value="Da Nang">Da Nang</SelectItem>
                           </SelectContent>
@@ -415,7 +518,9 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                         <Input
                           id="district"
                           value={formData.district}
-                          onChange={(e) => handleInputChange('district', e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange("district", e.target.value)
+                          }
                           placeholder="District"
                         />
                       </div>
@@ -426,20 +531,25 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                       <Input
                         id="mapsLink"
                         value={formData.mapsLink}
-                        onChange={(e) => handleInputChange('mapsLink', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("mapsLink", e.target.value)
+                        }
                         placeholder="https://maps.google.com/..."
                       />
                     </div>
                   </>
                 )}
 
-                {(formData.venueType === 'online' || formData.venueType === 'hybrid') && (
+                {(formData.venueType === "online" ||
+                  formData.venueType === "hybrid") && (
                   <div>
                     <Label htmlFor="onlineLink">Online Meeting Link</Label>
                     <Input
                       id="onlineLink"
                       value={formData.onlineLink}
-                      onChange={(e) => handleInputChange('onlineLink', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("onlineLink", e.target.value)
+                      }
                       placeholder="Zoom, Google Meet, or other link"
                     />
                   </div>
@@ -455,7 +565,8 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                 <div className="flex items-center justify-between">
                   <CardTitle>Ticket Configuration</CardTitle>
                   <div className="text-sm text-neutral-600">
-                    Total Capacity: <span className="text-teal-600">{totalCapacity}</span>
+                    Total Capacity:{" "}
+                    <span className="text-teal-600">{totalCapacity}</span>
                   </div>
                 </div>
               </CardHeader>
@@ -468,7 +579,13 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                           <Label>Name</Label>
                           <Input
                             value={ticket.name}
-                            onChange={(e) => updateTicketType(ticket.id, 'name', e.target.value)}
+                            onChange={(e) =>
+                              updateTicketType(
+                                ticket.id,
+                                "name",
+                                e.target.value
+                              )
+                            }
                             placeholder="VIP, Standard..."
                           />
                         </div>
@@ -477,7 +594,13 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                           <Input
                             type="number"
                             value={ticket.price}
-                            onChange={(e) => updateTicketType(ticket.id, 'price', Number(e.target.value))}
+                            onChange={(e) =>
+                              updateTicketType(
+                                ticket.id,
+                                "price",
+                                Number(e.target.value)
+                              )
+                            }
                             placeholder="0"
                           />
                         </div>
@@ -486,7 +609,13 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                           <Input
                             type="number"
                             value={ticket.quantity}
-                            onChange={(e) => updateTicketType(ticket.id, 'quantity', Number(e.target.value))}
+                            onChange={(e) =>
+                              updateTicketType(
+                                ticket.id,
+                                "quantity",
+                                Number(e.target.value)
+                              )
+                            }
                             placeholder="0"
                           />
                         </div>
@@ -494,7 +623,13 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                           <Label>Description</Label>
                           <Input
                             value={ticket.description}
-                            onChange={(e) => updateTicketType(ticket.id, 'description', e.target.value)}
+                            onChange={(e) =>
+                              updateTicketType(
+                                ticket.id,
+                                "description",
+                                e.target.value
+                              )
+                            }
                             placeholder="Brief description"
                           />
                         </div>
@@ -513,7 +648,11 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                   </Card>
                 ))}
 
-                <Button onClick={addTicketType} variant="outline" className="w-full border-dashed">
+                <Button
+                  onClick={addTicketType}
+                  variant="outline"
+                  className="w-full border-dashed"
+                >
                   <Plus size={16} className="mr-2" />
                   Add Ticket Type
                 </Button>
@@ -528,6 +667,117 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
             </Card>
           </TabsContent>
 
+          {/* Promo Codes */}
+          <TabsContent value="promo">
+            <Card>
+              <CardHeader>
+                <CardTitle>Promo Codes</CardTitle>
+                <p className="text-sm text-neutral-600">
+                  Select promo codes that can be applied to this event.
+                  Customers will be able to use these codes during checkout.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {availablePromoCodes.length === 0 ? (
+                  <div className="text-center py-8 text-neutral-500">
+                    <Tag className="mx-auto mb-2" size={32} />
+                    <p>No active promo codes available</p>
+                    <p className="text-sm">
+                      Create promo codes in the Promo Code Management section
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {availablePromoCodes.map((code) => (
+                      <div
+                        key={code.promoCodeId}
+                        className={`border rounded-xl p-4 cursor-pointer transition-colors ${
+                          selectedPromoCodes.includes(code.promoCodeId)
+                            ? "border-teal-500 bg-teal-50"
+                            : "border-neutral-200 hover:border-neutral-300"
+                        }`}
+                        onClick={() => handlePromoCodeToggle(code.promoCodeId)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-neutral-900">
+                                {code.code}
+                              </span>
+                              {selectedPromoCodes.includes(
+                                code.promoCodeId
+                              ) && (
+                                <span className="text-xs bg-teal-500 text-white px-2 py-1 rounded">
+                                  Selected
+                                </span>
+                              )}
+                            </div>
+                            {code.description && (
+                              <p className="text-sm text-neutral-600 mb-2">
+                                {code.description}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-neutral-500">
+                              {code.discountPercent && (
+                                <span>{code.discountPercent}% off</span>
+                              )}
+                              {code.discountAmount && (
+                                <span>
+                                  {code.discountAmount.toLocaleString()} VND off
+                                </span>
+                              )}
+                              {code.minimumPurchase && (
+                                <span>
+                                  Min: {code.minimumPurchase.toLocaleString()}{" "}
+                                  VND
+                                </span>
+                              )}
+                              <span>
+                                Used: {code.currentUses}/{code.maxUses || "∞"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedPromoCodes.length > 0 && (
+                  <div className="bg-neutral-50 rounded-xl p-4">
+                    <h4 className="text-sm font-medium text-neutral-900 mb-2">
+                      Selected Promo Codes ({selectedPromoCodes.length})
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedPromoCodes.map((id) => {
+                        const code = availablePromoCodes.find(
+                          (c) => c.promoCodeId === id
+                        );
+                        return code ? (
+                          <span
+                            key={id}
+                            className="inline-flex items-center gap-1 text-xs bg-teal-100 text-teal-700 px-2 py-1 rounded"
+                          >
+                            {code.code}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePromoCodeToggle(id);
+                              }}
+                              className="ml-1 hover:text-teal-900"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Media */}
           <TabsContent value="media">
             <Card>
@@ -538,7 +788,10 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                 <div>
                   <Label>Event Banner</Label>
                   <div className="mt-2 border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center hover:border-teal-500 transition-colors cursor-pointer">
-                    <Upload className="mx-auto text-neutral-400 mb-2" size={40} />
+                    <Upload
+                      className="mx-auto text-neutral-400 mb-2"
+                      size={40}
+                    />
                     <p className="text-sm text-neutral-600">
                       Click to upload or drag and drop
                     </p>
@@ -553,7 +806,11 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                   <div className="mt-2 grid grid-cols-4 gap-4">
                     {/* Preview existing images */}
                     <div className="aspect-square bg-neutral-200 rounded-lg overflow-hidden">
-                      <img src={event.image} alt="Gallery" className="w-full h-full object-cover" />
+                      <img
+                        src={event.image}
+                        alt="Gallery"
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     {/* Upload placeholder */}
                     <div className="aspect-square border-2 border-dashed border-neutral-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-500">
@@ -577,7 +834,10 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
               <CardContent className="space-y-6">
                 <div>
                   <Label htmlFor="refundPolicy">Refund Policy</Label>
-                  <Select value={formData.refundPolicy} onValueChange={(v) => handleInputChange('refundPolicy', v)}>
+                  <Select
+                    value={formData.refundPolicy}
+                    onValueChange={(v) => handleInputChange("refundPolicy", v)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -593,7 +853,9 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                   <Label htmlFor="ageRestriction">Age Restriction</Label>
                   <Select
                     value={formData.ageRestriction}
-                    onValueChange={(v) => handleInputChange('ageRestriction', v)}
+                    onValueChange={(v) =>
+                      handleInputChange("ageRestriction", v)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -635,7 +897,7 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                   <Textarea
                     id="terms"
                     value={formData.terms}
-                    onChange={(e) => handleInputChange('terms', e.target.value)}
+                    onChange={(e) => handleInputChange("terms", e.target.value)}
                     placeholder="Enter terms and conditions..."
                     rows={4}
                   />
@@ -644,12 +906,16 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="publish">Publish Immediately</Label>
-                    <p className="text-xs text-neutral-500">Make event visible to public</p>
+                    <p className="text-xs text-neutral-500">
+                      Make event visible to public
+                    </p>
                   </div>
                   <Switch
                     id="publish"
                     checked={formData.publishImmediately}
-                    onCheckedChange={(v) => handleInputChange('publishImmediately', v)}
+                    onCheckedChange={(v) =>
+                      handleInputChange("publishImmediately", v)
+                    }
                   />
                 </div>
               </CardContent>
@@ -660,18 +926,26 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
         {/* Action Buttons (Sticky) */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg py-4 z-10">
           <div className="max-w-5xl mx-auto px-4 flex items-center justify-between">
-            <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
               <ChevronLeft size={16} className="mr-2" />
               Cancel
             </Button>
 
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => handleSave(true)} disabled={isSaving}>
+              <Button
+                variant="outline"
+                onClick={() => handleSave(true)}
+                disabled={isSaving}
+              >
                 Save as Draft
               </Button>
               <Button
                 variant="outline"
-                onClick={() => onNavigate('event-detail', event.id)}
+                onClick={() => onNavigate("event-detail", event.id)}
                 disabled={isSaving}
               >
                 <Eye size={16} className="mr-2" />
@@ -708,16 +982,20 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
           <DialogHeader>
             <DialogTitle>Unsaved Changes</DialogTitle>
             <DialogDescription>
-              You have unsaved changes. Are you sure you want to leave? All changes will be lost.
+              You have unsaved changes. Are you sure you want to leave? All
+              changes will be lost.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowCancelDialog(false)}
+            >
               Continue Editing
             </Button>
             <Button
               className="bg-red-500 hover:bg-red-600"
-              onClick={() => onNavigate('event-management')}
+              onClick={() => onNavigate("event-management")}
             >
               Discard Changes
             </Button>
