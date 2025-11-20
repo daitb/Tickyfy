@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from 'react-i18next';
-import { Lock, CheckCircle, ShoppingBag } from "lucide-react";
+import { Lock, CheckCircle, ShoppingBag, AlertCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -16,6 +16,17 @@ import type { CartItem, Order } from "../types";
 import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
 import { createPaymentIntent } from "../services/paymentService";
+import {
+  validateEmail,
+  validatePhone,
+  validateName,
+  validateMomoPhone,
+  validateCardNumber,
+  validateCardExpiry,
+  validateCVV,
+  validateCardholderName,
+  formatPhoneNumber,
+} from "../utils/validation";
 
 interface CheckoutProps {
   items: CartItem[];
@@ -34,6 +45,20 @@ export function Checkout({
     email: "",
     name: "",
     phone: "",
+  });
+  const [formErrors, setFormErrors] = useState<{
+    email?: string;
+    name?: string;
+    phone?: string;
+  }>({});
+  const [touchedFields, setTouchedFields] = useState<{
+    email: boolean;
+    name: boolean;
+    phone: boolean;
+  }>({
+    email: false,
+    name: false,
+    phone: false,
   });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("momo");
   const [paymentDetails, setPaymentDetails] = useState<any>(null);
@@ -106,6 +131,56 @@ export function Checkout({
 
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
+    
+    // Validate on change if field has been touched
+    if (touchedFields[field as keyof typeof touchedFields]) {
+      validateField(field, value);
+    }
+  };
+
+  const handleBlur = (field: string) => {
+    setTouchedFields({ ...touchedFields, [field]: true });
+    validateField(field, formData[field as keyof typeof formData]);
+  };
+
+  const validateField = (field: string, value: string) => {
+    let validationResult: { isValid: boolean; error?: string } = { isValid: true };
+
+    switch (field) {
+      case "email":
+        validationResult = validateEmail(value);
+        break;
+      case "name":
+        validationResult = validateName(value);
+        break;
+      case "phone":
+        validationResult = validatePhone(value);
+        break;
+    }
+
+    if (!validationResult.isValid) {
+      setFormErrors({ ...formErrors, [field]: validationResult.error });
+    } else {
+      const newErrors = { ...formErrors };
+      delete newErrors[field as keyof typeof formErrors];
+      setFormErrors(newErrors);
+    }
+  };
+
+  const validateStep1 = (): boolean => {
+    const emailValidation = validateEmail(formData.email);
+    const nameValidation = validateName(formData.name);
+    const phoneValidation = validatePhone(formData.phone);
+
+    const errors: typeof formErrors = {};
+    if (!emailValidation.isValid) errors.email = emailValidation.error;
+    if (!nameValidation.isValid) errors.name = nameValidation.error;
+    if (!phoneValidation.isValid) errors.phone = phoneValidation.error;
+
+    setFormErrors(errors);
+    setTouchedFields({ email: true, name: true, phone: true });
+
+    return emailValidation.isValid && nameValidation.isValid && phoneValidation.isValid;
   };
 
   const handlePaymentMethodChange = (method: PaymentMethod, details?: any) => {
@@ -114,6 +189,13 @@ export function Checkout({
   };
 
   const handleNext = () => {
+    if (currentStep === 1) {
+      // Validate step 1 before proceeding
+      if (!validateStep1()) {
+        return;
+      }
+    }
+    
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -132,10 +214,59 @@ export function Checkout({
     setError("");
 
     try {
+      // Validate step 1 (contact information)
+      if (!validateStep1()) {
+        setCurrentStep(1);
+        setIsProcessing(false);
+        return;
+      }
+
+      // Validate step 2 (payment method)
+      if (paymentMethod === "momo") {
+        const momoValidation = validateMomoPhone(paymentDetails?.phone || "");
+        if (!momoValidation.isValid) {
+          setError(`Thông tin thanh toán không hợp lệ: ${momoValidation.error}`);
+          setCurrentStep(2);
+          setIsProcessing(false);
+          return;
+        }
+      } else if (paymentMethod === "credit-card") {
+        const cardNumberValidation = validateCardNumber(paymentDetails?.number || "");
+        const cardNameValidation = validateCardholderName(paymentDetails?.name || "");
+        const cardExpiryValidation = validateCardExpiry(paymentDetails?.expiry || "");
+        const cardCvvValidation = validateCVV(paymentDetails?.cvv || "");
+
+        if (!cardNumberValidation.isValid) {
+          setError(`Thông tin thẻ không hợp lệ: ${cardNumberValidation.error}`);
+          setCurrentStep(2);
+          setIsProcessing(false);
+          return;
+        }
+        if (!cardNameValidation.isValid) {
+          setError(`Thông tin thẻ không hợp lệ: ${cardNameValidation.error}`);
+          setCurrentStep(2);
+          setIsProcessing(false);
+          return;
+        }
+        if (!cardExpiryValidation.isValid) {
+          setError(`Thông tin thẻ không hợp lệ: ${cardExpiryValidation.error}`);
+          setCurrentStep(2);
+          setIsProcessing(false);
+          return;
+        }
+        if (!cardCvvValidation.isValid) {
+          setError(`Thông tin thẻ không hợp lệ: ${cardCvvValidation.error}`);
+          setCurrentStep(2);
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       // Check if user is authenticated
       if (!authService.isAuthenticated()) {
         setError(t('booking.checkout.loginRequired'));
         onNavigate("login");
+        setIsProcessing(false);
         return;
       }
 
@@ -211,21 +342,29 @@ export function Checkout({
 
   const isStepValid = () => {
     if (currentStep === 1) {
-      return formData.email && formData.name && formData.phone;
+      // Check if all fields are filled and valid
+      const emailValid = validateEmail(formData.email).isValid;
+      const nameValid = validateName(formData.name).isValid;
+      const phoneValid = validatePhone(formData.phone).isValid;
+      return emailValid && nameValid && phoneValid;
     }
     if (currentStep === 2) {
       if (paymentMethod === "momo") {
-        return paymentDetails?.phone;
+        if (!paymentDetails?.phone) return false;
+        return validateMomoPhone(paymentDetails.phone).isValid;
       }
       if (paymentMethod === "vnpay") {
         return true; // VNPay doesn't require additional details
       }
       if (paymentMethod === "credit-card") {
+        if (!paymentDetails?.number || !paymentDetails?.name || !paymentDetails?.expiry || !paymentDetails?.cvv) {
+          return false;
+        }
         return (
-          paymentDetails?.number &&
-          paymentDetails?.name &&
-          paymentDetails?.expiry &&
-          paymentDetails?.cvv
+          validateCardNumber(paymentDetails.number).isValid &&
+          validateCardholderName(paymentDetails.name).isValid &&
+          validateCardExpiry(paymentDetails.expiry).isValid &&
+          validateCVV(paymentDetails.cvv).isValid
         );
       }
     }
@@ -284,11 +423,32 @@ export function Checkout({
                           onChange={(e) =>
                             handleInputChange("email", e.target.value)
                           }
-                          className="mt-2"
+                          onBlur={() => handleBlur("email")}
+                          className={`mt-2 ${
+                            touchedFields.email && formErrors.email
+                              ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                              : touchedFields.email && !formErrors.email
+                              ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+                              : ""
+                          }`}
                         />
-                        <p className="text-xs text-neutral-500 mt-2">
-                          {t('booking.checkout.emailNote')}
-                        </p>
+                        {touchedFields.email && formErrors.email && (
+                          <div className="flex items-center gap-1 mt-1 text-sm text-red-600">
+                            <AlertCircle size={14} />
+                            <span>{formErrors.email}</span>
+                          </div>
+                        )}
+                        {touchedFields.email && !formErrors.email && formData.email && (
+                          <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                            <CheckCircle size={14} />
+                            <span>Email hợp lệ</span>
+                          </div>
+                        )}
+                        {!touchedFields.email && (
+                          <p className="text-xs text-neutral-500 mt-2">
+                            {t('booking.checkout.emailNote')}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -301,11 +461,32 @@ export function Checkout({
                           onChange={(e) =>
                             handleInputChange("name", e.target.value)
                           }
-                          className="mt-2"
+                          onBlur={() => handleBlur("name")}
+                          className={`mt-2 ${
+                            touchedFields.name && formErrors.name
+                              ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                              : touchedFields.name && !formErrors.name
+                              ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+                              : ""
+                          }`}
                         />
-                        <p className="text-xs text-neutral-500 mt-2">
-                          {t('booking.checkout.fullNameNote')}
-                        </p>
+                        {touchedFields.name && formErrors.name && (
+                          <div className="flex items-center gap-1 mt-1 text-sm text-red-600">
+                            <AlertCircle size={14} />
+                            <span>{formErrors.name}</span>
+                          </div>
+                        )}
+                        {touchedFields.name && !formErrors.name && formData.name && (
+                          <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                            <CheckCircle size={14} />
+                            <span>Họ tên hợp lệ</span>
+                          </div>
+                        )}
+                        {!touchedFields.name && (
+                          <p className="text-xs text-neutral-500 mt-2">
+                            {t('booking.checkout.fullNameNote')}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -315,14 +496,36 @@ export function Checkout({
                           type="tel"
                           placeholder={t('booking.checkout.phonePlaceholder')}
                           value={formData.phone}
-                          onChange={(e) =>
-                            handleInputChange("phone", e.target.value)
-                          }
-                          className="mt-2"
+                          onChange={(e) => {
+                            const formatted = formatPhoneNumber(e.target.value);
+                            handleInputChange("phone", formatted);
+                          }}
+                          onBlur={() => handleBlur("phone")}
+                          className={`mt-2 ${
+                            touchedFields.phone && formErrors.phone
+                              ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                              : touchedFields.phone && !formErrors.phone
+                              ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+                              : ""
+                          }`}
                         />
-                        <p className="text-xs text-neutral-500 mt-2">
-                          {t('booking.checkout.phoneNote')}
-                        </p>
+                        {touchedFields.phone && formErrors.phone && (
+                          <div className="flex items-center gap-1 mt-1 text-sm text-red-600">
+                            <AlertCircle size={14} />
+                            <span>{formErrors.phone}</span>
+                          </div>
+                        )}
+                        {touchedFields.phone && !formErrors.phone && formData.phone && (
+                          <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                            <CheckCircle size={14} />
+                            <span>Số điện thoại hợp lệ</span>
+                          </div>
+                        )}
+                        {!touchedFields.phone && (
+                          <p className="text-xs text-neutral-500 mt-2">
+                            {t('booking.checkout.phoneNote')}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
