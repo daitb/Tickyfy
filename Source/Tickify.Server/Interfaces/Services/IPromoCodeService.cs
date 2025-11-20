@@ -12,4 +12,7 @@ public interface IPromoCodeService
     Task<decimal> CalculateDiscountAsync(string promoCode, int eventId, decimal orderTotal);
     Task<bool> ApplyPromoCodeAsync(int promoCodeId);
     Task<int> GetUsageCountAsync(int promoCodeId);
+    Task<PromoCodeDto> CreateAsync(CreatePromoCodeDto createDto, int createdByUserId);
+    Task<PromoCodeDto> UpdateAsync(int id, UpdatePromoCodeDto updateDto);
+    Task<bool> DeleteAsync(int id);
 }

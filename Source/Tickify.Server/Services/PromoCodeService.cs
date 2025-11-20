@@ -3,20 +3,92 @@ using Tickify.DTOs.PromoCode;
 using Tickify.Exceptions;
 using Tickify.Interfaces.Repositories;
 using Tickify.Interfaces.Services;
+using Tickify.Models;
+using Tickify.Repositories;
 
 namespace Tickify.Services;
 
 public class PromoCodeService : IPromoCodeService
 {
     private readonly IPromoCodeRepository _promoCodeRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
 
-    public PromoCodeService(IPromoCodeRepository promoCodeRepository, IMapper mapper)
+    public PromoCodeService(IPromoCodeRepository promoCodeRepository, IUserRepository userRepository, IMapper mapper)
     {
         _promoCodeRepository = promoCodeRepository;
+        _userRepository = userRepository;
         _mapper = mapper;
     }
 
+    public async Task<PromoCodeDto> CreateAsync(CreatePromoCodeDto createDto, int createdByUserId){
+        // Check if user exists
+        var user = await _userRepository.GetUserByIdAsync(createdByUserId);
+        if (user == null)
+        {
+            throw new NotFoundException($"User with ID {createdByUserId} not found");
+        }
+
+        // Validate dates
+        DateTime validFrom = createDto.ValidFrom ?? DateTime.UtcNow;
+        DateTime validTo = createDto.ValidTo ?? validFrom.AddMonths(1);
+
+        // Ensure ValidTo is after ValidFrom
+        if (validTo <= validFrom)
+        {
+            validTo = validFrom.AddMonths(1);
+        }
+
+        var promoCode = new PromoCode
+        {
+            Code = createDto.Code,
+            Description = createDto.Description,
+            EventId = createDto.EventId,
+            OrganizerId = createDto.OrganizerId,
+            DiscountPercent = createDto.DiscountPercent,
+            DiscountAmount = createDto.DiscountAmount,
+            MinimumPurchase = createDto.MinimumPurchase,
+            MaxUses = createDto.MaxUses,
+            MaxUsesPerUser = createDto.MaxUsesPerUser,
+            ValidFrom = validFrom,
+            ValidTo = validTo,
+            CreatedByUserId = createdByUserId
+        };
+
+        var created = await _promoCodeRepository.CreateAsync(promoCode);
+        return _mapper.Map<PromoCodeDto>(created);
+    }
+
+public async Task<PromoCodeDto> UpdateAsync(int id, UpdatePromoCodeDto updateDto)
+{
+    var existing = await _promoCodeRepository.GetByIdAsync(id);
+    if (existing == null)
+        throw new NotFoundException($"Promo code with ID {id} not found");
+
+    existing.Code = updateDto.Code;
+    existing.Description = updateDto.Description;
+    existing.EventId = updateDto.EventId;
+    existing.OrganizerId = updateDto.OrganizerId;
+    existing.DiscountPercent = updateDto.DiscountPercent;
+    existing.DiscountAmount = updateDto.DiscountAmount;
+    existing.MinimumPurchase = updateDto.MinimumPurchase;
+    existing.MaxUses = updateDto.MaxUses;
+    existing.MaxUsesPerUser = updateDto.MaxUsesPerUser;
+    // Only update dates if the client provided them; otherwise keep existing values
+    if (updateDto.ValidFrom.HasValue)
+        existing.ValidFrom = updateDto.ValidFrom.Value;
+    if (updateDto.ValidTo.HasValue)
+        existing.ValidTo = updateDto.ValidTo.Value;
+    existing.IsActive = updateDto.IsActive;
+
+    var updated = await _promoCodeRepository.UpdateAsync(existing);
+    return _mapper.Map<PromoCodeDto>(updated);
+}
+
+public async Task<bool> DeleteAsync(int id)
+{
+    return await _promoCodeRepository.DeleteAsync(id);
+}
     public async Task<PromoCodeDto> GetByIdAsync(int id)
     {
         var promoCode = await _promoCodeRepository.GetByIdAsync(id);
@@ -103,4 +175,5 @@ public class PromoCodeService : IPromoCodeService
     {
         return await _promoCodeRepository.GetUsageCountAsync(promoCodeId);
     }
+    
 }

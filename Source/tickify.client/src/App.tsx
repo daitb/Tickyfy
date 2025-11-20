@@ -144,15 +144,20 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     authService.isAuthenticated()
   );
-  const [userRole, setUserRole] = useState<"guest" | "user" | "organizer" | "staff" | "admin">(
-    () => {
-      const user = authService.getCurrentUser();
-      if (!user) return "guest";
-      return (
-        (user?.role?.toLowerCase() as "guest" | "user" | "organizer" | "staff" | "admin") || "user"
-      );
-    }
-  );
+  const [userRole, setUserRole] = useState<
+    "guest" | "user" | "organizer" | "staff" | "admin"
+  >(() => {
+    const user = authService.getCurrentUser();
+    if (!user) return "guest";
+    return (
+      (user?.role?.toLowerCase() as
+        | "guest"
+        | "user"
+        | "organizer"
+        | "staff"
+        | "admin") || "user"
+    );
+  });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Sync page state with URL on mount and URL changes
@@ -162,31 +167,31 @@ export default function App() {
 
     // Extract IDs from URL params
     const path = location.pathname;
-    
+
     // Extract eventId from URL
     if (path.startsWith("/event/")) {
       const eventId = path.split("/event/")[1]?.split("/")[0];
       if (eventId) setSelectedEventId(eventId);
     }
-    
+
     // Extract orderId from URL
     if (path.startsWith("/order/")) {
       const orderId = path.split("/order/")[1]?.split("/")[0];
       if (orderId) setSelectedOrderId(orderId);
     }
-    
+
     // Extract ticketId from URL
     if (path.startsWith("/ticket/")) {
       const ticketId = path.split("/ticket/")[1]?.split("/")[0];
       if (ticketId) setSelectedTicketId(ticketId);
     }
-    
+
     // Extract ticketId from transfer-ticket URL
     if (path.startsWith("/transfer-ticket/")) {
       const ticketId = path.split("/transfer-ticket/")[1]?.split("/")[0];
       if (ticketId) setSelectedTicketId(ticketId);
     }
-    
+
     // Extract eventId from event-analytics URL
     if (path.startsWith("/event-analytics/")) {
       const eventId = path.split("/event-analytics/")[1]?.split("/")[0];
@@ -204,8 +209,12 @@ export default function App() {
         const user = authService.getCurrentUser();
         if (user) {
           setUserRole(
-            (user.role?.toLowerCase() as "guest" | "user" | "organizer" | "staff" | "admin") ||
-              "user"
+            (user.role?.toLowerCase() as
+              | "guest"
+              | "user"
+              | "organizer"
+              | "staff"
+              | "admin") || "user"
           );
         }
       } else {
@@ -370,7 +379,7 @@ export default function App() {
         return <ScanHistory onNavigate={handleNavigate} />;
 
       case "promo-codes":
-        return <PromoCodeManagement onNavigate={handleNavigate} />;
+        return <PromoCodeManagement />;
 
       case "notifications":
         return <Notifications onNavigate={handleNavigate} />;

@@ -144,7 +144,22 @@ public class MappingProfile : Profile
         CreateMap<CreateSeatDto, Seat>();
 
         // PromoCode mappings
-        CreateMap<PromoCode, PromoCodeDto>();
+        CreateMap<PromoCode, PromoCodeDto>()
+            .ForMember(dest => dest.PromoCodeId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.DiscountType, opt => opt.MapFrom(src =>
+                src.DiscountPercent.HasValue ? "Percentage" :
+                src.DiscountAmount.HasValue ? "Fixed" : "Free"))
+            .ForMember(dest => dest.DiscountValue, opt => opt.MapFrom(src =>
+                src.DiscountPercent ?? src.DiscountAmount ?? 0))
+            .ForMember(dest => dest.UsedCount, opt => opt.MapFrom(src => src.CurrentUses))
+            .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.ValidFrom ?? src.CreatedAt))
+            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.ValidTo ?? DateTime.MaxValue));
+        CreateMap<CreatePromoCodeDto, PromoCode>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.CurrentUses, opt => opt.Ignore())
+            .ForMember(dest => dest.IsActive, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore());
 
         // ============================================
         // PAYMENT & REVIEW MAPPINGS

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Tickify.Data;
+using Tickify.Interfaces.Repositories;
 using Tickify.Models;
 
 namespace Tickify.Repositories;
