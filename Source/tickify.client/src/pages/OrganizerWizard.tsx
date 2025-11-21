@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Upload, Plus, Trash2, ArrowLeft } from 'lucide-react';
+import { Upload, Plus, Trash2, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -8,7 +8,10 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Switch } from '../components/ui/switch';
 import { ProgressSteps } from '../components/ProgressSteps';
-import { categories, cities } from '../mockData';
+import { cities } from '../mockData';
+import { eventService, type CreateEventDto } from '../services/eventService';
+import { categoryService, type CategoryDto } from '../services/categoryService';
+import { authService } from '../services/authService';
 import type { Category, Event, TicketTier } from "../types";
 
 interface OrganizerWizardProps {
@@ -18,6 +21,8 @@ interface OrganizerWizardProps {
 export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [eventData, setEventData] = useState<Partial<Event>>({
     category: 'Music',
     city: cities[0],
@@ -31,6 +36,27 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   const [ticketTiers, setTicketTiers] = useState<Partial<TicketTier>[]>([
     { name: '', price: 0, total: 100, description: '' }
   ]);
+
+  // Get current user
+  const user = authService.getCurrentUser();
+  const organizerId = user?.organizerId || 1;
+
+  // Load categories on mount
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const cats = await categoryService.getCategories();
+        setCategories(cats);
+        // Set first category as default if available
+        if (cats.length > 0 && !eventData.category) {
+          setEventData(prev => ({ ...prev, category: cats[0].categoryName as any }));
+        }
+      } catch (error) {
+        console.error('Error loading categories:', error);
+      }
+    };
+    loadCategories();
+  }, []);
 
   const steps = [
     { number: 1, label: 'Basics' },
@@ -70,10 +96,57 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     }
   };
 
-  const handlePublish = () => {
-    // In a real app, this would save to backend
-    alert('Event published successfully!');
-    onNavigate('organizer-dashboard');
+  const handlePublish = async () => {
+    try {
+      setIsPublishing(true);
+
+      // Validate required fields
+      if (!eventData.title || !eventData.description || !eventData.venue || !eventData.date || !eventData.time) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      // Combine date and time
+      const eventDate = eventData.date || '';
+      const eventTime = eventData.time || '00:00';
+      const startDateTime = `${eventDate}T${eventTime}:00`;
+      const endDateTime = `${eventDate}T23:59:00`; // Default end time
+
+      // Map category name to categoryId
+      const selectedCategory = categories.find(c => c.categoryName === eventData.category);
+      const categoryId = selectedCategory?.categoryId || 1; // Fallback to 1 if not found
+
+      // Prepare event data
+      const createEventDto: CreateEventDto = {
+        organizerId: organizerId,
+        categoryId: categoryId,
+        title: eventData.title,
+        description: eventData.description,
+        venue: eventData.venue,
+        imageUrl: eventData.image,
+        startDate: startDateTime,
+        endDate: endDateTime,
+        totalSeats: ticketTiers.reduce((sum, tier) => sum + (tier.total || 0), 0),
+        isFeatured: false,
+        ticketTypes: ticketTiers.map(tier => ({
+          typeName: tier.name || 'General',
+          price: tier.price || 0,
+          quantity: tier.total || 0,
+          description: tier.description
+        }))
+      };
+
+      // POST /api/events - Create event
+      const createdEvent = await eventService.createEvent(createEventDto);
+
+      alert(`Event "${createdEvent.title}" created successfully! It will be reviewed by admin.`);
+      onNavigate('organizer-dashboard');
+    } catch (error: any) {
+      console.error('Error creating event:', error);
+      alert(error.response?.data?.message || error.message || 'Failed to create event. Please try again.');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   return (
@@ -135,7 +208,9 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      <SelectItem key={cat.categoryId} value={cat.categoryName}>
+                        {cat.categoryName}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -448,8 +523,16 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
               <Button
                 onClick={handlePublish}
                 className="flex-1 bg-orange-500 hover:bg-orange-600"
+                disabled={isPublishing}
               >
-                Publish Event
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2" size={16} />
+                    Publishing...
+                  </>
+                ) : (
+                  'Publish Event'
+                )}
               </Button>
             )}
           </div>
