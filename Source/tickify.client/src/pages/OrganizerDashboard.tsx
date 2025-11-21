@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -6,10 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { DollarSign, TrendingUp, Users, Ticket, Calendar, Eye, Plus, Loader2 } from 'lucide-react';
-import { organizerService, type OrganizerEventDto, type OrganizerEarningsDto } from '../services/organizerService';
-import { authService } from '../services/authService';
-import { mockOrders } from '../mockData';
+import { DollarSign, TrendingUp, Users, Ticket, Calendar, Eye, Plus } from 'lucide-react';
+import { mockEvents, mockOrders } from '../mockData';
 
 interface OrganizerDashboardProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -18,38 +16,31 @@ interface OrganizerDashboardProps {
 export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('overview');
-  const [isLoading, setIsLoading] = useState(true);
-  const [events, setEvents] = useState<OrganizerEventDto[]>([]);
-  const [earnings, setEarnings] = useState<OrganizerEarningsDto | null>(null);
-  const [error, setError] = useState<string>('');
 
-  // Get organizer ID from current user
-  const user = authService.getCurrentUser();
-  const organizerId = user?.organizerId || 1; // Fallback to 1 for demo
+  // Mock data for charts
+  const salesData = [
+    { date: 'Oct 15', sales: 12, revenue: 6000000 },
+    { date: 'Oct 16', sales: 19, revenue: 9500000 },
+    { date: 'Oct 17', sales: 8, revenue: 4000000 },
+    { date: 'Oct 18', sales: 15, revenue: 7500000 },
+    { date: 'Oct 19', sales: 22, revenue: 11000000 },
+    { date: 'Oct 20', sales: 28, revenue: 14000000 },
+    { date: 'Oct 21', sales: 31, revenue: 15500000 }
+  ];
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  const eventStats = mockEvents.slice(0, 3).map(event => {
+    const totalTickets = event.ticketTiers.reduce((sum, tier) => sum + tier.total, 0);
+    const soldTickets = event.ticketTiers.reduce((sum, tier) => sum + (tier.total - tier.available), 0);
+    const revenue = event.ticketTiers.reduce((sum, tier) => sum + (tier.price * (tier.total - tier.available)), 0);
 
-  const loadDashboardData = async () => {
-    try {
-      setIsLoading(true);
-      setError('');
-
-      // GET /api/organizers/{id}/events
-      const eventsData = await organizerService.getOrganizerEvents(organizerId);
-      setEvents(eventsData);
-
-      // GET /api/organizers/{id}/earnings
-      const earningsData = await organizerService.getOrganizerEarnings(organizerId);
-      setEarnings(earningsData);
-    } catch (err: any) {
-      console.error('Error loading dashboard data:', err);
-      setError(err.message || 'Failed to load dashboard data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    return {
+      ...event,
+      totalTickets,
+      soldTickets,
+      revenue,
+      salesRate: ((soldTickets / totalTickets) * 100).toFixed(1)
+    };
+  });
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -58,35 +49,9 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
     }).format(price);
   };
 
-  // Calculate stats from real data
-  const totalRevenue = earnings?.totalRevenue || 0;
-  const totalSold = events.reduce((sum, event) => sum + event.soldSeats, 0);
-  const totalEvents = events.length;
-
-  // Format monthly revenue for chart
-  const salesData = earnings?.monthlyRevenue || [];
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="animate-spin mx-auto mb-4" size={48} />
-          <p className="text-neutral-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={loadDashboardData}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
+  const totalRevenue = eventStats.reduce((sum, event) => sum + event.revenue, 0);
+  const totalSold = eventStats.reduce((sum, event) => sum + event.soldTickets, 0);
+  const totalEvents = mockEvents.length;
 
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
@@ -212,26 +177,20 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {earnings?.topEvents && earnings.topEvents.length > 0 ? (
-                    earnings.topEvents.map((event) => (
-                      <div key={event.eventId} className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
-                        <div className="flex-1">
-                          <div className="text-neutral-900 mb-1">{event.title}</div>
-                          <div className="text-sm text-neutral-500">
-                            Top revenue generator
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-neutral-900">{formatPrice(event.revenue)}</div>
-                          <div className="text-sm text-green-600">Revenue</div>
+                  {eventStats.map((event) => (
+                    <div key={event.id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
+                      <div className="flex-1">
+                        <div className="text-neutral-900 mb-1">{event.title}</div>
+                        <div className="text-sm text-neutral-500">
+                          {event.soldTickets} / {event.totalTickets} tickets sold ({event.salesRate}%)
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-neutral-500">
-                      No event data available
+                      <div className="text-right">
+                        <div className="text-neutral-900">{formatPrice(event.revenue)}</div>
+                        <div className="text-sm text-green-600">Revenue</div>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -257,52 +216,47 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {events.map((event) => {
-                      const salesRate = event.totalSeats > 0 
-                        ? ((event.soldSeats / event.totalSeats) * 100).toFixed(1) 
-                        : '0';
+                    {mockEvents.map((event) => {
+                      const totalTickets = event.ticketTiers.reduce((sum, tier) => sum + tier.total, 0);
+                      const soldTickets = event.ticketTiers.reduce((sum, tier) => sum + (tier.total - tier.available), 0);
                       
                       return (
-                        <TableRow key={event.eventId}>
+                        <TableRow key={event.id}>
                           <TableCell>
                             <div>
                               <div className="text-neutral-900">{event.title}</div>
-                              <div className="text-sm text-neutral-500">Event #{event.eventId}</div>
+                              <div className="text-sm text-neutral-500">{event.category}</div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            {new Date(event.startDate).toLocaleDateString('en-US', {
+                            {new Date(event.date).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric'
                             })}
                           </TableCell>
-                          <TableCell>-</TableCell>
+                          <TableCell>{event.city}</TableCell>
                           <TableCell>
-                            <Badge className={
-                              event.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                              event.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-neutral-100 text-neutral-700'
-                            }>
+                            <Badge className="bg-green-100 text-green-700">
                               {event.status}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {event.soldSeats} / {event.totalSeats} ({salesRate}%)
+                            {soldTickets} / {totalTickets}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex gap-2 justify-end">
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => onNavigate('event-analytics', String(event.eventId))}
+                                onClick={() => onNavigate('seat-map-builder')}
                               >
-                                Analytics
+                                Seats
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => onNavigate('event-detail', String(event.eventId))}
+                                onClick={() => onNavigate('event-detail', event.id)}
                               >
                                 View
                               </Button>
@@ -338,7 +292,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                   </TableHeader>
                   <TableBody>
                     {mockOrders.map((order) => {
-                      const event = events.find(e => String(e.eventId) === order.eventId);
+                      const event = mockEvents.find(e => e.id === order.eventId);
                       return (
                         <TableRow key={order.id}>
                           <TableCell className="font-mono text-sm">{order.id}</TableCell>
@@ -348,7 +302,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                               <div className="text-sm text-neutral-500">{order.userEmail}</div>
                             </div>
                           </TableCell>
-                          <TableCell>{event?.title || 'Unknown Event'}</TableCell>
+                          <TableCell>{event?.title}</TableCell>
                           <TableCell>{order.tickets.length}</TableCell>
                           <TableCell>{formatPrice(order.total)}</TableCell>
                           <TableCell>
@@ -375,7 +329,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={earnings?.topEvents || []}>
+                    <BarChart data={eventStats}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="title" />
                       <YAxis />
@@ -393,26 +347,20 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {events.slice(0, 5).map((event) => {
-                      const salesRate = event.totalSeats > 0 
-                        ? ((event.soldSeats / event.totalSeats) * 100).toFixed(1) 
-                        : '0';
-                      
-                      return (
-                        <div key={event.eventId}>
-                          <div className="flex justify-between mb-2">
-                            <span className="text-sm text-neutral-600">{event.title}</span>
-                            <span className="text-sm">{salesRate}%</span>
-                          </div>
-                          <div className="w-full bg-neutral-200 rounded-full h-2">
-                            <div
-                              className="bg-orange-500 h-2 rounded-full transition-all"
-                              style={{ width: `${salesRate}%` }}
-                            />
-                          </div>
+                    {eventStats.map((event) => (
+                      <div key={event.id}>
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm text-neutral-600">{event.title}</span>
+                          <span className="text-sm">{event.salesRate}%</span>
                         </div>
-                      );
-                    })}
+                        <div className="w-full bg-neutral-200 rounded-full h-2">
+                          <div
+                            className="bg-orange-500 h-2 rounded-full transition-all"
+                            style={{ width: `${event.salesRate}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

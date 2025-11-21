@@ -21,7 +21,6 @@ export interface UserDto {
   phoneNumber?: string;
   profilePictureUrl?: string;
   isEmailVerified: boolean;
-  organizerId?: number;
 }
 
 // Backend actual response structure
