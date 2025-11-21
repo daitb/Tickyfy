@@ -5,7 +5,7 @@ import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Building2, Mail, Phone, FileText, CheckCircle2, AlertCircle } from "lucide-react";
-import apiClient from "../services/apiClient";
+import { organizerService } from "../services/organizerService";
 import { authService } from "../services/authService";
 import { useTranslation } from "react-i18next";
 
@@ -16,10 +16,13 @@ interface BecomeOrganizerProps {
 export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
-    organizationName: "",
-    businessRegistration: "",
-    phoneNumber: "",
-    address: "",
+    companyName: "",
+    businessRegistrationNumber: "",
+    taxCode: "",
+    companyAddress: "",
+    companyPhone: "",
+    companyEmail: "",
+    website: "",
     description: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,20 +36,30 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
     setErrorMessage("");
 
     try {
-      // Call API to submit organizer application
-      await apiClient.post("/Auth/request-organizer-role", formData);
+      // POST /api/organizers/register - Register as organizer
+      const organizer = await organizerService.registerOrganizer({
+        companyName: formData.companyName,
+        businessRegistrationNumber: formData.businessRegistrationNumber || undefined,
+        taxCode: formData.taxCode || undefined,
+        companyAddress: formData.companyAddress || undefined,
+        companyPhone: formData.companyPhone || undefined,
+        companyEmail: formData.companyEmail || undefined,
+        website: formData.website || undefined,
+        description: formData.description || undefined,
+      });
       
       setSubmitStatus("success");
       
-      // Redirect to dashboard after 3 seconds
+      // Store organizer ID and redirect to dashboard after 2 seconds
       setTimeout(() => {
-        onNavigate("home");
-      }, 3000);
+        onNavigate("organizer-dashboard");
+      }, 2000);
     } catch (error: any) {
       setSubmitStatus("error");
       setErrorMessage(
         error.response?.data?.message || 
-        "Đã xảy ra lỗi khi gửi yêu cầu. Vui lòng thử lại."
+        error.message ||
+        "Đã xảy ra lỗi khi đăng ký organizer. Vui lòng thử lại."
       );
     } finally {
       setIsSubmitting(false);
@@ -137,16 +150,16 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Organization Name */}
+              {/* Company Name */}
               <div className="space-y-2">
-                <Label htmlFor="organizationName">
+                <Label htmlFor="companyName">
                   <Building2 className="inline w-4 h-4 mr-2" />
                   {t('organizer.organizationName')} *
                 </Label>
                 <Input
-                  id="organizationName"
-                  name="organizationName"
-                  value={formData.organizationName}
+                  id="companyName"
+                  name="companyName"
+                  value={formData.companyName}
                   onChange={handleChange}
                   placeholder={t('organizer.orgNamePlaceholder', 'VD: Công ty TNHH ABC')}
                   required
@@ -155,47 +168,91 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
 
               {/* Business Registration */}
               <div className="space-y-2">
-                <Label htmlFor="businessRegistration">
+                <Label htmlFor="businessRegistrationNumber">
                   <FileText className="inline w-4 h-4 mr-2" />
-                  {t('organizer.businessRegistration')} *
+                  {t('organizer.businessRegistration')}
                 </Label>
                 <Input
-                  id="businessRegistration"
-                  name="businessRegistration"
-                  value={formData.businessRegistration}
+                  id="businessRegistrationNumber"
+                  name="businessRegistrationNumber"
+                  value={formData.businessRegistrationNumber}
                   onChange={handleChange}
                   placeholder={t('organizer.businessRegPlaceholder', 'VD: 0123456789')}
-                  required
                 />
               </div>
 
-              {/* Phone Number */}
+              {/* Tax Code */}
               <div className="space-y-2">
-                <Label htmlFor="phoneNumber">
+                <Label htmlFor="taxCode">
+                  <FileText className="inline w-4 h-4 mr-2" />
+                  {t('organizer.taxCode', 'Mã số thuế')}
+                </Label>
+                <Input
+                  id="taxCode"
+                  name="taxCode"
+                  value={formData.taxCode}
+                  onChange={handleChange}
+                  placeholder="VD: 0123456789-001"
+                />
+              </div>
+
+              {/* Company Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="companyPhone">
                   <Phone className="inline w-4 h-4 mr-2" />
                   {t('organizer.phoneNumber')} *
                 </Label>
                 <Input
-                  id="phoneNumber"
-                  name="phoneNumber"
+                  id="companyPhone"
+                  name="companyPhone"
                   type="tel"
-                  value={formData.phoneNumber}
+                  value={formData.companyPhone}
                   onChange={handleChange}
                   placeholder={t('organizer.phonePlaceholder', 'VD: 0901234567')}
                   required
                 />
               </div>
 
-              {/* Address */}
+              {/* Company Email */}
               <div className="space-y-2">
-                <Label htmlFor="address">
+                <Label htmlFor="companyEmail">
                   <Mail className="inline w-4 h-4 mr-2" />
-                  {t('organizer.address')} *
+                  {t('organizer.email', 'Email công ty')}
                 </Label>
                 <Input
-                  id="address"
-                  name="address"
-                  value={formData.address}
+                  id="companyEmail"
+                  name="companyEmail"
+                  type="email"
+                  value={formData.companyEmail}
+                  onChange={handleChange}
+                  placeholder="contact@company.com"
+                />
+              </div>
+
+              {/* Website */}
+              <div className="space-y-2">
+                <Label htmlFor="website">
+                  {t('organizer.website', 'Website')}
+                </Label>
+                <Input
+                  id="website"
+                  name="website"
+                  type="url"
+                  value={formData.website}
+                  onChange={handleChange}
+                  placeholder="https://www.company.com"
+                />
+              </div>
+
+              {/* Company Address */}
+              <div className="space-y-2">
+                <Label htmlFor="companyAddress">
+                  {t('organizer.address', 'Địa chỉ công ty')} *
+                </Label>
+                <Input
+                  id="companyAddress"
+                  name="companyAddress"
+                  value={formData.companyAddress}
                   onChange={handleChange}
                   placeholder={t('organizer.addressPlaceholder', 'VD: 123 Đường ABC, Quận 1, TP.HCM')}
                   required
