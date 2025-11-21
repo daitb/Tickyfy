@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Upload,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -39,7 +40,8 @@ import {
 } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { mockEvents } from '../mockData';
+import { eventService, type UpdateEventDto } from '../services/eventService';
+import { authService } from '../services/authService';
 
 interface EditEventProps {
   eventId?: string;
@@ -58,41 +60,82 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
   const { t } = useTranslation();
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
+  const [event, setEvent] = useState<any>(null);
 
-  // Get event data
-  const event = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
+  // Load event data
+  useEffect(() => {
+    if (eventId) {
+      loadEventData();
+    }
+  }, [eventId]);
+
+  const loadEventData = async () => {
+    try {
+      setIsLoading(true);
+      const eventData = await eventService.getEventById(Number(eventId));
+      setEvent(eventData);
+      
+      // Populate form data
+      setFormData({
+        name: eventData.title,
+        description: eventData.description || '',
+        category: eventData.category,
+        eventType: 'public',
+        tags: [],
+        date: eventData.date.split('T')[0],
+        startTime: eventData.time || '00:00',
+        endTime: '23:00',
+        timezone: 'Asia/Ho_Chi_Minh',
+        venueType: 'physical',
+        venueName: eventData.venue,
+        address: eventData.venue,
+        city: eventData.city,
+        district: '',
+        mapsLink: '',
+        onlineLink: '',
+        refundPolicy: 'full',
+        ageRestriction: 'all',
+        accessibility: [],
+        terms: '',
+        publishImmediately: true,
+      });
+    } catch (error) {
+      console.error('Error loading event:', error);
+      alert('Failed to load event data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Form state
   const [formData, setFormData] = useState({
-    name: event.title,
-    description: event.description,
-    category: event.category,
+    name: '',
+    description: '',
+    category: 'Music',
     eventType: 'public',
-    tags: ['music', 'concert'],
-    date: event.date,
-    startTime: event.time,
+    tags: [] as string[],
+    date: '',
+    startTime: '',
     endTime: '23:00',
     timezone: 'Asia/Ho_Chi_Minh',
     venueType: 'physical',
-    venueName: event.venue,
-    address: event.venue,
-    city: event.city,
+    venueName: '',
+    address: '',
+    city: '',
     district: '',
     mapsLink: '',
     onlineLink: '',
     refundPolicy: 'full',
     ageRestriction: 'all',
-    accessibility: [],
+    accessibility: [] as string[],
     terms: '',
     publishImmediately: true,
   });
 
-  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([
-    { id: '1', name: 'VIP', price: 500000, quantity: 100, description: 'VIP access with premium seats' },
-    { id: '2', name: 'Standard', price: 250000, quantity: 400, description: 'General admission' },
-  ]);
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -100,15 +143,52 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
   };
 
   const handleSave = async (asDraft: boolean = false) => {
-    setIsSaving(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSaving(false);
-    setHasUnsavedChanges(false);
-    // Show success toast
-    console.log('Event saved:', { asDraft, formData });
-    if (!asDraft) {
-      onNavigate('event-management');
+    try {
+      setIsSaving(true);
+
+      if (!eventId) {
+        alert('No event ID provided');
+        return;
+      }
+
+      // Combine date and time
+      const startDateTime = `${formData.date}T${formData.startTime}:00`;
+      const endDateTime = `${formData.date}T${formData.endTime}:00`;
+
+      // Map category to categoryId (default to 1)
+      const categoryId = 1;
+
+      // Prepare update DTO
+      const updateDto: UpdateEventDto = {
+        categoryId: categoryId,
+        title: formData.name,
+        description: formData.description,
+        venue: formData.venueName || formData.address,
+        imageUrl: event?.image,
+        startDate: startDateTime,
+        endDate: endDateTime,
+        totalSeats: ticketTypes.reduce((sum, tt) => sum + tt.quantity, 0) || 100,
+        isFeatured: false,
+      };
+
+      // PUT /api/events/{id} - Update event
+      const updatedEvent = await eventService.updateEvent(Number(eventId), updateDto);
+
+      // If publish immediately, call publish endpoint
+      if (formData.publishImmediately && !asDraft) {
+        await eventService.publishEvent(Number(eventId));
+        alert('Event updated and published successfully!');
+      } else {
+        alert('Event updated successfully!');
+      }
+
+      setHasUnsavedChanges(false);
+      onNavigate('organizer-dashboard');
+    } catch (error: any) {
+      console.error('Error updating event:', error);
+      alert(error.response?.data?.message || error.message || 'Failed to update event');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -116,9 +196,33 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
     if (hasUnsavedChanges) {
       setShowCancelDialog(true);
     } else {
-      onNavigate('event-management');
+      onNavigate('organizer-dashboard');
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin mx-auto mb-4" size={48} />
+          <p className="text-neutral-600">Loading event...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Event not found</p>
+          <Button onClick={() => onNavigate('organizer-dashboard')}>
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const addTicketType = () => {
     const newTicket: TicketType = {
