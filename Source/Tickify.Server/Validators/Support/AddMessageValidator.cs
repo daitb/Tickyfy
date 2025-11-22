@@ -11,7 +11,7 @@ public class AddMessageValidator : AbstractValidator<AddMessageDto>
             .NotEmpty().WithMessage("Message is required")
             .MaximumLength(2000).WithMessage("Message cannot exceed 2000 characters");
 
-        RuleFor(x => x.IsStaffResponse)
-            .NotNull().WithMessage("IsStaffResponse flag is required");
+        RuleFor(x => x.TicketId)
+            .GreaterThan(0).WithMessage("Ticket ID is required");
     }
 }
