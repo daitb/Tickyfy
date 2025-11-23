@@ -1,9 +1,19 @@
-import { useState } from 'react';
-import { CreditCard, Smartphone, Wallet, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CreditCard, Smartphone, Wallet, Check, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import {
+  validateMomoPhone,
+  validateCardNumber,
+  validateCardExpiry,
+  validateCVV,
+  validateCardholderName,
+  formatCardNumber,
+  formatExpiryDate,
+  formatPhoneNumber,
+} from '../utils/validation';
 
 interface PaymentMethodSelectorProps {
   onPaymentMethodChange: (method: PaymentMethod, details?: any) => void;
@@ -25,17 +35,131 @@ export function PaymentMethodSelector({
     expiry: '',
     cvv: ''
   });
+  const [errors, setErrors] = useState<{
+    momoPhone?: string;
+    cardNumber?: string;
+    cardName?: string;
+    cardExpiry?: string;
+    cardCvv?: string;
+  }>({});
+  const [touched, setTouched] = useState<{
+    momoPhone: boolean;
+    cardNumber: boolean;
+    cardName: boolean;
+    cardExpiry: boolean;
+    cardCvv: boolean;
+  }>({
+    momoPhone: false,
+    cardNumber: false,
+    cardName: false,
+    cardExpiry: false,
+    cardCvv: false,
+  });
 
   const handleMethodChange = (newMethod: PaymentMethod) => {
     setMethod(newMethod);
+    setErrors({});
+    setTouched({
+      momoPhone: false,
+      cardNumber: false,
+      cardName: false,
+      cardExpiry: false,
+      cardCvv: false,
+    });
     onPaymentMethodChange(newMethod);
   };
 
+  const validateMomoPhoneField = (phone: string) => {
+    if (!touched.momoPhone) return;
+    const validation = validateMomoPhone(phone);
+    if (!validation.isValid) {
+      setErrors({ ...errors, momoPhone: validation.error });
+    } else {
+      const newErrors = { ...errors };
+      delete newErrors.momoPhone;
+      setErrors(newErrors);
+    }
+  };
+
+  const validateCardField = (field: string, value: string) => {
+    const fieldTouched = touched[field as keyof typeof touched];
+    if (!fieldTouched) return;
+
+    let validation: { isValid: boolean; error?: string } = { isValid: true };
+
+    switch (field) {
+      case 'cardNumber':
+        validation = validateCardNumber(value);
+        break;
+      case 'cardName':
+        validation = validateCardholderName(value);
+        break;
+      case 'cardExpiry':
+        validation = validateCardExpiry(value);
+        break;
+      case 'cardCvv':
+        validation = validateCVV(value);
+        break;
+    }
+
+    if (!validation.isValid) {
+      setErrors({ ...errors, [field]: validation.error });
+    } else {
+      const newErrors = { ...errors };
+      delete newErrors[field as keyof typeof newErrors];
+      setErrors(newErrors);
+    }
+  };
+
+  const handleMomoPhoneChange = (value: string) => {
+    const formatted = formatPhoneNumber(value);
+    setMomoPhone(formatted);
+    validateMomoPhoneField(formatted);
+    onPaymentMethodChange('momo', { phone: formatted });
+  };
+
+  const handleMomoPhoneBlur = () => {
+    setTouched({ ...touched, momoPhone: true });
+    validateMomoPhoneField(momoPhone);
+  };
+
   const handleCardChange = (field: string, value: string) => {
-    const updated = { ...cardDetails, [field]: value };
+    let formattedValue = value;
+    
+    if (field === 'number') {
+      formattedValue = formatCardNumber(value);
+    } else if (field === 'expiry') {
+      formattedValue = formatExpiryDate(value);
+    } else if (field === 'name') {
+      formattedValue = value.toUpperCase();
+    }
+
+    const updated = { ...cardDetails, [field]: formattedValue };
     setCardDetails(updated);
+    validateCardField(field === 'number' ? 'cardNumber' : field === 'name' ? 'cardName' : field === 'expiry' ? 'cardExpiry' : 'cardCvv', formattedValue);
     onPaymentMethodChange('credit-card', updated);
   };
+
+  const handleCardBlur = (field: string) => {
+    const touchedField = field === 'number' ? 'cardNumber' : field === 'name' ? 'cardName' : field === 'expiry' ? 'cardExpiry' : 'cardCvv';
+    setTouched({ ...touched, [touchedField]: true });
+    const value = cardDetails[field as keyof typeof cardDetails];
+    validateCardField(touchedField, value);
+  };
+
+  // Validate all fields when method changes or component mounts
+  useEffect(() => {
+    if (method === 'momo' && momoPhone && touched.momoPhone) {
+      validateMomoPhoneField(momoPhone);
+    }
+    if (method === 'credit-card') {
+      if (cardDetails.number && touched.cardNumber) validateCardField('cardNumber', cardDetails.number);
+      if (cardDetails.name && touched.cardName) validateCardField('cardName', cardDetails.name);
+      if (cardDetails.expiry && touched.cardExpiry) validateCardField('cardExpiry', cardDetails.expiry);
+      if (cardDetails.cvv && touched.cardCvv) validateCardField('cardCvv', cardDetails.cvv);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [method]);
 
   const paymentMethods = [
     {
@@ -133,21 +257,39 @@ export function PaymentMethodSelector({
             </div>
             
             <div>
-              <Label htmlFor="momo-phone">MoMo Phone Number</Label>
+              <Label htmlFor="momo-phone">Số điện thoại MoMo *</Label>
               <Input
                 id="momo-phone"
                 type="tel"
                 placeholder="09xx xxx xxx"
                 value={momoPhone}
-                onChange={(e) => {
-                  setMomoPhone(e.target.value);
-                  onPaymentMethodChange('momo', { phone: e.target.value });
-                }}
-                className="mt-2"
+                onChange={(e) => handleMomoPhoneChange(e.target.value)}
+                onBlur={handleMomoPhoneBlur}
+                className={`mt-2 ${
+                  touched.momoPhone && errors.momoPhone
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                    : touched.momoPhone && !errors.momoPhone && momoPhone
+                    ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+                    : ""
+                }`}
               />
-              <p className="text-xs text-neutral-500 mt-2">
-                Enter the phone number linked to your MoMo account
-              </p>
+              {touched.momoPhone && errors.momoPhone && (
+                <div className="flex items-center gap-1 mt-1 text-sm text-red-600">
+                  <AlertCircle size={14} />
+                  <span>{errors.momoPhone}</span>
+                </div>
+              )}
+              {touched.momoPhone && !errors.momoPhone && momoPhone && (
+                <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                  <Check size={14} />
+                  <span>Số điện thoại MoMo hợp lệ</span>
+                </div>
+              )}
+              {!touched.momoPhone && (
+                <p className="text-xs text-neutral-500 mt-2">
+                  Nhập số điện thoại đã liên kết với tài khoản MoMo của bạn
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -190,54 +332,130 @@ export function PaymentMethodSelector({
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="card-number">Card Number</Label>
+                <Label htmlFor="card-number">Số thẻ *</Label>
                 <Input
                   id="card-number"
                   type="text"
                   placeholder="1234 5678 9012 3456"
                   value={cardDetails.number}
                   onChange={(e) => handleCardChange('number', e.target.value)}
+                  onBlur={() => handleCardBlur('number')}
                   maxLength={19}
-                  className="mt-2"
+                  className={`mt-2 ${
+                    touched.cardNumber && errors.cardNumber
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                      : touched.cardNumber && !errors.cardNumber && cardDetails.number
+                      ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+                      : ""
+                  }`}
                 />
+                {touched.cardNumber && errors.cardNumber && (
+                  <div className="flex items-center gap-1 mt-1 text-sm text-red-600">
+                    <AlertCircle size={14} />
+                    <span>{errors.cardNumber}</span>
+                  </div>
+                )}
+                {touched.cardNumber && !errors.cardNumber && cardDetails.number && (
+                  <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                    <Check size={14} />
+                    <span>Số thẻ hợp lệ</span>
+                  </div>
+                )}
               </div>
 
               <div>
-                <Label htmlFor="card-name">Cardholder Name</Label>
+                <Label htmlFor="card-name">Tên chủ thẻ *</Label>
                 <Input
                   id="card-name"
                   type="text"
                   placeholder="NGUYEN VAN A"
                   value={cardDetails.name}
-                  onChange={(e) => handleCardChange('name', e.target.value.toUpperCase())}
-                  className="mt-2"
+                  onChange={(e) => handleCardChange('name', e.target.value)}
+                  onBlur={() => handleCardBlur('name')}
+                  className={`mt-2 ${
+                    touched.cardName && errors.cardName
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                      : touched.cardName && !errors.cardName && cardDetails.name
+                      ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+                      : ""
+                  }`}
                 />
+                {touched.cardName && errors.cardName && (
+                  <div className="flex items-center gap-1 mt-1 text-sm text-red-600">
+                    <AlertCircle size={14} />
+                    <span>{errors.cardName}</span>
+                  </div>
+                )}
+                {touched.cardName && !errors.cardName && cardDetails.name && (
+                  <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                    <Check size={14} />
+                    <span>Tên chủ thẻ hợp lệ</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="card-expiry">Expiry Date</Label>
+                  <Label htmlFor="card-expiry">Ngày hết hạn *</Label>
                   <Input
                     id="card-expiry"
                     type="text"
                     placeholder="MM/YY"
                     value={cardDetails.expiry}
                     onChange={(e) => handleCardChange('expiry', e.target.value)}
+                    onBlur={() => handleCardBlur('expiry')}
                     maxLength={5}
-                    className="mt-2"
+                    className={`mt-2 ${
+                      touched.cardExpiry && errors.cardExpiry
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : touched.cardExpiry && !errors.cardExpiry && cardDetails.expiry
+                        ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+                        : ""
+                    }`}
                   />
+                  {touched.cardExpiry && errors.cardExpiry && (
+                    <div className="flex items-center gap-1 mt-1 text-sm text-red-600">
+                      <AlertCircle size={14} />
+                      <span>{errors.cardExpiry}</span>
+                    </div>
+                  )}
+                  {touched.cardExpiry && !errors.cardExpiry && cardDetails.expiry && (
+                    <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                      <Check size={14} />
+                      <span>Hợp lệ</span>
+                    </div>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="card-cvv">CVV</Label>
+                  <Label htmlFor="card-cvv">CVV *</Label>
                   <Input
                     id="card-cvv"
                     type="text"
                     placeholder="123"
                     value={cardDetails.cvv}
                     onChange={(e) => handleCardChange('cvv', e.target.value)}
-                    maxLength={3}
-                    className="mt-2"
+                    onBlur={() => handleCardBlur('cvv')}
+                    maxLength={4}
+                    className={`mt-2 ${
+                      touched.cardCvv && errors.cardCvv
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : touched.cardCvv && !errors.cardCvv && cardDetails.cvv
+                        ? "border-green-500 focus:border-green-500 focus:ring-green-500"
+                        : ""
+                    }`}
                   />
+                  {touched.cardCvv && errors.cardCvv && (
+                    <div className="flex items-center gap-1 mt-1 text-sm text-red-600">
+                      <AlertCircle size={14} />
+                      <span>{errors.cardCvv}</span>
+                    </div>
+                  )}
+                  {touched.cardCvv && !errors.cardCvv && cardDetails.cvv && (
+                    <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                      <Check size={14} />
+                      <span>Hợp lệ</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

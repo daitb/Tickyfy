@@ -160,11 +160,15 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
         CreateMap<CreatePaymentDto, Payment>();
 
-        // Review mappings (commented out - DTOs not implemented yet)
-        // CreateMap<Review, ReviewDto>()
-        //     .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.FullName));
-        // CreateMap<Review, ReviewListDto>()
-        //     .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.FullName));
+        // Review mappings
+        CreateMap<Review, ReviewDto>()
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : "Unknown"))
+            .ForMember(dest => dest.UserAvatar, opt => opt.MapFrom(src => src.User != null ? src.User.ProfilePicture : null))
+            .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : "Unknown Event"));
+        CreateMap<Review, ReviewListDto>()
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : "Unknown"))
+            .ForMember(dest => dest.UserAvatar, opt => opt.MapFrom(src => src.User != null ? src.User.ProfilePicture : null))
+            .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : "Unknown Event"));
         CreateMap<CreateReviewDto, Review>();
         CreateMap<UpdateReviewDto, Review>();
 
@@ -188,7 +192,12 @@ public class MappingProfile : Profile
         // ============================================
         
         // Refund mappings
-        CreateMap<RefundRequest, RefundRequestDto>();
+        CreateMap<RefundRequest, RefundRequestDto>()
+            .ForMember(dest => dest.RefundId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.BookingNumber, opt => opt.MapFrom(src => src.Booking != null ? src.Booking.BookingCode : string.Empty))
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : "Unknown"))
+            .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Booking != null && src.Booking.Event != null ? src.Booking.Event.Title : "Unknown Event"))
+            .ForMember(dest => dest.RequestedAt, opt => opt.MapFrom(src => src.CreatedAt));
         CreateMap<CreateRefundRequestDto, RefundRequest>();
 
         // Waitlist mappings
