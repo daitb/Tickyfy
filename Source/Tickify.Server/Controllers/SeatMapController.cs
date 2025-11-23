@@ -6,7 +6,7 @@ using Tickify.Services;
 namespace Tickify.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/seatmaps")]
     public class SeatMapController : ControllerBase
     {
         private readonly ISeatMapService _seatMapService;

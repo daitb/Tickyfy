@@ -7,7 +7,7 @@ using Tickify.Services.Payouts;
 namespace Tickify.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/payouts")]
 [Authorize]
 public sealed class PayoutController : ControllerBase
 {

@@ -1,7 +1,7 @@
 namespace Tickify.Services.Auth;
 public interface IJwtService
 {
-    string GenerateAccessToken(int userId, string email, IList<string> roles);
+    string GenerateAccessToken(int userId, string email, IList<string> roles, int? organizerId = null);
 
     string GenerateRefreshToken();
 

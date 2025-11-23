@@ -106,6 +106,20 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         return;
       }
 
+      // Validate field lengths
+      if (eventData.title.length < 5) {
+        alert('Event title must be at least 5 characters long');
+        return;
+      }
+      if (eventData.description.length < 50) {
+        alert('Event description must be at least 50 characters long');
+        return;
+      }
+      if (eventData.venue.length < 5) {
+        alert('Venue must be at least 5 characters long');
+        return;
+      }
+
       // Combine date and time
       const eventDate = eventData.date || '';
       const eventTime = eventData.time || '00:00';
@@ -136,6 +150,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         }))
       };
 
+      console.log('Creating event with data:', createEventDto);
+
       // POST /api/events - Create event
       const createdEvent = await eventService.createEvent(createEventDto);
 
@@ -143,7 +159,24 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       onNavigate('organizer-dashboard');
     } catch (error: any) {
       console.error('Error creating event:', error);
-      alert(error.response?.data?.message || error.message || 'Failed to create event. Please try again.');
+      console.error('Error response data:', error.response?.data);
+      
+      // Extract detailed error messages from backend validation
+      let errorMessage = 'Failed to create event. Please check your inputs.';
+      
+      if (error.response?.data) {
+        const data = error.response.data;
+        // If backend returns validation errors array
+        if (data.errors && Array.isArray(data.errors)) {
+          errorMessage = 'Validation errors:\n' + data.errors.join('\n');
+        } else if (data.message) {
+          errorMessage = data.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsPublishing(false);
     }
@@ -217,14 +250,17 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
               </div>
 
               <div>
-                <Label htmlFor="description">Description *</Label>
+                <Label htmlFor="description">Description * (minimum 50 characters)</Label>
                 <Textarea
                   id="description"
-                  placeholder="Describe your event..."
+                  placeholder="Describe your event in detail... (minimum 50 characters required)"
                   value={eventData.description || ''}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   className="mt-1 min-h-[120px]"
                 />
+                <p className="text-xs text-neutral-500 mt-1">
+                  {eventData.description?.length || 0} / 50 characters minimum
+                </p>
               </div>
 
               <div>

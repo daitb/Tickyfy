@@ -7,7 +7,7 @@ using Tickify.Services.Reviews;
 namespace Tickify.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/reviews")]
 public sealed class ReviewController : ControllerBase
 {
     private readonly IReviewService _service;

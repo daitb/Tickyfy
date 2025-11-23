@@ -7,7 +7,7 @@ using Tickify.Services.Refunds;
 namespace Tickify.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/refunds")]
 public sealed class RefundController : ControllerBase
 {
     private readonly IRefundService _service;
