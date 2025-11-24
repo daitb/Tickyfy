@@ -158,7 +158,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-8 shadow-lg">
               <div className="flex items-start justify-between mb-4">
-                <Badge className="bg-teal-500 hover:bg-teal-600">{event.category}</Badge>
+                <Badge className="bg-teal-500 hover:bg-teal-600">{t(`editEvent.category${event.category}`)}</Badge>
                 {showTimer && <HoldTimer onExpire={() => setShowTimer(false)} />}
               </div>
 

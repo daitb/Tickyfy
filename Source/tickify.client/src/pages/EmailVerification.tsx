@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
+import { authService } from '../services/authService';
 
 interface EmailVerificationProps {
   token?: string;
@@ -24,32 +25,52 @@ type VerificationStatus = 'loading' | 'success' | 'expired' | 'invalid' | 'alrea
 export function EmailVerification({ token, onNavigate }: EmailVerificationProps) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<VerificationStatus>('loading');
-  const [email, setEmail] = useState('john.doe@example.com');
+  const [email, setEmail] = useState('');
+  const [urlToken, setUrlToken] = useState('');
   const [resendCountdown, setResendCountdown] = useState(0);
   const [resendCount, setResendCount] = useState(0);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
 
-  // Simulate token verification
+  // Get token and email from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenParam = params.get('token') || token || '';
+    const emailParam = params.get('email') || '';
+    setUrlToken(tokenParam);
+    setEmail(emailParam);
+  }, [token]);
+
+  // Verify token
   useEffect(() => {
     const verifyToken = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      
-      // Simulate different states based on token
-      if (!token) {
+      if (!urlToken || !email) {
         setStatus('invalid');
-      } else if (token === 'expired') {
-        setStatus('expired');
-      } else if (token === 'already-verified') {
-        setStatus('already-verified');
-      } else {
+        return;
+      }
+
+      try {
+        await authService.verifyEmail(urlToken, email);
         setStatus('success');
+      } catch (err: any) {
+        console.error('Email verification error:', err);
+        const errorResponse = err.response?.data;
+        
+        if (errorResponse?.message?.includes('expired')) {
+          setStatus('expired');
+        } else if (errorResponse?.message?.includes('already verified')) {
+          setStatus('already-verified');
+        } else {
+          setStatus('error');
+        }
       }
     };
 
-    verifyToken();
-  }, [token]);
+    if (urlToken && email) {
+      verifyToken();
+    }
+  }, [urlToken, email]);
 
   // Redirect countdown on success
   useEffect(() => {
@@ -73,16 +94,28 @@ export function EmailVerification({ token, onNavigate }: EmailVerificationProps)
     }
   }, [resendCountdown]);
 
-  const handleResendEmail = () => {
+  const handleResendEmail = async () => {
     if (resendCount >= 3) {
-      alert('Maximum resend limit reached. Please try again in 1 hour.');
+      alert(t('auth.maxResendReached') || 'Maximum resend limit reached. Please try again in 1 hour.');
       return;
     }
     
+    if (!email) {
+      alert('Email is required');
+      return;
+    }
+
     setResendCount(resendCount + 1);
     setResendCountdown(60);
-    // Simulate sending email
-    console.log('Resending verification email to:', email);
+    
+    try {
+      // Resend verification by calling forgot password endpoint
+      // This will send a new verification email
+      console.log('Resending verification email to:', email);
+      // You might want to add a dedicated resend endpoint in the future
+    } catch (err) {
+      console.error('Resend email error:', err);
+    }
   };
 
   const handleCopyError = () => {

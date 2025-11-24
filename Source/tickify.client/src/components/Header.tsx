@@ -26,6 +26,7 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 import { authService } from "../services/authService";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslation } from "react-i18next";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 interface HeaderProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -88,7 +89,12 @@ export function Header({
             {/* Language Switcher */}
             <div className="hover:bg-teal-600 rounded-lg">
               <LanguageSwitcher/>
-            </div>        
+            </div>
+
+            {/* Notifications - Only for authenticated users */}
+            {isAuthenticated && (
+              <NotificationDropdown onNavigate={onNavigate} />
+            )}
             
             {/* Create Event Button - Only for Organizers */}
             {isAuthenticated && userRole === "organizer" && (

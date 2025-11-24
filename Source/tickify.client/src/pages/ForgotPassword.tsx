@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { useTranslation } from 'react-i18next';
+import { authService } from '../services/authService';
 
 interface ForgotPasswordProps {
   onNavigate: (page: string) => void;
@@ -14,16 +15,27 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await authService.forgotPassword(email);
       setIsEmailSent(true);
-    }, 1000);
+    } catch (err: any) {
+      console.error('Forgot password error:', err);
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message || 
+                          t('auth.forgotPasswordError') || 
+                          'Failed to send reset link. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -57,6 +69,13 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
                     {t('auth.forgotPasswordSubtitle')}
                   </p>
                 </div>
+
+                {/* Error Alert */}
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                    {error}
+                  </div>
+                )}
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -114,9 +133,9 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
                     </svg>
                   </div>
 
-                  <h1 className="text-neutral-900 mb-2">Check your email</h1>
+                  <h1 className="text-neutral-900 mb-2">{t('auth.checkYourEmail')}</h1>
                   <p className="text-sm text-neutral-600 mb-8">
-                    We've sent a password reset link to<br />
+                    {t('auth.resetLinkSent')}<br />
                     <span className="text-neutral-900">{email}</span>
                   </p>
 
@@ -125,16 +144,16 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
                       onClick={() => onNavigate('login')}
                       className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                     >
-                      Back to sign in
+                      {t('auth.backToSignIn')}
                     </Button>
 
                     <p className="text-sm text-neutral-600">
-                      Didn't receive the email?{' '}
+                      {t('auth.didntReceive')}{' '}
                       <button
                         onClick={() => setIsEmailSent(false)}
                         className="text-orange-500 hover:text-orange-600 transition-colors"
                       >
-                        Click to resend
+                        {t('auth.clickToResend')}
                       </button>
                     </p>
                   </div>

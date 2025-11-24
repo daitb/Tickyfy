@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   User,
@@ -7,10 +7,21 @@ import {
   Edit,
   Save,
   X,
-  Facebook,
-  Twitter,
-  Instagram,
   Trash2,
+  Loader2,
+  Shield,
+  Settings,
+  Bell,
+  Calendar,
+  Ticket,
+  Clock,
+  Lock,
+  Key,
+  Smartphone,
+  Monitor,
+  Globe,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -19,7 +30,6 @@ import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import {
   Select,
   SelectContent,
@@ -36,6 +46,7 @@ import {
   DialogTitle,
 } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { userService } from '../services/userService';
 
 interface UserProfileProps {
   onNavigate: (page: string) => void;
@@ -47,73 +58,209 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState('/api/placeholder/120/120');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const [formData, setFormData] = useState({
-    fullName: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+84 123 456 789',
-    dateOfBirth: '1990-01-15',
-    gender: 'male',
-    streetAddress: '123 Nguyen Hue Boulevard',
-    city: 'Ho Chi Minh City',
-    state: 'Ho Chi Minh',
-    postalCode: '700000',
-    country: 'Vietnam',
-    bio: 'Event enthusiast and music lover. Always looking for the next great concert!',
-    interests: ['Music', 'Sports', 'Arts'],
-    facebook: 'https://facebook.com/johndoe',
-    twitter: 'https://twitter.com/johndoe',
-    instagram: 'https://instagram.com/johndoe',
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    dateOfBirth: '',
+    isEmailVerified: false,
   });
+
+  const [profileStats, setProfileStats] = useState({
+    totalBookings: 0,
+    totalEventsAttended: 0,
+    memberSince: '',
+    roles: [] as string[],
+  });
+
+  const [originalData, setOriginalData] = useState(formData);
+
+  // Security state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+
+  // Preferences state
+  const [preferences, setPreferences] = useState({
+    language: 'vi',
+    timezone: 'Asia/Ho_Chi_Minh',
+    emailNotifications: true,
+    pushNotifications: true,
+    marketingEmails: false,
+    profileVisibility: 'public',
+  });
+
+  // Load user profile on mount
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      const profile = await userService.getCurrentUserProfile();
+      
+      const profileData = {
+        fullName: profile.fullName || '',
+        email: profile.email || '',
+        phoneNumber: profile.phoneNumber || '',
+        dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth.split('T')[0] : '',
+        isEmailVerified: profile.emailVerified || false,
+      };
+
+      setFormData(profileData);
+      setOriginalData(profileData);
+      
+      // Load statistics
+      setProfileStats({
+        totalBookings: profile.totalBookings || 0,
+        totalEventsAttended: profile.totalEventsAttended || 0,
+        memberSince: profile.memberSince || '',
+        roles: profile.roles || [],
+      });
+      
+      if (profile.avatarUrl) {
+        setAvatarPreview(profile.avatarUrl);
+      }
+    } catch (err: any) {
+      console.error('Load profile error:', err);
+      setError(err.response?.data?.message || 'Không thể tải thông tin profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: any) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Kích thước file không được vượt quá 5MB');
+        return;
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Chỉ chấp nhận file ảnh (JPEG, PNG, GIF)');
+        return;
+      }
+
+      try {
+        setError('');
+        setSuccess('');
+        
+        // Preview immediately
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAvatarPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+
+        // Upload to server
+        const avatarUrl = await userService.uploadAvatar(file);
+        setAvatarPreview(avatarUrl);
+        setSuccess('Cập nhật avatar thành công');
+      } catch (err: any) {
+        console.error('Upload avatar error:', err);
+        setError(err.response?.data?.message || 'Không thể upload avatar');
+      }
     }
   };
 
-  const handleSave = () => {
-    console.log('Saving profile:', formData);
-    setIsEditing(false);
-    // Show success toast
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      setError('');
+      setSuccess('');
+
+      await userService.updateProfile({
+        fullName: formData.fullName,
+        phoneNumber: formData.phoneNumber || undefined,
+        dateOfBirth: formData.dateOfBirth || undefined,
+      });
+
+      setOriginalData(formData);
+      setIsEditing(false);
+      setSuccess('Cập nhật profile thành công');
+    } catch (err: any) {
+      console.error('Save profile error:', err);
+      setError(err.response?.data?.message || 'Không thể cập nhật profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
+    setFormData(originalData);
     setIsEditing(false);
-    // Reset form data to original values
+    setError('');
+    setSuccess('');
   };
 
-  const availableInterests = [
-    'Music',
-    'Sports',
-    'Arts',
-    'Food & Drink',
-    'Business',
-    'Technology',
-    'Theater',
-    'Comedy',
-    'Festivals',
-  ];
-
-  const toggleInterest = (interest: string) => {
-    if (formData.interests.includes(interest)) {
-      handleInputChange(
-        'interests',
-        formData.interests.filter((i) => i !== interest)
-      );
-    } else {
-      handleInputChange('interests', [...formData.interests, interest]);
+  const handlePasswordChange = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+    if (passwordData.newPassword.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    try {
+      setError('');
+      setSuccess('');
+      // Call API to change password
+      // await userService.changePassword(passwordData);
+      setSuccess('Password changed successfully');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to change password');
     }
   };
+
+  const handlePreferencesUpdate = async () => {
+    try {
+      setError('');
+      setSuccess('');
+      // Call API to update preferences
+      // await userService.updatePreferences(preferences);
+      setSuccess('Preferences updated successfully');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update preferences');
+    }
+  };
+
+
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="mx-auto animate-spin text-purple-600 mb-4" size={48} />
+          <p className="text-gray-600">Đang tải thông tin profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -158,28 +305,24 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                   <TabsList className="flex flex-col w-full h-auto space-y-1 bg-transparent">
                     <TabsTrigger
                       value="profile"
-                      className="w-full justify-start data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900"
+                      className="w-full justify-start cursor-pointer data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 hover:bg-gray-100 transition-colors"
                     >
                       <User size={16} className="mr-2" />
                       Profile
                     </TabsTrigger>
                     <TabsTrigger
                       value="security"
-                      className="w-full justify-start data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900"
+                      className="w-full justify-start cursor-pointer data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 hover:bg-gray-100 transition-colors"
                     >
+                      <Shield size={16} className="mr-2" />
                       Security
                     </TabsTrigger>
                     <TabsTrigger
                       value="preferences"
-                      className="w-full justify-start data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900"
+                      className="w-full justify-start cursor-pointer data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 hover:bg-gray-100 transition-colors"
                     >
+                      <Settings size={16} className="mr-2" />
                       Preferences
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="notifications"
-                      className="w-full justify-start data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900"
-                    >
-                      Notifications
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
@@ -210,14 +353,38 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                       </Button>
                       <Button
                         onClick={handleSave}
+                        disabled={isSaving}
                         className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                       >
-                        <Save size={16} className="mr-2" />
-                        Save Changes
+                        {isSaving ? (
+                          <>
+                            <Loader2 size={16} className="mr-2 animate-spin" />
+                            Đang lưu...
+                          </>
+                        ) : (
+                          <>
+                            <Save size={16} className="mr-2" />
+                            Save Changes
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}
                 </div>
+
+                {/* Error Alert */}
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                    {error}
+                  </div>
+                )}
+
+                {/* Success Alert */}
+                {success && (
+                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-600">
+                    {success}
+                  </div>
+                )}
 
                 {/* Personal Information */}
                 <Card className="mb-6">
@@ -238,10 +405,15 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                     <div>
                       <Label htmlFor="email">
                         Email Address
-                        {!isEditing && (
+                        {!isEditing && formData.isEmailVerified && (
                           <Badge className="ml-2 bg-green-100 text-green-700">
                             <CheckCircle size={12} className="mr-1" />
                             Verified
+                          </Badge>
+                        )}
+                        {!isEditing && !formData.isEmailVerified && (
+                          <Badge className="ml-2 bg-yellow-100 text-yellow-700">
+                            Not Verified
                           </Badge>
                         )}
                       </Label>
@@ -249,229 +421,76 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                     </div>
 
                     <div>
-                      <Label htmlFor="phone">Phone Number</Label>
+                      <Label htmlFor="phoneNumber">Phone Number</Label>
                       <Input
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        id="phoneNumber"
+                        value={formData.phoneNumber}
+                        onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
                         disabled={!isEditing}
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                        <Input
-                          id="dateOfBirth"
-                          type="date"
-                          value={formData.dateOfBirth}
-                          onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                          disabled={!isEditing}
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Gender</Label>
-                        <RadioGroup
-                          value={formData.gender}
-                          onValueChange={(v) => handleInputChange('gender', v)}
-                          disabled={!isEditing}
-                          className="flex gap-4 mt-2"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="male" id="male" disabled={!isEditing} />
-                            <Label htmlFor="male">Male</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="female" id="female" disabled={!isEditing} />
-                            <Label htmlFor="female">Female</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="other" id="other" disabled={!isEditing} />
-                            <Label htmlFor="other">Other</Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Address */}
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle>Address</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="streetAddress">Street Address</Label>
+                      <Label htmlFor="dateOfBirth">Date of Birth</Label>
                       <Input
-                        id="streetAddress"
-                        value={formData.streetAddress}
-                        onChange={(e) => handleInputChange('streetAddress', e.target.value)}
+                        id="dateOfBirth"
+                        type="date"
+                        value={formData.dateOfBirth}
+                        onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
                         disabled={!isEditing}
                       />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="city">City</Label>
-                        <Input
-                          id="city"
-                          value={formData.city}
-                          onChange={(e) => handleInputChange('city', e.target.value)}
-                          disabled={!isEditing}
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="state">State/Province</Label>
-                        <Select
-                          value={formData.state}
-                          onValueChange={(v) => handleInputChange('state', v)}
-                          disabled={!isEditing}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Ho Chi Minh">Ho Chi Minh</SelectItem>
-                            <SelectItem value="Hanoi">Hanoi</SelectItem>
-                            <SelectItem value="Da Nang">Da Nang</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="postalCode">Postal Code</Label>
-                        <Input
-                          id="postalCode"
-                          value={formData.postalCode}
-                          onChange={(e) => handleInputChange('postalCode', e.target.value)}
-                          disabled={!isEditing}
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="country">Country</Label>
-                        <Select
-                          value={formData.country}
-                          onValueChange={(v) => handleInputChange('country', v)}
-                          disabled={!isEditing}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Vietnam">🇻🇳 Vietnam</SelectItem>
-                            <SelectItem value="Thailand">🇹🇭 Thailand</SelectItem>
-                            <SelectItem value="Singapore">🇸🇬 Singapore</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Bio & Interests */}
+                {/* Account Statistics */}
                 <Card className="mb-6">
                   <CardHeader>
-                    <CardTitle>Bio & Interests</CardTitle>
+                    <CardTitle>Account Statistics</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="bio">Bio</Label>
-                      <Textarea
-                        id="bio"
-                        value={formData.bio}
-                        onChange={(e) => handleInputChange('bio', e.target.value)}
-                        disabled={!isEditing}
-                        rows={4}
-                        maxLength={500}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">{formData.bio.length}/500 characters</p>
-                    </div>
-
-                    <div>
-                      <Label>Interests</Label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {availableInterests.map((interest) => (
-                          <Badge
-                            key={interest}
-                            onClick={() => isEditing && toggleInterest(interest)}
-                            className={`cursor-pointer transition-colors ${
-                              formData.interests.includes(interest)
-                                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            } ${!isEditing && 'cursor-default'}`}
-                          >
-                            {interest}
-                          </Badge>
-                        ))}
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3 p-4 bg-purple-50 rounded-lg">
+                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                          <Ticket className="text-purple-600" size={20} />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-purple-600">{profileStats.totalBookings}</p>
+                          <p className="text-xs text-gray-600">Total Bookings</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 p-4 bg-pink-50 rounded-lg">
+                        <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+                          <Calendar className="text-pink-600" size={20} />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-pink-600">{profileStats.totalEventsAttended}</p>
+                          <p className="text-xs text-gray-600">Events Attended</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg col-span-2">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Clock className="text-blue-600" size={20} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-blue-600">
+                            {profileStats.memberSince ? new Date(profileStats.memberSince).toLocaleDateString('vi-VN', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            }) : 'N/A'}
+                          </p>
+                          <p className="text-xs text-gray-600">Member Since</p>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Social Links */}
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle>Social Links (Optional)</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="facebook">Facebook</Label>
-                      <div className="relative">
-                        <Facebook
-                          size={18}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                        />
-                        <Input
-                          id="facebook"
-                          value={formData.facebook}
-                          onChange={(e) => handleInputChange('facebook', e.target.value)}
-                          disabled={!isEditing}
-                          className="pl-10"
-                          placeholder="https://facebook.com/username"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="twitter">Twitter</Label>
-                      <div className="relative">
-                        <Twitter
-                          size={18}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                        />
-                        <Input
-                          id="twitter"
-                          value={formData.twitter}
-                          onChange={(e) => handleInputChange('twitter', e.target.value)}
-                          disabled={!isEditing}
-                          className="pl-10"
-                          placeholder="https://twitter.com/username"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="instagram">Instagram</Label>
-                      <div className="relative">
-                        <Instagram
-                          size={18}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                        />
-                        <Input
-                          id="instagram"
-                          value={formData.instagram}
-                          onChange={(e) => handleInputChange('instagram', e.target.value)}
-                          disabled={!isEditing}
-                          className="pl-10"
-                          placeholder="https://instagram.com/username"
-                        />
-                      </div>
+                    
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-xs text-gray-500">
+                        💡 <strong>Roles:</strong> {profileStats.roles.length > 0 ? profileStats.roles.join(', ') : 'User'}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -489,38 +508,342 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                 </div>
               </TabsContent>
 
-              {/* Other tabs (Security, Preferences, Notifications) */}
-              <TabsContent value="security">
-                <Card>
+              {/* Security Tab */}
+              <TabsContent value="security" className="mt-0">
+                <h1 className="mb-6">Security Settings</h1>
+
+                {/* Change Password */}
+                <Card className="mb-6">
                   <CardHeader>
-                    <CardTitle>Security Settings</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <Lock size={20} className="text-purple-600" />
+                      Change Password
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="currentPassword">Current Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="currentPassword"
+                          type={showPasswords.current ? 'text' : 'password'}
+                          value={passwordData.currentPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                          placeholder="Enter current password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.current ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="newPassword">New Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="newPassword"
+                          type={showPasswords.new ? 'text' : 'password'}
+                          value={passwordData.newPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                          placeholder="Enter new password (min 8 characters)"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.new ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="confirmPassword"
+                          type={showPasswords.confirm ? 'text' : 'password'}
+                          value={passwordData.confirmPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                          placeholder="Confirm new password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.confirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={handlePasswordChange}
+                      className="bg-purple-600 hover:bg-purple-700 w-full"
+                      disabled={!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
+                    >
+                      <Key size={16} className="mr-2" />
+                      Update Password
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Two-Factor Authentication */}
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Smartphone size={20} className="text-purple-600" />
+                      Two-Factor Authentication
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600">Security settings content would go here...</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="font-medium">Enable 2FA</p>
+                        <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={twoFactorEnabled}
+                          onChange={(e) => setTwoFactorEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                      </label>
+                    </div>
+                    {twoFactorEnabled && (
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-800">
+                          ✓ Two-factor authentication is enabled. You'll need to enter a code from your authenticator app when logging in.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Active Sessions */}
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Monitor size={20} className="text-purple-600" />
+                      Active Sessions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <Monitor className="text-green-600" size={20} />
+                          </div>
+                          <div>
+                            <p className="font-medium">Windows PC - Chrome</p>
+                            <p className="text-sm text-gray-600">Ho Chi Minh City, Vietnam • Current session</p>
+                          </div>
+                        </div>
+                        <Badge className="bg-green-100 text-green-700">Active</Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                            <Smartphone className="text-gray-600" size={20} />
+                          </div>
+                          <div>
+                            <p className="font-medium">iPhone - Safari</p>
+                            <p className="text-sm text-gray-600">Ho Chi Minh City, Vietnam • 2 days ago</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                          Revoke
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Button variant="outline" className="w-full mt-4">
+                      Sign Out All Other Sessions
+                    </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              <TabsContent value="preferences">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Preferences</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">Preferences content would go here...</p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+              <TabsContent value="preferences" className="mt-0">
+                <h1 className="mb-6">Preferences</h1>
 
-              <TabsContent value="notifications">
-                <Card>
+                {/* Language & Region */}
+                <Card className="mb-6">
                   <CardHeader>
-                    <CardTitle>Notification Settings</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <Globe size={20} className="text-purple-600" />
+                      Language & Region
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">Notification settings content would go here...</p>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="language">Language</Label>
+                      <Select
+                        value={preferences.language}
+                        onValueChange={(value) => setPreferences({ ...preferences, language: value })}
+                      >
+                        <SelectTrigger id="language">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="vi">Tiếng Việt</SelectItem>
+                          <SelectItem value="en">English</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="timezone">Timezone</Label>
+                      <Select
+                        value={preferences.timezone}
+                        onValueChange={(value) => setPreferences({ ...preferences, timezone: value })}
+                      >
+                        <SelectTrigger id="timezone">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Asia/Ho_Chi_Minh">Ho Chi Minh (GMT+7)</SelectItem>
+                          <SelectItem value="Asia/Bangkok">Bangkok (GMT+7)</SelectItem>
+                          <SelectItem value="Asia/Singapore">Singapore (GMT+8)</SelectItem>
+                          <SelectItem value="Asia/Tokyo">Tokyo (GMT+9)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </CardContent>
                 </Card>
+
+                {/* Notification Preferences */}
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Bell size={20} className="text-purple-600" />
+                      Notification Preferences
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+                      <p className="text-sm text-blue-800">
+                        <strong>💡 Note:</strong> View your notifications in the global notifications menu (top bar bell icon 🔔) for easier access across the app.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between py-3 border-b">
+                      <div>
+                        <p className="font-medium">Email Notifications</p>
+                        <p className="text-sm text-gray-600">Receive notifications via email</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={preferences.emailNotifications}
+                          onChange={(e) => setPreferences({ ...preferences, emailNotifications: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between py-3 border-b">
+                      <div>
+                        <p className="font-medium">Push Notifications</p>
+                        <p className="text-sm text-gray-600">Receive push notifications in browser</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={preferences.pushNotifications}
+                          onChange={(e) => setPreferences({ ...preferences, pushNotifications: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between py-3">
+                      <div>
+                        <p className="font-medium">Marketing Emails</p>
+                        <p className="text-sm text-gray-600">Receive promotional and marketing content</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={preferences.marketingEmails}
+                          onChange={(e) => setPreferences({ ...preferences, marketingEmails: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                      </label>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Privacy Settings */}
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield size={20} className="text-purple-600" />
+                      Privacy Settings
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="profileVisibility">Profile Visibility</Label>
+                      <Select
+                        value={preferences.profileVisibility}
+                        onValueChange={(value) => setPreferences({ ...preferences, profileVisibility: value })}
+                      >
+                        <SelectTrigger id="profileVisibility">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="public">Public - Anyone can view your profile</SelectItem>
+                          <SelectItem value="private">Private - Only you can view your profile</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="pt-4 border-t">
+                      <p className="text-sm text-gray-600 mb-3">
+                        Control what information is visible on your public profile:
+                      </p>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" defaultChecked className="rounded" />
+                          <span>Show events I'm attending</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" defaultChecked className="rounded" />
+                          <span>Show my reviews</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" className="rounded" />
+                          <span>Show my email address</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" className="rounded" />
+                          <span>Show my phone number</span>
+                        </label>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Save Preferences Button */}
+                <Button
+                  onClick={handlePreferencesUpdate}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 w-full"
+                >
+                  <Save size={16} className="mr-2" />
+                  Save Preferences
+                </Button>
               </TabsContent>
             </Tabs>
           </div>

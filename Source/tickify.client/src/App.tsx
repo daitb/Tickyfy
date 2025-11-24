@@ -24,7 +24,7 @@ import { EventAnalytics } from "./pages/EventAnalytics";
 import { EditEvent } from "./pages/EditEvent";
 import { ScanHistory } from "./pages/ScanHistory";
 import { PromoCodeManagement } from "./pages/PromoCodeManagement";
-import { Notifications } from "./pages/Notifications";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { ResetPassword } from "./pages/ResetPassword";
 import { UserProfile } from "./pages/UserProfile";
 import { SeatSelection } from "./pages/SeatSelection";
@@ -382,7 +382,7 @@ export default function App() {
         return <PromoCodeManagement onNavigate={handleNavigate} />;
 
       case "notifications":
-        return <Notifications onNavigate={handleNavigate} />;
+        return <NotificationsPage onNavigate={handleNavigate} />;
 
       case "notification-preferences":
         return <NotificationPreferences onNavigate={handleNavigate} />;
