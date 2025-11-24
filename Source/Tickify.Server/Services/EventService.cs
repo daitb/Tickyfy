@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Tickify.Common;
 using Tickify.Data;
 using Tickify.DTOs.Event;
@@ -16,15 +17,18 @@ public class EventService : IEventService
     private readonly IEventRepository _eventRepository;
     private readonly ApplicationDbContext _context;
     private readonly IEmailService _emailService;
+    private readonly ILogger<EventService> _logger;
 
     public EventService(
         IEventRepository eventRepository,
         ApplicationDbContext context,
-        IEmailService emailService)
+        IEmailService emailService,
+        ILogger<EventService> logger)
     {
         _eventRepository = eventRepository;
         _context = context;
         _emailService = emailService;
+        _logger = logger;
     }
 
     #region Public Queries (No Authentication Required)
@@ -100,86 +104,115 @@ public class EventService : IEventService
     /// Create new event (Organizer only)
     public async Task<EventDetailDto> CreateEventAsync(CreateEventDto dto, int organizerId)
     {
-        // Validate organizer exists
-        var organizer = await _context.Organizers
-            .Include(o => o.User)
-            .FirstOrDefaultAsync(o => o.Id == organizerId);
-
-        if (organizer == null)
-            throw new NotFoundException($"Organizer with ID {organizerId} not found");
-
-        // Validate category exists
-        var category = await _context.Categories.FindAsync(dto.CategoryId);
-        if (category == null || !category.IsActive)
-            throw new NotFoundException($"Category with ID {dto.CategoryId} not found or inactive");
-
-        // Business validation
-        ValidateEventDates(dto.StartDate, dto.EndDate);
-        ValidateTicketTypes(dto.TicketTypes);
-
-        // Create event entity
-        var eventEntity = new Event
-        {
-            Title = dto.Title.Trim(),
-            Description = dto.Description.Trim(),
-            Location = dto.Venue.Trim(),
-            Address = dto.Venue.Trim(),
-            BannerImage = dto.ImageUrl,
-            StartDate = dto.StartDate,
-            EndDate = dto.EndDate,
-            MaxCapacity = dto.TotalSeats,
-            CategoryId = dto.CategoryId,
-            OrganizerId = organizerId,
-            Status = EventStatus.Pending,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // Add event to database
-        var createdEvent = await _eventRepository.AddAsync(eventEntity);
-
-        // Create ticket types if provided
-        if (dto.TicketTypes != null && dto.TicketTypes.Any())
-        {
-            foreach (var ticketTypeDto in dto.TicketTypes)
-            {
-                var ticketType = new TicketType
-                {
-                    EventId = createdEvent.Id,
-                    Name = ticketTypeDto.TypeName.Trim(),
-                    Description = ticketTypeDto.Description,
-                    Price = ticketTypeDto.Price,
-                    TotalQuantity = ticketTypeDto.Quantity,
-                    AvailableQuantity = ticketTypeDto.Quantity,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.TicketTypes.Add(ticketType);
-            }
-
-            await _context.SaveChangesAsync();
-        }
-
-        // Send email notification to organizer
         try
         {
-            await _emailService.SendEmailAsync(
-                organizer.User!.Email,
-                "Event Created Successfully",
-                $"<h2>Event Created: {eventEntity.Title}</h2>" +
-                $"<p>Your event has been created and is pending approval.</p>" +
+            _logger.LogInformation("Starting CreateEventAsync for organizer {OrganizerId}", organizerId);
+
+            // Validate organizer exists
+            var organizer = await _context.Organizers
+                .Include(o => o.User)
+                .FirstOrDefaultAsync(o => o.Id == organizerId);
+
+            _logger.LogInformation("Organizer lookup result: {Found}", organizer != null);
+
+            if (organizer == null)
+                throw new NotFoundException($"Organizer with ID {organizerId} not found");
+
+            // Validate category exists
+            _logger.LogInformation("Looking up category {CategoryId}", dto.CategoryId);
+            var category = await _context.Categories.FindAsync(dto.CategoryId);
+            _logger.LogInformation("Category lookup result: Found={Found}, Active={Active}", 
+                category != null, category?.IsActive);
+
+            if (category == null || !category.IsActive)
+                throw new NotFoundException($"Category with ID {dto.CategoryId} not found or inactive");
+
+            // Business validation
+            _logger.LogInformation("Validating event dates: Start={Start}, End={End}", 
+                dto.StartDate, dto.EndDate);
+            ValidateEventDates(dto.StartDate, dto.EndDate);
+            
+            _logger.LogInformation("Validating ticket types: Count={Count}", dto.TicketTypes?.Count ?? 0);
+            ValidateTicketTypes(dto.TicketTypes);
+
+            // Create event entity
+            _logger.LogInformation("Creating event entity");
+            var eventEntity = new Event
+            {
+                Title = dto.Title.Trim(),
+                Description = dto.Description.Trim(),
+                Location = dto.Venue.Trim(),
+                Address = dto.Venue.Trim(),
+                BannerImage = dto.ImageUrl,
+                StartDate = dto.StartDate,
+                EndDate = dto.EndDate,
+                MaxCapacity = dto.TotalSeats,
+                CategoryId = dto.CategoryId,
+                OrganizerId = organizerId,
+                Status = EventStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Add event to database
+            _logger.LogInformation("Adding event to database");
+            var createdEvent = await _eventRepository.AddAsync(eventEntity);
+            _logger.LogInformation("Event created with ID {EventId}", createdEvent.Id);
+
+            // Create ticket types if provided
+            if (dto.TicketTypes != null && dto.TicketTypes.Any())
+            {
+                _logger.LogInformation("Creating {Count} ticket types", dto.TicketTypes.Count);
+                foreach (var ticketTypeDto in dto.TicketTypes)
+                {
+                    var ticketType = new TicketType
+                    {
+                        EventId = createdEvent.Id,
+                        Name = ticketTypeDto.TypeName.Trim(),
+                        Description = ticketTypeDto.Description,
+                        Price = ticketTypeDto.Price,
+                        TotalQuantity = ticketTypeDto.Quantity,
+                        AvailableQuantity = ticketTypeDto.Quantity,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.TicketTypes.Add(ticketType);
+                }
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Ticket types saved successfully");
+            }
+
+            // Send email notification to organizer
+            _logger.LogInformation("Sending email notification to {Email}", organizer.User!.Email);
+            try
+            {
+                await _emailService.SendEmailAsync(
+                    organizer.User!.Email,
+                    "Event Created Successfully",
+                    $"<h2>Event Created: {eventEntity.Title}</h2>" +
+                    $"<p>Your event has been created and is pending approval.</p>" +
                 $"<p>We will review it and notify you once it's approved.</p>"
             );
-        }
-        catch (Exception)
-        {
-            // Email failure should not block event creation
-            // Log error in production
-        }
+                _logger.LogInformation("Email sent successfully");
+            }
+            catch (Exception emailEx)
+            {
+                // Email failure should not block event creation
+                _logger.LogWarning(emailEx, "Failed to send email notification but event was created");
+            }
 
-        // Reload event with all related data
-        var fullEvent = await _eventRepository.GetByIdAsync(createdEvent.Id, includeRelated: true);
-        return MapToEventDetailDto(fullEvent!);
+            // Reload event with all related data
+            _logger.LogInformation("Reloading event with related data");
+            var fullEvent = await _eventRepository.GetByIdAsync(createdEvent.Id, includeRelated: true);
+            _logger.LogInformation("CreateEventAsync completed successfully");
+            return MapToEventDetailDto(fullEvent!);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "CreateEventAsync failed: {Message}", ex.Message);
+            throw;
+        }
     }
 
     /// Update existing event (Organizer/Admin only)

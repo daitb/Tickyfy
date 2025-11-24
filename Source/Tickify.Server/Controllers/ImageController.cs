@@ -4,7 +4,7 @@ using Tickify.Interfaces;
 namespace Tickify.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/images")]
 public class ImageController : ControllerBase
 {
     private readonly IAzureStorageService _azureStorageService;

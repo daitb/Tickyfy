@@ -9,7 +9,7 @@ namespace Tickify.Controllers;
 
 /// Organizer Controller - Manages event organizers
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/organizers")]
 [Produces("application/json")]
 public class OrganizerController : ControllerBase
 {

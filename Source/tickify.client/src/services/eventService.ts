@@ -140,7 +140,7 @@ class EventService {
    */
   async getEventById(id: number): Promise<Event> {
     try {
-      const resp = await apiClient.get<EventDetailDto>(`/api/Event/${id}`);
+      const resp = await apiClient.get<EventDetailDto>(`/events/${id}`);
       return mapEventDetailToEvent(resp.data);
     } catch (error) {
       console.error(`Error fetching event ${id}:`, error);
@@ -190,7 +190,7 @@ class EventService {
    */
   async getEvents(): Promise<Event[]> {
     try {
-      const resp = await apiClient.get<PagedResult<EventListDto>>(`/api/Event`);
+      const resp = await apiClient.get<PagedResult<EventListDto>>(`/events`);
       // Handle both PagedResult and direct array response
       if (resp.data && 'items' in resp.data && Array.isArray(resp.data.items)) {
         return resp.data.items
@@ -215,7 +215,7 @@ class EventService {
    */
   async getFeaturedEvents(count: number = 10): Promise<Event[]> {
     try {
-      const resp = await apiClient.get<EventListDto[]>(`/api/Event/featured?count=${count}`);
+      const resp = await apiClient.get<EventListDto[]>(`/events/featured?count=${count}`);
       // Response is already unwrapped by interceptor, should be array
       if (Array.isArray(resp.data)) {
         return resp.data
@@ -234,7 +234,7 @@ class EventService {
    */
   async getUpcomingEvents(count: number = 20): Promise<Event[]> {
     try {
-      const resp = await apiClient.get<EventListDto[]>(`/api/Event/upcoming?count=${count}`);
+      const resp = await apiClient.get<EventListDto[]>(`/events/upcoming?count=${count}`);
       // Response is already unwrapped by interceptor, should be array
       if (Array.isArray(resp.data)) {
         return resp.data
@@ -253,7 +253,7 @@ class EventService {
    */
   async searchEvents(query: string, pageNumber: number = 1, pageSize: number = 20): Promise<Event[]> {
     const resp = await apiClient.get<PagedResult<EventListDto>>(
-      `/api/Event/search?q=${encodeURIComponent(query)}&pageNumber=${pageNumber}&pageSize=${pageSize}`
+      `/events/search?q=${encodeURIComponent(query)}&pageNumber=${pageNumber}&pageSize=${pageSize}`
     );
     return resp.data.items.map(mapEventListToEvent);
   }
@@ -262,7 +262,7 @@ class EventService {
    * POST /api/events - Create new event (Organizer only)
    */
   async createEvent(dto: CreateEventDto): Promise<Event> {
-    const response = await apiClient.post<EventDetailDto>('/api/Event', dto);
+    const response = await apiClient.post<EventDetailDto>('/events', dto);
     return mapEventDetailToEvent(response.data);
   }
 
@@ -270,7 +270,7 @@ class EventService {
    * PUT /api/events/{id} - Update existing event (Organizer/Admin)
    */
   async updateEvent(id: number, dto: UpdateEventDto): Promise<Event> {
-    const response = await apiClient.put<EventDetailDto>(`/api/Event/${id}`, dto);
+    const response = await apiClient.put<EventDetailDto>(`/events/${id}`, dto);
     return mapEventDetailToEvent(response.data);
   }
 
@@ -278,7 +278,7 @@ class EventService {
    * POST /api/events/{id}/publish - Publish event (Organizer only)
    */
   async publishEvent(id: number): Promise<Event> {
-    const response = await apiClient.post<EventDetailDto>(`/api/Event/${id}/publish`);
+    const response = await apiClient.post<EventDetailDto>(`/events/${id}/publish`);
     return mapEventDetailToEvent(response.data);
   }
 
@@ -286,7 +286,7 @@ class EventService {
    * POST /api/events/{id}/approve - Approve event (Admin only)
    */
   async approveEvent(id: number): Promise<Event> {
-    const response = await apiClient.post<EventDetailDto>(`/api/Event/${id}/approve`);
+    const response = await apiClient.post<EventDetailDto>(`/events/${id}/approve`);
     return mapEventDetailToEvent(response.data);
   }
 
@@ -294,7 +294,7 @@ class EventService {
    * POST /api/events/{id}/reject - Reject event (Admin only)
    */
   async rejectEvent(id: number, reason: string): Promise<Event> {
-    const response = await apiClient.post<EventDetailDto>(`/api/Event/${id}/reject`, { reason });
+    const response = await apiClient.post<EventDetailDto>(`/events/${id}/reject`, { reason });
     return mapEventDetailToEvent(response.data);
   }
 
@@ -302,7 +302,7 @@ class EventService {
    * POST /api/events/{id}/cancel - Cancel event
    */
   async cancelEvent(id: number, reason?: string): Promise<boolean> {
-    const response = await apiClient.post<boolean>(`/api/Event/${id}/cancel`, { reason });
+    const response = await apiClient.post<boolean>(`/events/${id}/cancel`, { reason });
     return response.data;
   }
 
@@ -310,7 +310,7 @@ class EventService {
    * DELETE /api/events/{id} - Delete event (Admin only)
    */
   async deleteEvent(id: number): Promise<boolean> {
-    const response = await apiClient.delete<boolean>(`/api/Event/${id}`);
+    const response = await apiClient.delete<boolean>(`/events/${id}`);
     return response.data;
   }
 
@@ -318,7 +318,7 @@ class EventService {
    * GET /api/events/{id}/stats - Get event statistics
    */
   async getEventStatistics(id: number): Promise<EventStatsDto> {
-    const response = await apiClient.get<EventStatsDto>(`/api/Event/${id}/stats`);
+    const response = await apiClient.get<EventStatsDto>(`/events/${id}/stats`);
     return response.data;
   }
 
@@ -326,7 +326,7 @@ class EventService {
    * POST /api/events/{id}/duplicate - Duplicate event
    */
   async duplicateEvent(id: number): Promise<Event> {
-    const response = await apiClient.post<EventDetailDto>(`/api/Event/${id}/duplicate`);
+    const response = await apiClient.post<EventDetailDto>(`/events/${id}/duplicate`);
     return mapEventDetailToEvent(response.data);
   }
 }
