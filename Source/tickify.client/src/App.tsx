@@ -35,8 +35,11 @@ import { PasswordChange } from "./pages/PasswordChange";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ForgotPassword } from "./pages/ForgotPassword";
+import { ChatPage } from "./pages/ChatPage";
+import { StaffChatPage } from "./pages/StaffChatPage";
 import { BecomeOrganizer } from "./pages/BecomeOrganizer";
 import { UserManagement } from "./pages/UserManagement";
+import PaymentReturn from "./pages/PaymentReturn";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -77,11 +80,14 @@ type Page =
   | "event-reviews"
   | "refund-request"
   | "admin-dashboard"
+  | "chat"
+  | "staff-chat"
   | "user-management"
   | "become-organizer"
   | "login"
   | "register"
-  | "forgot-password";
+  | "forgot-password"
+  | "payment-return";
 
 export default function App() {
   const location = useLocation();
@@ -123,11 +129,14 @@ export default function App() {
     if (path === "/event-reviews") return "event-reviews";
     if (path === "/refund-request") return "refund-request";
     if (path === "/admin-dashboard") return "admin-dashboard";
+    if (path === "/chat") return "chat";
+    if (path === "/staff-chat") return "staff-chat";
     if (path === "/user-management") return "user-management";
     if (path === "/become-organizer") return "become-organizer";
     if (path === "/login") return "login";
     if (path === "/register") return "register";
     if (path === "/forgot-password") return "forgot-password";
+    if (path.startsWith("/payment/return")) return "payment-return";
 
     return "home";
   };
@@ -411,6 +420,11 @@ export default function App() {
       case "admin-dashboard":
         return <AdminDashboard onNavigate={handleNavigate} />;
 
+      case "chat":
+        return <ChatPage />;
+
+      case "staff-chat":
+        return <StaffChatPage />;
       case "user-management":
         return <UserManagement onNavigate={handleNavigate} />;
 
@@ -426,6 +440,9 @@ export default function App() {
       case "forgot-password":
         return <ForgotPassword onNavigate={handleNavigate} />;
 
+      case "payment-return":
+        return <PaymentReturn />;
+
       default:
         return <Home onNavigate={handleNavigate} />;
     }
@@ -435,7 +452,8 @@ export default function App() {
   const isStandalonePage =
     currentPage === "login" ||
     currentPage === "register" ||
-    currentPage === "forgot-password";
+    currentPage === "forgot-password" ||
+    currentPage === "payment-return";
 
   return (
     <ProtectedRoute>

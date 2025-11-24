@@ -38,4 +38,5 @@ export const pageRoutes = [
   { path: "/login", page: "login" },
   { path: "/register", page: "register" },
   { path: "/forgot-password", page: "forgot-password" },
+  { path: "/payment/return", page: "payment-return" },
 ];

@@ -68,7 +68,7 @@ apiClient.interceptors.response.use(
     // Don't redirect on login failure (401), let the login page handle it
     if (
       error.response?.status === 401 &&
-      !error.config?.url?.includes("/Auth/login")
+      !error.config?.url?.includes("/auth/login")
     ) {
       // Unauthorized - clear token and redirect to login (but NOT during login attempt)
       localStorage.removeItem("authToken");

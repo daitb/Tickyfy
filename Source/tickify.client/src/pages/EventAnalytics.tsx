@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DollarSign,
@@ -11,6 +11,7 @@ import {
   Calendar,
   ArrowLeft,
   ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -53,7 +54,7 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { mockEvents } from '../mockData';
+import { eventService, type EventStatsDto } from '../services/eventService';
 
 interface EventAnalyticsProps {
   eventId?: string;
@@ -62,52 +63,45 @@ interface EventAnalyticsProps {
 
 type DateRange = '7days' | '30days' | 'all' | 'custom';
 
-// Mock analytics data
-const salesOverTimeData = [
-  { date: 'Jan 1', revenue: 2400000, tickets: 24 },
-  { date: 'Jan 2', revenue: 1398000, tickets: 14 },
-  { date: 'Jan 3', revenue: 9800000, tickets: 98 },
-  { date: 'Jan 4', revenue: 3908000, tickets: 39 },
-  { date: 'Jan 5', revenue: 4800000, tickets: 48 },
-  { date: 'Jan 6', revenue: 3800000, tickets: 38 },
-  { date: 'Jan 7', revenue: 4300000, tickets: 43 },
-];
-
-const salesByTicketType = [
-  { name: 'VIP', value: 150, percentage: 30, color: '#14b8a6' },
-  { name: 'Standard', value: 250, percentage: 50, color: '#22c55e' },
-  { name: 'Early Bird', value: 100, percentage: 20, color: '#10b981' },
-];
-
-const trafficSourcesData = [
-  { source: 'Direct', visits: 3200 },
-  { source: 'Social Media', visits: 2800 },
-  { source: 'Email', visits: 1500 },
-  { source: 'Search', visits: 1000 },
-];
-
-const topBuyers = [
-  { id: '1', name: 'John Doe', email: 'john@example.com', tickets: 10, spent: 5000000, date: '2025-01-10' },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com', tickets: 8, spent: 4000000, date: '2025-01-09' },
-  { id: '3', name: 'Bob Johnson', email: 'bob@example.com', tickets: 6, spent: 3000000, date: '2025-01-08' },
-  { id: '4', name: 'Alice Williams', email: 'alice@example.com', tickets: 5, spent: 2500000, date: '2025-01-07' },
-  { id: '5', name: 'Charlie Brown', email: 'charlie@example.com', tickets: 4, spent: 2000000, date: '2025-01-06' },
-];
-
-const recentTransactions = [
-  { id: 'TRX-001', buyer: 'John Doe', amount: 500000, date: '2025-01-10 14:30', status: 'completed' },
-  { id: 'TRX-002', buyer: 'Jane Smith', amount: 750000, date: '2025-01-10 13:15', status: 'completed' },
-  { id: 'TRX-003', buyer: 'Bob Johnson', amount: 1000000, date: '2025-01-10 12:00', status: 'pending' },
-  { id: 'TRX-004', buyer: 'Alice Williams', amount: 500000, date: '2025-01-10 10:45', status: 'completed' },
-  { id: 'TRX-005', buyer: 'Charlie Brown', amount: 250000, date: '2025-01-10 09:30', status: 'failed' },
-];
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+};
 
 export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
   const { t } = useTranslation();
   const [dateRange, setDateRange] = useState<DateRange>('7days');
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<EventStatsDto | null>(null);
+  const [event, setEvent] = useState<any>(null);
 
-  // Get event data
-  const event = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
+  useEffect(() => {
+    if (eventId) {
+      loadEventAnalytics();
+    }
+  }, [eventId]);
+
+  const loadEventAnalytics = async () => {
+    try {
+      setIsLoading(true);
+      
+      // GET /api/events/{id}/stats - Get event statistics
+      const statsData = await eventService.getEventStatistics(Number(eventId));
+      setStats(statsData);
+
+      // Load basic event data
+      const eventData = await eventService.getEventById(Number(eventId));
+      setEvent(eventData);
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -127,13 +121,13 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Badge className="bg-green-100 text-green-700">{t('eventAnalytics.completed')}</Badge>;
+        return <Badge className="bg-green-100 text-green-700">Completed</Badge>;
       case 'pending':
-        return <Badge className="bg-amber-100 text-amber-700">{t('eventAnalytics.pending')}</Badge>;
+        return <Badge className="bg-amber-100 text-amber-700">Pending</Badge>;
       case 'failed':
-        return <Badge className="bg-red-100 text-red-700">{t('eventAnalytics.failed')}</Badge>;
+        return <Badge className="bg-red-100 text-red-700">Failed</Badge>;
       default:
-        return null;
+        return <Badge>{status}</Badge>;
     }
   };
 
@@ -142,20 +136,80 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
     // TODO: Implement export functionality
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!stats || !event) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <p className="text-muted-foreground mb-4">Event analytics not found</p>
+        <Button onClick={() => onNavigate('organizer-dashboard')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Dashboard
+        </Button>
+      </div>
+    );
+  }
+
+  // Map stats data to chart format
+  const salesOverTimeData = stats.salesByDate?.map((item) => ({
+    date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    revenue: item.revenue,
+    tickets: item.ticketsSold,
+  })) || [];
+
+  const salesByTicketType = stats.salesByTicketType?.map((item, index) => ({
+    name: item.ticketTypeName,
+    value: item.sold,
+    percentage: stats.soldSeats ? Math.round((item.sold / stats.soldSeats) * 100) : 0,
+    color: ['#14b8a6', '#22c55e', '#10b981', '#f59e0b', '#ef4444'][index % 5],
+  })) || [];
+
+  const trafficSourcesData = stats.trafficSources?.map((item) => ({
+    source: item.sourceName,
+    visits: item.visits,
+  })) || [];
+
+  const topBuyers = stats.topBuyers?.map((buyer) => ({
+    id: buyer.userId.toString(),
+    name: buyer.userName,
+    email: buyer.email,
+    tickets: buyer.ticketsPurchased,
+    spent: buyer.totalSpent,
+    date: new Date(buyer.lastPurchaseDate).toLocaleDateString(),
+  })) || [];
+
+  const recentTransactions = stats.recentTransactions?.map((txn) => ({
+    id: txn.transactionId,
+    buyer: txn.buyerName,
+    amount: txn.amount,
+    date: new Date(txn.transactionDate).toLocaleString(),
+    status: txn.status.toLowerCase(),
+  })) || [];
+
+  const conversionRate = stats.totalSeats && stats.pageViews 
+    ? ((stats.soldSeats / stats.pageViews) * 100).toFixed(2)
+    : '0.00';
+
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-neutral-600 mb-6">
           <button onClick={() => onNavigate('event-management')} className="hover:text-teal-600">
-            {t('editEvent.myEvents')}
+            My Events
           </button>
           <ChevronRight size={16} />
           <button onClick={() => onNavigate('event-detail', event.id)} className="hover:text-teal-600">
             {event.title}
           </button>
           <ChevronRight size={16} />
-          <span className="text-neutral-900">{t('eventAnalytics.analytics')}</span>
+          <span className="text-neutral-900">Analytics</span>
         </div>
 
         {/* Event Summary Header */}
@@ -169,7 +223,7 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <h2 className="text-neutral-900">{event.title}</h2>
-                    <Badge className="bg-green-100 text-green-700">{t('eventAnalytics.published')}</Badge>
+                    <Badge className="bg-green-100 text-green-700">Published</Badge>
                   </div>
                   <div className="text-sm text-neutral-600 space-y-1">
                     <div className="flex items-center gap-2">
@@ -188,13 +242,13 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
               <div className="flex items-center gap-3 w-full md:w-auto">
                 <Select value={dateRange} onValueChange={(value: DateRange) => setDateRange(value)}>
                   <SelectTrigger className="w-full md:w-[180px]">
-                    <SelectValue placeholder={t('eventAnalytics.dateRange')} />
+                    <SelectValue placeholder="Date range" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="7days">{t('eventAnalytics.last7Days')}</SelectItem>
-                    <SelectItem value="30days">{t('eventAnalytics.last30Days')}</SelectItem>
-                    <SelectItem value="all">{t('eventAnalytics.allTime')}</SelectItem>
-                    <SelectItem value="custom">{t('eventAnalytics.customRange')}</SelectItem>
+                    <SelectItem value="7days">Last 7 days</SelectItem>
+                    <SelectItem value="30days">Last 30 days</SelectItem>
+                    <SelectItem value="all">All time</SelectItem>
+                    <SelectItem value="custom">Custom range</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -202,7 +256,7 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
                   <DropdownMenuTrigger asChild>
                     <Button className="bg-teal-500 hover:bg-teal-600">
                       <Download size={16} className="mr-2" />
-                      {t('eventAnalytics.export')}
+                      Export
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -223,7 +277,7 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
 
                 <Button variant="outline" onClick={() => onNavigate('event-management')}>
                   <ArrowLeft size={16} className="mr-2" />
-                  {t('common.back')}
+                  Back
                 </Button>
               </div>
             </div>
@@ -236,15 +290,17 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
-                <div className="text-sm text-neutral-600">{t('eventAnalytics.totalSales')}</div>
+                <div className="text-sm text-neutral-600">Total Sales</div>
                 <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
                   <DollarSign className="text-teal-600" size={20} />
                 </div>
               </div>
-              <div className="text-2xl text-neutral-900 mb-2">45,000,000₫</div>
+              <div className="text-2xl text-neutral-900 mb-2">
+                {(stats.totalRevenue || 0).toLocaleString('vi-VN')}₫
+              </div>
               <div className="flex items-center gap-1 text-sm text-green-600">
                 <TrendingUp size={14} />
-                <span>+12% from last period</span>
+                <span>+{stats.revenueGrowth?.toFixed(1) || '0.0'}% from last period</span>
               </div>
             </CardContent>
           </Card>
@@ -253,32 +309,16 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
-                <div className="text-sm text-neutral-600">{t('eventAnalytics.ticketsSold')}</div>
+                <div className="text-sm text-neutral-600">Tickets Sold</div>
                 <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
                   <Ticket className="text-teal-600" size={20} />
                 </div>
               </div>
-              <div className="text-2xl text-neutral-900 mb-2">450/500</div>
-              <div className="w-full bg-neutral-200 rounded-full h-2 mb-2">
-                <div className="bg-teal-500 h-2 rounded-full" style={{ width: '90%' }} />
+              <div className="text-2xl text-neutral-900 mb-2">
+                {stats.soldSeats || 0}/{stats.totalSeats || 0}
               </div>
-              <div className="text-sm text-neutral-600">90% sold</div>
-            </CardContent>
-          </Card>
-
-          {/* Page Views */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="text-sm text-neutral-600">{t('eventAnalytics.pageViews')}</div>
-                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                  <Eye className="text-teal-600" size={20} />
-                </div>
-              </div>
-              <div className="text-2xl text-neutral-900 mb-2">8,234</div>
-              <div className="flex items-center gap-1 text-sm text-green-600">
-                <TrendingUp size={14} />
-                <span>+5%</span>
+              <div className="text-sm text-neutral-600">
+                {stats.totalSeats ? ((stats.soldSeats / stats.totalSeats) * 100).toFixed(1) : '0.0'}% capacity
               </div>
             </CardContent>
           </Card>
@@ -287,16 +327,31 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
-                <div className="text-sm text-neutral-600">{t('eventAnalytics.conversionRate')}</div>
+                <div className="text-sm text-neutral-600">Conversion Rate</div>
                 <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
                   <Target className="text-teal-600" size={20} />
                 </div>
               </div>
-              <div className="text-2xl text-neutral-900 mb-2">5.4%</div>
-              <div className="flex items-center gap-1 text-sm text-green-600">
-                <TrendingUp size={14} />
-                <span>+0.8%</span>
+              <div className="text-2xl text-neutral-900 mb-2">{conversionRate}%</div>
+              <div className="text-sm text-neutral-600">
+                {stats.soldSeats || 0} purchases from {stats.pageViews || 0} views
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Page Views */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className="text-sm text-neutral-600">Page Views</div>
+                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
+                  <Eye className="text-teal-600" size={20} />
+                </div>
+              </div>
+              <div className="text-2xl text-neutral-900 mb-2">
+                {(stats.pageViews || 0).toLocaleString()}
+              </div>
+              <div className="text-sm text-neutral-600">Total event page visits</div>
             </CardContent>
           </Card>
         </div>
@@ -306,7 +361,7 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
           {/* Sales Over Time */}
           <Card>
             <CardHeader>
-              <CardTitle>{t('eventAnalytics.salesOverTime')}</CardTitle>
+              <CardTitle>Sales Over Time</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -344,7 +399,7 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
           {/* Tickets Sold Over Time */}
           <Card>
             <CardHeader>
-              <CardTitle>{t('eventAnalytics.ticketsSoldOverTime')}</CardTitle>
+              <CardTitle>Tickets Sold Over Time</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -368,7 +423,7 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
           {/* Sales by Ticket Type */}
           <Card>
             <CardHeader>
-              <CardTitle>{t('eventAnalytics.salesByTicketType')}</CardTitle>
+              <CardTitle>Sales by Ticket Type</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -414,7 +469,7 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
           {/* Traffic Sources */}
           <Card>
             <CardHeader>
-              <CardTitle>{t('eventAnalytics.trafficSources')}</CardTitle>
+              <CardTitle>Traffic Sources</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -442,9 +497,9 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>{t('eventAnalytics.topBuyers')}</CardTitle>
+                <CardTitle>Top Buyers</CardTitle>
                 <Button variant="link" className="text-teal-600">
-                  {t('common.viewAll')}
+                  View All
                 </Button>
               </div>
             </CardHeader>
@@ -452,9 +507,9 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('eventAnalytics.name')}</TableHead>
-                    <TableHead className="text-right">{t('eventAnalytics.tickets')}</TableHead>
-                    <TableHead className="text-right hidden sm:table-cell">{t('eventAnalytics.spent')}</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="text-right">Tickets</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">Spent</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -481,9 +536,9 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>{t('eventAnalytics.recentTransactions')}</CardTitle>
+                <CardTitle>Recent Transactions</CardTitle>
                 <Button variant="link" className="text-teal-600">
-                  {t('common.viewAll')}
+                  View All
                 </Button>
               </div>
             </CardHeader>
@@ -491,9 +546,9 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('eventAnalytics.transaction')}</TableHead>
-                    <TableHead className="text-right hidden sm:table-cell">{t('eventAnalytics.amount')}</TableHead>
-                    <TableHead className="text-right">{t('eventAnalytics.status')}</TableHead>
+                    <TableHead>Transaction</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">Amount</TableHead>
+                    <TableHead className="text-right">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

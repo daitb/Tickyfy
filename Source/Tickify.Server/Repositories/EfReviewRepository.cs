@@ -11,17 +11,26 @@ public sealed class EfReviewRepository : IReviewRepository
     public EfReviewRepository(ApplicationDbContext db) => _db = db;
 
     public Task<Review?> GetByIdAsync(int id)
-        => _db.Reviews.FirstOrDefaultAsync(r => r.Id == id);
+        => _db.Reviews
+            .Include(r => r.User)
+            .Include(r => r.Event)
+            .FirstOrDefaultAsync(r => r.Id == id);
 
     public async Task<IEnumerable<Review>> GetByEventIdAsync(int eventId)
-        => await _db.Reviews.Where(r => r.EventId == eventId)
-                            .OrderByDescending(r => r.CreatedAt)
-                            .ToListAsync();
+        => await _db.Reviews
+            .Where(r => r.EventId == eventId)
+            .Include(r => r.User)
+            .Include(r => r.Event)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
 
     public async Task<IEnumerable<Review>> GetByUserIdAsync(int userId)
-        => await _db.Reviews.Where(r => r.UserId == userId)
-                            .OrderByDescending(r => r.CreatedAt)
-                            .ToListAsync();
+        => await _db.Reviews
+            .Where(r => r.UserId == userId)
+            .Include(r => r.User)
+            .Include(r => r.Event)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
 
     public async Task<Review> CreateAsync(Review r)
     {

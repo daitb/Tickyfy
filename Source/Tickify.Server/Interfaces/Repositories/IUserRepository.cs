@@ -19,4 +19,5 @@ public interface IUserRepository
     Task<OrganizerRequest?> GetPendingOrganizerRequestAsync(int userId);
     Task AddOrganizerRequestAsync(OrganizerRequest request);
     Task<List<User>> GetUsersByRoleAsync(string roleName);
+    Task<Organizer?> GetOrganizerByUserIdAsync(int userId);
 }

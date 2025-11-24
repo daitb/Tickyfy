@@ -21,6 +21,7 @@ export interface UserDto {
   phoneNumber?: string;
   profilePictureUrl?: string;
   isEmailVerified: boolean;
+  organizerId?: number;
 }
 
 // Backend actual response structure
@@ -49,7 +50,7 @@ class AuthService {
   async login(data: LoginDto): Promise<LoginResponse> {
     console.log("AuthService.login - Sending request:", data);
 
-    const response = await apiClient.post<LoginResponse>("/Auth/login", data);
+    const response = await apiClient.post<LoginResponse>("/auth/login", data);
 
     console.log("AuthService.login - Raw response:", response);
     console.log("AuthService.login - Response data:", response.data);
@@ -143,7 +144,7 @@ class AuthService {
    */
   async refreshToken(): Promise<string> {
     const response = await apiClient.post<{ token: string }>(
-      "/Auth/refresh-token"
+      "/auth/refresh-token"
     );
     const newToken = response.data.token;
 
@@ -165,7 +166,7 @@ class AuthService {
    * Request password reset
    */
   async forgotPassword(email: string): Promise<void> {
-    await apiClient.post("/Auth/forgot-password", { email });
+    await apiClient.post("/auth/forgot-password", { email });
   }
 
   /**
@@ -200,7 +201,7 @@ class AuthService {
       profilePicture: payload.picture
     };
 
-    const response = await apiClient.post<LoginResponse>("/Auth/external-login", externalLoginDto);
+    const response = await apiClient.post<LoginResponse>("/auth/external-login", externalLoginDto);
 
     console.log("AuthService.googleLogin - Response:", response.data);
 

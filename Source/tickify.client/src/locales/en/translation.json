@@ -551,6 +551,7 @@
   "admin": {
     "userManagement": "User Management",
     "users": "Users",
+    "payouts": "Payouts",
     "organizerRequests": "Organizer Requests",
     "userId": "User ID",
     "email": "Email",

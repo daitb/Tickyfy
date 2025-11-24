@@ -542,6 +542,7 @@
   "admin": {
     "userManagement": "Quản lý người dùng",
     "users": "Người dùng",
+    "payouts": "Thanh toán",
     "organizerRequests": "Yêu cầu trở thành nhà tổ chức",
     "userId": "ID người dùng",
     "email": "Email",

@@ -10,7 +10,7 @@ using QRCoder;
 
 namespace Tickify.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/tickets")]
 [ApiController]
 [Authorize]
 public class TicketController : ControllerBase
