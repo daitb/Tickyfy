@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from '../components/ui/dialog';
 import { Switch } from '../components/ui/switch';
+import { authService } from '../services/authService';
 
 interface PasswordChangeProps {
   onNavigate: (page: string) => void;
@@ -114,37 +115,50 @@ export function PasswordChange({ onNavigate }: PasswordChangeProps) {
   };
 
   const handleSubmit = async () => {
+    setCurrentPasswordError('');
+
     // Validate current password
     if (!currentPassword) {
-      setCurrentPasswordError('Current password is required');
-      return;
-    }
-
-    // Simulate checking current password
-    if (currentPassword !== 'demo123') {
-      setCurrentPasswordError('Incorrect password');
-      setAttempts(attempts + 1);
-      
-      if (attempts >= 2) {
-        // After 3 attempts
-        return;
-      }
+      setCurrentPasswordError(t('auth.currentPasswordRequired') || 'Current password is required');
       return;
     }
 
     // Validate new password
     if (!Object.values(requirements).every(Boolean)) {
+      setCurrentPasswordError(t('auth.passwordRequirementsError') || 'Please meet all password requirements');
       return;
     }
 
     if (newPassword !== confirmPassword) {
+      setCurrentPasswordError(t('auth.passwordMismatch') || 'Passwords do not match');
       return;
     }
 
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsSubmitting(false);
-    setShowSuccess(true);
+
+    try {
+      await authService.changePassword(currentPassword, newPassword, confirmPassword);
+      setShowSuccess(true);
+
+      // Optionally redirect after success
+      setTimeout(() => {
+        onNavigate('user-profile');
+      }, 3000);
+    } catch (err: any) {
+      console.error('Change password error:', err);
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message;
+      
+      if (errorMessage?.includes('incorrect') || errorMessage?.includes('wrong')) {
+        setCurrentPasswordError(t('auth.incorrectPassword') || 'Incorrect password');
+        setAttempts(attempts + 1);
+      } else {
+        setCurrentPasswordError(errorMessage || t('auth.changePasswordError') || 'Failed to change password');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isFormValid = 

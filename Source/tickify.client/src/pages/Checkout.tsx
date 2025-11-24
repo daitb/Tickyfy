@@ -146,7 +146,7 @@ export function Checkout({
       const ticketTypeId = extractTrailingNumber(firstItem.tierId);
 
       if (isNaN(eventId) || isNaN(ticketTypeId)) {
-        setError("Invalid event or ticket type ID");
+        setError(t('booking.checkout.invalidEventOrTicket'));
         return;
       }
 
@@ -188,14 +188,14 @@ export function Checkout({
         console.error("Payment intent creation error:", paymentErr);
         setError(
           paymentErr.response?.data?.message ||
-            "Failed to initiate payment. Please try again."
+            t('booking.checkout.paymentInitFailed')
         );
       }
     } catch (err: any) {
       console.error("Booking creation error:", err);
       setError(
         err.response?.data?.message ||
-          "Failed to create booking. Please try again."
+          t('booking.checkout.bookingCreateFailed')
       );
     } finally {
       setIsProcessing(false);
@@ -233,11 +233,11 @@ export function Checkout({
   };
 
   const getPaymentMethodDisplay = () => {
-    if (paymentMethod === "momo") return "MoMo E-Wallet";
-    if (paymentMethod === "vnpay") return "VNPay Gateway";
+    if (paymentMethod === "momo") return t('booking.checkout.momoWallet');
+    if (paymentMethod === "vnpay") return t('booking.checkout.vnpayGateway');
     if (paymentMethod === "credit-card")
       return `Card ending in ${paymentDetails?.number?.slice(-4) || "****"}`;
-    return "Not selected";
+    return t('booking.checkout.notSelected');
   };
 
   return (

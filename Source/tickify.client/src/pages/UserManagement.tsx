@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Badge } from "../components/ui/badge";
-import { Search, UserCog, CheckCircle, XCircle } from "lucide-react";
+import { Search, UserCog, CheckCircle, XCircle, Loader2, Ban, Trash2 } from "lucide-react";
+import { userService } from "../services/userService";
 import apiClient from "../services/apiClient";
 import { useTranslation } from "react-i18next";
 
@@ -26,7 +27,9 @@ interface User {
   userId: number;
   fullName: string;
   email: string;
+  phoneNumber?: string;
   role: string;
+  isActive: boolean;
   isEmailVerified: boolean;
   createdAt: string;
 }
@@ -58,33 +61,63 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"users" | "requests">("users");
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [pageNumber, searchTerm]);
 
   const fetchData = async () => {
     setIsLoading(true);
+    setError("");
     try {
       const [usersRes, requestsRes] = await Promise.all([
-        apiClient.get("/Admin/users"),
+        userService.getUsers(pageNumber, pageSize, searchTerm || undefined),
         apiClient.get("/Admin/organizer-requests"),
       ]);
-      setUsers(usersRes.data.data || []);
+      setUsers(usersRes.items || []);
+      setTotalPages(usersRes.totalPages);
       setOrganizerRequests(requestsRes.data.data || []);
-    } catch (error) {
-      console.error("Error fetching data:", error);
+    } catch (err: any) {
+      console.error("Error fetching data:", err);
+      setError(err.response?.data?.message || "Không thể tải dữ liệu");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRoleChange = async (userId: number, newRole: string) => {
+  const handleRoleChange = async (userId: number, roleId: number) => {
     try {
-      await apiClient.put(`/Admin/users/${userId}/role`, { role: newRole });
+      await userService.assignRole(userId, roleId);
       await fetchData();
     } catch (error) {
       console.error("Error updating role:", error);
+      setError("Không thể cập nhật vai trò");
+    }
+  };
+
+  const handleToggleActive = async (userId: number) => {
+    try {
+      await userService.toggleActiveStatus(userId);
+      await fetchData();
+    } catch (error) {
+      console.error("Error toggling active status:", error);
+      setError("Không thể thay đổi trạng thái");
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa người dùng này?')) return;
+    
+    try {
+      await userService.deleteUser(userId);
+      await fetchData();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      setError("Không thể xóa người dùng");
     }
   };
 

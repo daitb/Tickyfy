@@ -1,6 +1,7 @@
 import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import React from 'react';
 import type { EventPolicies } from '../types';
+import { useTranslation } from 'react-i18next';
 
 interface PolicyBlockProps {
   policies: EventPolicies;
@@ -8,13 +9,14 @@ interface PolicyBlockProps {
 }
 
 export function PolicyBlock({ policies, className = '' }: PolicyBlockProps) {
+  const { t } = useTranslation();
   return (
     <div className={`bg-blue-50 border border-blue-200 rounded-xl p-6 ${className}`}>
       <div className="flex items-start gap-3 mb-4">
         <AlertCircle className="text-blue-600 mt-0.5 flex-shrink-0" size={20} />
         <div>
-          <h4 className="text-blue-900 mb-1">Ticket Policies</h4>
-          <p className="text-sm text-blue-700">Please review before purchasing</p>
+          <h4 className="text-blue-900 mb-1">{t('policy.policy')}</h4>
+          <p className="text-sm text-blue-700">{t('policy.please')}</p>
         </div>
       </div>
       
@@ -27,7 +29,7 @@ export function PolicyBlock({ policies, className = '' }: PolicyBlockProps) {
           )}
           <div className="text-sm">
             <span className="text-neutral-900">
-              {policies.refundable ? 'Refundable' : 'Non-refundable'}
+              {policies.refundable ? t('policy.Refundable') : t('policy.Non-refundable')}
             </span>
             {policies.refundable && policies.refundDeadline && (
               <span className="text-neutral-600">
@@ -49,10 +51,10 @@ export function PolicyBlock({ policies, className = '' }: PolicyBlockProps) {
           )}
           <div className="text-sm">
             <span className="text-neutral-900">
-              {policies.transferable ? 'Transferable' : 'Non-transferable'}
+              {policies.transferable ? t('policy.Transferable') : t('policy.Non-transferable')}
             </span>
             <span className="text-neutral-600">
-              {' '}{policies.transferable ? 'tickets can be transferred to others' : 'tickets are bound to buyer'}
+              {' '}{policies.transferable ? t('policy.text1') : t('policy.text2')}
             </span>
           </div>
         </div>
@@ -62,7 +64,7 @@ export function PolicyBlock({ policies, className = '' }: PolicyBlockProps) {
         <div className="flex items-start gap-2">
           <AlertCircle className="text-blue-600 flex-shrink-0" size={16} />
           <p className="text-xs text-blue-700">
-            All tickets are official and verified. Please check your email for ticket delivery after purchase.
+            {t('policy.notify')}
           </p>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button';
 import { eventService } from '../services/eventService';
 import type { Category } from '../types';
 import { useTranslation } from 'react-i18next';
+import { mockEvents, categories as mockCategories } from '../mockData';
 
 interface HomeProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -17,31 +18,45 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
   const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
   const [events, setEvents] = useState<any[]>([]);
-  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<Category[]>(mockCategories);
   const [trendingEvents, setTrendingEvents] = useState<any[]>([]);
   const [specialEvents, setSpecialEvents] = useState<any[]>([]);
   const [upcomingEventsList, setUpcomingEventsList] = useState<any[]>([]);
 
   useEffect(() => {
-    // Fetch all events for categories and upcoming events
+    // Try to fetch from API first, fallback to mock data if failed
     Promise.all([
       eventService.getEvents(),
       eventService.getFeaturedEvents(4),
       eventService.getUpcomingEvents(3)
     ]).then(([allEvents, featured, upcoming]) => {
-      setEvents(allEvents || []);
-      const cats = Array.from(new Set((allEvents || []).map((e: any) => e.category).filter(Boolean)));
-      setAvailableCategories(cats);
-      setTrendingEvents(upcoming || []);
-      setSpecialEvents(featured || []);
-      setUpcomingEventsList(allEvents || []);
+      // If API returns data, use it
+      if (allEvents && allEvents.length > 0) {
+        setEvents(allEvents);
+        const cats = Array.from(new Set(allEvents.map((e: any) => e.category).filter(Boolean))) as Category[];
+        if (cats.length > 0) {
+          setAvailableCategories(cats);
+        }
+        setTrendingEvents(upcoming || []);
+        setSpecialEvents(featured || []);
+        setUpcomingEventsList(allEvents);
+      } else {
+        // Fallback to mock data
+        console.log('Using mock data');
+        setEvents(mockEvents);
+        setAvailableCategories(mockCategories);
+        setTrendingEvents(mockEvents.slice(0, 3));
+        setSpecialEvents(mockEvents.filter(e => e.status === 'published').slice(0, 4));
+        setUpcomingEventsList(mockEvents);
+      }
     }).catch((error) => {
-      console.error('Error loading events:', error);
-      setEvents([]);
-      setAvailableCategories([]);
-      setTrendingEvents([]);
-      setSpecialEvents([]);
-      setUpcomingEventsList([]);
+      console.error('Error loading events, using mock data:', error);
+      // Use mock data on error
+      setEvents(mockEvents);
+      setAvailableCategories(mockCategories);
+      setTrendingEvents(mockEvents.slice(0, 3));
+      setSpecialEvents(mockEvents.filter(e => e.status === 'published').slice(0, 4));
+      setUpcomingEventsList(mockEvents);
     });
   }, []);
 
