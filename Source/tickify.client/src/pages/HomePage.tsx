@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { HeroSlider } from '../components/HeroSlider';
 import { DateFilterDropdown } from '../components/DateFilterDropdown';
 import { CategoryFilterDropdown } from '../components/CategoryFilterDropdown';
@@ -87,6 +88,7 @@ const mockEvents = [
 ];
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const [selectedDate, setSelectedDate] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const navigate = useNavigate();
@@ -109,7 +111,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-[#00C16A]" />
-              <span className="text-gray-900">Filter Events:</span>
+              <span className="text-gray-900">{t('pages.homePage.filterEvents')}</span>
             </div>
             <div className="flex flex-wrap gap-3">
               <DateFilterDropdown
@@ -126,7 +128,7 @@ export default function HomePage() {
               />
             </div>
             <div className="text-sm text-gray-600 sm:ml-auto">
-              Showing {filteredEvents.length} events
+              {t('pages.homePage.showing')} {filteredEvents.length} {t('pages.homePage.events')}
             </div>
           </div>
         </div>
@@ -139,7 +141,7 @@ export default function HomePage() {
           <section className="mb-16">
             <div className="flex items-center gap-2 mb-6">
               <Star className="w-6 h-6 text-[#00C16A]" />
-              <h2 className="text-2xl text-gray-900">Featured Events</h2>
+              <h2 className="text-2xl text-gray-900">{t('pages.homePage.featuredEvents')}</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredEvents.map(event => (
@@ -151,7 +153,7 @@ export default function HomePage() {
 
         {/* All Events */}
         <section>
-          <h2 className="text-2xl text-gray-900 mb-6">All Events</h2>
+          <h2 className="text-2xl text-gray-900 mb-6">{t('pages.homePage.allEvents')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredEvents.map(event => (
               <EventCard key={event.id} event={event} onClick={() => navigate(`/event/${event.id}`)} />
@@ -160,7 +162,7 @@ export default function HomePage() {
 
           {filteredEvents.length === 0 && (
             <div className="text-center py-16">
-              <p className="text-gray-500">No events found matching your filters.</p>
+              <p className="text-gray-500">{t('pages.homePage.noEventsFound')}</p>
             </div>
           )}
         </section>

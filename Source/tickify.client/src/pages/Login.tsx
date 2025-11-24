@@ -6,7 +6,6 @@ import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { Separator } from "../components/ui/separator";
 import { authService } from "../services/authService";
-import { useTranslation } from "react-i18next";
 
 // Declare Google types
 declare global {
@@ -28,7 +27,6 @@ interface LoginProps {
 }
 
 export function Login({ onNavigate }: LoginProps) {
-  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -181,9 +179,9 @@ export function Login({ onNavigate }: LoginProps) {
           <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 md:p-8">
             {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-neutral-900 mb-2">{t('auth.login')}</h1>
+              <h1 className="text-neutral-900 mb-2">Đăng nhập</h1>
               <p className="text-sm text-neutral-600">
-                {t('auth.loginSubtitle', 'Sign in to your account to continue')}
+                Đăng nhập vào tài khoản của bạn để tiếp tục
               </p>
             </div>
 
@@ -228,7 +226,7 @@ export function Login({ onNavigate }: LoginProps) {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">{t('auth.email')}</Label>
+                <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
@@ -237,7 +235,7 @@ export function Login({ onNavigate }: LoginProps) {
                   <Input
                     id="email"
                     type="email"
-                    placeholder={t('auth.emailPlaceholder', 'Enter your email')}
+                    placeholder="Nhập email của bạn"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
@@ -247,7 +245,7 @@ export function Login({ onNavigate }: LoginProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">{t('auth.password')}</Label>
+                <Label htmlFor="password">Mật khẩu</Label>
                 <div className="relative">
                   <Lock
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
@@ -256,7 +254,7 @@ export function Login({ onNavigate }: LoginProps) {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder={t('auth.passwordPlaceholder', 'Enter your password')}
+                    placeholder="Nhập mật khẩu của bạn"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10"
@@ -285,7 +283,7 @@ export function Login({ onNavigate }: LoginProps) {
                     htmlFor="remember"
                     className="text-sm text-neutral-700 cursor-pointer"
                   >
-                    {t('auth.rememberMe', 'Remember me')}
+                    Ghi nhớ đăng nhập
                   </label>
                 </div>
                 <button
@@ -293,7 +291,7 @@ export function Login({ onNavigate }: LoginProps) {
                   onClick={() => onNavigate("forgot-password")}
                   className="text-sm text-orange-500 hover:text-orange-600 transition-colors"
                 >
-                  {t('auth.forgotPassword')}
+                  Quên mật khẩu?
                 </button>
               </div>
 
@@ -302,7 +300,7 @@ export function Login({ onNavigate }: LoginProps) {
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                 disabled={isLoading}
               >
-                {isLoading ? t('auth.signingIn', 'Signing in...') : t('auth.signIn')}
+                {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
               </Button>
             </form>
           </div>
@@ -310,12 +308,12 @@ export function Login({ onNavigate }: LoginProps) {
           {/* Sign Up Link */}
           <div className="text-center mt-6">
             <p className="text-sm text-neutral-600">
-              {t('auth.dontHaveAccount')}{" "}
+              Chưa có tài khoản?{" "}
               <button
                 onClick={() => onNavigate("register")}
                 className="text-orange-500 hover:text-orange-600 transition-colors"
               >
-                {t('auth.signUp')}
+                Đăng ký ngay
               </button>
             </p>
           </div>

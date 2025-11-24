@@ -116,8 +116,8 @@ export function Waitlist({ waitlistEntries, onNavigate }: WaitlistProps) {
         <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Page Header */}
           <div className="mb-8">
-            <h1 className="mb-2">My Waitlist</h1>
-            <p className="text-neutral-600">You'll be notified when tickets become available</p>
+            <h1 className="mb-2">{t('pages.waitlist.title')}</h1>
+            <p className="text-neutral-600">{t('pages.waitlist.subtitle')}</p>
           </div>
 
           {/* Empty State */}
@@ -125,41 +125,41 @@ export function Waitlist({ waitlistEntries, onNavigate }: WaitlistProps) {
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-neutral-100 mb-6">
               <Clock size={48} className="text-neutral-400" strokeWidth={1.5} />
             </div>
-            <h2 className="text-neutral-900 mb-2">You're not on any waitlists</h2>
-            <p className="text-neutral-600 mb-6">Join a waitlist to get notified when tickets become available</p>
+            <h2 className="text-neutral-900 mb-2">{t('pages.waitlist.empty')}</h2>
+            <p className="text-neutral-600 mb-6">{t('pages.waitlist.emptyMessage')}</p>
             <Button onClick={() => onNavigate('listing')}>
-              Browse Sold Out Events
+              {t('pages.waitlist.browseSoldOut')}
             </Button>
           </div>
 
           {/* Info Sidebar */}
           <Card className="max-w-2xl mx-auto mt-12 bg-blue-50 border-blue-200">
             <CardContent className="p-6">
-              <h3 className="text-blue-900 mb-4">How Waitlist Works</h3>
+              <h3 className="text-blue-900 mb-4">{t('pages.waitlist.howItWorks')}</h3>
               <div className="space-y-3 text-blue-800">
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center text-sm font-medium">
                     1
                   </div>
-                  <p>Join the waitlist for sold-out events</p>
+                  <p>{t('pages.waitlist.step1')}</p>
                 </div>
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center text-sm font-medium">
                     2
                   </div>
-                  <p>Get notified when tickets become available</p>
+                  <p>{t('pages.waitlist.step2')}</p>
                 </div>
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center text-sm font-medium">
                     3
                   </div>
-                  <p>Reserve your spot within 24 hours</p>
+                  <p>{t('pages.waitlist.step3')}</p>
                 </div>
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-900 flex items-center justify-center text-sm font-medium">
                     4
                   </div>
-                  <p>First come, first served basis</p>
+                  <p>{t('pages.waitlist.step4')}</p>
                 </div>
               </div>
             </CardContent>
@@ -176,8 +176,8 @@ export function Waitlist({ waitlistEntries, onNavigate }: WaitlistProps) {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="mb-2">My Waitlist</h1>
-          <p className="text-neutral-600">You'll be notified when tickets become available</p>
+          <h1 className="mb-2">{t('pages.waitlist.title')}</h1>
+          <p className="text-neutral-600">{t('pages.waitlist.subtitle')}</p>
         </div>
 
         {/* Notification Banner */}
@@ -185,13 +185,13 @@ export function Waitlist({ waitlistEntries, onNavigate }: WaitlistProps) {
           <Alert className="mb-8 bg-green-50 border-green-200">
             <PartyPopper className="h-5 w-5 text-green-600" />
             <AlertDescription className="text-green-800 ml-2">
-              <strong>🎉 Good news!</strong> Tickets are now available for {notifiedEntries.length} {notifiedEntries.length === 1 ? 'event' : 'events'}
+              <strong>{t('pages.waitlist.goodNews')}</strong> {t('pages.waitlist.ticketsAvailable')} {notifiedEntries.length} {notifiedEntries.length === 1 ? t('pages.waitlist.event') : t('pages.waitlist.events')}
               <Button 
                 variant="link" 
                 className="ml-2 text-green-700 p-0 h-auto"
                 onClick={() => setActiveTab('notified')}
               >
-                View Opportunities
+                {t('pages.waitlist.viewOpportunities')}
               </Button>
             </AlertDescription>
           </Alert>
@@ -201,10 +201,10 @@ export function Waitlist({ waitlistEntries, onNavigate }: WaitlistProps) {
         <div className="mb-8">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="active">Active ({activeEntries.length})</TabsTrigger>
-              <TabsTrigger value="notified">Notified ({notifiedEntries.length})</TabsTrigger>
-              <TabsTrigger value="expired">Expired ({expiredEntries.length})</TabsTrigger>
+              <TabsTrigger value="all">{t('pages.waitlist.all')}</TabsTrigger>
+              <TabsTrigger value="active">{t('pages.waitlist.active')} ({activeEntries.length})</TabsTrigger>
+              <TabsTrigger value="notified">{t('pages.waitlist.notified')} ({notifiedEntries.length})</TabsTrigger>
+              <TabsTrigger value="expired">{t('pages.waitlist.expired')} ({expiredEntries.length})</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

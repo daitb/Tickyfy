@@ -7,6 +7,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
+import { authService } from '../services/authService';
 
 interface ResetPasswordProps {
   token?: string;
@@ -15,6 +16,8 @@ interface ResetPasswordProps {
 
 export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
   const { t } = useTranslation();
+  const [email, setEmail] = useState('');
+  const [urlToken, setUrlToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -23,6 +26,15 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
   const [tokenStatus, setTokenStatus] = useState<'validating' | 'valid' | 'invalid'>('validating');
   const [resetSuccess, setResetSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  // Get token and email from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenParam = params.get('token') || token || '';
+    const emailParam = params.get('email') || '';
+    setUrlToken(tokenParam);
+    setEmail(emailParam);
+  }, [token]);
 
   // Password requirements state
   const [requirements, setRequirements] = useState({
@@ -38,13 +50,15 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
   // Validate token on mount
   useEffect(() => {
     const validateToken = async () => {
-      // Simulate API call
+      // Simple validation - check if token exists
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      // In real app, validate token with API
-      setTokenStatus(token ? 'valid' : 'invalid');
+      setTokenStatus(urlToken ? 'valid' : 'invalid');
     };
-    validateToken();
-  }, [token]);
+    
+    if (urlToken) {
+      validateToken();
+    }
+  }, [urlToken]);
 
   // Check password requirements
   useEffect(() => {
@@ -98,27 +112,41 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
 
     // Validation
     if (!Object.values(requirements).every(Boolean)) {
-      setError('Please meet all password requirements');
+      setError(t('auth.passwordRequirementsError') || 'Please meet all password requirements');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth.passwordMismatch') || 'Passwords do not match');
+      return;
+    }
+
+    if (!email) {
+      setError('Email is required');
       return;
     }
 
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      await authService.resetPassword(email, urlToken, newPassword, confirmPassword);
+      setResetSuccess(true);
 
-    setIsLoading(false);
-    setResetSuccess(true);
-
-    // Redirect to login after 3 seconds
-    setTimeout(() => {
-      onNavigate('login');
-    }, 3000);
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        onNavigate('login');
+      }, 3000);
+    } catch (err: any) {
+      console.error('Reset password error:', err);
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message || 
+                          t('auth.resetPasswordError') || 
+                          'Failed to reset password. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (tokenStatus === 'validating') {

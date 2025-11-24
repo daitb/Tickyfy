@@ -10,7 +10,7 @@ export interface RegisterDto {
   fullName: string;
   email: string;
   password: string;
-  role: "User" | "Organizer";
+  confirmPassword: string;
 }
 
 export interface UserDto {
@@ -155,8 +155,11 @@ class AuthService {
   /**
    * Verify email with token
    */
-  async verifyEmail(token: string): Promise<void> {
-    await apiClient.post("/auth/verify-email", { token });
+  async verifyEmail(token: string, email?: string): Promise<void> {
+    // Backend expects { email, token }
+    // If email is not provided, try to get it from user or let backend handle it
+    const payload = email ? { email, token } : { token, email: '' };
+    await apiClient.post("/Auth/verify-email", payload);
   }
 
   /**
@@ -169,8 +172,15 @@ class AuthService {
   /**
    * Reset password with token
    */
-  async resetPassword(token: string, newPassword: string): Promise<void> {
-    await apiClient.post("/auth/reset-password", { token, newPassword });
+  async resetPassword(email: string, token: string, newPassword: string, confirmPassword: string): Promise<void> {
+    await apiClient.post("/Auth/reset-password", { email, token, newPassword, confirmPassword });
+  }
+
+  /**
+   * Change password for authenticated user
+   */
+  async changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<void> {
+    await apiClient.post("/Auth/change-password", { currentPassword, newPassword, confirmPassword });
   }
 
     /**
