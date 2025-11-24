@@ -8,7 +8,7 @@ using Tickify.Services.Auth;
 namespace Tickify.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/auth")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;

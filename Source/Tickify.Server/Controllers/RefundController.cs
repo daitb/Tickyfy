@@ -10,7 +10,7 @@ using AutoMapper;
 namespace Tickify.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/refunds")]
 public sealed class RefundController : ControllerBase
 {
     private readonly IRefundService _service;

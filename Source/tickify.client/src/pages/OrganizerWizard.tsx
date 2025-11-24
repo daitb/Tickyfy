@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Upload, Plus, Trash2, ArrowLeft, Tag } from "lucide-react";
+import { Upload, Plus, Trash2, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -14,9 +14,10 @@ import {
 } from "../components/ui/select";
 import { Switch } from "../components/ui/switch";
 import { ProgressSteps } from "../components/ProgressSteps";
-import { categories, cities } from "../mockData";
-import { promoCodeService } from "../services/promoCodeService";
-import type { PromoCode } from "../services/promoCodeService";
+import { cities } from "../mockData";
+import { eventService, type CreateEventDto } from "../services/eventService";
+import { categoryService, type CategoryDto } from "../services/categoryService";
+import { authService } from "../services/authService";
 import type { Category, Event, TicketTier } from "../types";
 
 interface OrganizerWizardProps {
@@ -26,6 +27,8 @@ interface OrganizerWizardProps {
 export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [eventData, setEventData] = useState<Partial<Event>>({
     category: "Music",
     city: cities[0],
@@ -41,10 +44,29 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     { name: "", price: 0, total: 100, description: "" },
   ]);
 
-  const [availablePromoCodes, setAvailablePromoCodes] = useState<PromoCode[]>(
-    []
-  );
-  const [selectedPromoCodes, setSelectedPromoCodes] = useState<number[]>([]);
+  // Get current user
+  const user = authService.getCurrentUser();
+  const organizerId = user?.organizerId || 1;
+
+  // Load categories on mount
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const cats = await categoryService.getCategories();
+        setCategories(cats);
+        // Set first category as default if available
+        if (cats.length > 0 && !eventData.category) {
+          setEventData((prev) => ({
+            ...prev,
+            category: cats[0].categoryName as any,
+          }));
+        }
+      } catch (error) {
+        console.error("Error loading categories:", error);
+      }
+    };
+    loadCategories();
+  }, []);
 
   const steps = [
     { number: 1, label: "Basics" },
@@ -109,16 +131,103 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     }
   };
 
-  const handlePublish = () => {
-    // In a real app, this would save to backend
-    const finalEventData = {
-      ...eventData,
-      ticketTiers: ticketTiers,
-      promoCodes: selectedPromoCodes,
-    };
-    console.log("Publishing event:", finalEventData);
-    alert("Event published successfully!");
-    onNavigate("organizer-dashboard");
+  const handlePublish = async () => {
+    try {
+      setIsPublishing(true);
+
+      // Validate required fields
+      if (
+        !eventData.title ||
+        !eventData.description ||
+        !eventData.venue ||
+        !eventData.date ||
+        !eventData.time
+      ) {
+        alert("Please fill in all required fields");
+        return;
+      }
+
+      // Validate field lengths
+      if (eventData.title.length < 5) {
+        alert("Event title must be at least 5 characters long");
+        return;
+      }
+      if (eventData.description.length < 50) {
+        alert("Event description must be at least 50 characters long");
+        return;
+      }
+      if (eventData.venue.length < 5) {
+        alert("Venue must be at least 5 characters long");
+        return;
+      }
+
+      // Combine date and time
+      const eventDate = eventData.date || "";
+      const eventTime = eventData.time || "00:00";
+      const startDateTime = `${eventDate}T${eventTime}:00`;
+      const endDateTime = `${eventDate}T23:59:00`; // Default end time
+
+      // Map category name to categoryId
+      const selectedCategory = categories.find(
+        (c) => c.categoryName === eventData.category
+      );
+      const categoryId = selectedCategory?.categoryId || 1; // Fallback to 1 if not found
+
+      // Prepare event data
+      const createEventDto: CreateEventDto = {
+        organizerId: organizerId,
+        categoryId: categoryId,
+        title: eventData.title,
+        description: eventData.description,
+        venue: eventData.venue,
+        imageUrl: eventData.image,
+        startDate: startDateTime,
+        endDate: endDateTime,
+        totalSeats: ticketTiers.reduce(
+          (sum, tier) => sum + (tier.total || 0),
+          0
+        ),
+        isFeatured: false,
+        ticketTypes: ticketTiers.map((tier) => ({
+          typeName: tier.name || "General",
+          price: tier.price || 0,
+          quantity: tier.total || 0,
+          description: tier.description,
+        })),
+      };
+
+      console.log("Creating event with data:", createEventDto);
+
+      // POST /api/events - Create event
+      const createdEvent = await eventService.createEvent(createEventDto);
+
+      alert(
+        `Event "${createdEvent.title}" created successfully! It will be reviewed by admin.`
+      );
+      onNavigate("organizer-dashboard");
+    } catch (error: any) {
+      console.error("Error creating event:", error);
+      console.error("Error response data:", error.response?.data);
+
+      // Extract detailed error messages from backend validation
+      let errorMessage = "Failed to create event. Please check your inputs.";
+
+      if (error.response?.data) {
+        const data = error.response.data;
+        // If backend returns validation errors array
+        if (data.errors && Array.isArray(data.errors)) {
+          errorMessage = "Validation errors:\n" + data.errors.join("\n");
+        } else if (data.message) {
+          errorMessage = data.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      alert(errorMessage);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   return (
@@ -182,8 +291,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
+                      <SelectItem key={cat.categoryId} value={cat.categoryName}>
+                        {cat.categoryName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -191,16 +300,21 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
               </div>
 
               <div>
-                <Label htmlFor="description">Description *</Label>
+                <Label htmlFor="description">
+                  Description * (minimum 50 characters)
+                </Label>
                 <Textarea
                   id="description"
-                  placeholder="Describe your event..."
+                  placeholder="Describe your event in detail... (minimum 50 characters required)"
                   value={eventData.description || ""}
                   onChange={(e) =>
                     handleInputChange("description", e.target.value)
                   }
                   className="mt-1 min-h-[120px]"
                 />
+                <p className="text-xs text-neutral-500 mt-1">
+                  {eventData.description?.length || 0} / 50 characters minimum
+                </p>
               </div>
 
               <div>
@@ -688,8 +802,16 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
               <Button
                 onClick={handlePublish}
                 className="flex-1 bg-orange-500 hover:bg-orange-600"
+                disabled={isPublishing}
               >
-                Publish Event
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2" size={16} />
+                    Publishing...
+                  </>
+                ) : (
+                  "Publish Event"
+                )}
               </Button>
             )}
           </div>

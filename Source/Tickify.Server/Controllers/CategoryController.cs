@@ -8,7 +8,7 @@ namespace Tickify.Controllers;
 
 /// Category Controller - Manages event categories
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/categories")]
 [Produces("application/json")]
 public class CategoryController : ControllerBase
 {

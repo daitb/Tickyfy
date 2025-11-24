@@ -27,7 +27,7 @@ public class JwtService : IJwtService
         _expiryMinutes = int.Parse(_configuration["JwtSettings:ExpiryInMinutes"] ?? "60");
     }
 
-    public string GenerateAccessToken(int userId, string email, IList<string> roles)
+    public string GenerateAccessToken(int userId, string email, IList<string> roles, int? organizerId = null)
     {
         var claims = new List<Claim>
         {
@@ -36,6 +36,12 @@ public class JwtService : IJwtService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), 
             new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())
         };
+
+        // Add organizerId claim if user is an organizer
+        if (organizerId.HasValue && organizerId.Value > 0)
+        {
+            claims.Add(new Claim("organizerId", organizerId.Value.ToString()));
+        }
 
         foreach (var role in roles)
         {

@@ -10,7 +10,7 @@ using Tickify.Models;
 
 namespace Tickify.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/bookings")]
 [ApiController]
 [Authorize]
 public class BookingController : ControllerBase

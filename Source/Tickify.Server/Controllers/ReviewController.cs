@@ -10,7 +10,7 @@ using AutoMapper;
 namespace Tickify.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/reviews")]
 public sealed class ReviewController : ControllerBase
 {
     private readonly IReviewService _service;

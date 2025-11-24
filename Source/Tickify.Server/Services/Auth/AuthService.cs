@@ -370,7 +370,18 @@ public class AuthService : IAuthService
 
         var roles = user.UserRoles?.Select(ur => ur.Role.Name).ToList() ?? new List<string>();
 
-        var accessToken = _jwtService.GenerateAccessToken(user.Id, user.Email, roles);
+        // Get organizerId if user is an organizer
+        int? organizerId = null;
+        if (roles.Contains("Organizer"))
+        {
+            var organizer = await _userRepository.GetOrganizerByUserIdAsync(user.Id);
+            if (organizer != null)
+            {
+                organizerId = organizer.Id;
+            }
+        }
+
+        var accessToken = _jwtService.GenerateAccessToken(user.Id, user.Email, roles, organizerId);
 
         var refreshToken = _jwtService.GenerateRefreshToken();
 
