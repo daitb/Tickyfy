@@ -7,7 +7,7 @@ using Tickify.Interfaces.Services;
 namespace Tickify.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/admin")]
 [Authorize(Roles = "Admin")]
 public class AdminController : ControllerBase
 {

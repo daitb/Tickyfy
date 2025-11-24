@@ -13,7 +13,7 @@ using AutoMapper;
 namespace Tickify.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/payments")]
 public sealed class PaymentController : ControllerBase
 {
     private readonly IPaymentService _payments;

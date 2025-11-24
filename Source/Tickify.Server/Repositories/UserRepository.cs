@@ -136,4 +136,10 @@ public class UserRepository : IUserRepository
             .Where(u => u.UserRoles.Any(ur => ur.Role.Name == roleName))
             .ToListAsync();
     }
+
+    public async Task<Organizer?> GetOrganizerByUserIdAsync(int userId)
+    {
+        return await _context.Organizers
+            .FirstOrDefaultAsync(o => o.UserId == userId);
+    }
 }
