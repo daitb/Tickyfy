@@ -28,7 +28,17 @@ public class PromoCodeController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ApiResponse<IEnumerable<PromoCodeDto>>>> GetAll()
     {
-        var promoCodes = await _promoCodeService.GetActivePromoCodesAsync();
+        // Get current user ID and role from claims
+        var userIdClaim = User.FindFirst("userId") ?? User.FindFirst("sub") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+        var userRoleClaim = User.FindFirst(ClaimTypes.Role) ?? User.FindFirst("role");
+        
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
+        {
+            return BadRequest(ApiResponse<IEnumerable<PromoCodeDto>>.FailureResponse("Invalid user authentication"));
+        }
+
+        var userRole = userRoleClaim?.Value ?? "User";
+        var promoCodes = await _promoCodeService.GetAllPromoCodesForUserAsync(userId, userRole);
         return Ok(ApiResponse<IEnumerable<PromoCodeDto>>.SuccessResponse(promoCodes, "Promo codes retrieved successfully"));
     }
 

@@ -8,6 +8,8 @@ public interface IPromoCodeRepository
     Task<PromoCode?> GetByCodeAsync(string code);
     Task<IEnumerable<PromoCode>> GetByEventIdAsync(int eventId);
     Task<IEnumerable<PromoCode>> GetActivePromoCodesAsync();
+    Task<IEnumerable<PromoCode>> GetAllAsync();
+    Task<IEnumerable<PromoCode>> GetByOrganizerIdAsync(int organizerId);
     Task<PromoCode> CreateAsync(PromoCode promoCode);
     Task<PromoCode> UpdateAsync(PromoCode promoCode);
     Task<bool> DeleteAsync(int id);

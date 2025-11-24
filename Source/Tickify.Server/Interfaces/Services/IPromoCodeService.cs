@@ -8,6 +8,7 @@ public interface IPromoCodeService
     Task<PromoCodeDto> GetByCodeAsync(string code);
     Task<IEnumerable<PromoCodeDto>> GetByEventIdAsync(int eventId);
     Task<IEnumerable<PromoCodeDto>> GetActivePromoCodesAsync();
+    Task<IEnumerable<PromoCodeDto>> GetAllPromoCodesForUserAsync(int userId, string userRole);
     Task<PromoCodeDto> ValidatePromoCodeAsync(ValidatePromoCodeDto validateDto);
     Task<decimal> CalculateDiscountAsync(string promoCode, int eventId, decimal orderTotal);
     Task<bool> ApplyPromoCodeAsync(int promoCodeId);
