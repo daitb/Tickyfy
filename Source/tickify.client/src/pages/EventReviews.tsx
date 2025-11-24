@@ -207,7 +207,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
             className="mb-4"
           >
             <ArrowLeft size={18} className="mr-2" />
-            Back to Event
+            {t('eventReviews.backToEvent')}
           </Button>
 
           <Card>
@@ -231,7 +231,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                     onClick={() => onNavigate('event-detail', event.id)}
                     className="p-0 h-auto text-purple-600 mt-2"
                   >
-                    View Event Details →
+                    {t('eventReviews.viewEventDetails')} →
                   </Button>
                 </div>
               </div>
@@ -247,9 +247,9 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
               <div className="md:col-span-2 text-center md:text-left">
                 <div className="text-6xl mb-2">{averageRating.toFixed(1)}</div>
                 {renderStars(Math.round(averageRating), 'lg')}
-                <p className="text-neutral-600 mt-2">Based on {totalReviews} reviews</p>
-                <Badge className="bg-green-100 text-green-700 mt-2">Excellent</Badge>
-                <p className="text-xs text-neutral-500 mt-2">Updated today</p>
+                <p className="text-neutral-600 mt-2">{t('eventReviews.basedOn')} {totalReviews} {t('eventReviews.reviewsCount')}</p>
+                <Badge className="bg-green-100 text-green-700 mt-2">{t('eventReviews.excellent')}</Badge>
+                <p className="text-xs text-neutral-500 mt-2">{t('eventReviews.updatedToday')}</p>
               </div>
 
               {/* Right: Rating Distribution */}
@@ -275,22 +275,22 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
             {/* Category Ratings */}
             <div className="mt-6 pt-6 border-t grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <div className="text-sm text-neutral-600 mb-1">Organization</div>
+                <div className="text-sm text-neutral-600 mb-1">{t('eventReviews.organization')}</div>
                 {renderStars(5, 'sm')}
                 <div className="text-sm mt-1">4.5</div>
               </div>
               <div>
-                <div className="text-sm text-neutral-600 mb-1">Venue</div>
+                <div className="text-sm text-neutral-600 mb-1">{t('eventReviews.venue')}</div>
                 {renderStars(5, 'sm')}
-                <div className="text-sm mt-1">4.8</div>
+                <div className="text-sm mt-1">4.7</div>
               </div>
               <div>
-                <div className="text-sm text-neutral-600 mb-1">Value</div>
+                <div className="text-sm text-neutral-600 mb-1">{t('eventReviews.value')}</div>
                 {renderStars(4, 'sm')}
                 <div className="text-sm mt-1">4.3</div>
               </div>
               <div>
-                <div className="text-sm text-neutral-600 mb-1">Entertainment</div>
+                <div className="text-sm text-neutral-600 mb-1">{t('eventReviews.entertainment')}</div>
                 {renderStars(5, 'sm')}
                 <div className="text-sm mt-1">5.0</div>
               </div>
@@ -307,15 +307,15 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                   <AvatarFallback className="bg-purple-100 text-purple-600">U</AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-neutral-900 mb-1">Share Your Experience</h3>
-                  <p className="text-sm text-neutral-600">You attended this event. Write a review!</p>
+                  <h3 className="text-neutral-900 mb-1">{t('eventReviews.shareExperience')}</h3>
+                  <p className="text-sm text-neutral-600">{t('eventReviews.writeReviewCTA')}</p>
                 </div>
               </div>
               <Button
                 onClick={() => onNavigate('review-submission', event.id)}
                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
               >
-                Write Review
+                {t('eventReviews.writeReview')}
               </Button>
             </div>
           </CardContent>
@@ -330,7 +330,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search reviews..."
+                placeholder={t('eventReviews.searchReviews')}
                 className="pl-10"
               />
             </div>
@@ -339,10 +339,10 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="recent">Most Recent</SelectItem>
-                <SelectItem value="helpful">Most Helpful</SelectItem>
-                <SelectItem value="highest">Highest Rated</SelectItem>
-                <SelectItem value="lowest">Lowest Rated</SelectItem>
+                <SelectItem value="recent">{t('eventReviews.mostRecent')}</SelectItem>
+                <SelectItem value="helpful">{t('eventReviews.mostHelpful')}</SelectItem>
+                <SelectItem value="highest">{t('eventReviews.highestRated')}</SelectItem>
+                <SelectItem value="lowest">{t('eventReviews.lowestRated')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -356,7 +356,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
               className={showVerifiedOnly ? 'bg-green-600 hover:bg-green-700' : ''}
             >
               <CheckCircle size={14} className="mr-2" />
-              Verified Only
+              {t('eventReviews.verifiedOnly')}
             </Button>
             <Button
               variant={showPhotosOnly ? 'default' : 'outline'}
@@ -365,18 +365,18 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
               className={showPhotosOnly ? 'bg-purple-600 hover:bg-purple-700' : ''}
             >
               <Camera size={14} className="mr-2" />
-              With Photos
+              {t('eventReviews.withPhotos')}
             </Button>
             <Select value={filterRating} onValueChange={setFilterRating}>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="All Ratings" />
+                <SelectValue placeholder={t('eventReviews.allRatings')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Ratings</SelectItem>
-                <SelectItem value="5">5 stars only</SelectItem>
-                <SelectItem value="4">4-5 stars</SelectItem>
-                <SelectItem value="3">3+ stars</SelectItem>
-                <SelectItem value="below3">Below 3 stars</SelectItem>
+                <SelectItem value="all">{t('eventReviews.allRatings')}</SelectItem>
+                <SelectItem value="5">{t('eventReviews.fiveStarsOnly')}</SelectItem>
+                <SelectItem value="4">{t('eventReviews.fourFiveStars')}</SelectItem>
+                <SelectItem value="3">{t('eventReviews.threePlusStars')}</SelectItem>
+                <SelectItem value="below3">{t('eventReviews.belowThreeStars')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -385,7 +385,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
         {/* Reviews List */}
         <div className="space-y-4">
           <div className="text-sm text-neutral-600 mb-4">
-            Showing 1-{mockReviews.length} of {totalReviews} reviews
+            {t('eventReviews.showing')} 1-{mockReviews.length} {t('eventReviews.of')} {totalReviews} {t('eventReviews.reviewsCount')}
           </div>
 
           {mockReviews.map((review) => (
@@ -409,12 +409,12 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                         {review.isVerified && (
                           <Badge className="bg-green-100 text-green-700 text-xs">
                             <CheckCircle size={12} className="mr-1" />
-                            Verified
+                            {t('eventReviews.verified')}
                           </Badge>
                         )}
                       </div>
                       <div className="text-sm text-neutral-500">{review.reviewDate}</div>
-                      <div className="text-xs text-neutral-500">Attended on {review.attendedDate}</div>
+                      <div className="text-xs text-neutral-500">{t('eventReviews.attendedOn')} {review.attendedDate}</div>
                     </div>
                   </div>
                   <div className="text-right">
@@ -437,7 +437,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                       onClick={() => toggleExpanded(review.id)}
                       className="text-purple-600 hover:text-purple-700 text-sm mt-1"
                     >
-                      {expandedReviews.has(review.id) ? 'Show less' : 'Read more'}
+                      {expandedReviews.has(review.id) ? t('eventReviews.showLess') : t('eventReviews.readMore')}
                     </button>
                   )}
                 </div>
@@ -446,24 +446,24 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                 {review.categoryRatings && (
                   <details className="mb-4">
                     <summary className="cursor-pointer text-sm text-neutral-600 hover:text-neutral-900 flex items-center gap-1">
-                      Category Ratings
-                      <ChevronDown size={14} />
+                      {t('eventReviews.categoryRatings')}
+                      <ChevronDown size={18} />
                     </summary>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 ml-4">
                       <div className="text-sm">
-                        <div className="text-neutral-600">Organization</div>
+                        <div className="text-neutral-600">{t('eventReviews.organization')}</div>
                         {renderStars(review.categoryRatings.organization, 'sm')}
                       </div>
                       <div className="text-sm">
-                        <div className="text-neutral-600">Venue</div>
+                        <div className="text-neutral-600">{t('eventReviews.venue')}</div>
                         {renderStars(review.categoryRatings.venue, 'sm')}
                       </div>
                       <div className="text-sm">
-                        <div className="text-neutral-600">Value</div>
+                        <div className="text-neutral-600">{t('eventReviews.value')}</div>
                         {renderStars(review.categoryRatings.value, 'sm')}
                       </div>
                       <div className="text-sm">
-                        <div className="text-neutral-600">Entertainment</div>
+                        <div className="text-neutral-600">{t('eventReviews.entertainment')}</div>
                         {renderStars(review.categoryRatings.entertainment, 'sm')}
                       </div>
                     </div>
@@ -492,7 +492,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
 
                 {/* Footer */}
                 <div className="flex items-center gap-4 pt-4 border-t">
-                  <span className="text-sm text-neutral-600">Was this helpful?</span>
+                  <span className="text-sm text-neutral-600">{t('eventReviews.wasHelpful')}</span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -518,7 +518,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                     className="ml-auto"
                   >
                     <Flag size={14} className="mr-1" />
-                    Report
+                    {t('eventReviews.report')}
                   </Button>
                 </div>
 
@@ -526,7 +526,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                 {review.organizerResponse && (
                   <div className="mt-4 ml-8 p-4 bg-purple-50 rounded-lg border border-purple-100">
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge className="bg-purple-100 text-purple-700">Response from Organizer</Badge>
+                      <Badge className="bg-purple-100 text-purple-700">Orgnaizer</Badge>
                       <span className="text-sm text-neutral-500">{review.organizerResponse.date}</span>
                     </div>
                     <p className="text-sm text-neutral-700">{review.organizerResponse.text}</p>
@@ -543,7 +543,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
         {/* Load More */}
         <div className="text-center mt-8">
           <Button variant="outline" size="lg">
-            Load More Reviews
+            {t('eventReviews.loadMore')}
           </Button>
         </div>
       </div>
@@ -557,58 +557,57 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Report Modal */}
       <Dialog open={!!reportReviewId} onOpenChange={() => setReportReviewId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Report Review</DialogTitle>
+            <DialogTitle>{t('eventReviews.reportReview')}</DialogTitle>
             <DialogDescription>
-              Help us maintain quality by reporting inappropriate content
+              {t('eventReviews.reportDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <label className="text-sm text-neutral-700 mb-2 block">Reason for report</label>
+              <label className="text-sm text-neutral-700 mb-2 block">{t('eventReviews.reasonForReport')}</label>
               <Select value={reportReason} onValueChange={setReportReason}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a reason..." />
+                  <SelectValue placeholder={t('eventReviews.selectReason')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="inappropriate">Inappropriate content</SelectItem>
-                  <SelectItem value="spam">Spam</SelectItem>
-                  <SelectItem value="fake">Fake review</SelectItem>
-                  <SelectItem value="offtopic">Off-topic</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="inappropriate">{t('eventReviews.inappropriate')}</SelectItem>
+                  <SelectItem value="spam">{t('eventReviews.spam')}</SelectItem>
+                  <SelectItem value="fake">{t('eventReviews.fakeReview')}</SelectItem>
+                  <SelectItem value="offtopic">{t('eventReviews.offTopic')}</SelectItem>
+                  <SelectItem value="other">{t('eventReviews.other')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <label className="text-sm text-neutral-700 mb-2 block">Additional details</label>
+              <label className="text-sm text-neutral-700 mb-2 block">{t('eventReviews.additionalDetails')}</label>
               <Textarea
                 value={reportDetails}
                 onChange={(e) => setReportDetails(e.target.value)}
-                placeholder="Please provide more information..."
+                placeholder={t('eventReviews.provideMoreInfo')}
                 rows={4}
               />
             </div>
 
             <p className="text-xs text-neutral-500">
-              Reports are reviewed within 24 hours
+              {t('eventReviews.reviewTime')}
             </p>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setReportReviewId(null)}>
-              Cancel
+              {t('eventReviews.cancel')}
             </Button>
             <Button
               onClick={handleReport}
               disabled={!reportReason}
               className="bg-red-500 hover:bg-red-600"
             >
-              Submit Report
+              {t('eventReviews.submitReport')}
             </Button>
           </DialogFooter>
         </DialogContent>

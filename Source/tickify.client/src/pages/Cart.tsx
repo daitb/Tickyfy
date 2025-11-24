@@ -212,9 +212,9 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
                   <Tag className="text-teal-500" size={20} />
                 </div>
                 <div>
-                  <h4>Have a promo code?</h4>
+                  <h4>{t('booking.cart.havePromoCode')}</h4>
                   <p className="text-sm text-neutral-600">
-                    Enter it here to get a discount
+                    {t('booking.cart.enterDiscount')}
                   </p>
                 </div>
               </div>
@@ -279,23 +279,23 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
 
               {/* Trust Indicators */}
               <div className="bg-white rounded-xl p-4 shadow-sm">
-                <h5 className="text-sm mb-3">Why book with Tickify?</h5>
+                <h5 className="text-sm mb-3">{t('booking.cart.whyBook')}</h5>
                 <ul className="space-y-2 text-sm text-neutral-600">
                   <li className="flex items-start gap-2">
                     <span className="text-teal-500">✓</span>
-                    <span>Secure payment processing</span>
+                    <span>{t('booking.cart.securePayment')}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-teal-500">✓</span>
-                    <span>Instant ticket delivery</span>
+                    <span>{t('booking.cart.instantDelivery')}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-teal-500">✓</span>
-                    <span>24/7 customer support</span>
+                    <span>{t('booking.cart.support24')}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-teal-500">✓</span>
-                    <span>Flexible refund policy</span>
+                    <span>{t('booking.cart.flexibleRefund')}</span>
                   </li>
                 </ul>
               </div>

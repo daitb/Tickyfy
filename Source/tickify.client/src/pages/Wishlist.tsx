@@ -140,8 +140,8 @@ export function Wishlist({ wishlistItems, onNavigate }: WishlistProps) {
         <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Page Header */}
           <div className="mb-8">
-            <h1 className="mb-2">My Wishlist</h1>
-            <p className="text-neutral-600">Events you want to attend</p>
+            <h1 className="mb-2">{t('pages.wishlist.title')}</h1>
+            <p className="text-neutral-600">{t('pages.wishlist.subtitle')}</p>
           </div>
 
           {/* Empty State */}
@@ -149,10 +149,10 @@ export function Wishlist({ wishlistItems, onNavigate }: WishlistProps) {
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-neutral-100 mb-6">
               <Heart size={48} className="text-neutral-400" strokeWidth={1.5} />
             </div>
-            <h2 className="text-neutral-900 mb-2">Your wishlist is empty</h2>
-            <p className="text-neutral-600 mb-6">Start adding events you love</p>
+            <h2 className="text-neutral-900 mb-2">{t('pages.wishlist.empty')}</h2>
+            <p className="text-neutral-600 mb-6">{t('pages.wishlist.emptyMessage')}</p>
             <Button onClick={() => onNavigate('listing')}>
-              Explore Events
+              {t('pages.wishlist.exploreEvents')}
             </Button>
           </div>
         </div>
@@ -165,8 +165,8 @@ export function Wishlist({ wishlistItems, onNavigate }: WishlistProps) {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="mb-2">My Wishlist</h1>
-          <p className="text-neutral-600">Events you want to attend</p>
+          <h1 className="mb-2">{t('pages.wishlist.title')}</h1>
+          <p className="text-neutral-600">{t('pages.wishlist.subtitle')}</p>
         </div>
 
         {/* Filter Bar */}
@@ -174,28 +174,28 @@ export function Wishlist({ wishlistItems, onNavigate }: WishlistProps) {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="all">
-                All ({wishlistEvents.length})
+                {t('pages.wishlist.all')} ({wishlistEvents.length})
               </TabsTrigger>
               <TabsTrigger value="upcoming">
-                Upcoming ({upcomingEvents.length})
+                {t('pages.wishlist.upcoming')} ({upcomingEvents.length})
               </TabsTrigger>
               <TabsTrigger value="past">
-                Past ({pastEvents.length})
+                {t('pages.wishlist.past')} ({pastEvents.length})
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-600">Sort by:</span>
+            <span className="text-sm text-neutral-600">{t('pages.wishlist.sortBy')}</span>
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="date-added">Date Added</SelectItem>
-                <SelectItem value="event-date">Event Date</SelectItem>
-                <SelectItem value="price-low">Price: Low to High</SelectItem>
-                <SelectItem value="price-high">Price: High to Low</SelectItem>
+                <SelectItem value="date-added">{t('pages.wishlist.dateAdded')}</SelectItem>
+                <SelectItem value="event-date">{t('pages.wishlist.eventDate')}</SelectItem>
+                <SelectItem value="price-low">{t('pages.wishlist.priceLowToHigh')}</SelectItem>
+                <SelectItem value="price-high">{t('pages.wishlist.priceHighToLow')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -242,7 +242,7 @@ export function Wishlist({ wishlistItems, onNavigate }: WishlistProps) {
                   {/* Category Badge */}
                   <div className="absolute top-4 left-16">
                     <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm">
-                      {event.category}
+                      {t(`editEvent.category${event.category}`)}
                     </Badge>
                   </div>
                 </div>
@@ -269,7 +269,7 @@ export function Wishlist({ wishlistItems, onNavigate }: WishlistProps) {
 
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <span className="text-sm text-neutral-500">From</span>
+                      <span className="text-sm text-neutral-500">{t('events.from')}</span>
                       <div className="text-teal-600">{getPriceRange(event)}</div>
                     </div>
                     <Badge variant={status.variant}>{status.label}</Badge>
@@ -287,7 +287,7 @@ export function Wishlist({ wishlistItems, onNavigate }: WishlistProps) {
                       }
                     }}
                   >
-                    {status.label === 'On Sale' ? 'View Details' : 'Notify Me'}
+                    {status.label === 'On Sale' ? t('home.viewDetails') : t('wishlist.notifyMe')}
                   </Button>
                 </div>
               </div>

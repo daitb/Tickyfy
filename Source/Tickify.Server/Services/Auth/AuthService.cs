@@ -83,7 +83,8 @@ public class AuthService : IAuthService
         {
             try
             {
-                var verificationLink = $"{_configuration["AppSettings:FrontendUrl"]}/verify-email?token={verificationToken}&email={user.Email}";
+                var verificationLink = $"{_configuration["AppSettings:FrontendUrl"]}/email-verification?token={verificationToken}&email={user.Email}";
+                await _emailService.SendWelcomeEmailAsync(user.Email, user.FullName);
                 await _emailService.SendVerificationEmailAsync(user.Email, user.FullName, verificationLink);
             }
             catch
@@ -201,7 +202,7 @@ public class AuthService : IAuthService
         {
             try
             {
-                var resetLink = $"{_configuration["AppSettings:FrontendUrl"]}/reset-password?token={resetToken}";
+                var resetLink = $"{_configuration["AppSettings:FrontendUrl"]}/reset-password?token={resetToken}&email={user.Email}";
                 await _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetLink);
             }
             catch

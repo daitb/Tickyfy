@@ -199,6 +199,78 @@ namespace Tickify.Data
                     Console.WriteLine($"   Password: Customer@123");
                 }
 
+                // Seed Sample Organizer
+                if (await context.Users.CountAsync() == 2)
+                {
+                    Console.WriteLine("Seeding Sample Organizer...");
+
+                    var organizer = new User
+                    {
+                        Email = "organizer@example.com",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Organizer@123"),
+                        FullName = "Jane Smith",
+                        PhoneNumber = "+84912345678",
+                        IsActive = true,
+                        IsEmailVerified = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await context.Users.AddAsync(organizer);
+                    await context.SaveChangesAsync();
+
+                    // Assign Organizer role
+                    var organizerRole = await context.Roles.FirstAsync(r => r.Name == "Organizer");
+                    var organizerUserRole = new UserRole
+                    {
+                        UserId = organizer.Id,
+                        RoleId = organizerRole.Id,
+                        AssignedAt = DateTime.UtcNow
+                    };
+
+                    await context.UserRoles.AddAsync(organizerUserRole);
+                    await context.SaveChangesAsync();
+
+                    Console.WriteLine("✅ Sample organizer created!");
+                    Console.WriteLine($"   Email: organizer@example.com");
+                    Console.WriteLine($"   Password: Organizer@123");
+                }
+
+                // Seed Sample Staff
+                if (await context.Users.CountAsync() == 3)
+                {
+                    Console.WriteLine("Seeding Sample Staff...");
+
+                    var staff = new User
+                    {
+                        Email = "staff@example.com",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Staff@123"),
+                        FullName = "Bob Johnson",
+                        PhoneNumber = "+84987651234",
+                        IsActive = true,
+                        IsEmailVerified = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await context.Users.AddAsync(staff);
+                    await context.SaveChangesAsync();
+
+                    // Assign Staff role
+                    var staffRole = await context.Roles.FirstAsync(r => r.Name == "Staff");
+                    var staffUserRole = new UserRole
+                    {
+                        UserId = staff.Id,
+                        RoleId = staffRole.Id,
+                        AssignedAt = DateTime.UtcNow
+                    };
+
+                    await context.UserRoles.AddAsync(staffUserRole);
+                    await context.SaveChangesAsync();
+
+                    Console.WriteLine("✅ Sample staff created!");
+                    Console.WriteLine($"   Email: staff@example.com");
+                    Console.WriteLine($"   Password: Staff@123");
+                }
+
                 Console.WriteLine("\n🎉 Database seeding completed successfully!");
             }
             catch (Exception ex)

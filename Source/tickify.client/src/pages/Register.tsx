@@ -1,18 +1,32 @@
-import { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, User, Ticket } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Mail, Lock, Eye, EyeOff, User, Ticket, Check, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { Separator } from '../components/ui/separator';
-import { useTranslation } from 'react-i18next';
+import { authService } from '../services/authService';
+
+// Declare Google types
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (element: HTMLElement, config: any) => void;
+          prompt: () => void;
+        };
+      };
+    };
+  }
+}
 
 interface RegisterProps {
   onNavigate: (page: string) => void;
 }
 
 export function Register({ onNavigate }: RegisterProps) {
-  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,27 +38,190 @@ export function Register({ onNavigate }: RegisterProps) {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [receiveUpdates, setReceiveUpdates] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  // Password requirements state
+  const [requirements, setRequirements] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    special: false,
+  });
+
+  // Password strength
+  const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong'>('weak');
+
+  // Check password requirements
+  useEffect(() => {
+    const password = formData.password;
+    const hasLength = password.length >= 8;
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+    setRequirements({
+      length: hasLength,
+      uppercase: hasUppercase,
+      lowercase: hasLowercase,
+      number: hasNumber,
+      special: hasSpecial,
+    });
+
+    // Calculate password strength
+    const metRequirements = [hasLength, hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
+    if (metRequirements <= 2) {
+      setPasswordStrength('weak');
+    } else if (metRequirements <= 3) {
+      setPasswordStrength('medium');
+    } else {
+      setPasswordStrength('strong');
+    }
+  }, [formData.password]);
+
+  // Initialize Google Sign-In
+  useEffect(() => {
+    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 
+      "177365327171-n3jfda9entg6u3h6mc9glsgbeob65qs9.apps.googleusercontent.com";
+
+    if (window.google && googleButtonRef.current) {
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+
+      // Render Google button
+      window.google.accounts.id.renderButton(
+        googleButtonRef.current,
+        {
+          theme: "outline",
+          size: "large",
+          width: googleButtonRef.current.offsetWidth,
+          text: "signup_with",
+          shape: "rectangular",
+          locale: "en_US",
+        }
+      );
+    }
+  }, []);
+
+  const getStrengthColor = () => {
+    switch (passwordStrength) {
+      case 'weak':
+        return 'bg-red-500';
+      case 'medium':
+        return 'bg-yellow-500';
+      case 'strong':
+        return 'bg-green-500';
+    }
+  };
+
+  const getStrengthWidth = () => {
+    switch (passwordStrength) {
+      case 'weak':
+        return 33;
+      case 'medium':
+        return 66;
+      case 'strong':
+        return 100;
+    }
+  };
+
+  const getStrengthText = () => {
+    switch (passwordStrength) {
+      case 'weak':
+        return 'Yếu';
+      case 'medium':
+        return 'Trung bình';
+      case 'strong':
+        return 'Mạnh';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
+      setError('Mật khẩu không khớp');
       return;
     }
 
     if (!agreeToTerms) {
-      alert('Please agree to the terms and conditions');
+      setError('Vui lòng đồng ý với điều khoản và điều kiện');
       return;
     }
 
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await authService.register({
+        fullName: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword
+      });
+      
+      setSuccess(true);
+      
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        onNavigate('login');
+      }, 2000);
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message || 
+                          'Đăng ký thất bại. Vui lòng thử lại.';
+      setError(errorMessage);
+    } finally {
       setIsLoading(false);
-      onNavigate('home');
-    }, 1000);
+    }
+  };
+
+  const handleGoogleResponse = async (response: any) => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      console.log("Google Sign-Up response received");
+
+      // Send credential to backend
+      const loginResponse = await authService.googleLogin(response.credential);
+      
+      console.log("Google signup successful:", loginResponse);
+
+      // Redirect based on role
+      const userRole = loginResponse.roles[0];
+      
+      if (userRole === "User") {
+        onNavigate("home");
+      } else if (userRole === "Organizer") {
+        onNavigate("organizer-dashboard");
+      } else if (userRole === "Admin") {
+        onNavigate("admin-dashboard");
+      } else {
+        onNavigate("home");
+      }
+    } catch (err: any) {
+      console.error("Google signup error:", err);
+      
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.errors?.[0] ||
+        err.message ||
+        "Google sign-up failed. Please try again.";
+
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSocialSignup = (provider: string) => {
@@ -83,40 +260,30 @@ export function Register({ onNavigate }: RegisterProps) {
           <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 md:p-8">
             {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-neutral-900 mb-2">{t('auth.createAccount')}</h1>
+              <h1 className="text-neutral-900 mb-2">Tạo tài khoản</h1>
               <p className="text-sm text-neutral-600">
-                {t('auth.registerSubtitle')}
+                Đăng ký để bắt đầu sử dụng dịch vụ
               </p>
             </div>
 
+            {/* Error Alert */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
+            {/* Success Alert */}
+            {success && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-600">
+                Đăng ký thành công! Đang chuyển hướng đến trang đăng nhập...
+              </div>
+            )}
+
             {/* Social Signup */}
             <div className="space-y-3 mb-6">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => handleSocialSignup('google')}
-              >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-                {t('auth.continueWithGoogle')}
-              </Button>
+              {/* Google Sign-In Button */}
+              <div ref={googleButtonRef} className="w-full" />
 
               <Button
                 type="button"
@@ -127,7 +294,7 @@ export function Register({ onNavigate }: RegisterProps) {
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="#1877F2">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                 </svg>
-                {t('auth.continueWithFacebook')}
+                Tiếp tục với Facebook
               </Button>
             </div>
 
@@ -135,7 +302,7 @@ export function Register({ onNavigate }: RegisterProps) {
               <Separator />
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="bg-white px-3 text-xs text-neutral-500">
-                  {t('auth.orContinueWith')}
+                  Hoặc đăng ký bằng
                 </span>
               </div>
             </div>
@@ -143,13 +310,13 @@ export function Register({ onNavigate }: RegisterProps) {
             {/* Registration Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">{t('auth.fullName')}</Label>
+                <Label htmlFor="fullName">Họ và tên</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                   <Input
                     id="fullName"
                     type="text"
-                    placeholder={t('auth.fullNamePlaceholder')}
+                    placeholder="Nhập họ và tên"
                     value={formData.fullName}
                     onChange={(e) => handleInputChange('fullName', e.target.value)}
                     className="pl-10"
@@ -159,13 +326,13 @@ export function Register({ onNavigate }: RegisterProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">{t('auth.email')}</Label>
+                <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                   <Input
                     id="email"
                     type="email"
-                    placeholder={t('auth.emailPlaceholder')}
+                    placeholder="Nhập email của bạn"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     className="pl-10"
@@ -175,13 +342,13 @@ export function Register({ onNavigate }: RegisterProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">{t('auth.password')}</Label>
+                <Label htmlFor="password">Mật khẩu</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder={t('auth.passwordPlaceholder')}
+                    placeholder="Nhập mật khẩu"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
                     className="pl-10 pr-10"
@@ -196,19 +363,97 @@ export function Register({ onNavigate }: RegisterProps) {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <p className="text-xs text-neutral-500">
-                  Must be at least 8 characters
-                </p>
+
+                {/* Password Strength Indicator */}
+                {formData.password && (
+                  <div className="mt-2">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-neutral-600">Độ mạnh mật khẩu</span>
+                      <span className={`capitalize font-medium ${
+                        passwordStrength === 'weak' ? 'text-red-500' :
+                        passwordStrength === 'medium' ? 'text-yellow-500' :
+                        'text-green-500'
+                      }`}>
+                        {getStrengthText()}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${getStrengthColor()}`}
+                        style={{ width: `${getStrengthWidth()}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Password Requirements */}
+                {formData.password && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs font-medium text-neutral-700">Mật khẩu phải có:</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-xs">
+                        {requirements.length ? (
+                          <Check className="text-green-500" size={14} />
+                        ) : (
+                          <X className="text-neutral-400" size={14} />
+                        )}
+                        <span className={requirements.length ? 'text-green-600' : 'text-neutral-500'}>
+                          Ít nhất 8 ký tự
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        {requirements.uppercase ? (
+                          <Check className="text-green-500" size={14} />
+                        ) : (
+                          <X className="text-neutral-400" size={14} />
+                        )}
+                        <span className={requirements.uppercase ? 'text-green-600' : 'text-neutral-500'}>
+                          Một chữ hoa
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        {requirements.lowercase ? (
+                          <Check className="text-green-500" size={14} />
+                        ) : (
+                          <X className="text-neutral-400" size={14} />
+                        )}
+                        <span className={requirements.lowercase ? 'text-green-600' : 'text-neutral-500'}>
+                          Một chữ thường
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        {requirements.number ? (
+                          <Check className="text-green-500" size={14} />
+                        ) : (
+                          <X className="text-neutral-400" size={14} />
+                        )}
+                        <span className={requirements.number ? 'text-green-600' : 'text-neutral-500'}>
+                          Một số
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        {requirements.special ? (
+                          <Check className="text-green-500" size={14} />
+                        ) : (
+                          <X className="text-neutral-400" size={14} />
+                        )}
+                        <span className={requirements.special ? 'text-green-600' : 'text-neutral-500'}>
+                          Một ký tự đặc biệt
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
+                <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder={t('auth.confirmPasswordPlaceholder')}
+                    placeholder="Nhập lại mật khẩu"
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                     className="pl-10 pr-10"
@@ -236,7 +481,7 @@ export function Register({ onNavigate }: RegisterProps) {
                     htmlFor="terms"
                     className="text-sm text-neutral-700 leading-tight cursor-pointer"
                   >
-                    {t('auth.agreeToTerms')}
+                    Tôi đồng ý với điều khoản và điều kiện
                   </label>
                 </div>
 
@@ -251,7 +496,7 @@ export function Register({ onNavigate }: RegisterProps) {
                     htmlFor="updates"
                     className="text-sm text-neutral-700 leading-tight cursor-pointer"
                   >
-                    {t('auth.receiveUpdates')}
+                    Nhận thông tin và ưu đãi qua email
                   </label>
                 </div>
               </div>
@@ -261,7 +506,7 @@ export function Register({ onNavigate }: RegisterProps) {
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                 disabled={isLoading}
               >
-                {isLoading ? t('auth.creating') : t('auth.createAccount')}
+                {isLoading ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
               </Button>
             </form>
           </div>
@@ -269,12 +514,12 @@ export function Register({ onNavigate }: RegisterProps) {
           {/* Sign In Link */}
           <div className="text-center mt-6">
             <p className="text-sm text-neutral-600">
-              {t('auth.alreadyHaveAccount')}{' '}
+              Đã có tài khoản?{' '}
               <button
                 onClick={() => onNavigate('login')}
                 className="text-orange-500 hover:text-orange-600 transition-colors"
               >
-                {t('auth.signIn')}
+                Đăng nhập ngay
               </button>
             </p>
           </div>

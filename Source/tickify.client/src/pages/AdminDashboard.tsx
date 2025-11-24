@@ -116,12 +116,12 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-8">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="events">Events</TabsTrigger>
-            <TabsTrigger value="organizers">Organizers</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="payouts">Payouts</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="overview">{t('admin.overview')}</TabsTrigger>
+            <TabsTrigger value="events">{t('header.events')}</TabsTrigger>
+            <TabsTrigger value="organizers">{t('admin.organizer')}</TabsTrigger>
+            <TabsTrigger value="users">{t('admin.users')}</TabsTrigger>
+            <TabsTrigger value="payouts">{t('admin.payouts')}</TabsTrigger>
+            <TabsTrigger value="analytics">{t('organizer.analytics')}</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -130,7 +130,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm text-neutral-600">Total Revenue</CardTitle>
+                  <CardTitle className="text-sm text-neutral-600">{t('admin.totalRevenue')}</CardTitle>
                   <DollarSign className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>
@@ -144,33 +144,33 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm text-neutral-600">Platform Fees</CardTitle>
+                  <CardTitle className="text-sm text-neutral-600">{t('admin.platformFees')}</CardTitle>
                   <DollarSign className="text-green-500" size={20} />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl">{formatPrice(platformFees)}</div>
                   <p className="text-xs text-neutral-500 mt-1">
-                    5% commission rate
+                    {t('admin.commissionRate')}
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm text-neutral-600">Total Events</CardTitle>
+                  <CardTitle className="text-sm text-neutral-600">{t('admin.totalEvents')}</CardTitle>
                   <Calendar className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl">{totalEvents}</div>
                   <p className="text-xs text-neutral-500 mt-1">
-                    {activeEvents} active
+                    {activeEvents} {t('admin.active')}
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm text-neutral-600">Total Users</CardTitle>
+                  <CardTitle className="text-sm text-neutral-600">{t('admin.totalUsers')}</CardTitle>
                   <Users className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>
@@ -187,8 +187,8 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Revenue Trend</CardTitle>
-                  <CardDescription>Monthly platform revenue</CardDescription>
+                  <CardTitle>{t('admin.revenueTrend')}</CardTitle>
+                  <CardDescription>{t('admin.monthlyRevenue')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -211,8 +211,8 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Events by Category</CardTitle>
-                  <CardDescription>Distribution of event types</CardDescription>
+                  <CardTitle>{t('admin.eventsByCategory')}</CardTitle>
+                  <CardDescription>{t('admin.categoryDistribution')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -241,18 +241,18 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             {/* Recent Activity */}
             <Card>
               <CardHeader>
-                <CardTitle>Recent Users</CardTitle>
-                <CardDescription>Latest platform registrations</CardDescription>
+                <CardTitle>{t('admin.recentUsers')}</CardTitle>
+                <CardDescription>{t('admin.latestRegistrations')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead>Orders</TableHead>
-                      <TableHead className="text-right">Total Spent</TableHead>
+                      <TableHead>{t('admin.name')}</TableHead>
+                      <TableHead>{t('admin.email')}</TableHead>
+                      <TableHead>{t('admin.joined')}</TableHead>
+                      <TableHead>{t('admin.orders')}</TableHead>
+                      <TableHead className="text-right">{t('admin.totalSpent')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -277,14 +277,14 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               <CardHeader>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
-                    <CardTitle>All Events</CardTitle>
-                    <CardDescription>Manage and moderate platform events</CardDescription>
+                    <CardTitle>{t('admin.allEvents')}</CardTitle>
+                    <CardDescription>{t('admin.manageEvents')}</CardDescription>
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
                     <div className="relative flex-1 sm:w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                       <Input
-                        placeholder="Search events..."
+                        placeholder={t('admin.searchEvents')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-9"
@@ -295,10 +295,10 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
+                        <SelectItem value="all">{t('admin.allStatus')}</SelectItem>
+                        <SelectItem value="active">{t('admin.active')}</SelectItem>
+                        <SelectItem value="pending">{t('admin.pending')}</SelectItem>
+                        <SelectItem value="suspended">{t('admin.suspended')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -308,12 +308,12 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Event</TableHead>
-                      <TableHead>Organizer</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t('admin.event')}</TableHead>
+                      <TableHead>{t('admin.organizer')}</TableHead>
+                      <TableHead>{t('events.date')}</TableHead>
+                      <TableHead>{t('events.category')}</TableHead>
+                      <TableHead>{t('admin.status')}</TableHead>
+                      <TableHead className="text-right">{t('admin.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -347,7 +347,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             size="sm"
                             onClick={() => onNavigate('event-detail', event.id)}
                           >
-                            View
+                            {t('common.view')}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -362,19 +362,19 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <TabsContent value="organizers">
             <Card>
               <CardHeader>
-                <CardTitle>Event Organizers</CardTitle>
-                <CardDescription>Manage organizer accounts and permissions</CardDescription>
+                <CardTitle>{t('admin.eventOrganizers')}</CardTitle>
+                <CardDescription>{t('admin.manageOrganizers')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Organizer</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Events</TableHead>
-                      <TableHead>Revenue</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t('admin.organizer')}</TableHead>
+                      <TableHead>{t('admin.email')}</TableHead>
+                      <TableHead>{t('header.events')}</TableHead>
+                      <TableHead>{t('organizer.revenue')}</TableHead>
+                      <TableHead>{t('admin.status')}</TableHead>
+                      <TableHead className="text-right">{t('admin.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -388,21 +388,21 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           {org.status === 'verified' ? (
                             <Badge className="bg-green-100 text-green-700">
                               <CheckCircle size={12} className="mr-1" />
-                              Verified
+                              {t('admin.verified')}
                             </Badge>
                           ) : (
                             <Badge className="bg-yellow-100 text-yellow-700">
                               <AlertCircle size={12} className="mr-1" />
-                              Pending
+                              {t('admin.pending')}
                             </Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
-                            <Button variant="ghost" size="sm">Edit</Button>
+                            <Button variant="ghost" size="sm">{t('common.edit')}</Button>
                             {org.status === 'pending' && (
                               <Button size="sm" className="bg-green-500 hover:bg-green-600">
-                                Approve
+                                {t('admin.approve')}
                               </Button>
                             )}
                           </div>
@@ -419,15 +419,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <TabsContent value="users">
             <Card>
               <CardHeader>
-                <CardTitle>Platform Users</CardTitle>
-                <CardDescription>User management and activity</CardDescription>
+                <CardTitle>{t('admin.platformUsers')}</CardTitle>
+                <CardDescription>{t('admin.userManagementActivity')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                     <Input
-                      placeholder="Search users by name or email..."
+                      placeholder={t('admin.searchUsers')}
                       className="pl-9"
                     />
                   </div>
@@ -435,12 +435,12 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead>Orders</TableHead>
-                      <TableHead>Total Spent</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t('admin.user')}</TableHead>
+                      <TableHead>{t('admin.email')}</TableHead>
+                      <TableHead>{t('admin.joined')}</TableHead>
+                      <TableHead>{t('admin.orders')}</TableHead>
+                      <TableHead>{t('admin.totalSpent')}</TableHead>
+                      <TableHead className="text-right">{t('admin.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -452,7 +452,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         <TableCell>{user.orders}</TableCell>
                         <TableCell>{formatPrice(user.spent)}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">View</Button>
+                          <Button variant="ghost" size="sm">{t('common.view')}</Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -480,8 +480,8 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>User Growth</CardTitle>
-                  <CardDescription>Monthly user registrations</CardDescription>
+                  <CardTitle>{t('admin.userGrowth')}</CardTitle>
+                  <CardDescription>{t('admin.monthlyRegistrations')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -498,15 +498,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Platform Health</CardTitle>
-                  <CardDescription>Key performance metrics</CardDescription>
+                  <CardTitle>{t('admin.platformHealth')}</CardTitle>
+                  <CardDescription>{t('admin.keyMetrics')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex justify-between items-center p-4 bg-green-50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <CheckCircle className="text-green-600" size={24} />
                       <div>
-                        <div className="text-sm text-neutral-600">Uptime</div>
+                        <div className="text-sm text-neutral-600">{t('admin.uptime')}</div>
                         <div className="text-neutral-900">99.9%</div>
                       </div>
                     </div>
@@ -515,7 +515,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     <div className="flex items-center gap-3">
                       <Eye className="text-blue-600" size={24} />
                       <div>
-                        <div className="text-sm text-neutral-600">Page Views</div>
+                        <div className="text-sm text-neutral-600">{t('admin.pageViews')}</div>
                         <div className="text-neutral-900">124.5K</div>
                       </div>
                     </div>
@@ -524,7 +524,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     <div className="flex items-center gap-3">
                       <Users className="text-purple-600" size={24} />
                       <div>
-                        <div className="text-sm text-neutral-600">Conversion Rate</div>
+                        <div className="text-sm text-neutral-600">{t('admin.conversionRate')}</div>
                         <div className="text-neutral-900">3.8%</div>
                       </div>
                     </div>

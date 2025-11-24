@@ -1,0 +1,146 @@
+import apiClient from "./apiClient";
+
+// ===== INTERFACES =====
+export interface UserListDto {
+  userId: number;
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+  role: string;
+  isActive: boolean;
+  isEmailVerified: boolean;
+  createdAt: string;
+}
+
+export interface UserDetailDto {
+  userId: number;
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+  profilePictureUrl?: string;
+  bio?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  role: string;
+  isActive: boolean;
+  isEmailVerified: boolean;
+  createdAt: string;
+}
+
+export interface UserProfileDto {
+  userId: number;
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+  address?: string;
+  avatarUrl?: string;
+  emailVerified: boolean;
+  roles: string[];
+  totalBookings: number;
+  totalEventsAttended: number;
+  memberSince: string;
+}
+
+export interface UpdateProfileDto {
+  fullName: string;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+}
+
+export interface AssignRoleDto {
+  roleId: number;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+// ===== USER SERVICE =====
+class UserService {
+  /**
+   * Get list of users (Admin only)
+   */
+  async getUsers(
+    pageNumber: number = 1,
+    pageSize: number = 10,
+    searchTerm?: string
+  ): Promise<PagedResult<UserListDto>> {
+    const params: any = { pageNumber, pageSize };
+    if (searchTerm) params.searchTerm = searchTerm;
+
+    const response = await apiClient.get<PagedResult<UserListDto>>("/Users", {
+      params,
+    });
+    return response.data;
+  }
+
+  /**
+   * Get user by ID (Admin only)
+   */
+  async getUserById(id: number): Promise<UserDetailDto> {
+    const response = await apiClient.get<UserDetailDto>(`/Users/${id}`);
+    return response.data;
+  }
+
+  /**
+   * Get current user profile
+   */
+  async getCurrentUserProfile(): Promise<UserProfileDto> {
+    const response = await apiClient.get<UserProfileDto>("/Users/profile");
+    return response.data;
+  }
+
+  /**
+   * Update current user profile
+   */
+  async updateProfile(data: UpdateProfileDto): Promise<UserProfileDto> {
+    const response = await apiClient.put<UserProfileDto>("/Users/profile", data);
+    return response.data;
+  }
+
+  /**
+   * Upload avatar for current user
+   */
+  async uploadAvatar(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await apiClient.post<string>("/Users/profile/avatar", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  }
+
+  /**
+   * Assign role to user (Admin only)
+   */
+  async assignRole(userId: number, roleId: number): Promise<void> {
+    await apiClient.post(`/Users/${userId}/assign-role`, { roleId });
+  }
+
+  /**
+   * Toggle user active status (Admin only)
+   */
+  async toggleActiveStatus(userId: number): Promise<void> {
+    await apiClient.put(`/Users/${userId}/toggle-active`);
+  }
+
+  /**
+   * Delete user (Admin only)
+   */
+  async deleteUser(userId: number): Promise<void> {
+    await apiClient.delete(`/Users/${userId}`);
+  }
+}
+
+export const userService = new UserService();
