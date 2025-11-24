@@ -1024,7 +1024,19 @@
       "loadFailed": "Failed to load promo codes",
       "createFailed": "Failed to create promo code",
       "updateFailed": "Failed to update promo code",
-      "deleteFailed": "Failed to delete promo code"
+      "deleteFailed": "Failed to delete promo code",
+      "codeRequired": "Promo code is required",
+      "descriptionRequired": "Description is required",
+      "discountRequired": "Either discount percentage or discount amount must be provided",
+      "discountBothSet": "Cannot set both discount percentage and discount amount. Please choose one",
+      "discountPercentRange": "Discount percentage must be between 1 and 100",
+      "discountAmountInvalid": "Discount amount must be greater than 0",
+      "validFromRequired": "Valid from date is required",
+      "validToRequired": "Valid to date is required",
+      "validToBeforeFrom": "Valid to date must be after valid from date",
+      "codeExists": "This promo code already exists",
+      "eventNotFound": "Event not found",
+      "unauthorized": "You can only create promo codes for events you organize"
     },
     "notifications": {
       "copiedToClipboard": "Promo code copied to clipboard",

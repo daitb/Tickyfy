@@ -1011,7 +1011,19 @@
       "loadFailed": "Không thể tải mã khuyến mãi",
       "createFailed": "Tạo mã khuyến mãi thất bại",
       "updateFailed": "Cập nhật mã khuyến mãi thất bại",
-      "deleteFailed": "Xóa mã khuyến mãi thất bại"
+      "deleteFailed": "Xóa mã khuyến mãi thất bại",
+      "codeRequired": "Mã khuyến mãi là bắt buộc",
+      "descriptionRequired": "Mô tả là bắt buộc",
+      "discountRequired": "Phải nhập phần trăm giảm giá hoặc số tiền giảm giá",
+      "discountBothSet": "Không thể đặt cả phần trăm và số tiền giảm giá. Vui lòng chọn một",
+      "discountPercentRange": "Phần trăm giảm giá phải từ 1 đến 100",
+      "discountAmountInvalid": "Số tiền giảm giá phải lớn hơn 0",
+      "validFromRequired": "Ngày bắt đầu hiệu lực là bắt buộc",
+      "validToRequired": "Ngày kết thúc hiệu lực là bắt buộc",
+      "validToBeforeFrom": "Ngày kết thúc phải sau ngày bắt đầu",
+      "codeExists": "Mã khuyến mãi này đã tồn tại",
+      "eventNotFound": "Không tìm thấy sự kiện",
+      "unauthorized": "Bạn chỉ có thể tạo mã khuyến mãi cho sự kiện của mình"
     },
     "notifications": {
       "copiedToClipboard": "Đã sao chép mã khuyến mãi vào clipboard",

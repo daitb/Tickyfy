@@ -163,6 +163,60 @@ export function PromoCodeManagement() {
 
   const handleCreateCode = async () => {
     try {
+      // Frontend validation
+      if (!formData.code || formData.code.trim() === "") {
+        toast.error(t("promoCode.errors.codeRequired"));
+        return;
+      }
+
+      if (formData.code.length < 4 || formData.code.length > 20) {
+        toast.error(t("promoCode.errors.codeInvalid"));
+        return;
+      }
+
+      if (!formData.description || formData.description.trim() === "") {
+        toast.error(t("promoCode.errors.descriptionRequired"));
+        return;
+      }
+
+      if (!formData.discountPercent && !formData.discountAmount) {
+        toast.error(t("promoCode.errors.discountRequired"));
+        return;
+      }
+
+      if (formData.discountPercent && formData.discountAmount) {
+        toast.error(t("promoCode.errors.discountBothSet"));
+        return;
+      }
+
+      if (
+        formData.discountPercent &&
+        (formData.discountPercent < 1 || formData.discountPercent > 100)
+      ) {
+        toast.error(t("promoCode.errors.discountPercentRange"));
+        return;
+      }
+
+      if (formData.discountAmount && formData.discountAmount <= 0) {
+        toast.error(t("promoCode.errors.discountAmountInvalid"));
+        return;
+      }
+
+      if (!formData.validFrom) {
+        toast.error(t("promoCode.errors.validFromRequired"));
+        return;
+      }
+
+      if (!formData.validTo) {
+        toast.error(t("promoCode.errors.validToRequired"));
+        return;
+      }
+
+      if (new Date(formData.validTo) <= new Date(formData.validFrom)) {
+        toast.error(t("promoCode.errors.validToBeforeFrom"));
+        return;
+      }
+
       setSubmitting(true);
       const created = await promoCodeService.create(formData);
       console.log("Created promo code:", created);
@@ -182,7 +236,16 @@ export function PromoCodeManagement() {
         err.response?.data?.errors ??
         err.message ??
         t("promoCode.errors.createFailed");
-      toast.error(String(message));
+
+      // Check for specific error types
+      if (
+        String(message).toLowerCase().includes("already exists") ||
+        String(message).toLowerCase().includes("duplicate")
+      ) {
+        toast.error(t("promoCode.errors.codeExists"));
+      } else {
+        toast.error(String(message));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -192,6 +255,60 @@ export function PromoCodeManagement() {
     if (!selectedCode) return;
 
     try {
+      // Frontend validation
+      if (!formData.code || formData.code.trim() === "") {
+        toast.error(t("promoCode.errors.codeRequired"));
+        return;
+      }
+
+      if (formData.code.length < 4 || formData.code.length > 20) {
+        toast.error(t("promoCode.errors.codeInvalid"));
+        return;
+      }
+
+      if (!formData.description || formData.description.trim() === "") {
+        toast.error(t("promoCode.errors.descriptionRequired"));
+        return;
+      }
+
+      if (!formData.discountPercent && !formData.discountAmount) {
+        toast.error(t("promoCode.errors.discountRequired"));
+        return;
+      }
+
+      if (formData.discountPercent && formData.discountAmount) {
+        toast.error(t("promoCode.errors.discountBothSet"));
+        return;
+      }
+
+      if (
+        formData.discountPercent &&
+        (formData.discountPercent < 1 || formData.discountPercent > 100)
+      ) {
+        toast.error(t("promoCode.errors.discountPercentRange"));
+        return;
+      }
+
+      if (formData.discountAmount && formData.discountAmount <= 0) {
+        toast.error(t("promoCode.errors.discountAmountInvalid"));
+        return;
+      }
+
+      if (!formData.validFrom) {
+        toast.error(t("promoCode.errors.validFromRequired"));
+        return;
+      }
+
+      if (!formData.validTo) {
+        toast.error(t("promoCode.errors.validToRequired"));
+        return;
+      }
+
+      if (new Date(formData.validTo) <= new Date(formData.validFrom)) {
+        toast.error(t("promoCode.errors.validToBeforeFrom"));
+        return;
+      }
+
       setSubmitting(true);
       const updateData: UpdatePromoCodeDto = {
         ...formData,
@@ -217,7 +334,16 @@ export function PromoCodeManagement() {
         err.response?.data?.errors ??
         err.message ??
         t("promoCode.errors.updateFailed");
-      toast.error(String(message));
+
+      // Check for specific error types
+      if (
+        String(message).toLowerCase().includes("already exists") ||
+        String(message).toLowerCase().includes("duplicate")
+      ) {
+        toast.error(t("promoCode.errors.codeExists"));
+      } else {
+        toast.error(String(message));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -625,16 +751,18 @@ export function PromoCodeManagement() {
                       <Input
                         id="discountPercent"
                         type="number"
-                        value={formData.discountPercent || ""}
-                        onChange={(e) =>
+                        value={formData.discountPercent ?? ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
                           setFormData({
                             ...formData,
-                            discountPercent: e.target.value
-                              ? Number(e.target.value)
-                              : undefined,
-                            discountAmount: undefined, // Clear the other discount field
-                          })
-                        }
+                            discountPercent: value ? Number(value) : undefined,
+                            // Only clear discountAmount if user enters a value
+                            discountAmount: value
+                              ? undefined
+                              : formData.discountAmount,
+                          });
+                        }}
                         placeholder={t(
                           "promoCode.createDialog.placeholders.discountPercent"
                         )}
@@ -652,16 +780,18 @@ export function PromoCodeManagement() {
                       <Input
                         id="discountAmount"
                         type="number"
-                        value={formData.discountAmount || ""}
-                        onChange={(e) =>
+                        value={formData.discountAmount ?? ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
                           setFormData({
                             ...formData,
-                            discountAmount: e.target.value
-                              ? Number(e.target.value)
-                              : undefined,
-                            discountPercent: undefined, // Clear the other discount field
-                          })
-                        }
+                            discountAmount: value ? Number(value) : undefined,
+                            // Only clear discountPercent if user enters a value
+                            discountPercent: value
+                              ? undefined
+                              : formData.discountPercent,
+                          });
+                        }}
                         placeholder={t(
                           "promoCode.createDialog.placeholders.discountAmount"
                         )}
@@ -883,16 +1013,18 @@ export function PromoCodeManagement() {
                       <Input
                         id="edit-discountPercent"
                         type="number"
-                        value={formData.discountPercent || ""}
-                        onChange={(e) =>
+                        value={formData.discountPercent ?? ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
                           setFormData({
                             ...formData,
-                            discountPercent: e.target.value
-                              ? Number(e.target.value)
-                              : undefined,
-                            discountAmount: undefined, // Clear the other discount field
-                          })
-                        }
+                            discountPercent: value ? Number(value) : undefined,
+                            // Only clear discountAmount if user enters a value
+                            discountAmount: value
+                              ? undefined
+                              : formData.discountAmount,
+                          });
+                        }}
                         placeholder={t(
                           "promoCode.editDialog.placeholders.discountPercent"
                         )}
@@ -910,16 +1042,18 @@ export function PromoCodeManagement() {
                       <Input
                         id="edit-discountAmount"
                         type="number"
-                        value={formData.discountAmount || ""}
-                        onChange={(e) =>
+                        value={formData.discountAmount ?? ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
                           setFormData({
                             ...formData,
-                            discountAmount: e.target.value
-                              ? Number(e.target.value)
-                              : undefined,
-                            discountPercent: undefined, // Clear the other discount field
-                          })
-                        }
+                            discountAmount: value ? Number(value) : undefined,
+                            // Only clear discountPercent if user enters a value
+                            discountPercent: value
+                              ? undefined
+                              : formData.discountPercent,
+                          });
+                        }}
                         placeholder={t(
                           "promoCode.editDialog.placeholders.discountAmount"
                         )}

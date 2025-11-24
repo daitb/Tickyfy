@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Upload, Plus, Trash2, ArrowLeft, Loader2 } from "lucide-react";
+import { Upload, Plus, Trash2, ArrowLeft, Loader2, Tag } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -18,6 +18,7 @@ import { cities } from "../mockData";
 import { eventService, type CreateEventDto } from "../services/eventService";
 import { categoryService, type CategoryDto } from "../services/categoryService";
 import { authService } from "../services/authService";
+import { promoCodeService, type PromoCode } from "../services/promoCodeService";
 import type { Category, Event, TicketTier } from "../types";
 
 interface OrganizerWizardProps {
@@ -43,6 +44,11 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   const [ticketTiers, setTicketTiers] = useState<Partial<TicketTier>[]>([
     { name: "", price: 0, total: 100, description: "" },
   ]);
+
+  const [availablePromoCodes, setAvailablePromoCodes] = useState<PromoCode[]>(
+    []
+  );
+  const [selectedPromoCodes, setSelectedPromoCodes] = useState<number[]>([]);
 
   // Get current user
   const user = authService.getCurrentUser();

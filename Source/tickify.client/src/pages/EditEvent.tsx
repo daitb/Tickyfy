@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Upload,
   Loader2,
+  Tag,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -52,6 +53,7 @@ import {
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { eventService, type UpdateEventDto } from "../services/eventService";
 import { authService } from "../services/authService";
+import { promoCodeService, type PromoCode } from "../services/promoCodeService";
 
 interface EditEventProps {
   eventId?: string;
