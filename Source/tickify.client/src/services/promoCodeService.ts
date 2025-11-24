@@ -22,7 +22,7 @@ class PromoCodeService {
     data: ValidatePromoCodeDto
   ): Promise<PromoCodeValidationResult> {
     const response = await apiClient.post<PromoCodeValidationResult>(
-      "/PromoCode/validate",
+      "/promocodes/validate",
       data
     );
     return response.data;

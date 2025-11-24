@@ -76,7 +76,7 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
     try {
       const [usersRes, requestsRes] = await Promise.all([
         userService.getUsers(pageNumber, pageSize, searchTerm || undefined),
-        apiClient.get("/Admin/organizer-requests"),
+        apiClient.get("/admin/organizer-requests"),
       ]);
       setUsers(usersRes.items || []);
       setTotalPages(usersRes.totalPages);
@@ -123,7 +123,7 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
 
   const handleApproveRequest = async (requestId: number) => {
     try {
-      await apiClient.post(`/Admin/organizer-requests/${requestId}/approve`);
+      await apiClient.post(`/admin/organizer-requests/${requestId}/approve`);
       await fetchData();
     } catch (error) {
       console.error("Error approving request:", error);
@@ -132,7 +132,7 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
 
   const handleRejectRequest = async (requestId: number) => {
     try {
-      await apiClient.post(`/Admin/organizer-requests/${requestId}/reject`);
+      await apiClient.post(`/admin/organizer-requests/${requestId}/reject`);
       await fetchData();
     } catch (error) {
       console.error("Error rejecting request:", error);

@@ -41,7 +41,7 @@ class AuthService {
    * Register a new user
    */
   async register(data: RegisterDto): Promise<void> {
-    await apiClient.post("/Auth/register", data);
+    await apiClient.post("/auth/register", data);
   }
 
   /**
@@ -159,7 +159,7 @@ class AuthService {
     // Backend expects { email, token }
     // If email is not provided, try to get it from user or let backend handle it
     const payload = email ? { email, token } : { token, email: '' };
-    await apiClient.post("/Auth/verify-email", payload);
+    await apiClient.post("/auth/verify-email", payload);
   }
 
   /**
@@ -173,14 +173,14 @@ class AuthService {
    * Reset password with token
    */
   async resetPassword(email: string, token: string, newPassword: string, confirmPassword: string): Promise<void> {
-    await apiClient.post("/Auth/reset-password", { email, token, newPassword, confirmPassword });
+    await apiClient.post("/auth/reset-password", { email, token, newPassword, confirmPassword });
   }
 
   /**
    * Change password for authenticated user
    */
   async changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<void> {
-    await apiClient.post("/Auth/change-password", { currentPassword, newPassword, confirmPassword });
+    await apiClient.post("/auth/change-password", { currentPassword, newPassword, confirmPassword });
   }
 
     /**

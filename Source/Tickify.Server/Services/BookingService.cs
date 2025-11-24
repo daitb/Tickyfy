@@ -66,6 +66,11 @@ public class BookingService : IBookingService
 
     public async Task<BookingConfirmationDto> CreateBookingAsync(CreateBookingDto createBookingDto, int userId)
     {
+        // Validate user exists
+        var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
+        if (!userExists)
+            throw new NotFoundException($"User with ID {userId} not found. Please log in again.");
+
         // Get ticket type to calculate price
         var ticketType = await _context.TicketTypes
             .FirstOrDefaultAsync(tt => tt.Id == createBookingDto.TicketTypeId && tt.EventId == createBookingDto.EventId);
@@ -138,7 +143,10 @@ public class BookingService : IBookingService
             await _promoCodeRepository.IncrementUsageAsync(promoCodeId.Value);
         }
 
-        return _mapper.Map<BookingConfirmationDto>(createdBooking);
+        // Reload booking with related entities for mapping
+        var bookingWithDetails = await _bookingRepository.GetByIdAsync(createdBooking.Id);
+        
+        return _mapper.Map<BookingConfirmationDto>(bookingWithDetails);
     }
 
     public async Task<BookingDto> CancelBookingAsync(int bookingId, CancelBookingDto cancelBookingDto, int userId)

@@ -26,7 +26,7 @@ export async function createRefundRequest(body: {
   refundAmount: number;
   reason: string;
 }) {
-  const res = await apiClient.post<RefundRequest>("/refund/request", body);
+  const res = await apiClient.post<RefundRequest>("/refunds/request", body);
   return res.data;
 }
 
@@ -35,7 +35,7 @@ export async function createRefundRequest(body: {
  * GET /api/refund/my-refunds
  */
 export async function getMyRefundRequests() {
-  const res = await apiClient.get<RefundRequest[]>("/refund/my-refunds");
+  const res = await apiClient.get<RefundRequest[]>("/refunds/my-refunds");
   return res.data;
 }
 
@@ -44,7 +44,7 @@ export async function getMyRefundRequests() {
  * GET /api/refund
  */
 export async function getAllRefundRequests() {
-  const res = await apiClient.get<RefundRequest[]>("/refund");
+  const res = await apiClient.get<RefundRequest[]>("/refunds");
   return res.data;
 }
 
@@ -53,7 +53,7 @@ export async function getAllRefundRequests() {
  * POST /api/refund/{id}/approve
  */
 export async function approveRefund(id: number, staffNotes?: string) {
-  const res = await apiClient.post<RefundRequest>(`/refund/${id}/approve`, {
+  const res = await apiClient.post<RefundRequest>(`/refunds/${id}/approve`, {
     staffNotes,
   });
   return res.data;
@@ -64,7 +64,7 @@ export async function approveRefund(id: number, staffNotes?: string) {
  * POST /api/refund/{id}/reject
  */
 export async function rejectRefund(id: number, reason: string) {
-  const res = await apiClient.post<RefundRequest>(`/refund/${id}/reject`, {
+  const res = await apiClient.post<RefundRequest>(`/refunds/${id}/reject`, {
     reason,
   });
   return res.data;
@@ -75,6 +75,6 @@ export async function rejectRefund(id: number, reason: string) {
  * GET /api/refund/{id}
  */
 export async function getRefundById(id: number) {
-  const res = await apiClient.get<RefundRequest>(`/refund/${id}`);
+  const res = await apiClient.get<RefundRequest>(`/refunds/${id}`);
   return res.data;
 }

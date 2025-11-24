@@ -49,7 +49,7 @@ class PayoutService {
    * Get all payouts (Organizer sees their own, Admin sees all)
    */
   async getAllPayouts(): Promise<PayoutDto[]> {
-    const response = await apiClient.get<PayoutDto[]>("/Payout");
+    const response = await apiClient.get<PayoutDto[]>("/payouts");
     return response.data;
   }
 
@@ -57,7 +57,7 @@ class PayoutService {
    * Get payout by ID
    */
   async getPayoutById(id: number): Promise<PayoutDto> {
-    const response = await apiClient.get<PayoutDto>(`/Payout/${id}`);
+    const response = await apiClient.get<PayoutDto>(`/payouts/${id}`);
     return response.data;
   }
 
@@ -65,7 +65,7 @@ class PayoutService {
    * Request a payout (Organizer only)
    */
   async requestPayout(data: RequestPayoutDto): Promise<PayoutDto> {
-    const response = await apiClient.post<PayoutDto>("/Payout/request", data);
+    const response = await apiClient.post<PayoutDto>("/payouts/request", data);
     return response.data;
   }
 
@@ -74,7 +74,7 @@ class PayoutService {
    */
   async approvePayout(id: number, data: ApprovePayoutDto): Promise<PayoutDto> {
     const response = await apiClient.post<PayoutDto>(
-      `/Payout/${id}/approve`,
+      `/payouts/${id}/approve`,
       data
     );
     return response.data;
@@ -85,7 +85,7 @@ class PayoutService {
    */
   async rejectPayout(id: number, data: RejectPayoutDto): Promise<PayoutDto> {
     const response = await apiClient.post<PayoutDto>(
-      `/Payout/${id}/reject`,
+      `/payouts/${id}/reject`,
       data
     );
     return response.data;
@@ -96,7 +96,7 @@ class PayoutService {
    */
   async getOrganizerStats(organizerId: number): Promise<PayoutStatsDto> {
     const response = await apiClient.get<PayoutStatsDto>(
-      `/Payout/organizer/${organizerId}/stats`
+      `/payouts/organizer/${organizerId}/stats`
     );
     return response.data;
   }

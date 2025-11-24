@@ -157,9 +157,10 @@ export default function App() {
     () => {
       const user = authService.getCurrentUser();
       if (!user) return "guest";
-      return (
-        (user?.role?.toLowerCase() as "guest" | "user" | "organizer" | "staff" | "admin") || "user"
-      );
+      let role = user?.role?.toLowerCase() || "user";
+      // Map backend roles to frontend roles
+      if (role === "customer") role = "user";
+      return role as "guest" | "user" | "organizer" | "staff" | "admin";
     }
   );
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -212,10 +213,10 @@ export default function App() {
       if (authenticated) {
         const user = authService.getCurrentUser();
         if (user) {
-          setUserRole(
-            (user.role?.toLowerCase() as "guest" | "user" | "organizer" | "staff" | "admin") ||
-              "user"
-          );
+          let role = user.role?.toLowerCase() || "user";
+          // Map backend roles to frontend roles
+          if (role === "customer") role = "user";
+          setUserRole(role as "guest" | "user" | "organizer" | "staff" | "admin");
         }
       } else {
         setUserRole("guest");

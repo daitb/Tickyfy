@@ -74,7 +74,7 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
   const handleToggleActive = async (user: UserDto) => {
     try {
       // Assuming there's an endpoint to toggle user active status
-      await apiClient.put(`/Users/${user.userId}/toggle-active`, {
+      await apiClient.put(`/users/${user.userId}/toggle-active`, {
         isActive: !user.isActive,
       });
       setSuccess(`User ${user.isActive ? 'deactivated' : 'activated'} successfully`);
@@ -87,7 +87,7 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
   const handleDeleteUser = async () => {
     if (!selectedUser) return;
     try {
-      await apiClient.delete(`/Users/${selectedUser.userId}`);
+      await apiClient.delete(`/users/${selectedUser.userId}`);
       setSuccess('User deleted successfully');
       setShowDeleteDialog(false);
       setSelectedUser(null);
