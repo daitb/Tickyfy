@@ -244,9 +244,16 @@ public sealed class VNPayProvider : IPaymentProvider
         }
 
         // Prepare parameters in alphabetical order (VNPAY requirement)
+        // VNPay yêu cầu amount ở đơn vị nhỏ nhất (đồng), nên nhân 100
+        // Dùng Math.Round để tránh mất độ chính xác khi cast
+        var vnpAmount = (long)Math.Round(amount * 100, 0);
+        
+        // Log amount conversion để debug
+        Console.WriteLine($"[VNPay] Amount conversion: {amount} VND -> {vnpAmount} (smallest unit)");
+        
         var dict = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["vnp_Amount"] = ((long)(amount * 100)).ToString(), // Convert to VND (smallest unit)
+            ["vnp_Amount"] = vnpAmount.ToString(), // Convert to VND (smallest unit)
             ["vnp_Command"] = "pay",
             ["vnp_CreateDate"] = DateTime.UtcNow.ToString("yyyyMMddHHmmss"),
             ["vnp_CurrCode"] = "VND",

@@ -88,8 +88,16 @@ public class BookingService : IBookingService
         if (ticketType.AvailableQuantity < createBookingDto.Quantity)
             throw new BadRequestException($"Not enough tickets available. Available: {ticketType.AvailableQuantity}, Requested: {createBookingDto.Quantity}");
 
-        // Calculate total amount based on ticket type price and quantity
-        decimal totalAmount = ticketType.Price * createBookingDto.Quantity;
+        // Calculate subtotal based on ticket type price and quantity
+        decimal subtotal = ticketType.Price * createBookingDto.Quantity;
+        
+        // Calculate service fee (5% như frontend)
+        // TODO: Nên lấy từ configuration thay vì hardcode
+        const decimal SERVICE_FEE_PERCENTAGE = 0.05m;
+        decimal serviceFee = subtotal * SERVICE_FEE_PERCENTAGE;
+        
+        // Total amount = subtotal + service fee
+        decimal totalAmount = subtotal + serviceFee;
 
         // Validate seat availability
         if (createBookingDto.SeatIds?.Any() == true)
@@ -103,6 +111,7 @@ public class BookingService : IBookingService
         }
 
         // Validate and apply promo code if provided
+        // Lưu ý: Discount chỉ áp dụng cho subtotal (giá vé), KHÔNG áp dụng cho service fee
         decimal discount = 0;
         int? promoCodeId = null;
         if (!string.IsNullOrEmpty(createBookingDto.PromoCode))
@@ -113,12 +122,20 @@ public class BookingService : IBookingService
 
             promoCodeId = promoCode.Id;
 
-            // Calculate discount
+            // Calculate discount - chỉ áp dụng cho subtotal (giá vé), không áp dụng cho service fee
             if (promoCode.DiscountPercent.HasValue)
-                discount = totalAmount * (promoCode.DiscountPercent.Value / 100);
+                discount = subtotal * (promoCode.DiscountPercent.Value / 100);
             else if (promoCode.DiscountAmount.HasValue)
                 discount = promoCode.DiscountAmount.Value;
+            
+            // Đảm bảo discount không vượt quá subtotal
+            if (discount > subtotal)
+                discount = subtotal;
         }
+        
+        // Final total = subtotal - discount + service fee
+        // Service fee luôn được tính, không bị discount
+        decimal finalAmount = subtotal - discount + serviceFee;
 
         // Sử dụng transaction để đảm bảo data consistency
         _logger.LogInformation("Bắt đầu tạo booking cho UserId: {UserId}, EventId: {EventId}, Quantity: {Quantity}", 
@@ -128,18 +145,22 @@ public class BookingService : IBookingService
         try
         {
             // Create booking
+            // TotalAmount bao gồm: subtotal - discount + service fee
             var booking = new Booking
             {
                 UserId = userId,
                 EventId = createBookingDto.EventId,
                 BookingCode = GenerateBookingCode(),
-                TotalAmount = totalAmount - discount,
+                TotalAmount = finalAmount, // Đã bao gồm service fee
                 DiscountAmount = discount,
                 PromoCodeId = promoCodeId,
                 Status = BookingStatus.Pending,
                 BookingDate = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(15) // 15 minutes to complete payment
             };
+            
+            _logger.LogInformation("Tính toán booking amount - Subtotal: {Subtotal}, ServiceFee: {ServiceFee}, Discount: {Discount}, FinalAmount: {FinalAmount}", 
+                subtotal, serviceFee, discount, finalAmount);
 
             var createdBooking = await _bookingRepository.CreateAsync(booking);
             _logger.LogInformation("Đã tạo booking {BookingId} với code {BookingCode}", 

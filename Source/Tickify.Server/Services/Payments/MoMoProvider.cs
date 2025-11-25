@@ -98,7 +98,15 @@ public sealed class MoMoProvider : IPaymentProvider
             var resultCode = queryParams["resultCode"].ToString();
             var errorCode = queryParams["errorCode"].ToString();
             var orderId = queryParams["orderId"].ToString();
-            var amount = queryParams["amount"].ToString();
+            var amountStr = queryParams["amount"].ToString();
+            
+            // MoMo trả về amount ở đơn vị VND (số nguyên, không nhân 100)
+            if (!long.TryParse(amountStr, out var momoAmount))
+            {
+                Console.WriteLine($"[MoMo VerifyFromReturnUrl] Invalid amount format: {amountStr}");
+                return false;
+            }
+            var amount = (decimal)momoAmount; // MoMo trả về VND trực tiếp
             
             // Extract paymentId from orderId if needed
             int extractedPaymentId = paymentId;
@@ -116,6 +124,14 @@ public sealed class MoMoProvider : IPaymentProvider
             if (payment is null)
             {
                 Console.WriteLine($"[MoMo VerifyFromReturnUrl] Payment {extractedPaymentId} not found");
+                return false;
+            }
+            
+            // Verify amount matches (MoMo trả về ở đơn vị VND)
+            var paymentAmountRounded = (long)Math.Round(payment.Amount, 0);
+            if (paymentAmountRounded != momoAmount)
+            {
+                Console.WriteLine($"[MoMo VerifyFromReturnUrl] Amount mismatch. Payment: {payment.Amount} VND (rounded: {paymentAmountRounded}), MoMo: {momoAmount} VND");
                 return false;
             }
             
@@ -183,6 +199,14 @@ public sealed class MoMoProvider : IPaymentProvider
         // Validate amount
         if (amount <= 0)
             throw new InvalidOperationException($"Invalid payment amount: {amount}. Amount must be greater than 0");
+        
+        // MoMo yêu cầu amount là số nguyên VND (không có phần thập phân)
+        // Kiểm tra xem amount có phần thập phân không (sau khi làm tròn)
+        var roundedAmount = Math.Round(amount, 0);
+        if (Math.Abs(amount - roundedAmount) > 0.001m)
+        {
+            throw new InvalidOperationException($"Invalid payment amount: {amount}. MoMo requires integer VND amount (no decimals). Please round to: {roundedAmount}");
+        }
 
         // MoMo requires unique orderId - combine paymentId with timestamp to ensure uniqueness
         // Format: {paymentId}_{timestamp} (e.g., "24_20251114034500")
@@ -190,9 +214,21 @@ public sealed class MoMoProvider : IPaymentProvider
         var orderId = $"{paymentId}_{timestamp}";
         var requestId = orderId; // MoMo requires requestId to match orderId
 
-        // MoMo requires amount as integer (in VND, smallest unit)
-        // Amount is already in VND, so we convert to long (remove decimals)
+        // MoMo yêu cầu amount là số nguyên VND (không nhân 100)
+        // KHÁC VNPay - MoMo sử dụng VND trực tiếp, không phải đơn vị nhỏ nhất
+        // Dùng Math.Round để làm tròn về số nguyên VND
         var momoAmount = (long)Math.Round(amount, 0);
+        
+        // Validate: amount phải > 0 và là số nguyên VND
+        if (momoAmount <= 0)
+            throw new InvalidOperationException($"Invalid payment amount: {amount}. Amount must be greater than 0");
+        
+        // MoMo có giới hạn amount tối thiểu (thường là 1000 VND)
+        if (momoAmount < 1000)
+            throw new InvalidOperationException($"Invalid payment amount: {amount}. MoMo requires minimum 1000 VND");
+        
+        // Log amount conversion để debug
+        Console.WriteLine($"[MoMo] Amount conversion: {amount} VND -> {momoAmount} VND (integer, NOT multiplied by 100)");
 
         var raw = $"partnerCode={_opt.PartnerCode}"
                 + $"&accessKey={_opt.AccessKey}"
@@ -223,9 +259,13 @@ public sealed class MoMoProvider : IPaymentProvider
 
         // Log request for debugging
         var requestJson = JsonSerializer.Serialize(payload);
-        Console.WriteLine($"[MoMo] Creating payment - PaymentId: {paymentId}, Amount: {amount}");
+        Console.WriteLine($"[MoMo] ========== PAYMENT REQUEST ==========");
+        Console.WriteLine($"[MoMo] PaymentId: {paymentId}, BookingId: {bookingId}");
+        Console.WriteLine($"[MoMo] Original Amount (VND): {amount}");
+        Console.WriteLine($"[MoMo] Converted Amount (smallest unit): {momoAmount}");
         Console.WriteLine($"[MoMo] Request URL: {_opt.MomoApiUrl}");
         Console.WriteLine($"[MoMo] Request payload: {requestJson}");
+        Console.WriteLine($"[MoMo] ======================================");
 
         using var resp = await _http.PostAsync(
             _opt.MomoApiUrl,
@@ -357,7 +397,15 @@ public sealed class MoMoProvider : IPaymentProvider
 
         var payment = await _payments.GetAsync(paymentId, ct);
         if (payment is null) return false;
-        if ((long)payment.Amount != amount) return false;
+        
+        // MoMo trả về amount ở đơn vị VND (số nguyên, không nhân 100)
+        // So sánh với payment.Amount đã làm tròn
+        var paymentAmountRounded = (long)Math.Round(payment.Amount, 0);
+        if (paymentAmountRounded != amount)
+        {
+            Console.WriteLine($"[MoMo Webhook] Amount mismatch. Payment: {payment.Amount} VND (rounded: {paymentAmountRounded}), MoMo: {amount} VND");
+            return false;
+        }
 
         payment.PaymentResponse = body;
 
