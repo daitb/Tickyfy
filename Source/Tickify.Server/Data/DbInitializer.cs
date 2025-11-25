@@ -465,6 +465,233 @@ namespace Tickify.Data
                     }
                     await context.SaveChangesAsync();
                     Console.WriteLine("✅ Ticket types created for all events!");
+
+                    // --- Additional seed data for easier testing ---
+                    Console.WriteLine("Seeding PromoCodes, SeatMaps, Zones, Seats, Bookings, Payments, Tickets, Reviews and Waitlists...");
+
+                    // Ensure we have references to users
+                    var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "admin@tickify.com");
+                    var customerUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "customer@example.com");
+                    var organizerUserAccount = await context.Users.FirstOrDefaultAsync(u => u.Email == "organizer@example.com");
+
+                    // Seed PromoCodes
+                    if (!await context.PromoCodes.AnyAsync())
+                    {
+                        var promo1 = new PromoCode
+                        {
+                            Code = "EARLYBIRD",
+                            Description = "10% off for early purchases",
+                            DiscountPercent = 10m,
+                            ValidFrom = DateTime.UtcNow.AddDays(-30),
+                            ValidTo = DateTime.UtcNow.AddMonths(3),
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedByUserId = adminUser?.Id ?? 0
+                        };
+
+                        var promo2 = new PromoCode
+                        {
+                            Code = "SUMMER25",
+                            Description = "25k off for bookings over 1,000,000",
+                            DiscountAmount = 25000m,
+                            MinimumPurchase = 1000000m,
+                            ValidFrom = DateTime.UtcNow.AddDays(-10),
+                            ValidTo = DateTime.UtcNow.AddMonths(2),
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedByUserId = adminUser?.Id ?? 0
+                        };
+
+                        await context.PromoCodes.AddRangeAsync(promo1, promo2);
+                        await context.SaveChangesAsync();
+                        Console.WriteLine("✅ Promo codes seeded.");
+                    }
+
+                    // Seed SeatMaps, Zones and Seats for each saved event (small sample grid)
+                    foreach (var evt in savedEvents)
+                    {
+                        // If seatmap already exists skip
+                        if (await context.SeatMaps.AnyAsync(sm => sm.EventId == evt.Id))
+                            continue;
+
+                        var seatMap = new SeatMap
+                        {
+                            EventId = evt.Id,
+                            Name = "Default SeatMap",
+                            Description = "Auto-generated seat map for testing",
+                            TotalRows = 5,
+                            TotalColumns = 10,
+                            LayoutConfig = "{ \"type\": \"grid\" }",
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        await context.SeatMaps.AddAsync(seatMap);
+                        await context.SaveChangesAsync();
+
+                        // For each ticket type of the event create a zone + some seats
+                        var eventTicketTypes = await context.TicketTypes.Where(tt => tt.EventId == evt.Id).ToListAsync();
+                        foreach (var tt in eventTicketTypes)
+                        {
+                            var zone = new SeatZone
+                            {
+                                SeatMapId = seatMap.Id,
+                                TicketTypeId = tt.Id,
+                                Name = tt.Name + " Zone",
+                                Description = $"Zone for {tt.Name}",
+                                StartRow = 1,
+                                EndRow = 2,
+                                StartColumn = 1,
+                                EndColumn = 5,
+                                ZonePrice = tt.Price,
+                                Capacity = Math.Min(tt.TotalQuantity, 30),
+                                AvailableSeats = Math.Min(tt.TotalQuantity, 30),
+                                CreatedAt = DateTime.UtcNow
+                            };
+
+                            await context.SeatZones.AddAsync(zone);
+                            await context.SaveChangesAsync();
+
+                            // Create a small set of seats mapped to this zone
+                            var seatsToCreate = Math.Min(10, zone.Capacity);
+                            var createdSeats = new List<Seat>();
+                            for (int r = 0; r < 2 && createdSeats.Count < seatsToCreate; r++)
+                            {
+                                var rowLabel = ((char)('A' + r)).ToString();
+                                for (int s = 1; s <= 5 && createdSeats.Count < seatsToCreate; s++)
+                                {
+                                    var seat = new Seat
+                                    {
+                                        TicketTypeId = tt.Id,
+                                        SeatZoneId = zone.Id,
+                                        Row = rowLabel,
+                                        SeatNumber = s.ToString(),
+                                        GridRow = r + 1,
+                                        GridColumn = s,
+                                        Status = SeatStatus.Available,
+                                        CreatedAt = DateTime.UtcNow
+                                    };
+                                    createdSeats.Add(seat);
+                                }
+                            }
+
+                            if (createdSeats.Any())
+                            {
+                                await context.Seats.AddRangeAsync(createdSeats);
+                                await context.SaveChangesAsync();
+                            }
+                        }
+                    }
+
+                    // Create a confirmed booking with payment and tickets for the sample customer
+                    var sampleCustomer = await context.Users.FirstOrDefaultAsync(u => u.Email == "customer@example.com");
+                    var firstEventForBooking = savedEvents.FirstOrDefault();
+                    if (sampleCustomer != null && firstEventForBooking != null)
+                    {
+                        // Choose first ticket type of the event
+                        var tt = await context.TicketTypes.FirstOrDefaultAsync(x => x.EventId == firstEventForBooking.Id);
+                        if (tt != null)
+                        {
+                            // Only create if no existing booking for this customer/event
+                            var exists = await context.Bookings.AnyAsync(b => b.UserId == sampleCustomer.Id && b.EventId == firstEventForBooking.Id);
+                            if (!exists)
+                            {
+                                var qty = 2;
+                                var total = tt.Price * qty;
+                                var booking = new Booking
+                                {
+                                    BookingCode = $"BKG-{Guid.NewGuid().ToString().Substring(0,8).ToUpper()}",
+                                    UserId = sampleCustomer.Id,
+                                    EventId = firstEventForBooking.Id,
+                                    TotalAmount = total,
+                                    DiscountAmount = 0m,
+                                    Status = BookingStatus.Confirmed,
+                                    BookingDate = DateTime.UtcNow,
+                                    ExpiresAt = null
+                                };
+
+                                await context.Bookings.AddAsync(booking);
+                                await context.SaveChangesAsync();
+
+                                // Payment
+                                var payment = new Payment
+                                {
+                                    BookingId = booking.Id,
+                                    Amount = booking.TotalAmount,
+                                    Method = PaymentMethod.CreditCard,
+                                    Status = PaymentStatus.Completed,
+                                    TransactionId = Guid.NewGuid().ToString(),
+                                    PaymentGateway = "TestGateway",
+                                    PaidAt = DateTime.UtcNow,
+                                    CreatedAt = DateTime.UtcNow
+                                };
+                                await context.Payments.AddAsync(payment);
+                                await context.SaveChangesAsync();
+
+                                // Create tickets for this booking
+                                var tickets = new List<Ticket>();
+                                for (int i = 0; i < qty; i++)
+                                {
+                                    var ticket = new Ticket
+                                    {
+                                        TicketCode = $"TKT-{Guid.NewGuid().ToString().Substring(0,8).ToUpper()}",
+                                        BookingId = booking.Id,
+                                        TicketTypeId = tt.Id,
+                                        SeatId = null,
+                                        SeatNumber = null,
+                                        Price = tt.Price,
+                                        Status = TicketStatus.Valid,
+                                        CreatedAt = DateTime.UtcNow
+                                    };
+                                    tickets.Add(ticket);
+                                }
+
+                                await context.Tickets.AddRangeAsync(tickets);
+                                await context.SaveChangesAsync();
+
+                                Console.WriteLine("✅ Sample confirmed booking with payment and tickets created for sample customer.");
+                            }
+                        }
+                    }
+
+                    // Seed a review by the sample customer for the first event
+                    if (sampleCustomer != null && firstEventForBooking != null)
+                    {
+                        var alreadyReviewed = await context.Reviews.AnyAsync(r => r.UserId == sampleCustomer.Id && r.EventId == firstEventForBooking.Id);
+                        if (!alreadyReviewed)
+                        {
+                            var review = new Review
+                            {
+                                UserId = sampleCustomer.Id,
+                                EventId = firstEventForBooking.Id,
+                                Rating = 5,
+                                Comment = "Great event sample!",
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            await context.Reviews.AddAsync(review);
+                            await context.SaveChangesAsync();
+                            Console.WriteLine("✅ Sample review created.");
+                        }
+                    }
+
+                    // Seed a waitlist entry for another sample user (staff) for the first event
+                    var sampleStaff = await context.Users.FirstOrDefaultAsync(u => u.Email == "staff@example.com");
+                    if (sampleStaff != null && firstEventForBooking != null && !await context.Waitlists.AnyAsync(w => w.UserId == sampleStaff.Id && w.EventId == firstEventForBooking.Id))
+                    {
+                        var wait = new Waitlist
+                        {
+                            UserId = sampleStaff.Id,
+                            EventId = firstEventForBooking.Id,
+                            TicketTypeId = null,
+                            RequestedQuantity = 1,
+                            JoinedAt = DateTime.UtcNow,
+                            ExpiresAt = DateTime.UtcNow.AddDays(7)
+                        };
+                        await context.Waitlists.AddAsync(wait);
+                        await context.SaveChangesAsync();
+                        Console.WriteLine("✅ Sample waitlist entry created.");
+                    }
+
+                    Console.WriteLine("✅ Additional test seed data created.");
                 }
 
                 Console.WriteLine("\n🎉 Database seeding completed successfully!");

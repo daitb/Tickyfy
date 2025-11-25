@@ -4,6 +4,10 @@ using Tickify.Exceptions;
 using Tickify.Interfaces.Repositories;
 using Tickify.Interfaces.Services;
 using Tickify.Models;
+using Tickify.Repositories;
+using Tickify.Services.Email;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Tickify.Services;
 
@@ -13,6 +17,8 @@ public class TicketService : ITicketService
     private readonly IBookingRepository _bookingRepository;
     private readonly ITicketTransferRepository _ticketTransferRepository;
     private readonly ITicketScanRepository _ticketScanRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly Email.IEmailService _emailService;
     private readonly IMapper _mapper;
 
     public TicketService(
@@ -20,12 +26,16 @@ public class TicketService : ITicketService
         IBookingRepository bookingRepository,
         ITicketTransferRepository ticketTransferRepository,
         ITicketScanRepository ticketScanRepository,
+        IUserRepository userRepository,
+        Email.IEmailService emailService,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
         _bookingRepository = bookingRepository;
         _ticketTransferRepository = ticketTransferRepository;
         _ticketScanRepository = ticketScanRepository;
+        _userRepository = userRepository;
+        _emailService = emailService;
         _mapper = mapper;
     }
 
@@ -73,24 +83,45 @@ public class TicketService : ITicketService
         if (ticket.Status != TicketStatus.Valid)
             throw new BadRequestException("Only valid tickets can be transferred");
 
-        // TODO: Get recipient user ID from email (for now, use transferDto.TransferId as recipient ID)
-        // In production: Look up user by email, send notification email
-        int recipientUserId = transferDto.RecipientEmail.GetHashCode(); // Placeholder
+        // Get recipient user by email
+        var recipientUser = await _userRepository.GetUserByEmailAsync(transferDto.RecipientEmail);
+        if (recipientUser == null)
+            throw new NotFoundException($"User with email {transferDto.RecipientEmail} not found");
+
+        if (recipientUser.Id == userId)
+            throw new BadRequestException("You cannot transfer a ticket to yourself");
 
         // Create transfer record
         var ticketTransfer = new TicketTransfer
         {
             TicketId = ticketId,
             FromUserId = userId,
-            ToUserId = recipientUserId, // TODO: Get from user lookup by email
+            ToUserId = recipientUser.Id,
             TransferredAt = DateTime.UtcNow,
             Reason = transferDto.Message,
             IsApproved = false // Pending recipient acceptance
         };
 
-        await _ticketTransferRepository.CreateAsync(ticketTransfer);
+        // Generate acceptance token and expiry, store on transfer
+        var tokenBytes = new byte[32];
+        RandomNumberGenerator.Fill(tokenBytes);
+        var acceptanceToken = Convert.ToBase64String(tokenBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        ticketTransfer.AcceptanceToken = acceptanceToken;
+        ticketTransfer.AcceptanceExpiresAt = DateTime.UtcNow.AddDays(7);
 
-        // TODO: Send email notification to recipient with acceptance link
+        var createdTransfer = await _ticketTransferRepository.CreateAsync(ticketTransfer);
+
+        // Send email notification to recipient
+        var sender = await _userRepository.GetUserByIdAsync(userId);
+        await _emailService.SendTicketTransferNotificationAsync(
+            recipientEmail: transferDto.RecipientEmail,
+            recipientName: recipientUser.FullName ?? recipientUser.Email,
+            senderName: sender?.FullName ?? sender?.Email ?? "A user",
+            ticketCode: ticket.TicketCode,
+            message: transferDto.Message ?? string.Empty,
+            acceptanceToken: acceptanceToken,
+            transferId: createdTransfer.Id
+        );
 
         return _mapper.Map<TicketDto>(ticket);
     }
@@ -109,8 +140,11 @@ public class TicketService : ITicketService
             throw new BadRequestException("This transfer has already been accepted");
 
         // Validate acceptance token
-        if (acceptTransferDto.AcceptanceToken != GenerateAcceptanceToken(transfer.Id))
+        if (string.IsNullOrWhiteSpace(transfer.AcceptanceToken) || acceptTransferDto.AcceptanceToken != transfer.AcceptanceToken)
             throw new BadRequestException("Invalid acceptance token");
+
+        if (transfer.AcceptanceExpiresAt.HasValue && transfer.AcceptanceExpiresAt.Value < DateTime.UtcNow)
+            throw new BadRequestException("Acceptance token has expired");
 
         // Get the ticket
         var ticket = await _ticketRepository.GetByIdAsync(transfer.TicketId);
@@ -164,8 +198,11 @@ public class TicketService : ITicketService
             throw new BadRequestException("This transfer has already been accepted and cannot be rejected");
 
         // Validate acceptance token
-        if (rejectTransferDto.AcceptanceToken != GenerateAcceptanceToken(transfer.Id))
+        if (string.IsNullOrWhiteSpace(transfer.AcceptanceToken) || rejectTransferDto.AcceptanceToken != transfer.AcceptanceToken)
             throw new BadRequestException("Invalid acceptance token");
+
+        if (transfer.AcceptanceExpiresAt.HasValue && transfer.AcceptanceExpiresAt.Value < DateTime.UtcNow)
+            throw new BadRequestException("Acceptance token has expired");
 
         // Delete the transfer record to reject it
         await _ticketTransferRepository.DeleteAsync(transfer.Id);
@@ -195,12 +232,12 @@ public class TicketService : ITicketService
         {
             TicketId = ticket.Id,
             ScannedAt = DateTime.UtcNow,
-            ScannedByUserId = scanDto.EventId, // TODO: Get actual scanner user ID from authenticated user
-            ScanLocation = "Main Entrance", // TODO: Get from scanDto or device
-            ScanType = "Entry",
-            DeviceId = null, // TODO: Get from request
+            ScannedByUserId = scanDto.ScannedByUserId ?? 0, // Use from DTO or default
+            ScanLocation = scanDto.ScanLocation ?? "Main Entrance",
+            ScanType = scanDto.ScanType ?? "Entry",
+            DeviceId = scanDto.DeviceId,
             IsValid = true,
-            Notes = null
+            Notes = scanDto.Notes
         };
 
         await _ticketScanRepository.CreateAsync(ticketScan);
@@ -238,9 +275,17 @@ public class TicketService : ITicketService
         return $"BK{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
     }
 
-    private string GenerateAcceptanceToken(int ticketId)
+    private string GenerateAcceptanceToken(int transferId)
     {
-        // In real application, this should be a secure cryptographic token
-        return $"TOKEN_{ticketId}_{DateTime.UtcNow:yyyyMMddHHmmss}";
+        // Generate a secure cryptographic token using HMAC-SHA256
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+        var data = $"{transferId}:{timestamp}";
+        
+        using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes("YourSecureSecretKey_ChangeInProduction")))
+        {
+            var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
+            var token = Convert.ToBase64String(hash);
+            return $"{transferId}:{timestamp}:{token}";
+        }
     }
 }

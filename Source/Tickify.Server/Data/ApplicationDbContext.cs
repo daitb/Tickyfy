@@ -369,6 +369,18 @@ namespace Tickify.Data
                 .WithMany()
                 .HasForeignKey(tt => tt.ApprovedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+                
+            // TicketTransfer - column config
+            modelBuilder.Entity<TicketTransfer>()
+                .Property(tt => tt.AcceptanceToken)
+                .HasMaxLength(200)
+                .IsUnicode(false)
+                .IsRequired(false);
+
+            modelBuilder.Entity<TicketTransfer>()
+                .Property(tt => tt.AcceptanceExpiresAt)
+                .HasColumnType("datetime2")
+                .IsRequired(false);
 
             // Add indexes for better performance
 
@@ -536,6 +548,11 @@ namespace Tickify.Data
 
             modelBuilder.Entity<TicketType>()
                 .Property(tt => tt.Price)
+                .HasPrecision(18, 2);
+
+            // SeatZone - Zone price precision
+            modelBuilder.Entity<SeatZone>()
+                .Property(sz => sz.ZonePrice)
                 .HasPrecision(18, 2);
 
             // ===== CHECK CONSTRAINTS FOR DATA VALIDATION =====

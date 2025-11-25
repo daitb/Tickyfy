@@ -225,4 +225,65 @@ public class EmailService : IEmailService
     }
 
     #endregion
+
+    public async Task SendTicketTransferNotificationAsync(
+    string recipientEmail,
+    string recipientName,
+    string senderName,
+    string ticketCode,
+    string message,
+    string acceptanceToken,
+    int transferId)
+{
+    var subject = $"You've received a ticket transfer from {senderName}";
+    
+    var body = $@"
+        <html>
+        <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+            <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                <h2 style='color: #4CAF50;'>Ticket Transfer Notification</h2>
+                
+                <p>Hi {recipientName},</p>
+                
+                <p><strong>{senderName}</strong> has transferred a ticket to you!</p>
+                
+                <div style='background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                    <p><strong>Ticket Code:</strong> {ticketCode}</p>
+                    {(!string.IsNullOrEmpty(message) ? $"<p><strong>Message:</strong> {message}</p>" : "")}
+                </div>
+                
+                <p>To accept this ticket transfer, please click the button below:</p>
+                
+                <div style='text-align: center; margin: 30px 0;'>
+                    <a href='https://yourapp.com/tickets/accept-transfer?transferId={transferId}&token={Uri.EscapeDataString(acceptanceToken)}' 
+                       style='background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>
+                        Accept Transfer
+                    </a>
+                </div>
+                
+                <p>Or you can reject the transfer:</p>
+                
+                <div style='text-align: center; margin: 30px 0;'>
+                    <a href='https://yourapp.com/tickets/reject-transfer?transferId={transferId}&token={Uri.EscapeDataString(acceptanceToken)}' 
+                       style='background-color: #f44336; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>
+                        Reject Transfer
+                    </a>
+                </div>
+                
+                <p style='color: #666; font-size: 12px; margin-top: 30px;'>
+                    If you did not expect this transfer, please ignore this email or contact support.
+                </p>
+                
+                <hr style='border: none; border-top: 1px solid #ddd; margin: 20px 0;'>
+                
+                <p style='color: #666; font-size: 12px;'>
+                    This is an automated email from Tickify. Please do not reply to this email.
+                </p>
+            </div>
+        </body>
+        </html>
+    ";
+
+    await SendEmailAsync(recipientEmail, subject, body);
+}
 }
