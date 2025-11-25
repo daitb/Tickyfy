@@ -1,5 +1,6 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Tickify.Data;
 using Tickify.DTOs.Booking;
 using Tickify.Exceptions;
@@ -17,6 +18,7 @@ public class BookingService : IBookingService
     private readonly IPromoCodeRepository _promoCodeRepository;
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
+    private readonly ILogger<BookingService> _logger;
 
     public BookingService(
         IBookingRepository bookingRepository,
@@ -24,7 +26,8 @@ public class BookingService : IBookingService
         ISeatRepository seatRepository,
         IPromoCodeRepository promoCodeRepository,
         ApplicationDbContext context,
-        IMapper mapper)
+        IMapper mapper,
+        ILogger<BookingService> logger)
     {
         _bookingRepository = bookingRepository;
         _ticketRepository = ticketRepository;
@@ -32,6 +35,7 @@ public class BookingService : IBookingService
         _promoCodeRepository = promoCodeRepository;
         _context = context;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<BookingDto> GetByIdAsync(int id)
@@ -116,37 +120,62 @@ public class BookingService : IBookingService
                 discount = promoCode.DiscountAmount.Value;
         }
 
-        // Create booking
-        var booking = new Booking
-        {
-            UserId = userId,
-            EventId = createBookingDto.EventId,
-            BookingCode = GenerateBookingCode(),
-            TotalAmount = totalAmount - discount,
-            DiscountAmount = discount,
-            PromoCodeId = promoCodeId,
-            Status = BookingStatus.Pending,
-            BookingDate = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(15) // 15 minutes to complete payment
-        };
-
-        var createdBooking = await _bookingRepository.CreateAsync(booking);
-
-        // Update ticket type available quantity (reserve tickets)
-        ticketType.AvailableQuantity -= createBookingDto.Quantity;
-        _context.TicketTypes.Update(ticketType);
-        await _context.SaveChangesAsync();
-
-        // Increment promo code usage if applied
-        if (promoCodeId.HasValue)
-        {
-            await _promoCodeRepository.IncrementUsageAsync(promoCodeId.Value);
-        }
-
-        // Reload booking with related entities for mapping
-        var bookingWithDetails = await _bookingRepository.GetByIdAsync(createdBooking.Id);
+        // Sử dụng transaction để đảm bảo data consistency
+        _logger.LogInformation("Bắt đầu tạo booking cho UserId: {UserId}, EventId: {EventId}, Quantity: {Quantity}", 
+            userId, createBookingDto.EventId, createBookingDto.Quantity);
         
-        return _mapper.Map<BookingConfirmationDto>(bookingWithDetails);
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // Create booking
+            var booking = new Booking
+            {
+                UserId = userId,
+                EventId = createBookingDto.EventId,
+                BookingCode = GenerateBookingCode(),
+                TotalAmount = totalAmount - discount,
+                DiscountAmount = discount,
+                PromoCodeId = promoCodeId,
+                Status = BookingStatus.Pending,
+                BookingDate = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(15) // 15 minutes to complete payment
+            };
+
+            var createdBooking = await _bookingRepository.CreateAsync(booking);
+            _logger.LogInformation("Đã tạo booking {BookingId} với code {BookingCode}", 
+                createdBooking.Id, createdBooking.BookingCode);
+
+            // Update ticket type available quantity (reserve tickets)
+            ticketType.AvailableQuantity -= createBookingDto.Quantity;
+            _context.TicketTypes.Update(ticketType);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Đã cập nhật số lượng ticket type {TicketTypeId}: AvailableQuantity = {AvailableQuantity}", 
+                ticketType.Id, ticketType.AvailableQuantity);
+
+            // Increment promo code usage if applied
+            if (promoCodeId.HasValue)
+            {
+                await _promoCodeRepository.IncrementUsageAsync(promoCodeId.Value);
+                _logger.LogInformation("Đã tăng usage cho promo code {PromoCodeId}", promoCodeId.Value);
+            }
+
+            // Commit transaction
+            await transaction.CommitAsync();
+            _logger.LogInformation("Transaction committed thành công cho booking {BookingId}", createdBooking.Id);
+
+            // Reload booking with related entities for mapping
+            var bookingWithDetails = await _bookingRepository.GetByIdAsync(createdBooking.Id);
+            
+            return _mapper.Map<BookingConfirmationDto>(bookingWithDetails);
+        }
+        catch (Exception ex)
+        {
+            // Rollback transaction nếu có lỗi
+            _logger.LogError(ex, "Lỗi khi tạo booking, đang rollback transaction. UserId: {UserId}, EventId: {EventId}", 
+                userId, createBookingDto.EventId);
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<BookingDto> CancelBookingAsync(int bookingId, CancelBookingDto cancelBookingDto, int userId)
@@ -164,20 +193,41 @@ public class BookingService : IBookingService
         if (booking.Status == BookingStatus.Confirmed)
             throw new BadRequestException("Cannot cancel a confirmed booking. Please request a refund instead.");
 
-        booking.Status = BookingStatus.Cancelled;
-        booking.CancellationReason = cancelBookingDto.CancellationReason;
-        booking.CancelledAt = DateTime.UtcNow;
-
-        // Release seats
-        var tickets = await _ticketRepository.GetByBookingIdAsync(bookingId);
-        var seatIds = tickets.Where(t => t.SeatId.HasValue).Select(t => t.SeatId!.Value);
-        if (seatIds.Any())
+        // Sử dụng transaction để đảm bảo data consistency
+        _logger.LogInformation("Bắt đầu hủy booking {BookingId} cho UserId: {UserId}", bookingId, userId);
+        
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            await _seatRepository.ReleaseSeatsAsync(seatIds);
-        }
+            booking.Status = BookingStatus.Cancelled;
+            booking.CancellationReason = cancelBookingDto.CancellationReason;
+            booking.CancelledAt = DateTime.UtcNow;
 
-        var updatedBooking = await _bookingRepository.UpdateAsync(booking);
-        return _mapper.Map<BookingDto>(updatedBooking);
+            // Release seats
+            var tickets = await _ticketRepository.GetByBookingIdAsync(bookingId);
+            var seatIds = tickets.Where(t => t.SeatId.HasValue).Select(t => t.SeatId!.Value);
+            if (seatIds.Any())
+            {
+                await _seatRepository.ReleaseSeatsAsync(seatIds);
+                _logger.LogInformation("Đã release {SeatCount} seats cho booking {BookingId}", seatIds.Count(), bookingId);
+            }
+
+            var updatedBooking = await _bookingRepository.UpdateAsync(booking);
+            _logger.LogInformation("Đã cập nhật booking {BookingId} thành Cancelled", bookingId);
+            
+            // Commit transaction
+            await transaction.CommitAsync();
+            _logger.LogInformation("Transaction committed thành công cho cancel booking {BookingId}", bookingId);
+            
+            return _mapper.Map<BookingDto>(updatedBooking);
+        }
+        catch (Exception ex)
+        {
+            // Rollback transaction nếu có lỗi
+            _logger.LogError(ex, "Lỗi khi hủy booking {BookingId}, đang rollback transaction", bookingId);
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<BookingDetailDto> GetBookingDetailsAsync(int bookingId, int userId)
@@ -288,17 +338,31 @@ public class BookingService : IBookingService
         if (discountAmount > booking.TotalAmount)
             discountAmount = booking.TotalAmount;
 
-        // Apply discount
-        booking.PromoCodeId = promo.Id;
-        booking.DiscountAmount = discountAmount;
+        // Sử dụng transaction để đảm bảo data consistency
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // Apply discount
+            booking.PromoCodeId = promo.Id;
+            booking.DiscountAmount = discountAmount;
 
-        // Increment promo code usage
-        await _promoCodeRepository.IncrementUsageAsync(promo.Id);
+            // Increment promo code usage
+            await _promoCodeRepository.IncrementUsageAsync(promo.Id);
 
-        // Update booking
-        await _bookingRepository.UpdateAsync(booking);
+            // Update booking
+            await _bookingRepository.UpdateAsync(booking);
 
-        return _mapper.Map<BookingDto>(booking);
+            // Commit transaction
+            await transaction.CommitAsync();
+
+            return _mapper.Map<BookingDto>(booking);
+        }
+        catch (Exception)
+        {
+            // Rollback transaction nếu có lỗi
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     private string GenerateBookingCode()

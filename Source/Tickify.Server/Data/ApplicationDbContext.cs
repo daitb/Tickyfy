@@ -538,6 +538,10 @@ namespace Tickify.Data
                 .Property(tt => tt.Price)
                 .HasPrecision(18, 2);
 
+            modelBuilder.Entity<SeatZone>()
+                .Property(sz => sz.ZonePrice)
+                .HasPrecision(18, 2);
+
             // ===== CHECK CONSTRAINTS FOR DATA VALIDATION =====
 
             // Events - Business rules
