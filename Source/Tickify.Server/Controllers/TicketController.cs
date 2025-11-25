@@ -65,12 +65,23 @@ public class TicketController : ControllerBase
 
     /// Get current user's tickets
     [HttpGet("my-tickets")]
+    [AllowAnonymous] // Allow testing without authentication
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<TicketDetailDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<TicketDetailDto>>>> GetMyTickets(
         [FromQuery] string? status = null,
         [FromQuery] int? eventId = null)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        // Return empty list if not authenticated (for development/testing)
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdClaim))
+        {
+            return Ok(ApiResponse<IEnumerable<TicketDetailDto>>.SuccessResponse(
+                new List<TicketDetailDto>(),
+                "No tickets found (user not authenticated)"
+            ));
+        }
+
+        var userId = int.Parse(userIdClaim);
         
         var tickets = await _ticketService.GetUserTicketsAsync(userId);
 

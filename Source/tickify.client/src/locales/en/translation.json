@@ -913,10 +913,12 @@
       "totalCodes": "Total Codes",
       "activeCodes": "Active Codes",
       "totalRedemptions": "Total Redemptions",
+      "avgDiscount": "Avg Discount",
       "allPromoCodes": "All promo codes",
       "currentlyAvailable": "Currently available",
       "timesUsed": "Times used",
-      "codesRedeemed": "Codes redeemed"
+      "codesRedeemed": "Codes redeemed",
+      "averageValue": "Average discount value"
     },
     "loading": "Loading promo codes...",
     "emptyState": {
@@ -933,7 +935,9 @@
       "usage": "Usage",
       "used": "used",
       "edit": "Edit",
-      "stats": "Stats"
+      "stats": "Stats",
+      "activate": "Activate",
+      "deactivate": "Deactivate"
     },
     "createDialog": {
       "title": "Create Promo Code",
@@ -1042,7 +1046,9 @@
       "copiedToClipboard": "Promo code copied to clipboard",
       "createdSuccessfully": "Promo code created successfully",
       "updatedSuccessfully": "Promo code updated successfully",
-      "deletedSuccessfully": "Promo code deleted successfully"
+      "deletedSuccessfully": "Promo code deleted successfully",
+      "activatedSuccessfully": "Promo code activated successfully",
+      "deactivatedSuccessfully": "Promo code deactivated successfully"
     },
     "seat": {
       "selection": {

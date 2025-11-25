@@ -251,6 +251,47 @@ export function PromoCodeManagement() {
     }
   };
 
+  const handleToggleActive = async (code: PromoCode) => {
+    try {
+      // Check if description exists
+      if (!code.description || code.description.trim() === "") {
+        toast.error("Cannot toggle: Promo code has no description");
+        return;
+      }
+
+      // Prepare update data with all required fields
+      const updateData: UpdatePromoCodeDto = {
+        code: code.code,
+        description: code.description,
+        discountPercent: code.discountPercent ?? undefined,
+        discountAmount: code.discountAmount ?? undefined,
+        minimumPurchase: code.minimumPurchase ?? undefined,
+        maxUses: code.maxUses ?? undefined,
+        maxUsesPerUser: code.maxUsesPerUser ?? undefined,
+        validFrom: code.validFrom,
+        validTo: code.validTo,
+        isActive: !code.isActive,
+        eventId: code.eventId,
+        organizerId: code.organizerId,
+      };
+
+      console.log("Toggle active - Update data:", updateData);
+      await promoCodeService.update(code.promoCodeId, updateData);
+      toast.success(
+        code.isActive
+          ? t("promoCode.notifications.deactivatedSuccessfully")
+          : t("promoCode.notifications.activatedSuccessfully")
+      );
+      loadPromoCodes();
+    } catch (error) {
+      console.error("Failed to toggle promo code status:", error);
+      const err = error as { response?: { data?: { message?: string } } };
+      const errorMsg =
+        err.response?.data?.message || t("promoCode.errors.updateFailed");
+      toast.error(errorMsg);
+    }
+  };
+
   const handleEditCode = async () => {
     if (!selectedCode) return;
 
@@ -484,17 +525,25 @@ export function PromoCodeManagement() {
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="text-sm text-neutral-600">
-                      {t("promoCode.stats.totalRedemptions")}
+                      {t("promoCode.stats.avgDiscount")}
                     </div>
-                    <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                      <TrendingUp className="text-teal-600" size={20} />
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="text-purple-600" size={20} />
                     </div>
                   </div>
                   <div className="text-2xl text-neutral-900 mb-1">
-                    {totalRedemptions}
+                    {promoCodes.length > 0
+                      ? Math.round(
+                          promoCodes.reduce(
+                            (sum, c) => sum + (c.discountPercent || 0),
+                            0
+                          ) / promoCodes.length
+                        )
+                      : 0}
+                    %
                   </div>
                   <div className="text-xs text-neutral-600">
-                    {t("promoCode.stats.codesRedeemed")}
+                    {t("promoCode.stats.averageValue")}
                   </div>
                 </CardContent>
               </Card>
@@ -566,7 +615,17 @@ export function PromoCodeManagement() {
                     key={code.promoCodeId}
                     className="relative overflow-hidden hover:shadow-lg transition-shadow"
                   >
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute top-4 right-4 flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleActive(code)}
+                        className="h-6 px-2 text-xs"
+                      >
+                        {code.isActive
+                          ? t("promoCode.card.deactivate")
+                          : t("promoCode.card.activate")}
+                      </Button>
                       {getStatusBadge(code.isActive)}
                     </div>
 
@@ -754,14 +813,21 @@ export function PromoCodeManagement() {
                         value={formData.discountPercent ?? ""}
                         onChange={(e) => {
                           const value = e.target.value;
-                          setFormData({
-                            ...formData,
-                            discountPercent: value ? Number(value) : undefined,
-                            // Only clear discountAmount if user enters a value
-                            discountAmount: value
-                              ? undefined
-                              : formData.discountAmount,
-                          });
+                          if (value === "") {
+                            setFormData((prev) => ({
+                              ...prev,
+                              discountPercent: undefined,
+                            }));
+                          } else {
+                            const numValue = Number(value);
+                            if (!isNaN(numValue)) {
+                              setFormData((prev) => ({
+                                ...prev,
+                                discountPercent: numValue,
+                                discountAmount: undefined,
+                              }));
+                            }
+                          }
                         }}
                         placeholder={t(
                           "promoCode.createDialog.placeholders.discountPercent"
@@ -783,14 +849,21 @@ export function PromoCodeManagement() {
                         value={formData.discountAmount ?? ""}
                         onChange={(e) => {
                           const value = e.target.value;
-                          setFormData({
-                            ...formData,
-                            discountAmount: value ? Number(value) : undefined,
-                            // Only clear discountPercent if user enters a value
-                            discountPercent: value
-                              ? undefined
-                              : formData.discountPercent,
-                          });
+                          if (value === "") {
+                            setFormData((prev) => ({
+                              ...prev,
+                              discountAmount: undefined,
+                            }));
+                          } else {
+                            const numValue = Number(value);
+                            if (!isNaN(numValue)) {
+                              setFormData((prev) => ({
+                                ...prev,
+                                discountAmount: numValue,
+                                discountPercent: undefined,
+                              }));
+                            }
+                          }
                         }}
                         placeholder={t(
                           "promoCode.createDialog.placeholders.discountAmount"
@@ -1016,14 +1089,21 @@ export function PromoCodeManagement() {
                         value={formData.discountPercent ?? ""}
                         onChange={(e) => {
                           const value = e.target.value;
-                          setFormData({
-                            ...formData,
-                            discountPercent: value ? Number(value) : undefined,
-                            // Only clear discountAmount if user enters a value
-                            discountAmount: value
-                              ? undefined
-                              : formData.discountAmount,
-                          });
+                          if (value === "") {
+                            setFormData((prev) => ({
+                              ...prev,
+                              discountPercent: undefined,
+                            }));
+                          } else {
+                            const numValue = Number(value);
+                            if (!isNaN(numValue)) {
+                              setFormData((prev) => ({
+                                ...prev,
+                                discountPercent: numValue,
+                                discountAmount: undefined,
+                              }));
+                            }
+                          }
                         }}
                         placeholder={t(
                           "promoCode.editDialog.placeholders.discountPercent"
@@ -1045,14 +1125,21 @@ export function PromoCodeManagement() {
                         value={formData.discountAmount ?? ""}
                         onChange={(e) => {
                           const value = e.target.value;
-                          setFormData({
-                            ...formData,
-                            discountAmount: value ? Number(value) : undefined,
-                            // Only clear discountPercent if user enters a value
-                            discountPercent: value
-                              ? undefined
-                              : formData.discountPercent,
-                          });
+                          if (value === "") {
+                            setFormData((prev) => ({
+                              ...prev,
+                              discountAmount: undefined,
+                            }));
+                          } else {
+                            const numValue = Number(value);
+                            if (!isNaN(numValue)) {
+                              setFormData((prev) => ({
+                                ...prev,
+                                discountAmount: numValue,
+                                discountPercent: undefined,
+                              }));
+                            }
+                          }
                         }}
                         placeholder={t(
                           "promoCode.editDialog.placeholders.discountAmount"

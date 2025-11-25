@@ -900,10 +900,12 @@
       "totalCodes": "Tổng số mã",
       "activeCodes": "Mã đang hoạt động",
       "totalRedemptions": "Tổng lượt sử dụng",
+      "avgDiscount": "Giảm giá TB",
       "allPromoCodes": "Tất cả mã khuyến mãi",
       "currentlyAvailable": "Đang khả dụng",
       "timesUsed": "Lượt sử dụng",
-      "codesRedeemed": "Mã đã đổi"
+      "codesRedeemed": "Mã đã đổi",
+      "averageValue": "Giá trị giảm giá trung bình"
     },
     "loading": "Đang tải mã khuyến mãi...",
     "emptyState": {
@@ -920,7 +922,9 @@
       "usage": "Lượt sử dụng",
       "used": "đã dùng",
       "edit": "Sửa",
-      "stats": "Thống kê"
+      "stats": "Thống kê",
+      "activate": "Kích hoạt",
+      "deactivate": "Vô hiệu hóa"
     },
     "createDialog": {
       "title": "Tạo mã khuyến mãi",
@@ -1029,7 +1033,9 @@
       "copiedToClipboard": "Đã sao chép mã khuyến mãi vào clipboard",
       "createdSuccessfully": "Tạo mã khuyến mãi thành công",
       "updatedSuccessfully": "Cập nhật mã khuyến mãi thành công",
-      "deletedSuccessfully": "Xóa mã khuyến mãi thành công"
+      "deletedSuccessfully": "Xóa mã khuyến mãi thành công",
+      "activatedSuccessfully": "Kích hoạt mã khuyến mãi thành công",
+      "deactivatedSuccessfully": "Vô hiệu hóa mã khuyến mãi thành công"
     },
     "seat": {
       "selection": {

@@ -293,13 +293,18 @@ export default function App() {
         return <EventListing onNavigate={handleNavigate} />;
 
       case "event-detail":
-        if (!selectedEventId) {
-          setCurrentPage("home");
+        // Extract eventId from URL directly to avoid race condition
+        const eventIdFromUrl = location.pathname.startsWith("/event/")
+          ? location.pathname.split("/event/")[1]?.split("/")[0]
+          : selectedEventId;
+
+        if (!eventIdFromUrl) {
+          navigate("/");
           return null;
         }
         return (
           <EventDetail
-            eventId={selectedEventId}
+            eventId={eventIdFromUrl}
             onNavigate={handleNavigate}
             onAddToCart={handleAddToCart}
           />
@@ -331,32 +336,52 @@ export default function App() {
           <MyTickets orders={completedOrders} onNavigate={handleNavigate} />
         );
 
-      case "order-detail":
+      case "order-detail": {
+        // Extract orderId from URL directly
+        const orderIdFromUrl = location.pathname.startsWith("/order/")
+          ? location.pathname.split("/order/")[1]?.split("/")[0]
+          : selectedOrderId;
+
         return (
           <OrderDetail
-            orderId={selectedOrderId || undefined}
+            orderId={orderIdFromUrl || undefined}
             orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
+      }
 
-      case "ticket-detail":
+      case "ticket-detail": {
+        // Extract ticketId from URL directly
+        const ticketIdFromUrl = location.pathname.startsWith("/ticket/")
+          ? location.pathname.split("/ticket/")[1]?.split("/")[0]
+          : selectedTicketId;
+
         return (
           <TicketDetail
-            ticketId={selectedTicketId || undefined}
+            ticketId={ticketIdFromUrl || undefined}
             orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
+      }
 
-      case "transfer-ticket":
+      case "transfer-ticket": {
+        // Extract ticketId from URL directly
+        const transferTicketIdFromUrl = location.pathname.startsWith(
+          "/transfer-ticket/"
+        )
+          ? location.pathname.split("/transfer-ticket/")[1]?.split("/")[0]
+          : selectedTicketId;
+
         return (
           <TransferTicket
-            ticketId={selectedTicketId || undefined}
+            ticketId={transferTicketIdFromUrl || undefined}
             orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
+      }
 
       case "wishlist":
         return <Wishlist onNavigate={handleNavigate} />;
