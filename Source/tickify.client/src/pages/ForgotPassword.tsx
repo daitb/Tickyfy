@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { authService } from '../services/authService';
 
 interface ForgotPasswordProps {
@@ -42,7 +43,7 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
     <div className="min-h-screen bg-neutral-50 flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <button 
             onClick={() => onNavigate('home')}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -52,6 +53,7 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
             </div>
             <span className="text-xl text-neutral-900">Tickify</span>
           </button>
+          <LanguageSwitcher />
         </div>
       </div>
 

@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Mail, Lock, Eye, EyeOff, User, Ticket, Check, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { Separator } from '../components/ui/separator';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { authService } from '../services/authService';
 
 // Declare Google types
@@ -27,6 +29,7 @@ interface RegisterProps {
 }
 
 export function Register({ onNavigate }: RegisterProps) {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -135,11 +138,11 @@ export function Register({ onNavigate }: RegisterProps) {
   const getStrengthText = () => {
     switch (passwordStrength) {
       case 'weak':
-        return 'Yếu';
+        return t('auth.weak');
       case 'medium':
-        return 'Trung bình';
+        return t('auth.medium');
       case 'strong':
-        return 'Mạnh';
+        return t('auth.strong');
     }
   };
 
@@ -148,12 +151,12 @@ export function Register({ onNavigate }: RegisterProps) {
     setError('');
     
     if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu không khớp');
+      setError(t('auth.passwordMismatch'));
       return;
     }
 
     if (!agreeToTerms) {
-      setError('Vui lòng đồng ý với điều khoản và điều kiện');
+      setError(t('auth.agreeToTermsRequired'));
       return;
     }
 
@@ -169,10 +172,8 @@ export function Register({ onNavigate }: RegisterProps) {
       
       setSuccess(true);
       
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
-        onNavigate('login');
-      }, 2000);
+      // Do NOT auto-redirect - let user see the verification message
+      // User will click "Go to Login" after they verify their email
     } catch (err: any) {
       console.error('Registration error:', err);
       const errorMessage = err.response?.data?.message || 
@@ -240,7 +241,7 @@ export function Register({ onNavigate }: RegisterProps) {
     <div className="min-h-screen bg-neutral-50 flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <button 
             onClick={() => onNavigate('home')}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -250,6 +251,7 @@ export function Register({ onNavigate }: RegisterProps) {
             </div>
             <span className="text-xl text-neutral-900">Tickify</span>
           </button>
+          <LanguageSwitcher />
         </div>
       </div>
 
@@ -260,9 +262,9 @@ export function Register({ onNavigate }: RegisterProps) {
           <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 md:p-8">
             {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-neutral-900 mb-2">Tạo tài khoản</h1>
+              <h1 className="text-neutral-900 mb-2">{t('auth.createAccount')}</h1>
               <p className="text-sm text-neutral-600">
-                Đăng ký để bắt đầu sử dụng dịch vụ
+                {t('auth.registerSubtitle')}
               </p>
             </div>
 
@@ -273,15 +275,52 @@ export function Register({ onNavigate }: RegisterProps) {
               </div>
             )}
 
-            {/* Success Alert */}
+            {/* Success Alert - Email Verification Required */}
             {success && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-600">
-                Đăng ký thành công! Đang chuyển hướng đến trang đăng nhập...
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <svg className="w-5 h-5 text-green-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-green-800 mb-1">
+                      {t('auth.registerSuccess')}
+                    </h3>
+                    <p className="text-sm text-green-700 mb-3">
+                      {t('auth.verificationEmailSent')} <strong>{formData.email}</strong>. 
+                      {t('auth.checkEmailInbox')}
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        type="button"
+                        onClick={() => onNavigate('login')}
+                        className="bg-green-600 hover:bg-green-700 text-white text-sm"
+                        size="sm"
+                      >
+                        {t('auth.goToLogin')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleSubmit}
+                        className="text-green-700 border-green-300 hover:bg-green-50 text-sm"
+                        size="sm"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? t('auth.resending') : t('auth.resendVerification')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Social Signup */}
-            <div className="space-y-3 mb-6">
+            {/* Social Signup - Hide when success */}
+            {!success && (
+              <>
+                <div className="space-y-3 mb-6">
               {/* Google Sign-In Button */}
               <div ref={googleButtonRef} className="w-full" />
 
@@ -294,7 +333,7 @@ export function Register({ onNavigate }: RegisterProps) {
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="#1877F2">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                 </svg>
-                Tiếp tục với Facebook
+                {t('auth.continueWithFacebook')}
               </Button>
             </div>
 
@@ -302,7 +341,7 @@ export function Register({ onNavigate }: RegisterProps) {
               <Separator />
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="bg-white px-3 text-xs text-neutral-500">
-                  Hoặc đăng ký bằng
+                  {t('auth.orRegisterWith')}
                 </span>
               </div>
             </div>
@@ -310,13 +349,13 @@ export function Register({ onNavigate }: RegisterProps) {
             {/* Registration Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Họ và tên</Label>
+                <Label htmlFor="fullName">{t('auth.fullName')}</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                   <Input
                     id="fullName"
                     type="text"
-                    placeholder="Nhập họ và tên"
+                    placeholder={t('auth.fullNamePlaceholder')}
                     value={formData.fullName}
                     onChange={(e) => handleInputChange('fullName', e.target.value)}
                     className="pl-10"
@@ -326,13 +365,13 @@ export function Register({ onNavigate }: RegisterProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t('auth.email')}</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                   <Input
                     id="email"
                     type="email"
-                    placeholder="Nhập email của bạn"
+                    placeholder={t('auth.emailPlaceholder')}
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     className="pl-10"
@@ -342,13 +381,13 @@ export function Register({ onNavigate }: RegisterProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Mật khẩu</Label>
+                <Label htmlFor="password">{t('auth.password')}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Nhập mật khẩu"
+                    placeholder={t('auth.passwordPlaceholder')}
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
                     className="pl-10 pr-10"
@@ -368,7 +407,7 @@ export function Register({ onNavigate }: RegisterProps) {
                 {formData.password && (
                   <div className="mt-2">
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-600">Độ mạnh mật khẩu</span>
+                      <span className="text-neutral-600">{t('auth.passwordStrength')}</span>
                       <span className={`capitalize font-medium ${
                         passwordStrength === 'weak' ? 'text-red-500' :
                         passwordStrength === 'medium' ? 'text-yellow-500' :
@@ -389,7 +428,7 @@ export function Register({ onNavigate }: RegisterProps) {
                 {/* Password Requirements */}
                 {formData.password && (
                   <div className="mt-3 space-y-2">
-                    <p className="text-xs font-medium text-neutral-700">Mật khẩu phải có:</p>
+                    <p className="text-xs font-medium text-neutral-700">{t('auth.passwordRequirements')}</p>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-xs">
                         {requirements.length ? (
@@ -398,7 +437,7 @@ export function Register({ onNavigate }: RegisterProps) {
                           <X className="text-neutral-400" size={14} />
                         )}
                         <span className={requirements.length ? 'text-green-600' : 'text-neutral-500'}>
-                          Ít nhất 8 ký tự
+                          {t('auth.minLength')}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-xs">
@@ -408,7 +447,7 @@ export function Register({ onNavigate }: RegisterProps) {
                           <X className="text-neutral-400" size={14} />
                         )}
                         <span className={requirements.uppercase ? 'text-green-600' : 'text-neutral-500'}>
-                          Một chữ hoa
+                          {t('auth.uppercase')}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-xs">
@@ -418,7 +457,7 @@ export function Register({ onNavigate }: RegisterProps) {
                           <X className="text-neutral-400" size={14} />
                         )}
                         <span className={requirements.lowercase ? 'text-green-600' : 'text-neutral-500'}>
-                          Một chữ thường
+                          {t('auth.lowercase')}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-xs">
@@ -428,7 +467,7 @@ export function Register({ onNavigate }: RegisterProps) {
                           <X className="text-neutral-400" size={14} />
                         )}
                         <span className={requirements.number ? 'text-green-600' : 'text-neutral-500'}>
-                          Một số
+                          {t('auth.number')}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-xs">
@@ -438,7 +477,7 @@ export function Register({ onNavigate }: RegisterProps) {
                           <X className="text-neutral-400" size={14} />
                         )}
                         <span className={requirements.special ? 'text-green-600' : 'text-neutral-500'}>
-                          Một ký tự đặc biệt
+                          {t('auth.specialChar')}
                         </span>
                       </div>
                     </div>
@@ -447,13 +486,13 @@ export function Register({ onNavigate }: RegisterProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
+                <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Nhập lại mật khẩu"
+                    placeholder={t('auth.confirmPasswordPlaceholder')}
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                     className="pl-10 pr-10"
@@ -481,7 +520,7 @@ export function Register({ onNavigate }: RegisterProps) {
                     htmlFor="terms"
                     className="text-sm text-neutral-700 leading-tight cursor-pointer"
                   >
-                    Tôi đồng ý với điều khoản và điều kiện
+                    {t('auth.agreeToTerms')}
                   </label>
                 </div>
 
@@ -496,7 +535,7 @@ export function Register({ onNavigate }: RegisterProps) {
                     htmlFor="updates"
                     className="text-sm text-neutral-700 leading-tight cursor-pointer"
                   >
-                    Nhận thông tin và ưu đãi qua email
+                    {t('auth.receiveUpdates')}
                   </label>
                 </div>
               </div>
@@ -506,20 +545,22 @@ export function Register({ onNavigate }: RegisterProps) {
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                 disabled={isLoading}
               >
-                {isLoading ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
+                {isLoading ? t('auth.creatingAccount') : t('auth.createAccountButton')}
               </Button>
             </form>
+              </>
+            )}
           </div>
 
           {/* Sign In Link */}
           <div className="text-center mt-6">
             <p className="text-sm text-neutral-600">
-              Đã có tài khoản?{' '}
+              {t('auth.alreadyHaveAccount')}{' '}
               <button
                 onClick={() => onNavigate('login')}
                 className="text-orange-500 hover:text-orange-600 transition-colors"
               >
-                Đăng nhập ngay
+                {t('auth.signInNow')}
               </button>
             </p>
           </div>

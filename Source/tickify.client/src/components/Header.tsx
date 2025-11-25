@@ -231,8 +231,8 @@ export function Header({
                     {t('header.profile')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => {
-                      authService.logout();
+                    onClick={async () => {
+                      await authService.logout();
                       // Logout will redirect to /login automatically
                     }}
                     className="text-red-600 focus:text-red-600"

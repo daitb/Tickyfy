@@ -65,6 +65,7 @@ class AuthService {
 
     // Save to localStorage (backend uses accessToken, not token)
     localStorage.setItem("authToken", loginResponse.accessToken);
+    localStorage.setItem("refreshToken", loginResponse.refreshToken);
 
     // Convert backend response to UserDto format for compatibility
     const user: UserDto = {
@@ -97,16 +98,31 @@ class AuthService {
   }
 
   /**
-   * Logout user - clear localStorage and redirect
+   * Logout user - call backend API, clear localStorage and redirect
    */
-  logout(): void {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("user");
+  async logout(): Promise<void> {
+    try {
+      // Get refresh token from localStorage if stored, or use empty string
+      const refreshToken = localStorage.getItem("refreshToken") || "";
+      
+      // Call backend logout to revoke refresh token
+      if (refreshToken) {
+        await apiClient.post("/auth/logout", { refreshToken });
+      }
+    } catch (error) {
+      console.error("Logout API call failed:", error);
+      // Continue with logout even if API call fails
+    } finally {
+      // Clear all auth data from localStorage
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
 
-    // Dispatch custom event to notify app of auth change
-    window.dispatchEvent(new Event("auth-change"));
+      // Dispatch custom event to notify app of auth change
+      window.dispatchEvent(new Event("auth-change"));
 
-    window.location.href = "/login";
+      window.location.href = "/login";
+    }
   }
 
   /**
@@ -163,6 +179,13 @@ class AuthService {
   }
 
   /**
+   * Resend verification email
+   */
+  async resendVerificationEmail(email: string): Promise<void> {
+    await apiClient.post("/auth/resend-verification", { email });
+  }
+
+  /**
    * Request password reset
    */
   async forgotPassword(email: string): Promise<void> {
@@ -215,6 +238,7 @@ class AuthService {
 
     // Save to localStorage
     localStorage.setItem("authToken", loginResponse.accessToken);
+    localStorage.setItem("refreshToken", loginResponse.refreshToken);
 
     // Convert backend response to UserDto format
     const user: UserDto = {
