@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Tickify.Data;
 using Tickify.DTOs.Auth;
 using Tickify.Exceptions;
+using Tickify.Interfaces.Repositories;
 using Tickify.Models;
 using Tickify.Repositories;
 using Tickify.Services.Email;

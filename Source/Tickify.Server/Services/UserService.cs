@@ -3,6 +3,7 @@ using Tickify.Common;
 using Tickify.DTOs.Auth;
 using Tickify.DTOs.User;
 using Tickify.Exceptions;
+using Tickify.Interfaces.Repositories;
 using Tickify.Interfaces.Services;
 using Tickify.Models;
 using Tickify.Repositories;

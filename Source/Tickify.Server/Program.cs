@@ -22,7 +22,7 @@ namespace Tickify
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -284,6 +284,25 @@ namespace Tickify
 
             // Map SignalR hub
             app.MapHub<Tickify.Hubs.ChatHub>("/hubs/chat");
+
+            // ============================================
+            // 9. DATABASE SEEDING
+            // Seed dữ liệu mẫu khi ứng dụng khởi động
+            // ============================================
+            using (var scope = app.Services.CreateScope())
+            {
+                var services = scope.ServiceProvider;
+                try
+                {
+                    var context = services.GetRequiredService<ApplicationDbContext>();
+                    await DbInitializer.SeedAsync(context);
+                }
+                catch (Exception ex)
+                {
+                    var logger = services.GetRequiredService<ILogger<Program>>();
+                    logger.LogError(ex, "An error occurred while seeding the database.");
+                }
+            }
 
             app.Run();
         }
