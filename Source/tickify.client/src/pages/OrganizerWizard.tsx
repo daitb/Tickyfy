@@ -1,6 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Upload, Plus, Trash2, ArrowLeft, Loader2, Tag } from "lucide-react";
+import {
+  Upload,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  Loader2,
+  X,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -18,7 +27,7 @@ import { cities } from "../mockData";
 import { eventService, type CreateEventDto } from "../services/eventService";
 import { categoryService, type CategoryDto } from "../services/categoryService";
 import { authService } from "../services/authService";
-import { promoCodeService, type PromoCode } from "../services/promoCodeService";
+import { imageService } from "../services/imageService";
 import type { Category, Event, TicketTier } from "../types";
 
 interface OrganizerWizardProps {
@@ -45,10 +54,13 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     { name: "", price: 0, total: 100, description: "" },
   ]);
 
-  const [availablePromoCodes, setAvailablePromoCodes] = useState<PromoCode[]>(
-    []
-  );
-  const [selectedPromoCodes, setSelectedPromoCodes] = useState<number[]>([]);
+  // Image upload states
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get current user
   const user = authService.getCurrentUser();
@@ -104,25 +116,101 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     setTicketTiers(newTiers);
   };
 
-  // Load available promo codes
-  useEffect(() => {
-    const loadPromoCodes = async () => {
-      try {
-        const codes = await promoCodeService.getAll();
-        setAvailablePromoCodes(codes.filter((code) => code.isActive));
-      } catch (error) {
-        console.error("Failed to load promo codes:", error);
-      }
-    };
-    loadPromoCodes();
-  }, []);
+  // Handle image file selection and auto-upload
+  const handleImageSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const handlePromoCodeToggle = (promoCodeId: number) => {
-    setSelectedPromoCodes((prev) =>
-      prev.includes(promoCodeId)
-        ? prev.filter((id) => id !== promoCodeId)
-        : [...prev, promoCodeId]
-    );
+    console.log("[OrganizerWizard] Image selected:", file.name);
+    setUploadError(null);
+
+    // Validate file
+    const validationError = imageService.validateImageFile(file);
+    if (validationError) {
+      console.error("[OrganizerWizard] Validation failed:", validationError);
+      setUploadError(validationError);
+      alert(validationError);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    setSelectedImage(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+      console.log("[OrganizerWizard] Preview created");
+    };
+    reader.readAsDataURL(file);
+
+    // Auto-upload immediately after selection
+    await handleImageUpload(file);
+  };
+
+  // Upload image to Azure Storage
+  const handleImageUpload = async (fileToUpload?: File) => {
+    const imageToUpload = fileToUpload || selectedImage;
+
+    if (!imageToUpload) {
+      console.warn("[OrganizerWizard] No image to upload");
+      return;
+    }
+
+    try {
+      setIsUploadingImage(true);
+      setUploadError(null);
+      console.log("[OrganizerWizard] Auto-uploading to Azure Storage...");
+
+      const response = await imageService.uploadImage(imageToUpload);
+
+      setUploadedImageUrl(response.imageUrl);
+      handleInputChange("image", response.imageUrl);
+
+      console.log("[OrganizerWizard] Upload successful!", {
+        imageUrl: response.imageUrl,
+        blobName: response.blobName,
+      });
+
+      // Success notification (subtle, không dùng alert để không làm gián đoạn UX)
+      console.log("Image uploaded successfully to Azure Storage!");
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to upload image";
+      console.error("[OrganizerWizard] Upload error:", errorMsg);
+      setUploadError(errorMsg);
+
+      // Reset on error
+      setSelectedImage(null);
+      setImagePreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      alert(`Upload failed: ${errorMsg}`);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Remove selected image
+  const handleRemoveImage = () => {
+    console.log("[OrganizerWizard] Removing image");
+    setSelectedImage(null);
+    setImagePreview(null);
+    setUploadedImageUrl(null);
+    setUploadError(null);
+    handleInputChange("image", undefined);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleNext = () => {
@@ -325,15 +413,118 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
               <div>
                 <Label>Event Image</Label>
-                <div className="mt-1 border-2 border-dashed border-neutral-300 rounded-xl p-8 text-center hover:border-orange-500 transition-colors cursor-pointer">
-                  <Upload className="mx-auto text-neutral-400 mb-2" size={32} />
-                  <p className="text-sm text-neutral-600">
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-xs text-neutral-400 mt-1">
-                    PNG, JPG up to 10MB
-                  </p>
-                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                  id="image-upload"
+                />
+
+                {!imagePreview ? (
+                  <label
+                    htmlFor="image-upload"
+                    className="mt-1 border-2 border-dashed border-neutral-300 rounded-xl p-8 text-center hover:border-orange-500 transition-colors cursor-pointer flex flex-col items-center block"
+                  >
+                    <Upload
+                      className="mx-auto text-neutral-400 mb-2"
+                      size={32}
+                    />
+                    <p className="text-sm text-neutral-600">
+                      Click to upload image
+                    </p>
+                    <p className="text-xs text-neutral-400 mt-1">
+                      PNG, JPG, GIF, WebP up to 5MB
+                    </p>
+                  </label>
+                ) : (
+                  <div className="mt-1 border-2 border-neutral-300 rounded-xl p-4">
+                    {/* Loading Overlay */}
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center z-10">
+                        <div className="text-center">
+                          <Loader2
+                            className="animate-spin mx-auto text-orange-500 mb-2"
+                            size={40}
+                          />
+                          <p className="text-sm text-neutral-700 font-medium">
+                            Uploading to Azure Storage...
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-64 object-cover rounded-lg"
+                      />
+                      {!isUploadingImage && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                          title="Remove image"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
+
+                    {uploadError && (
+                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                        <AlertCircle
+                          className="text-red-500 flex-shrink-0 mt-0.5"
+                          size={16}
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm text-red-700 font-medium">
+                            Upload Failed
+                          </p>
+                          <p className="text-xs text-red-600 mt-1">
+                            {uploadError}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {uploadedImageUrl && !isUploadingImage && (
+                      <div className="mt-4 space-y-3">
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <p className="text-sm text-green-700 flex items-center gap-2">
+                            <CheckCircle size={16} className="flex-shrink-0" />
+                            <span className="font-medium">
+                              Uploaded to Azure Storage
+                            </span>
+                          </p>
+                          <p className="text-xs text-green-600 mt-1 break-all">
+                            {uploadedImageUrl}
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <label
+                            htmlFor="image-upload"
+                            className="flex-1 px-4 py-2 border-2 border-orange-500 text-orange-600 rounded-lg hover:bg-orange-50 cursor-pointer flex items-center justify-center transition-colors font-medium"
+                          >
+                            <Upload size={16} className="mr-2" />
+                            Change Image
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="px-4 py-2 border-2 border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium"
+                          >
+                            <X size={16} className="inline mr-1" />
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
