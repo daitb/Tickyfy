@@ -695,13 +695,37 @@ public class EventService : IEventService
     #region Private Helper Methods
 
     /// Validate event dates (start date must be before end date)
+    /// <summary>
+    /// Strict validation for event dates - prevents past events and enforces 24-hour advance booking
+    /// </summary>
     private void ValidateEventDates(DateTime startDate, DateTime endDate)
     {
-        if (startDate >= endDate)
-            throw new BadRequestException("Event start date must be before end date");
+        var now = DateTime.UtcNow;
+        
+        // Check if start date is in the past
+        if (startDate < now)
+            throw new BadRequestException(
+                $"Event start date cannot be in the past. " +
+                $"Selected: {startDate:yyyy-MM-dd HH:mm} UTC, Current: {now:yyyy-MM-dd HH:mm} UTC");
 
-        if (startDate < DateTime.UtcNow.AddHours(-1)) // Allow 1 hour buffer
-            throw new BadRequestException("Event start date cannot be in the past");
+        // Enforce minimum 24-hour advance booking (best practice for event management)
+        var minimumStartDate = now.AddHours(24);
+        if (startDate < minimumStartDate)
+            throw new BadRequestException(
+                $"Events must be scheduled at least 24 hours in advance. " +
+                $"Minimum allowed: {minimumStartDate:yyyy-MM-dd HH:mm} UTC");
+
+        // Validate end date is after start date
+        if (startDate >= endDate)
+            throw new BadRequestException(
+                "Event end date must be after start date. " +
+                $"Start: {startDate:yyyy-MM-dd HH:mm}, End: {endDate:yyyy-MM-dd HH:mm}");
+
+        // Prevent extremely long events (sanity check - max 30 days)
+        var maxDuration = TimeSpan.FromDays(30);
+        if (endDate - startDate > maxDuration)
+            throw new BadRequestException(
+                $"Event duration cannot exceed 30 days. Current duration: {(endDate - startDate).TotalDays:F1} days");
     }
 
     /// Validate ticket types

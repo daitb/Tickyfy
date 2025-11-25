@@ -28,17 +28,21 @@ public class CreateEventValidator : AbstractValidator<CreateEventDto>
             .NotEmpty().WithMessage("Địa điểm là bắt buộc")
             .MaximumLength(500).WithMessage("Địa điểm không được dài quá 500 ký tự");
 
-        // StartDate validation
+        // StartDate validation - STRICT: Must be at least 24 hours in the future
         RuleFor(x => x.StartDate)
             .NotEmpty().WithMessage("Ngày bắt đầu là bắt buộc")
-            .GreaterThanOrEqualTo(DateTime.UtcNow.AddDays(1))
-            .WithMessage("Ngày bắt đầu phải sau ngày hiện tại ít nhất 1 ngày");
+            .Must(startDate => startDate > DateTime.UtcNow)
+            .WithMessage("Ngày bắt đầu không được ở trong quá khứ")
+            .Must(startDate => startDate >= DateTime.UtcNow.AddHours(24))
+            .WithMessage("Sự kiện phải được đặt lịch trước ít nhất 24 giờ");
 
-        // EndDate validation
+        // EndDate validation - Must be after start date
         RuleFor(x => x.EndDate)
             .NotEmpty().WithMessage("Ngày kết thúc là bắt buộc")
             .GreaterThan(x => x.StartDate)
-            .WithMessage("Ngày kết thúc phải sau ngày bắt đầu");
+            .WithMessage("Ngày kết thúc phải sau ngày bắt đầu")
+            .Must((dto, endDate) => endDate - dto.StartDate <= TimeSpan.FromDays(30))
+            .WithMessage("Thời lượng sự kiện không được vượt quá 30 ngày");
 
         // CategoryId validation
         RuleFor(x => x.CategoryId)

@@ -18,6 +18,7 @@ import { TransferTicket } from "./pages/TransferTicket";
 import { Wishlist } from "./pages/Wishlist";
 import { Waitlist } from "./pages/Waitlist";
 import { OrganizerWizard } from "./pages/OrganizerWizard";
+import { CreateEvent } from "./pages/CreateEvent";
 import { OrganizerDashboard } from "./pages/OrganizerDashboard";
 import { EventManagement } from "./pages/EventManagement";
 import { EventAnalytics } from "./pages/EventAnalytics";
@@ -60,6 +61,7 @@ type Page =
   | "transfer-ticket"
   | "wishlist"
   | "waitlist"
+  | "create-event"
   | "organizer-wizard"
   | "organizer-dashboard"
   | "event-management"
@@ -109,6 +111,7 @@ export default function App() {
     if (path.startsWith("/transfer-ticket/")) return "transfer-ticket";
     if (path === "/wishlist") return "wishlist";
     if (path === "/waitlist") return "waitlist";
+    if (path === "/create-event") return "create-event";
     if (path === "/organizer-wizard") return "organizer-wizard";
     if (path === "/organizer-dashboard") return "organizer-dashboard";
     if (path === "/event-management") return "event-management";
@@ -354,6 +357,9 @@ export default function App() {
 
       case "waitlist":
         return <Waitlist onNavigate={handleNavigate} />;
+
+      case "create-event":
+        return <CreateEvent onNavigate={handleNavigate} />;
 
       case "organizer-wizard":
         return <OrganizerWizard onNavigate={handleNavigate} />;

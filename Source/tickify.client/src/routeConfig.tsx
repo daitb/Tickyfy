@@ -13,6 +13,7 @@ export const pageRoutes = [
   { path: "/transfer-ticket/:ticketId", page: "transfer-ticket" },
   { path: "/wishlist", page: "wishlist" },
   { path: "/waitlist", page: "waitlist" },
+  { path: "/create-event", page: "create-event" },
   { path: "/organizer-wizard", page: "organizer-wizard" },
   { path: "/organizer-dashboard", page: "organizer-dashboard" },
   { path: "/event-management", page: "event-management" },

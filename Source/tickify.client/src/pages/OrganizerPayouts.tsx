@@ -25,7 +25,8 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { payoutService, type PayoutDto, type PayoutStatsDto, type RequestPayoutDto } from '../services/payoutService';
-import { eventService } from '../services/eventService';
+import { organizerService, type OrganizerEventDto } from '../services/organizerService';
+import { authService } from '../services/authService';
 
 interface OrganizerPayoutsProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -43,35 +44,31 @@ export function OrganizerPayouts({ onNavigate }: OrganizerPayoutsProps) {
     bankName: '',
     accountHolderName: '',
   });
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<OrganizerEventDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const organizerId = authService.getCurrentOrganizerId();
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!organizerId) {
+      setLoading(false);
+      return;
+    }
+    loadData(organizerId);
+  }, [organizerId]);
 
-  const loadData = async () => {
+  const loadData = async (currentOrganizerId: number) => {
     try {
       setLoading(true);
       const payoutsData = await payoutService.getAllPayouts();
-      setPayouts(payoutsData);
+      const ownPayouts = payoutsData.filter((payout) => payout.organizerId === currentOrganizerId);
+      setPayouts(ownPayouts);
 
-      // Get all events (organizer can filter their own)
-      const allEvents = await eventService.getEvents();
-      setEvents(allEvents);
+      const organizerEvents = await organizerService.getOrganizerEvents(currentOrganizerId);
+      setEvents(organizerEvents);
 
-      // Get organizer stats if we have organizer ID
-      if (payoutsData.length > 0) {
-        const organizerId = payoutsData[0].organizerId;
-        const statsData = await payoutService.getOrganizerStats(organizerId);
-        setStats(statsData);
-      } else {
-        // If no payouts, try to get stats from first event's organizer
-        if (allEvents.length > 0) {
-          // This would need organizerId from user context - for now, skip
-        }
-      }
+      const statsData = await payoutService.getOrganizerStats(currentOrganizerId);
+      setStats(statsData);
     } catch (err: any) {
       setError(err.message || 'Failed to load payouts');
     } finally {
@@ -97,7 +94,9 @@ export function OrganizerPayouts({ onNavigate }: OrganizerPayoutsProps) {
         bankName: '',
         accountHolderName: '',
       });
-      await loadData();
+      if (organizerId) {
+        await loadData(organizerId);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to request payout');
     }
@@ -144,6 +143,30 @@ export function OrganizerPayouts({ onNavigate }: OrganizerPayoutsProps) {
         return <Badge>{status}</Badge>;
     }
   };
+
+  if (!organizerId) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
+        <div className="max-w-xl w-full bg-white rounded-2xl p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-semibold mb-3">Organizer access required</h1>
+          <p className="text-neutral-600 mb-6">
+            Become an organizer to request and track payouts.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button variant="outline" onClick={() => onNavigate('home')} className="flex-1">
+              Back to Home
+            </Button>
+            <Button
+              onClick={() => onNavigate('become-organizer')}
+              className="flex-1 bg-orange-500 hover:bg-orange-600"
+            >
+              Become an Organizer
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -316,7 +339,7 @@ export function OrganizerPayouts({ onNavigate }: OrganizerPayoutsProps) {
                 >
                   <option value={0}>Select an event</option>
                   {events.map((event) => (
-                    <option key={event.id} value={event.id}>
+                    <option key={event.eventId} value={event.eventId}>
                       {event.title}
                     </option>
                   ))}
