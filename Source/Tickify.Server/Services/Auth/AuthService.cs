@@ -407,6 +407,7 @@ public class AuthService : IAuthService
             Email = user.Email,
             FullName = user.FullName,
             Roles = roles,
+            OrganizerId = organizerId,
             AccessToken = accessToken,
             RefreshToken = refreshToken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes)
