@@ -62,9 +62,27 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get current user
-  const user = authService.getCurrentUser();
-  const organizerId = user?.organizerId || 1;
+  // Organizer context
+  const organizerId = authService.getCurrentOrganizerId();
+
+  // Get today's date in YYYY-MM-DD format for date input min attribute
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  };
+
+  // Get tomorrow's date (minimum allowed event date)
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split("T")[0];
+  };
+
+  // Get current time in HH:MM format
+  const getCurrentTime = () => {
+    const now = new Date();
+    return now.toTimeString().slice(0, 5);
+  };
 
   // Load categories on mount
   useEffect(() => {
@@ -255,6 +273,52 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         return;
       }
 
+      // ===== STRICT DATE/TIME VALIDATION =====
+      const now = new Date();
+      const selectedDate = new Date(eventData.date);
+      const selectedDateTime = new Date(
+        `${eventData.date}T${eventData.time}:00`
+      );
+
+      // Check if date is in the past
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const eventDateOnly = new Date(eventData.date);
+      eventDateOnly.setHours(0, 0, 0, 0);
+
+      if (eventDateOnly < today) {
+        alert("Event date cannot be in the past. Please select a future date.");
+        return;
+      }
+
+      // Check if event is at least 24 hours in the future
+      const minDateTime = new Date();
+      minDateTime.setHours(minDateTime.getHours() + 24);
+
+      if (selectedDateTime < minDateTime) {
+        alert(
+          "Event must be scheduled at least 24 hours in advance.\n\nPlease select a date and time that is at least 1 day from now."
+        );
+        return;
+      }
+
+      // Check if selected time has already passed today
+      if (eventDateOnly.getTime() === today.getTime()) {
+        const currentTime = getCurrentTime();
+        if (eventData.time <= currentTime) {
+          alert(
+            `Event time cannot be in the past.\n\nCurrent time: ${currentTime}\nSelected time: ${eventData.time}\n\nPlease select a future time or a future date.`
+          );
+          return;
+        }
+      }
+
+      // Validate that event has at least one ticket tier
+      if (ticketTiers.length === 0 || !ticketTiers[0].name) {
+        alert("Please add at least one ticket tier before publishing.");
+        return;
+      }
+
       // Combine date and time
       const eventDate = eventData.date || "";
       const eventTime = eventData.time || "00:00";
@@ -323,6 +387,39 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       setIsPublishing(false);
     }
   };
+
+  if (!organizerId) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
+        <div className="max-w-xl w-full bg-white rounded-2xl p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-semibold mb-3">
+            {t("organizer.accessRequiredTitle", "Organizer access required")}
+          </h1>
+          <p className="text-neutral-600 mb-6">
+            {t(
+              "organizer.accessRequiredDescription",
+              "You need an approved organizer profile before creating events."
+            )}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button
+              variant="outline"
+              onClick={() => onNavigate("home")}
+              className="flex-1"
+            >
+              {t("common.back")}
+            </Button>
+            <Button
+              onClick={() => onNavigate("become-organizer")}
+              className="flex-1 bg-orange-500 hover:bg-orange-600"
+            >
+              {t("organizer.becomeOrganizer")}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
@@ -540,10 +637,14 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                   <Input
                     id="date"
                     type="date"
+                    min={getTomorrowDate()}
                     value={eventData.date || ""}
                     onChange={(e) => handleInputChange("date", e.target.value)}
                     className="mt-1"
                   />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Event must be at least 24 hours in the future
+                  </p>
                 </div>
 
                 <div>
@@ -555,6 +656,9 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                     onChange={(e) => handleInputChange("time", e.target.value)}
                     className="mt-1"
                   />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Time must be in the future if event is today
+                  </p>
                 </div>
               </div>
 

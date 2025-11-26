@@ -30,6 +30,7 @@ export interface LoginResponse {
   email: string;
   fullName: string;
   roles: string[];
+  organizerId?: number | null;
   accessToken: string;
   refreshToken: string;
   expiresAt: string;
@@ -81,18 +82,7 @@ class AuthService {
     console.log("AuthService.login - Token saved:", loginResponse.accessToken);
     console.log("AuthService.login - User saved:", user);
 
-    // Dispatch custom event to notify app of auth change
-    window.dispatchEvent(new Event("auth-change"));
-
-    // Check for redirect URL and redirect after successful login
-    const redirectUrl = sessionStorage.getItem("redirectAfterLogin");
-    if (redirectUrl) {
-      sessionStorage.removeItem("redirectAfterLogin");
-      // Use setTimeout to ensure state updates complete
-      setTimeout(() => {
-        window.location.href = redirectUrl;
-      }, 100);
-    }
+    this.handlePendingRedirect();
 
     return loginResponse;
   }
@@ -104,7 +94,7 @@ class AuthService {
     try {
       // Get refresh token from localStorage if stored, or use empty string
       const refreshToken = localStorage.getItem("refreshToken") || "";
-      
+
       // Call backend logout to revoke refresh token
       if (refreshToken) {
         await apiClient.post("/auth/logout", { refreshToken });
@@ -133,10 +123,36 @@ class AuthService {
     if (!userStr) return null;
 
     try {
-      return JSON.parse(userStr) as UserDto;
+      const parsed = JSON.parse(userStr) as UserDto;
+      if (
+        parsed &&
+        (parsed.organizerId === undefined || parsed.organizerId === null)
+      ) {
+        const organizerId = this.getOrganizerIdFromToken(
+          localStorage.getItem("authToken") || undefined
+        );
+        if (organizerId) {
+          parsed.organizerId = organizerId;
+          localStorage.setItem("user", JSON.stringify(parsed));
+        }
+      }
+      return parsed;
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Convenience accessor for the organizer id of current user
+   */
+  getCurrentOrganizerId(): number | undefined {
+    const user = this.getCurrentUser();
+    if (user?.organizerId) {
+      return user.organizerId;
+    }
+    return this.getOrganizerIdFromToken(
+      localStorage.getItem("authToken") || undefined
+    );
   }
 
   /**
@@ -159,13 +175,11 @@ class AuthService {
    * Refresh JWT token
    */
   async refreshToken(): Promise<string> {
-    const response = await apiClient.post<{ token: string }>(
-      "/auth/refresh-token"
-    );
-    const newToken = response.data.token;
-
-    localStorage.setItem("authToken", newToken);
-    return newToken;
+    const response = await apiClient.post<LoginResponse>("/auth/refresh-token");
+    const loginResponse = response.data;
+    const user = this.persistAuthenticatedUser(loginResponse);
+    console.log("AuthService.refreshToken - refreshed for user", user.userId);
+    return loginResponse.accessToken;
   }
 
   /**
@@ -174,7 +188,7 @@ class AuthService {
   async verifyEmail(token: string, email?: string): Promise<void> {
     // Backend expects { email, token }
     // If email is not provided, try to get it from user or let backend handle it
-    const payload = email ? { email, token } : { token, email: '' };
+    const payload = email ? { email, token } : { token, email: "" };
     await apiClient.post("/Auth/verify-email", payload);
   }
 
@@ -195,36 +209,57 @@ class AuthService {
   /**
    * Reset password with token
    */
-  async resetPassword(email: string, token: string, newPassword: string, confirmPassword: string): Promise<void> {
-    await apiClient.post("/Auth/reset-password", { email, token, newPassword, confirmPassword });
+  async resetPassword(
+    email: string,
+    token: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<void> {
+    await apiClient.post("/Auth/reset-password", {
+      email,
+      token,
+      newPassword,
+      confirmPassword,
+    });
   }
 
   /**
    * Change password for authenticated user
    */
-  async changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<void> {
-    await apiClient.post("/Auth/change-password", { currentPassword, newPassword, confirmPassword });
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<void> {
+    await apiClient.post("/Auth/change-password", {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
   }
 
-    /**
+  /**
    * Google Login - External authentication
    */
   async googleLogin(credential: string): Promise<LoginResponse> {
     console.log("AuthService.googleLogin - Sending Google credential");
 
     // Decode JWT token to get user info
-    const payload = JSON.parse(atob(credential.split('.')[1]));
-    
+    const payload = JSON.parse(atob(credential.split(".")[1]));
+
     const externalLoginDto = {
       provider: "Google",
       idToken: credential,
       email: payload.email,
       fullName: payload.name,
       providerId: payload.sub,
-      profilePicture: payload.picture
+      profilePicture: payload.picture,
     };
 
-    const response = await apiClient.post<LoginResponse>("/auth/external-login", externalLoginDto);
+    const response = await apiClient.post<LoginResponse>(
+      "/auth/external-login",
+      externalLoginDto
+    );
 
     console.log("AuthService.googleLogin - Response:", response.data);
 
@@ -240,23 +275,74 @@ class AuthService {
     localStorage.setItem("authToken", loginResponse.accessToken);
     localStorage.setItem("refreshToken", loginResponse.refreshToken);
 
-    // Convert backend response to UserDto format
     const user: UserDto = {
       userId: loginResponse.userId.toString(),
       fullName: loginResponse.fullName,
       email: loginResponse.email,
-      role: loginResponse.roles[0],
+      role: primaryRole,
       isEmailVerified: true,
     };
 
+    if (resolvedOrganizerId !== undefined && resolvedOrganizerId !== null) {
+      user.organizerId = resolvedOrganizerId;
+    }
+
+    localStorage.setItem("authToken", loginResponse.accessToken);
     localStorage.setItem("user", JSON.stringify(user));
 
-    console.log("AuthService.googleLogin - Login successful");
-
-    // Dispatch custom event to notify app of auth change
+    // Notify the rest of the app
     window.dispatchEvent(new Event("auth-change"));
 
-    return loginResponse;
+    return user;
+  }
+
+  private handlePendingRedirect(): void {
+    const redirectUrl = sessionStorage.getItem("redirectAfterLogin");
+    if (redirectUrl) {
+      sessionStorage.removeItem("redirectAfterLogin");
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 100);
+    }
+  }
+
+  private getOrganizerIdFromToken(token?: string): number | undefined {
+    if (!token) return undefined;
+    const payload = this.parseJwt(token);
+    if (!payload) return undefined;
+
+    const raw =
+      (payload["organizerId"] as string | number | undefined) ??
+      (payload["organizerID"] as string | number | undefined) ??
+      (payload["organizer_id"] as string | number | undefined);
+
+    if (raw === undefined || raw === null) {
+      return undefined;
+    }
+
+    const parsed = parseInt(raw.toString(), 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+
+  private parseJwt(token: string): Record<string, unknown> | null {
+    try {
+      const parts = token.split(".");
+      if (parts.length < 2) return null;
+      const payload = parts[1];
+      const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized.padEnd(
+        normalized.length + ((4 - (normalized.length % 4)) % 4),
+        "="
+      );
+      const decoded = atob(padded);
+      return JSON.parse(decoded) as Record<string, unknown>;
+    } catch (error) {
+      console.warn(
+        "AuthService.parseJwt - Failed to parse token payload",
+        error
+      );
+      return null;
+    }
   }
 }
 
