@@ -30,6 +30,7 @@ export interface LoginResponse {
   email: string;
   fullName: string;
   roles: string[];
+  organizerId?: number | null;
   accessToken: string;
   refreshToken: string;
   expiresAt: string;
@@ -104,7 +105,7 @@ class AuthService {
     try {
       // Get refresh token from localStorage if stored, or use empty string
       const refreshToken = localStorage.getItem("refreshToken") || "";
-      
+
       // Call backend logout to revoke refresh token
       if (refreshToken) {
         await apiClient.post("/auth/logout", { refreshToken });
@@ -133,10 +134,29 @@ class AuthService {
     if (!userStr) return null;
 
     try {
-      return JSON.parse(userStr) as UserDto;
+      const parsed = JSON.parse(userStr) as UserDto;
+      if (parsed && (parsed.organizerId === undefined || parsed.organizerId === null)) {
+        const organizerId = this.getOrganizerIdFromToken(localStorage.getItem("authToken") || undefined);
+        if (organizerId) {
+          parsed.organizerId = organizerId;
+          localStorage.setItem("user", JSON.stringify(parsed));
+        }
+      }
+      return parsed;
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Convenience accessor for the organizer id of current user
+   */
+  getCurrentOrganizerId(): number | undefined {
+    const user = this.getCurrentUser();
+    if (user?.organizerId) {
+      return user.organizerId;
+    }
+    return this.getOrganizerIdFromToken(localStorage.getItem("authToken") || undefined);
   }
 
   /**
@@ -167,6 +187,7 @@ class AuthService {
     localStorage.setItem("authToken", newToken);
     return newToken;
   }
+
 
   /**
    * Verify email with token
@@ -206,9 +227,9 @@ class AuthService {
     await apiClient.post("/Auth/change-password", { currentPassword, newPassword, confirmPassword });
   }
 
-    /**
-   * Google Login - External authentication
-   */
+  /**
+ * Google Login - External authentication
+ */
   async googleLogin(credential: string): Promise<LoginResponse> {
     console.log("AuthService.googleLogin - Sending Google credential");
 
@@ -222,7 +243,7 @@ class AuthService {
         .join('')
     );
     const payload = JSON.parse(jsonPayload);
-    
+
     const externalLoginDto = {
       provider: "Google",
       idToken: credential,
@@ -265,6 +286,53 @@ class AuthService {
     window.dispatchEvent(new Event("auth-change"));
 
     return loginResponse;
+  }
+
+
+  private handlePendingRedirect(): void {
+    const redirectUrl = sessionStorage.getItem("redirectAfterLogin");
+    if (redirectUrl) {
+      sessionStorage.removeItem("redirectAfterLogin");
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 100);
+    }
+  }
+
+  private getOrganizerIdFromToken(token?: string): number | undefined {
+    if (!token) return undefined;
+    const payload = this.parseJwt(token);
+    if (!payload) return undefined;
+
+    const raw =
+      (payload["organizerId"] as string | number | undefined) ??
+      (payload["organizerID"] as string | number | undefined) ??
+      (payload["organizer_id"] as string | number | undefined);
+
+    if (raw === undefined || raw === null) {
+      return undefined;
+    }
+
+    const parsed = parseInt(raw.toString(), 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+
+  private parseJwt(token: string): Record<string, unknown> | null {
+    try {
+      const parts = token.split(".");
+      if (parts.length < 2) return null;
+      const payload = parts[1];
+      const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized.padEnd(
+        normalized.length + ((4 - (normalized.length % 4)) % 4),
+        "="
+      );
+      const decoded = atob(padded);
+      return JSON.parse(decoded) as Record<string, unknown>;
+    } catch (error) {
+      console.warn("AuthService.parseJwt - Failed to parse token payload", error);
+      return null;
+    }
   }
 }
 

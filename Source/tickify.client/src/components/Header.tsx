@@ -103,13 +103,13 @@ export function Header({
             {/* Create Event Button - Only for Organizers */}
             {isAuthenticated && userRole === "organizer" && (
               <Button
-                onClick={() => onNavigate("organizer-wizard")}
+                onClick={() => onNavigate("create-event")}
                 variant="secondary"
                 size="sm"
                 className="bg-white text-teal-600 hover:bg-neutral-100 gap-2 hidden lg:flex"
               >
                 <Plus size={18} />
-                {t("header.becomeOrganizer")}
+                {t("header.createEvent")}
               </Button>
             )}
 
@@ -177,7 +177,7 @@ export function Header({
                         Manage Events
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => onNavigate("organizer-wizard")}
+                        onClick={() => onNavigate("create-event")}
                       >
                         <Plus size={16} className="mr-2" />
                         Create Event

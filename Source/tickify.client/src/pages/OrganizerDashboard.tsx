@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DollarSign, TrendingUp, Users, Ticket, Calendar, Eye, Plus, Loader2 } from 'lucide-react';
 import { organizerService, type OrganizerEventDto, type OrganizerEarningsDto } from '../services/organizerService';
@@ -22,32 +23,39 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
   const [events, setEvents] = useState<OrganizerEventDto[]>([]);
   const [earnings, setEarnings] = useState<OrganizerEarningsDto | null>(null);
   const [error, setError] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all'); // all, draft, pending, approved, rejected
 
-  // Get organizer ID from current user
-  const user = authService.getCurrentUser();
-  const organizerId = user?.organizerId || 1; // Fallback to 1 for demo
+  const organizerId = authService.getCurrentOrganizerId();
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (!organizerId) return;
+    loadDashboardData(organizerId);
+  }, [organizerId]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (currentOrganizerId: number) => {
     try {
       setIsLoading(true);
       setError('');
 
       // GET /api/organizers/{id}/events
-      const eventsData = await organizerService.getOrganizerEvents(organizerId);
+      const eventsData = await organizerService.getOrganizerEvents(currentOrganizerId);
       setEvents(eventsData);
 
       // GET /api/organizers/{id}/earnings
-      const earningsData = await organizerService.getOrganizerEarnings(organizerId);
+      const earningsData = await organizerService.getOrganizerEarnings(currentOrganizerId);
       setEarnings(earningsData);
     } catch (err: any) {
       console.error('Error loading dashboard data:', err);
       setError(err.message || 'Failed to load dashboard data');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Refresh dashboard data (called after creating/editing events)
+  const refreshDashboard = () => {
+    if (organizerId) {
+      loadDashboardData(organizerId);
     }
   };
 
@@ -58,13 +66,49 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
     }).format(price);
   };
 
+  // Filter events by status
+  const filteredEvents = statusFilter === 'all' 
+    ? events 
+    : events.filter(e => e.status.toLowerCase() === statusFilter.toLowerCase());
+
   // Calculate stats from real data
   const totalRevenue = earnings?.totalRevenue || 0;
   const totalSold = events.reduce((sum, event) => sum + event.soldSeats, 0);
   const totalEvents = events.length;
+  const activeEvents = events.filter(e => e.status === 'Approved').length;
+  const pendingEvents = events.filter(e => e.status === 'Pending').length;
 
   // Format monthly revenue for chart
   const salesData = earnings?.monthlyRevenue || [];
+
+  if (!organizerId) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
+        <div className="max-w-xl w-full bg-white rounded-2xl p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-semibold mb-3">
+            {t('organizer.accessRequiredTitle', 'Organizer access required')}
+          </h1>
+          <p className="text-neutral-600 mb-6">
+            {t(
+              'organizer.dashboard.accessRequiredDescription',
+              'Please apply to become an organizer to view performance dashboards.'
+            )}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button variant="outline" onClick={() => onNavigate('home')} className="flex-1">
+              {t('common.back')}
+            </Button>
+            <Button
+              onClick={() => onNavigate('become-organizer')}
+              className="flex-1 bg-orange-500 hover:bg-orange-600"
+            >
+              {t('organizer.becomeOrganizer')}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -97,7 +141,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
             <p className="text-neutral-600">{t('organizer.dashboard.subtitle')}</p>
           </div>
           <Button
-            onClick={() => onNavigate('organizer-wizard')}
+            onClick={() => onNavigate('create-event')}
             className="bg-orange-500 hover:bg-orange-600"
             size="lg"
           >
@@ -152,9 +196,9 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                   <Calendar className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl">{totalEvents}</div>
+                  <div className="text-2xl">{activeEvents}</div>
                   <p className="text-xs text-neutral-500 mt-1">
-                    {totalEvents} published
+                    {pendingEvents} pending approval
                   </p>
                 </CardContent>
               </Card>
@@ -241,23 +285,71 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
           <TabsContent value="events">
             <Card>
               <CardHeader>
-                <CardTitle>Your Events</CardTitle>
-                <CardDescription>Manage and track all your events</CardDescription>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle>Your Events</CardTitle>
+                    <CardDescription>Manage and track all your events</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Events</SelectItem>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={() => onNavigate('create-event')}
+                      className="bg-orange-500 hover:bg-orange-600"
+                    >
+                      <Plus size={16} className="mr-2" />
+                      New Event
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Event</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Sold</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {events.map((event) => {
+                {filteredEvents.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Calendar className="mx-auto text-neutral-300 mb-4" size={64} />
+                    <h3 className="text-lg text-neutral-600 mb-2">
+                      {statusFilter === 'all' 
+                        ? 'No events yet' 
+                        : `No ${statusFilter} events`}
+                    </h3>
+                    <p className="text-sm text-neutral-500 mb-4">
+                      {statusFilter === 'all'
+                        ? 'Create your first event to get started'
+                        : `You don't have any ${statusFilter} events at the moment`}
+                    </p>
+                    {statusFilter === 'all' && (
+                      <Button
+                        onClick={() => onNavigate('create-event')}
+                        className="bg-orange-500 hover:bg-orange-600"
+                      >
+                        <Plus size={16} className="mr-2" />
+                        Create Your First Event
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Event</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Sold</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                    {filteredEvents.map((event) => {
                       const salesRate = event.totalSeats > 0 
                         ? ((event.soldSeats / event.totalSeats) * 100).toFixed(1) 
                         : '0';
@@ -266,36 +358,64 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                         <TableRow key={event.eventId}>
                           <TableCell>
                             <div>
-                              <div className="text-neutral-900">{event.title}</div>
-                              <div className="text-sm text-neutral-500">Event #{event.eventId}</div>
+                              <div className="text-neutral-900 font-medium">{event.title}</div>
+                              <div className="text-sm text-neutral-500">ID: #{event.eventId}</div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            {new Date(event.startDate).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
+                            <div className="text-sm">
+                              {new Date(event.startDate).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </div>
+                            <div className="text-xs text-neutral-500">
+                              {new Date(event.startDate).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
                           </TableCell>
-                          <TableCell>-</TableCell>
                           <TableCell>
                             <Badge className={
                               event.status === 'Approved' ? 'bg-green-100 text-green-700' :
                               event.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                              event.status === 'Rejected' ? 'bg-red-100 text-red-700' :
                               'bg-neutral-100 text-neutral-700'
                             }>
                               {event.status}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {event.soldSeats} / {event.totalSeats} ({salesRate}%)
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">{event.soldSeats} / {event.totalSeats}</span>
+                              <span className="text-xs text-neutral-500">({salesRate}%)</span>
+                            </div>
+                            <div className="w-24 bg-neutral-200 rounded-full h-1.5 mt-1">
+                              <div
+                                className="bg-orange-500 h-1.5 rounded-full"
+                                style={{ width: `${salesRate}%` }}
+                              />
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex gap-2 justify-end">
+                              {(event.status === 'Draft' || event.status === 'Rejected') && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => onNavigate('edit-event', String(event.eventId))}
+                                  className="text-blue-600 hover:bg-blue-50"
+                                >
+                                  Edit
+                                </Button>
+                              )}
                               <Button 
                                 variant="ghost" 
                                 size="sm"
                                 onClick={() => onNavigate('event-analytics', String(event.eventId))}
+                                className="text-teal-600 hover:bg-teal-50"
                               >
                                 Analytics
                               </Button>
@@ -313,6 +433,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                     })}
                   </TableBody>
                 </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
