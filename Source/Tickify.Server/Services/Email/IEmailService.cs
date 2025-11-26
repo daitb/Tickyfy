@@ -36,4 +36,26 @@ public interface IEmailService
     string acceptanceToken, 
     int transferId);
 
+    Task SendTicketTransferAcceptedNotificationAsync(
+        string senderEmail,
+        string senderName,
+        string recipientName,
+        string ticketCode);
+
+    Task SendTicketTransferRejectedNotificationAsync(
+        string senderEmail,
+        string senderName,
+        string recipientName,
+        string ticketCode);
+
+    Task SendTicketTransferAcceptedConfirmationAsync(
+        string recipientEmail,
+        string recipientName,
+        string ticketCode);
+
+    Task SendTicketTransferRejectedConfirmationAsync(
+        string recipientEmail,
+        string recipientName,
+        string ticketCode);
+
 }

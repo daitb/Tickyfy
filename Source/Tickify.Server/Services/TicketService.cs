@@ -178,8 +178,47 @@ public class TicketService : ITicketService
         var updatedTicket = await _ticketRepository.UpdateAsync(ticket);
 
         // Mark transfer as approved
+        // Note: transfer entity is already tracked from GetByIdAsync, so we can modify it directly
         transfer.IsApproved = true;
-        await _ticketTransferRepository.UpdateAsync(transfer);
+        transfer.ApprovedByUserId = userId;
+        
+        // Save changes - the repository will handle the update
+        var updatedTransfer = await _ticketTransferRepository.UpdateAsync(transfer);
+        
+        // Send email notifications
+        try
+        {
+            // Get sender and recipient user info
+            var sender = await _userRepository.GetUserByIdAsync(transfer.FromUserId);
+            var recipient = await _userRepository.GetUserByIdAsync(userId);
+            
+            // Send notification to sender
+            if (sender != null && !string.IsNullOrEmpty(sender.Email))
+            {
+                await _emailService.SendTicketTransferAcceptedNotificationAsync(
+                    senderEmail: sender.Email,
+                    senderName: sender.FullName ?? sender.Email,
+                    recipientName: recipient?.FullName ?? recipient?.Email ?? "A user",
+                    ticketCode: ticket.TicketCode
+                );
+            }
+            
+            // Send confirmation to recipient
+            if (recipient != null && !string.IsNullOrEmpty(recipient.Email))
+            {
+                await _emailService.SendTicketTransferAcceptedConfirmationAsync(
+                    recipientEmail: recipient.Email,
+                    recipientName: recipient.FullName ?? recipient.Email,
+                    ticketCode: ticket.TicketCode
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the transfer
+            // Email sending failure shouldn't prevent transfer completion
+            Console.WriteLine($"Error sending email notifications: {ex.Message}");
+        }
         
         return _mapper.Map<TicketDto>(updatedTicket);
     }
@@ -204,8 +243,44 @@ public class TicketService : ITicketService
         if (transfer.AcceptanceExpiresAt.HasValue && transfer.AcceptanceExpiresAt.Value < DateTime.UtcNow)
             throw new BadRequestException("Acceptance token has expired");
 
+        // Get ticket and user info before deleting transfer record
+        var ticket = await _ticketRepository.GetByIdAsync(transfer.TicketId);
+        var sender = await _userRepository.GetUserByIdAsync(transfer.FromUserId);
+        var recipient = await _userRepository.GetUserByIdAsync(userId);
+
         // Delete the transfer record to reject it
         await _ticketTransferRepository.DeleteAsync(transfer.Id);
+
+        // Send email notifications
+        try
+        {
+            // Send notification to sender
+            if (sender != null && !string.IsNullOrEmpty(sender.Email) && ticket != null)
+            {
+                await _emailService.SendTicketTransferRejectedNotificationAsync(
+                    senderEmail: sender.Email,
+                    senderName: sender.FullName ?? sender.Email,
+                    recipientName: recipient?.FullName ?? recipient?.Email ?? "A user",
+                    ticketCode: ticket.TicketCode
+                );
+            }
+            
+            // Send confirmation to recipient
+            if (recipient != null && !string.IsNullOrEmpty(recipient.Email) && ticket != null)
+            {
+                await _emailService.SendTicketTransferRejectedConfirmationAsync(
+                    recipientEmail: recipient.Email,
+                    recipientName: recipient.FullName ?? recipient.Email,
+                    ticketCode: ticket.TicketCode
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the rejection
+            // Email sending failure shouldn't prevent transfer rejection
+            Console.WriteLine($"Error sending email notifications: {ex.Message}");
+        }
 
         return true;
     }
@@ -273,6 +348,39 @@ public class TicketService : ITicketService
     private string GenerateBookingCode()
     {
         return $"BK{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
+    }
+
+    public async Task<IEnumerable<TicketTransferResponseDto>> GetPendingTransfersAsync(int userId)
+    {
+        var transfers = await _ticketTransferRepository.GetPendingTransfersAsync(userId);
+        
+        var result = new List<TicketTransferResponseDto>();
+        foreach (var transfer in transfers)
+        {
+            result.Add(new TicketTransferResponseDto
+            {
+                Id = transfer.Id,
+                TicketId = transfer.TicketId,
+                TicketCode = transfer.Ticket?.TicketCode ?? string.Empty,
+                FromUserId = transfer.FromUserId,
+                FromUserName = transfer.FromUser?.FullName ?? transfer.FromUser?.Email ?? "Unknown",
+                FromUserEmail = transfer.FromUser?.Email ?? string.Empty,
+                ToUserId = transfer.ToUserId,
+                ToUserName = transfer.ToUser?.FullName ?? transfer.ToUser?.Email ?? "Unknown",
+                ToUserEmail = transfer.ToUser?.Email ?? string.Empty,
+                TransferredAt = transfer.TransferredAt,
+                Reason = transfer.Reason,
+                IsApproved = transfer.IsApproved,
+                AcceptanceExpiresAt = transfer.AcceptanceExpiresAt
+            });
+        }
+        
+        return result;
+    }
+
+    public async Task<int> GetUserTicketsCountAsync(int userId)
+    {
+        return await _ticketRepository.CountByUserIdAsync(userId);
     }
 
     private string GenerateAcceptanceToken(int transferId)
