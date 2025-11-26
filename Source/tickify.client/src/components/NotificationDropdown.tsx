@@ -135,11 +135,11 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
         <Button
           variant="ghost"
           size="sm"
-          className="cursor-pointer relative text-white hover:bg-teal-600"
+          className="cursor-pointer relative text-white hover:bg-teal-600 overflow-visible"
         >
           <Bell size={20} />
           {unreadCount > 0 && (
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs border-2 border-teal-500">
+            <Badge className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs border-2 border-teal-500">
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
           )}

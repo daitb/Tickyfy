@@ -82,7 +82,18 @@ class AuthService {
     console.log("AuthService.login - Token saved:", loginResponse.accessToken);
     console.log("AuthService.login - User saved:", user);
 
-    this.handlePendingRedirect();
+    // Dispatch custom event to notify app of auth change
+    window.dispatchEvent(new Event("auth-change"));
+
+    // Check for redirect URL and redirect after successful login
+    const redirectUrl = sessionStorage.getItem("redirectAfterLogin");
+    if (redirectUrl) {
+      sessionStorage.removeItem("redirectAfterLogin");
+      // Use setTimeout to ensure state updates complete
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 100);
+    }
 
     return loginResponse;
   }
@@ -175,12 +186,15 @@ class AuthService {
    * Refresh JWT token
    */
   async refreshToken(): Promise<string> {
-    const response = await apiClient.post<LoginResponse>("/auth/refresh-token");
-    const loginResponse = response.data;
-    const user = this.persistAuthenticatedUser(loginResponse);
-    console.log("AuthService.refreshToken - refreshed for user", user.userId);
-    return loginResponse.accessToken;
+    const response = await apiClient.post<{ token: string }>(
+      "/auth/refresh-token"
+    );
+    const newToken = response.data.token;
+
+    localStorage.setItem("authToken", newToken);
+    return newToken;
   }
+
 
   /**
    * Verify email with token
@@ -239,13 +253,21 @@ class AuthService {
   }
 
   /**
-   * Google Login - External authentication
-   */
+ * Google Login - External authentication
+ */
   async googleLogin(credential: string): Promise<LoginResponse> {
     console.log("AuthService.googleLogin - Sending Google credential");
 
-    // Decode JWT token to get user info
-    const payload = JSON.parse(atob(credential.split(".")[1]));
+    // Decode JWT token to get user info with proper UTF-8 support
+    const base64Url = credential.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
 
     const externalLoginDto = {
       provider: "Google",
@@ -275,26 +297,25 @@ class AuthService {
     localStorage.setItem("authToken", loginResponse.accessToken);
     localStorage.setItem("refreshToken", loginResponse.refreshToken);
 
+    // Convert backend response to UserDto format
     const user: UserDto = {
       userId: loginResponse.userId.toString(),
       fullName: loginResponse.fullName,
       email: loginResponse.email,
-      role: primaryRole,
+      role: loginResponse.roles[0],
       isEmailVerified: true,
     };
 
-    if (resolvedOrganizerId !== undefined && resolvedOrganizerId !== null) {
-      user.organizerId = resolvedOrganizerId;
-    }
-
-    localStorage.setItem("authToken", loginResponse.accessToken);
     localStorage.setItem("user", JSON.stringify(user));
 
-    // Notify the rest of the app
+    console.log("AuthService.googleLogin - Login successful");
+
+    // Dispatch custom event to notify app of auth change
     window.dispatchEvent(new Event("auth-change"));
 
-    return user;
+    return loginResponse;
   }
+
 
   private handlePendingRedirect(): void {
     const redirectUrl = sessionStorage.getItem("redirectAfterLogin");
