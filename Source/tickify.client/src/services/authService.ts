@@ -212,8 +212,16 @@ class AuthService {
   async googleLogin(credential: string): Promise<LoginResponse> {
     console.log("AuthService.googleLogin - Sending Google credential");
 
-    // Decode JWT token to get user info
-    const payload = JSON.parse(atob(credential.split('.')[1]));
+    // Decode JWT token to get user info with proper UTF-8 support
+    const base64Url = credential.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
     
     const externalLoginDto = {
       provider: "Google",
