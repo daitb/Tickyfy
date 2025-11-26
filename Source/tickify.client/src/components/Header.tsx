@@ -1,4 +1,4 @@
-giimport {
+import {
   Ticket,
   User,
   Plus,
