@@ -64,6 +64,10 @@ apiClient.interceptors.response.use(
       "ApiClient Error Interceptor - Error response:",
       error.response
     );
+    console.error(
+      "ApiClient Error Interceptor - Error response data:",
+      error.response?.data
+    );
 
     // Don't redirect on login failure (401), let the login page handle it
     if (

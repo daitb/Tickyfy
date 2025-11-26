@@ -25,6 +25,7 @@ import { EventAnalytics } from "./pages/EventAnalytics";
 import { EditEvent } from "./pages/EditEvent";
 import { ScanHistory } from "./pages/ScanHistory";
 import { PromoCodeManagement } from "./pages/PromoCodeManagement";
+import { OrganizerPayouts } from "./pages/OrganizerPayouts";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { ResetPassword } from "./pages/ResetPassword";
 import { UserProfile } from "./pages/UserProfile";
@@ -69,6 +70,7 @@ type Page =
   | "edit-event"
   | "scan-history"
   | "promo-codes"
+  | "organizer-payouts"
   | "notifications"
   | "notification-preferences"
   | "reset-password"
@@ -119,6 +121,7 @@ export default function App() {
     if (path === "/edit-event") return "edit-event";
     if (path === "/scan-history") return "scan-history";
     if (path === "/promo-codes") return "promo-codes";
+    if (path === "/organizer-payouts") return "organizer-payouts";
     if (path === "/notifications") return "notifications";
     if (path === "/notification-preferences") return "notification-preferences";
     if (path === "/reset-password") return "reset-password";
@@ -387,6 +390,9 @@ export default function App() {
 
       case "promo-codes":
         return <PromoCodeManagement onNavigate={handleNavigate} />;
+
+      case "organizer-payouts":
+        return <OrganizerPayouts onNavigate={handleNavigate} />;
 
       case "notifications":
         return <NotificationsPage onNavigate={handleNavigate} />;

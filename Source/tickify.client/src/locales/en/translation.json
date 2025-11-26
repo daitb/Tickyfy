@@ -1008,7 +1008,14 @@
       "helpful": "Helpful",
       "notHelpful": "Not Helpful",
       "reportReview": "Report"
-    }
+    },
+    "title": "Reviews",
+    "review": "review",
+    "reviews": "reviews",
+    "viewAll": "View All Reviews",
+    "noReviews": "No Reviews",
+    "noReviewsYet": "No reviews yet for this event",
+    "beFirst": "Be the first to review"
   },
   "payment": {
     "return": {

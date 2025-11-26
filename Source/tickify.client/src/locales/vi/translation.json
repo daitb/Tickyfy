@@ -995,7 +995,14 @@
       "helpful": "Hữu ích",
       "notHelpful": "Không hữu ích",
       "reportReview": "Báo cáo"
-    }
+    },
+    "title": "Đánh giá",
+    "review": "đánh giá",
+    "reviews": "đánh giá",
+    "viewAll": "Xem tất cả đánh giá",
+    "noReviews": "Chưa có đánh giá",
+    "noReviewsYet": "Chưa có đánh giá nào cho sự kiện này",
+    "beFirst": "Hãy là người đầu tiên đánh giá"
   },
   "payment": {
     "return": {
