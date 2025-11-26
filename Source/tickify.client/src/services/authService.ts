@@ -30,6 +30,7 @@ export interface LoginResponse {
   email: string;
   fullName: string;
   roles: string[];
+  organizerId?: number | null;
   accessToken: string;
   refreshToken: string;
   expiresAt: string;
@@ -63,35 +64,12 @@ class AuthService {
       throw new Error("Invalid response from server");
     }
 
-    // Save to localStorage (backend uses accessToken, not token)
-    localStorage.setItem("authToken", loginResponse.accessToken);
-
-    // Convert backend response to UserDto format for compatibility
-    const user: UserDto = {
-      userId: loginResponse.userId.toString(),
-      fullName: loginResponse.fullName,
-      email: loginResponse.email,
-      role: loginResponse.roles[0], // Take first role
-      isEmailVerified: true,
-    };
-
-    localStorage.setItem("user", JSON.stringify(user));
+    const user = this.persistAuthenticatedUser(loginResponse);
 
     console.log("AuthService.login - Token saved:", loginResponse.accessToken);
     console.log("AuthService.login - User saved:", user);
 
-    // Dispatch custom event to notify app of auth change
-    window.dispatchEvent(new Event("auth-change"));
-
-    // Check for redirect URL and redirect after successful login
-    const redirectUrl = sessionStorage.getItem("redirectAfterLogin");
-    if (redirectUrl) {
-      sessionStorage.removeItem("redirectAfterLogin");
-      // Use setTimeout to ensure state updates complete
-      setTimeout(() => {
-        window.location.href = redirectUrl;
-      }, 100);
-    }
+    this.handlePendingRedirect();
 
     return loginResponse;
   }
@@ -117,10 +95,29 @@ class AuthService {
     if (!userStr) return null;
 
     try {
-      return JSON.parse(userStr) as UserDto;
+      const parsed = JSON.parse(userStr) as UserDto;
+      if (parsed && (parsed.organizerId === undefined || parsed.organizerId === null)) {
+        const organizerId = this.getOrganizerIdFromToken(localStorage.getItem("authToken") || undefined);
+        if (organizerId) {
+          parsed.organizerId = organizerId;
+          localStorage.setItem("user", JSON.stringify(parsed));
+        }
+      }
+      return parsed;
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Convenience accessor for the organizer id of current user
+   */
+  getCurrentOrganizerId(): number | undefined {
+    const user = this.getCurrentUser();
+    if (user?.organizerId) {
+      return user.organizerId;
+    }
+    return this.getOrganizerIdFromToken(localStorage.getItem("authToken") || undefined);
   }
 
   /**
@@ -143,13 +140,11 @@ class AuthService {
    * Refresh JWT token
    */
   async refreshToken(): Promise<string> {
-    const response = await apiClient.post<{ token: string }>(
-      "/auth/refresh-token"
-    );
-    const newToken = response.data.token;
-
-    localStorage.setItem("authToken", newToken);
-    return newToken;
+    const response = await apiClient.post<LoginResponse>("/auth/refresh-token");
+    const loginResponse = response.data;
+    const user = this.persistAuthenticatedUser(loginResponse);
+    console.log("AuthService.refreshToken - refreshed for user", user.userId);
+    return loginResponse.accessToken;
   }
 
   /**
@@ -213,26 +208,89 @@ class AuthService {
       throw new Error("Invalid response from server");
     }
 
-    // Save to localStorage
-    localStorage.setItem("authToken", loginResponse.accessToken);
+    const user = this.persistAuthenticatedUser(loginResponse);
 
-    // Convert backend response to UserDto format
+    console.log("AuthService.googleLogin - Login successful", user);
+
+    this.handlePendingRedirect();
+
+    return loginResponse;
+  }
+
+  private persistAuthenticatedUser(loginResponse: LoginResponse): UserDto {
+    if (!loginResponse || !loginResponse.accessToken || !loginResponse.email) {
+      throw new Error("Invalid login response from server");
+    }
+
+    const organizerIdFromToken = this.getOrganizerIdFromToken(loginResponse.accessToken);
+    const resolvedOrganizerId = loginResponse.organizerId ?? organizerIdFromToken;
+    const primaryRole = loginResponse.roles?.[0] ?? "user";
+
     const user: UserDto = {
       userId: loginResponse.userId.toString(),
       fullName: loginResponse.fullName,
       email: loginResponse.email,
-      role: loginResponse.roles[0],
+      role: primaryRole,
       isEmailVerified: true,
     };
 
+    if (resolvedOrganizerId !== undefined && resolvedOrganizerId !== null) {
+      user.organizerId = resolvedOrganizerId;
+    }
+
+    localStorage.setItem("authToken", loginResponse.accessToken);
     localStorage.setItem("user", JSON.stringify(user));
 
-    console.log("AuthService.googleLogin - Login successful");
-
-    // Dispatch custom event to notify app of auth change
+    // Notify the rest of the app
     window.dispatchEvent(new Event("auth-change"));
 
-    return loginResponse;
+    return user;
+  }
+
+  private handlePendingRedirect(): void {
+    const redirectUrl = sessionStorage.getItem("redirectAfterLogin");
+    if (redirectUrl) {
+      sessionStorage.removeItem("redirectAfterLogin");
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 100);
+    }
+  }
+
+  private getOrganizerIdFromToken(token?: string): number | undefined {
+    if (!token) return undefined;
+    const payload = this.parseJwt(token);
+    if (!payload) return undefined;
+
+    const raw =
+      (payload["organizerId"] as string | number | undefined) ??
+      (payload["organizerID"] as string | number | undefined) ??
+      (payload["organizer_id"] as string | number | undefined);
+
+    if (raw === undefined || raw === null) {
+      return undefined;
+    }
+
+    const parsed = parseInt(raw.toString(), 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+
+  private parseJwt(token: string): Record<string, unknown> | null {
+    try {
+      const parts = token.split(".");
+      if (parts.length < 2) return null;
+      const payload = parts[1];
+      const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized.padEnd(
+        normalized.length + ((4 - (normalized.length % 4)) % 4),
+        "="
+      );
+      const decoded = atob(padded);
+      return JSON.parse(decoded) as Record<string, unknown>;
+    } catch (error) {
+      console.warn("AuthService.parseJwt - Failed to parse token payload", error);
+      return null;
+    }
   }
 }
 
