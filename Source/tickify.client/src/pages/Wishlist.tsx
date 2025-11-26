@@ -1,319 +1,427 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Heart, Calendar, MapPin } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { Heart, Calendar, MapPin, AlertCircle, Loader2 } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../components/ui/select';
-import { Checkbox } from '../components/ui/checkbox';
-import type { WishlistItem } from '../types';
-import { mockEvents, mockWishlist } from '../mockData';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+} from "../components/ui/select";
+import { Checkbox } from "../components/ui/checkbox";
+import { Skeleton } from "../components/ui/skeleton";
+import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { useWishlist } from "../hooks/useWishlist";
+import type { WishlistItem } from "../types";
 
 interface WishlistProps {
-  wishlistItems?: WishlistItem[];
   onNavigate: (page: string, eventId?: string) => void;
 }
 
-export function Wishlist({ wishlistItems, onNavigate }: WishlistProps) {
+type TabFilter = "all" | "upcoming" | "past";
+type SortOption = "date-added" | "event-date" | "price-low" | "price-high";
+
+export function Wishlist({ onNavigate }: WishlistProps) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState('all');
-  const [sortBy, setSortBy] = useState('date-added');
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const { items, loading, error, refresh, removeItem, removeMany } =
+    useWishlist();
+  const [activeTab, setActiveTab] = useState<TabFilter>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("date-added");
+  const [selectedEventIds, setSelectedEventIds] = useState<number[]>([]);
+  const [removingIds, setRemovingIds] = useState<number[]>([]);
+  const [isBulkRemoving, setIsBulkRemoving] = useState(false);
 
-  // Use provided wishlist or mock data
-  const allWishlistItems = wishlistItems || mockWishlist;
+  useEffect(() => {
+    setSelectedEventIds((prev) =>
+      prev.filter((eventId) => items.some((item) => item.eventId === eventId))
+    );
+  }, [items]);
 
-  // Filter events based on wishlist
-  const wishlistEvents = allWishlistItems
-    .map(item => ({
-      ...mockEvents.find(e => e.id === item.eventId),
-      wishlistId: item.id,
-      addedAt: item.addedAt
-    }))
-    .filter(item => item.id); // Remove any undefined events
+  const upcomingEvents = useMemo(
+    () =>
+      items.filter(
+        (item) => new Date(item.startDate) >= new Date()
+      ),
+    [items]
+  );
 
-  const now = new Date();
-  
-  const upcomingEvents = wishlistEvents.filter(event => {
-    if (!event.date) return false;
-    return new Date(event.date) >= now;
-  });
+  const pastEvents = useMemo(
+    () =>
+      items.filter((item) => new Date(item.startDate) < new Date()),
+    [items]
+  );
 
-  const pastEvents = wishlistEvents.filter(event => {
-    if (!event.date) return false;
-    return new Date(event.date) < now;
-  });
-
-  const getFilteredEvents = () => {
+  const filteredEvents = useMemo(() => {
     switch (activeTab) {
-      case 'upcoming':
+      case "upcoming":
         return upcomingEvents;
-      case 'past':
+      case "past":
         return pastEvents;
       default:
-        return wishlistEvents;
+        return items;
     }
-  };
+  }, [activeTab, items, upcomingEvents, pastEvents]);
 
-  const getSortedEvents = (events: typeof wishlistEvents) => {
-    const sorted = [...events];
+  const displayEvents = useMemo(() => {
+    const sorted = [...filteredEvents];
     switch (sortBy) {
-      case 'event-date':
-        return sorted.sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime());
-      case 'price-low':
-        return sorted.sort((a, b) => {
-          const priceA = Math.min(...(a.ticketTiers?.map(t => t.price) || [0]));
-          const priceB = Math.min(...(b.ticketTiers?.map(t => t.price) || [0]));
-          return priceA - priceB;
-        });
-      case 'price-high':
-        return sorted.sort((a, b) => {
-          const priceA = Math.min(...(a.ticketTiers?.map(t => t.price) || [0]));
-          const priceB = Math.min(...(b.ticketTiers?.map(t => t.price) || [0]));
-          return priceB - priceA;
-        });
-      default: // date-added
-        return sorted.sort((a, b) => new Date(b.addedAt!).getTime() - new Date(a.addedAt!).getTime());
+      case "event-date":
+        return sorted.sort(
+          (a, b) =>
+            new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+        );
+      case "price-low":
+        return sorted.sort((a, b) => a.minPrice - b.minPrice);
+      case "price-high":
+        return sorted.sort((a, b) => b.minPrice - a.minPrice);
+      default:
+        return sorted.sort(
+          (a, b) =>
+            new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
+        );
     }
-  };
-
-  const displayEvents = getSortedEvents(getFilteredEvents());
+  }, [filteredEvents, sortBy]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
-  const formatPrice = (price: number) => {
-    return `${(price / 1000).toFixed(0)}K VND`;
+  const formatPriceRange = (item: WishlistItem) => {
+    if (item.minPrice <= 0) {
+      return t("pages.wishlist.priceTbd");
+    }
+
+    const formattedMin = formatCurrency(item.minPrice);
+    if (item.minPrice === item.maxPrice) {
+      return formattedMin;
+    }
+
+    const formattedMax = formatCurrency(item.maxPrice);
+    return `${formattedMin} - ${formattedMax}`;
   };
 
-  const getPriceRange = (event: any) => {
-    if (!event.ticketTiers || event.ticketTiers.length === 0) return 'TBD';
-    const prices = event.ticketTiers.map((t: any) => t.price);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    if (min === max) return `${formatPrice(min)}`;
-    return `${formatPrice(min)} - ${formatPrice(max)}`;
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0,
+    }).format(value);
+
+  const getEventStatus = (item: WishlistItem) => {
+    if (item.availableTickets > 0 && item.status === "Published") {
+      return { label: "onSale" as const, variant: "default" as const };
+    }
+
+    if (item.status === "Published") {
+      return { label: "soldOut" as const, variant: "destructive" as const };
+    }
+
+    return { label: "comingSoon" as const, variant: "secondary" as const };
   };
 
-  const getEventStatus = (event: any) => {
-    if (!event.ticketTiers) return { label: 'Coming Soon', variant: 'secondary' as const };
-    const available = event.ticketTiers.some((t: any) => t.available > 0);
-    if (available) return { label: 'On Sale', variant: 'default' as const };
-    return { label: 'Sold Out', variant: 'destructive' as const };
-  };
-
-  const toggleSelection = (itemId: string) => {
-    setSelectedItems(prev => 
-      prev.includes(itemId) 
-        ? prev.filter(id => id !== itemId)
-        : [...prev, itemId]
+  const toggleSelection = (eventId: number) => {
+    setSelectedEventIds((prev) =>
+      prev.includes(eventId)
+      ? prev.filter((id) => id !== eventId)
+      : [...prev, eventId]
     );
   };
 
-  const handleRemoveFromWishlist = (wishlistId: string) => {
-    // Handle remove from wishlist
-    console.log('Remove from wishlist:', wishlistId);
+  const handleRemoveFromWishlist = async (eventId: number) => {
+    setRemovingIds((prev) => [...prev, eventId]);
+    try {
+      await removeItem(eventId);
+      toast.success(t("pages.wishlist.removeSuccess"));
+      setSelectedEventIds((prev) => prev.filter((id) => id !== eventId));
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message || err.message || "Failed to remove item";
+      toast.error(message);
+    } finally {
+      setRemovingIds((prev) => prev.filter((id) => id !== eventId));
+    }
   };
 
-  const handleRemoveSelected = () => {
-    // Handle bulk remove
-    console.log('Remove selected:', selectedItems);
-    setSelectedItems([]);
+  const handleRemoveSelected = async () => {
+    if (selectedEventIds.length === 0) return;
+    setIsBulkRemoving(true);
+    try {
+      await removeMany(selectedEventIds);
+      toast.success(t("pages.wishlist.bulkRemoveSuccess"));
+      setSelectedEventIds([]);
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        err.message ||
+        "Failed to remove selected items";
+      toast.error(message);
+      await refresh();
+    } finally {
+      setIsBulkRemoving(false);
+    }
   };
 
-  if (displayEvents.length === 0) {
-    return (
-      <div className="min-h-screen bg-neutral-50">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="mb-2">{t('pages.wishlist.title')}</h1>
-            <p className="text-neutral-600">{t('pages.wishlist.subtitle')}</p>
-          </div>
+  const isEmptyState = !loading && !error && items.length === 0;
+  const isRemoving = (eventId: number) => removingIds.includes(eventId);
 
-          {/* Empty State */}
-          <div className="text-center py-20">
-            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-neutral-100 mb-6">
-              <Heart size={48} className="text-neutral-400" strokeWidth={1.5} />
+  const renderLoadingState = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {Array.from({ length: 6 }).map((_, idx) => (
+        <div
+          key={idx}
+          className="bg-white rounded-2xl overflow-hidden shadow-sm border border-neutral-100"
+        >
+          <Skeleton className="h-48 w-full" />
+          <div className="p-4 space-y-3">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-1/3" />
+            <div className="flex justify-between items-center pt-2">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-6 w-20" />
             </div>
-            <h2 className="text-neutral-900 mb-2">{t('pages.wishlist.empty')}</h2>
-            <p className="text-neutral-600 mb-6">{t('pages.wishlist.emptyMessage')}</p>
-            <Button onClick={() => onNavigate('listing')}>
-              {t('pages.wishlist.exploreEvents')}
-            </Button>
+            <Skeleton className="h-10 w-full" />
           </div>
         </div>
+      ))}
+    </div>
+  );
+
+  const renderErrorState = () => (
+    <div className="bg-white border border-red-100 text-red-600 rounded-2xl p-8 text-center space-y-4">
+      <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+        <AlertCircle size={28} />
       </div>
-    );
-  }
+      <div>
+        <h2 className="text-xl font-semibold">{t("pages.wishlist.errorTitle")}</h2>
+        <p className="text-neutral-600 mt-2">
+          {t("pages.wishlist.errorMessage")}
+        </p>
+      </div>
+      <Button onClick={refresh} variant="outline">
+        {t("pages.wishlist.retry")}
+      </Button>
+    </div>
+  );
+
+  const renderEmptyState = () => (
+    <div className="text-center py-20">
+      <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-neutral-100 mb-6">
+        <Heart size={48} className="text-neutral-400" strokeWidth={1.5} />
+      </div>
+      <h2 className="text-neutral-900 mb-2">{t("pages.wishlist.empty")}</h2>
+      <p className="text-neutral-600 mb-6">
+        {t("pages.wishlist.emptyMessage")}
+      </p>
+      <Button onClick={() => onNavigate("listing")}>
+        {t("pages.wishlist.exploreEvents")}
+      </Button>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-neutral-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="mb-2">{t('pages.wishlist.title')}</h1>
-          <p className="text-neutral-600">{t('pages.wishlist.subtitle')}</p>
+        <div className="mb-8 flex flex-col gap-2">
+          <h1 className="text-3xl font-semibold">
+            {t("pages.wishlist.title")}
+          </h1>
+          <p className="text-neutral-600">{t("pages.wishlist.subtitle")}</p>
         </div>
 
-        {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabFilter)}>
             <TabsList>
               <TabsTrigger value="all">
-                {t('pages.wishlist.all')} ({wishlistEvents.length})
+                {t("pages.wishlist.all")} ({items.length})
               </TabsTrigger>
               <TabsTrigger value="upcoming">
-                {t('pages.wishlist.upcoming')} ({upcomingEvents.length})
+                {t("pages.wishlist.upcoming")} ({upcomingEvents.length})
               </TabsTrigger>
               <TabsTrigger value="past">
-                {t('pages.wishlist.past')} ({pastEvents.length})
+                {t("pages.wishlist.past")} ({pastEvents.length})
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-600">{t('pages.wishlist.sortBy')}</span>
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <span className="text-sm text-neutral-600">
+              {t("pages.wishlist.sortBy")}
+            </span>
+            <Select
+              value={sortBy}
+              onValueChange={(value) => setSortBy(value as SortOption)}
+            >
               <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="date-added">{t('pages.wishlist.dateAdded')}</SelectItem>
-                <SelectItem value="event-date">{t('pages.wishlist.eventDate')}</SelectItem>
-                <SelectItem value="price-low">{t('pages.wishlist.priceLowToHigh')}</SelectItem>
-                <SelectItem value="price-high">{t('pages.wishlist.priceHighToLow')}</SelectItem>
+                <SelectItem value="date-added">
+                  {t("pages.wishlist.dateAdded")}
+                </SelectItem>
+                <SelectItem value="event-date">
+                  {t("pages.wishlist.eventDate")}
+                </SelectItem>
+                <SelectItem value="price-low">
+                  {t("pages.wishlist.priceLowToHigh")}
+                </SelectItem>
+                <SelectItem value="price-high">
+                  {t("pages.wishlist.priceHighToLow")}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {/* Event Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {displayEvents.map((event) => {
-            const status = getEventStatus(event);
-            const isSelected = selectedItems.includes(event.wishlistId!);
-            
-            return (
-              <div 
-                key={event.wishlistId}
-                className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
-              >
-                {/* Selection Checkbox */}
-                <div className="absolute top-4 left-4 z-20">
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => toggleSelection(event.wishlistId!)}
-                    className="bg-white shadow-lg"
-                  />
-                </div>
+        {loading && renderLoadingState()}
+        {!loading && error && renderErrorState()}
+        {!loading && !error && isEmptyState && renderEmptyState()}
 
-                {/* Remove Heart */}
-                <button
-                  onClick={() => handleRemoveFromWishlist(event.wishlistId!)}
-                  className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-red-50 transition-colors"
-                >
-                  <Heart size={20} className="text-red-500 fill-red-500" />
-                </button>
+        {!loading && !error && !isEmptyState && displayEvents.length === 0 && (
+          <div className="text-center text-neutral-500 py-12">
+            {t("pages.wishlist.noMatches")}
+          </div>
+        )}
 
-                {/* Event Image */}
-                <div 
-                  className="aspect-[16/9] overflow-hidden bg-neutral-100 cursor-pointer"
-                  onClick={() => onNavigate('event-detail', event.id)}
+        {!loading && !error && !isEmptyState && displayEvents.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {displayEvents.map((event) => {
+              const status = getEventStatus(event);
+              const isSelected = selectedEventIds.includes(event.eventId);
+              const removing = isRemoving(event.eventId);
+
+              return (
+                <div
+                  key={event.wishlistId}
+                  className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border border-neutral-100"
                 >
-                  <ImageWithFallback
-                    src={event.image!}
-                    alt={event.title!}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  {/* Category Badge */}
-                  <div className="absolute top-4 left-16">
-                    <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm">
-                      {t(`editEvent.category${event.category}`)}
-                    </Badge>
+                  <div className="absolute top-4 left-4 z-20">
+                    <Checkbox
+                      checked={isSelected}
+                      disabled={removing || isBulkRemoving}
+                      onCheckedChange={() => toggleSelection(event.eventId)}
+                      className="bg-white shadow-lg"
+                    />
                   </div>
-                </div>
 
-                {/* Event Info */}
-                <div className="p-4">
-                  <h3 
-                    className="mb-3 line-clamp-2 min-h-[3em] cursor-pointer hover:text-teal-600 transition-colors"
-                    onClick={() => onNavigate('event-detail', event.id)}
+                  <button
+                    onClick={() => handleRemoveFromWishlist(event.eventId)}
+                    disabled={removing}
+                    className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-red-50 transition-colors disabled:opacity-60"
+                    aria-label={t("pages.wishlist.removeFromWishlist")}
                   >
-                    {event.title}
-                  </h3>
+                    {removing ? (
+                      <Loader2 size={18} className="animate-spin text-red-500" />
+                    ) : (
+                      <Heart size={20} className="text-red-500 fill-red-500" />
+                    )}
+                  </button>
 
-                  <div className="space-y-2 text-neutral-600 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Calendar size={16} />
-                      <span className="text-sm">{formatDate(event.date!)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin size={16} />
-                      <span className="text-sm">{event.city}</span>
-                    </div>
+                  <div
+                    className="aspect-[16/9] overflow-hidden bg-neutral-100 cursor-pointer"
+                    onClick={() =>
+                      onNavigate("event-detail", event.eventId.toString())
+                    }
+                  >
+                    <ImageWithFallback
+                      src={event.imageUrl || ""}
+                      alt={event.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {event.category && (
+                      <div className="absolute top-4 left-16">
+                        <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm">
+                          {event.category}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <span className="text-sm text-neutral-500">{t('events.from')}</span>
-                      <div className="text-teal-600">{getPriceRange(event)}</div>
-                    </div>
-                    <Badge variant={status.variant}>{status.label}</Badge>
-                  </div>
-
-                  <Button 
-                    className="w-full"
-                    variant={status.label === 'On Sale' ? 'default' : 'outline'}
-                    onClick={() => {
-                      if (status.label === 'On Sale') {
-                        onNavigate('event-detail', event.id);
-                      } else {
-                        // Handle notify me
-                        console.log('Notify me for:', event.id);
+                  <div className="p-4">
+                    <h3
+                      className="mb-3 line-clamp-2 min-h-[3em] cursor-pointer hover:text-teal-600 transition-colors"
+                      onClick={() =>
+                        onNavigate("event-detail", event.eventId.toString())
                       }
-                    }}
-                  >
-                    {status.label === 'On Sale' ? t('home.viewDetails') : t('wishlist.notifyMe')}
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                    >
+                      {event.title}
+                    </h3>
 
-        {/* Bulk Actions Bar */}
-        {selectedItems.length > 0 && (
-          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-white rounded-full shadow-2xl px-6 py-4 flex items-center gap-6 border border-neutral-200">
+                    <div className="space-y-2 text-neutral-600 mb-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar size={16} />
+                        <span className="text-sm">{formatDate(event.startDate)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin size={16} />
+                        <span className="text-sm">
+                          {event.city || event.venue}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <span className="text-sm text-neutral-500">
+                          {t("events.from")}
+                        </span>
+                        <div className="text-teal-600">
+                          {formatPriceRange(event)}
+                        </div>
+                      </div>
+                      <Badge variant={status.variant}>
+                        {t(`pages.wishlist.${status.label}`)}
+                      </Badge>
+                    </div>
+
+                    <Button
+                      className="w-full"
+                      variant={status.label === "onSale" ? "default" : "outline"}
+                      onClick={() =>
+                        onNavigate("event-detail", event.eventId.toString())
+                      }
+                    >
+                      {status.label === "onSale"
+                        ? t("pages.wishlist.viewEvent")
+                        : t("pages.wishlist.notifyMe")}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && !error && selectedEventIds.length > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white rounded-full shadow-2xl px-6 py-4 flex flex-wrap items-center gap-4 border border-neutral-200">
             <span className="text-neutral-900 font-medium">
-              {selectedItems.length} {selectedItems.length === 1 ? 'item' : 'items'} selected
+              {t("pages.wishlist.selectedCount", { count: selectedEventIds.length })}
             </span>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleRemoveSelected}
+              disabled={isBulkRemoving}
               className="rounded-full"
             >
-              Remove Selected
+              {isBulkRemoving
+                ? t("common.loading")
+                : t("pages.wishlist.removeSelected")}
             </Button>
-            <Button 
-              variant="ghost" 
-              onClick={() => setSelectedItems([])}
+            <Button
+              variant="ghost"
+              onClick={() => setSelectedEventIds([])}
               className="rounded-full"
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         )}

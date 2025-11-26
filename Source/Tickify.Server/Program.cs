@@ -110,6 +110,7 @@ namespace Tickify
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IOrganizerService, OrganizerService>();
             builder.Services.AddScoped<ISupportService, SupportService>();
+            builder.Services.AddScoped<IWishlistService, WishlistService>();
 
             // Chat Services & Repositories
             builder.Services.AddScoped<IChatRepository, EfChatRepository>();
