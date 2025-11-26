@@ -9,7 +9,13 @@ public class WishlistDto
     public string? EventImageUrl { get; set; }
     public DateTime EventStartDate { get; set; }
     public string EventVenue { get; set; } = string.Empty;
+    public string EventCity { get; set; } = string.Empty;
+    public string EventCategory { get; set; } = string.Empty;
+    public string EventStatus { get; set; } = string.Empty;
     public decimal MinPrice { get; set; }
+    public decimal MaxPrice { get; set; }
+    public int AvailableTickets { get; set; }
+    public int TotalTickets { get; set; }
     public bool IsEventActive { get; set; }
     public DateTime AddedAt { get; set; }
 }

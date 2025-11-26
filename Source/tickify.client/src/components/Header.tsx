@@ -23,10 +23,12 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Badge } from "./ui/badge";
 import { authService } from "../services/authService";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { useWishlistToggle } from "../hooks/useWishlistToggle";
 
 interface HeaderProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -44,7 +46,8 @@ export function Header({
   onSearchOpenChange,
 }: HeaderProps) {
   const { t } = useTranslation();
-
+  const { wishlistCount } = useWishlistToggle();
+  
   const handleEventClick = (eventId: string) => {
     onNavigate("event-detail", eventId);
   };
@@ -155,8 +158,17 @@ export function Header({
                     {t("header.myTickets")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onNavigate("wishlist")}>
-                    <Heart size={16} className="mr-2" />
-                    Wishlist
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center">
+                        <Heart size={16} className="mr-2" />
+                        Wishlist
+                      </div>
+                      {wishlistCount > 0 && (
+                        <Badge variant="secondary" className="ml-2 h-5 min-w-[20px] flex items-center justify-center px-1.5">
+                          {wishlistCount}
+                        </Badge>
+                      )}
+                    </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onNavigate("waitlist")}>
                     <Clock size={16} className="mr-2" />

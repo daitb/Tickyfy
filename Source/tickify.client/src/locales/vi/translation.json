@@ -812,7 +812,22 @@
       "buyTickets": "Mua vé",
       "viewEvent": "Xem sự kiện",
       "removeFromWishlist": "Xóa khỏi yêu thích",
-      "removeSelected": "Xóa đã chọn"
+      "addToWishlist": "Thêm vào yêu thích",
+      "addedToWishlist": "Đã thêm vào yêu thích",
+      "removedFromWishlist": "Đã xóa khỏi yêu thích",
+      "errorToggle": "Không thể cập nhật yêu thích",
+      "saved": "Đã lưu",
+      "save": "Lưu",
+      "removeSelected": "Xóa đã chọn",
+      "notifyMe": "Thông báo cho tôi",
+      "priceTbd": "Giá sẽ cập nhật",
+      "errorTitle": "Không thể tải danh sách yêu thích",
+      "errorMessage": "Vui lòng tải lại trang hoặc thử lại sau.",
+      "retry": "Thử lại",
+      "removeSuccess": "Đã xóa khỏi danh sách yêu thích",
+      "bulkRemoveSuccess": "Đã xóa các sự kiện đã chọn",
+      "selectedCount": "{{count}} mục đã chọn",
+      "noMatches": "Không có sự kiện phù hợp với bộ lọc"
     },
     "waitlist": {
       "title": "Danh sách chờ",

@@ -16,6 +16,8 @@ import ShareButtons from '../components/event-detail/ShareButtons';
 import RelatedEvents from '../components/event-detail/RelatedEvents';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { eventService } from '../services/eventService';
+import { WishlistButton } from '../components/WishlistButton';
+import { authService } from '../services/authService';
 import type { CartItem } from '../types';
 
 interface EventDetailProps {
@@ -26,6 +28,7 @@ interface EventDetailProps {
 
 export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailProps) {
   const { t } = useTranslation();
+  const isAuthenticated = authService.isAuthenticated();
   const [event, setEvent] = useState<any | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [showTimer, setShowTimer] = useState(false);
@@ -132,8 +135,14 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
           className="w-full h-full object-cover opacity-90"
         />
         
-        {/* Share Button Overlay */}
-        <div className="absolute top-4 right-4 z-10">
+        {/* Action Buttons Overlay */}
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+          {isAuthenticated && (
+            <WishlistButton
+              eventId={parseInt(eventId, 10)}
+              size="lg"
+            />
+          )}
           <Popover>
             <PopoverTrigger asChild>
               <Button 

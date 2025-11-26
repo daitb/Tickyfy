@@ -825,7 +825,22 @@
       "buyTickets": "Buy Tickets",
       "viewEvent": "View Event",
       "removeFromWishlist": "Remove from Wishlist",
-      "removeSelected": "Remove Selected"
+      "addToWishlist": "Add to Wishlist",
+      "addedToWishlist": "Added to wishlist",
+      "removedFromWishlist": "Removed from wishlist",
+      "errorToggle": "Failed to update wishlist",
+      "saved": "Saved",
+      "save": "Save",
+      "removeSelected": "Remove Selected",
+      "notifyMe": "Notify me",
+      "priceTbd": "Price TBD",
+      "errorTitle": "We couldn't load your wishlist",
+      "errorMessage": "Please refresh or try again in a moment.",
+      "retry": "Try again",
+      "removeSuccess": "Removed from wishlist",
+      "bulkRemoveSuccess": "Removed selected events",
+      "selectedCount": "{{count}} selected",
+      "noMatches": "No events match your filters"
     },
     "waitlist": {
       "title": "My Waitlist",
