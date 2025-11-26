@@ -13,8 +13,9 @@ export interface Event {
   organizerName: string;
   organizerAvatar?: string;
   ticketTiers: TicketTier[];
+  promoCodes?: number[]; // Array of promo code IDs
   policies: EventPolicies;
-  status: 'draft' | 'published' | 'cancelled';
+  status: "draft" | "published" | "cancelled";
   createdAt: string;
   // Extended details
   highlights?: EventHighlight[];
@@ -76,7 +77,7 @@ export interface Order {
   subtotal: number;
   serviceFee: number;
   total: number;
-  status: 'pending' | 'completed' | 'cancelled';
+  status: "pending" | "completed" | "cancelled";
   createdAt: string;
   userEmail: string;
   userName: string;
@@ -89,19 +90,19 @@ export interface OrderTicket {
   tierName: string;
   price: number;
   qrCode: string;
-  status: 'valid' | 'used' | 'cancelled';
+  status: "valid" | "used" | "cancelled";
   seatInfo?: string;
   checkInTime?: string;
 }
 
-export type Category = 
-  | 'Music' 
-  | 'Sports' 
-  | 'Conference' 
-  | 'Theater' 
-  | 'Food & Drink' 
-  | 'Arts' 
-  | 'Other';
+export type Category =
+  | "Music"
+  | "Sports"
+  | "Conference"
+  | "Theater"
+  | "Food & Drink"
+  | "Arts"
+  | "Other";
 
 export interface Filter {
   city?: string;
@@ -111,7 +112,7 @@ export interface Filter {
   maxPrice?: number;
 }
 
-export type SortOption = 'popularity' | 'date' | 'price-asc' | 'price-desc';
+export type SortOption = "popularity" | "date" | "price-asc" | "price-desc";
 
 export interface WishlistItem {
   id: string;
@@ -125,7 +126,7 @@ export interface WaitlistEntry {
   userId: string;
   eventId: string;
   position: number;
-  status: 'active' | 'notified' | 'expired';
+  status: "active" | "notified" | "expired";
   joinedAt: string;
   estimatedNotification?: string;
 }

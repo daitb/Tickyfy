@@ -4,7 +4,7 @@ namespace Tickify.Services.Auth;
 
 public interface IAuthService
 {
-    Task<LoginResponse> RegisterAsync(RegisterDto registerDto);
+    Task RegisterAsync(RegisterDto registerDto);
 
     Task<LoginResponse> LoginAsync(LoginDto loginDto);
 
@@ -13,6 +13,8 @@ public interface IAuthService
     Task LogoutAsync(int userId, string refreshToken);
 
     Task VerifyEmailAsync(VerifyEmailDto verifyDto);
+
+    Task ResendVerificationEmailAsync(string email);
 
     Task ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto);
 

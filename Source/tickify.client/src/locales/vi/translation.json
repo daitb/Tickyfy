@@ -80,7 +80,63 @@
     "resetPassword": "Đặt lại mật khẩu",
     "newPassword": "Mật khẩu mới",
     "resetPasswordSubtitle": "Nhập mật khẩu mới của bạn",
-    "receiveUpdates": "Tôi muốn nhận thông tin cập nhật và khuyến mãi"
+    "receiveUpdates": "Tôi muốn nhận thông tin cập nhật và khuyến mãi",
+    "registerSuccess": "Đăng ký thành công! 🎉",
+    "verificationEmailSent": "Chúng tôi đã gửi email xác thực đến",
+    "checkEmailInbox": "Vui lòng kiểm tra hộp thư (kể cả thư mục spam) và nhấp vào link xác thực để kích hoạt tài khoản.",
+    "goToLogin": "Đi đến trang đăng nhập",
+    "resendVerification": "Gửi lại email xác thực",
+    "resending": "Đang gửi...",
+    "orRegisterWith": "Hoặc đăng ký bằng",
+    "showPassword": "Hiển thị mật khẩu",
+    "hidePassword": "Ẩn mật khẩu",
+    "passwordRequirements": "Yêu cầu mật khẩu:",
+    "minLength": "Ít nhất 8 ký tự",
+    "uppercase": "Một chữ hoa",
+    "lowercase": "Một chữ thường",
+    "number": "Một số",
+    "specialChar": "Một ký tự đặc biệt",
+    "passwordStrength": "Độ mạnh mật khẩu:",
+    "weak": "Yếu",
+    "medium": "Trung bình",
+    "strong": "Mạnh",
+    "passwordMismatch": "Mật khẩu không khớp",
+    "agreeToTermsRequired": "Vui lòng đồng ý với điều khoản và điều kiện",
+    "emailNotVerified": "Email chưa được xác thực",
+    "verifyEmailFirst": "Vui lòng xác thực email trước khi đăng nhập. Kiểm tra hộp thư của bạn.",
+    "resendVerificationEmail": "Gửi lại email xác thực",
+    "verificationEmailResent": "Email xác thực đã được gửi lại. Vui lòng kiểm tra hộp thư.",
+    "cannotResendEmail": "Không thể gửi lại email. Vui lòng thử lại sau.",
+    "invalidCredentials": "Email hoặc mật khẩu không đúng",
+    "loginFailed": "Đăng nhập thất bại. Vui lòng thử lại.",
+    "registerFailed": "Đăng ký thất bại. Vui lòng thử lại.",
+    "signInNow": "Đăng nhập ngay",
+    "registerNow": "Đăng ký ngay",
+    "createAccountButton": "Tạo tài khoản",
+    "creatingAccount": "Đang tạo tài khoản...",
+    "validatingToken": "Đang xác thực token...",
+    "invalidToken": "Token không hợp lệ hoặc đã hết hạn",
+    "invalidTokenMessage": "Liên kết đặt lại mật khẩu này không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu liên kết mới.",
+    "requestNewLink": "Yêu cầu liên kết mới",
+    "resetPasswordSuccess": "Đặt lại mật khẩu thành công",
+    "resetPasswordSuccessMessage": "Mật khẩu của bạn đã được đặt lại thành công. Đang chuyển hướng đến trang đăng nhập...",
+    "goToLoginButton": "Đi đến trang đăng nhập",
+    "resetPasswordError": "Đặt lại mật khẩu thất bại. Vui lòng thử lại.",
+    "currentPassword": "Mật khẩu hiện tại",
+    "currentPasswordPlaceholder": "Nhập mật khẩu hiện tại",
+    "newPasswordPlaceholder": "Nhập mật khẩu mới",
+    "changePassword": "Đổi mật khẩu",
+    "changingPassword": "Đang đổi mật khẩu...",
+    "passwordChanged": "Đổi mật khẩu thành công",
+    "emailVerifying": "Đang xác thực email của bạn...",
+    "emailVerified": "Xác thực email thành công!",
+    "emailVerifiedMessage": "Email của bạn đã được xác thực. Bạn có thể đăng nhập vào tài khoản của mình.",
+    "emailAlreadyVerified": "Email đã được xác thực",
+    "emailAlreadyVerifiedMessage": "Tin tốt! Email của bạn đã được xác thực.",
+    "verificationFailed": "Xác thực thất bại",
+    "verificationFailedMessage": "Chúng tôi không thể xác thực email của bạn. Liên kết có thể không hợp lệ hoặc đã hết hạn.",
+    "tokenExpired": "Liên kết đã hết hạn",
+    "tokenExpiredMessage": "Liên kết xác thực này đã hết hạn. Vui lòng yêu cầu liên kết mới."
   },
   "events": {
     "title": "Sự kiện",
@@ -518,7 +574,7 @@
     "belowThreeStars": "Dưới 3 sao",
     "showing": "Hiển thị",
     "of": "của",
-    "verified":"Đã xác minh",
+    "verified": "Đã xác minh",
     "categoryRatings": "Đánh giá theo danh mục",
     "verifiedPurchase": "Đã xác minh mua hàng",
     "attendedOn": "Tham dự vào",
@@ -885,259 +941,388 @@
       "viewDetails": "Xem chi tiết"
     }
   },
-  "seat": {
-    "selection": {
-      "title": "Chọn ghế của bạn",
-      "stage": "Sân khấu",
-      "available": "Còn trống",
-      "selected": "Đã chọn",
-      "unavailable": "Không khả dụng",
-      "vip": "VIP",
-      "regular": "Thường",
-      "selectedSeats": "Ghế đã chọn",
-      "totalPrice": "Tổng giá",
-      "continueToCheckout": "Tiếp tục thanh toán",
-      "clearSelection": "Xóa lựa chọn"
-    },
-    "builder": {
-      "title": "Công cụ tạo sơ đồ ghế",
-      "subtitle": "Thiết kế bố cục chỗ ngồi của địa điểm",
-      "addSection": "Thêm khu vực",
-      "sectionName": "Tên khu vực",
-      "rows": "Số hàng",
-      "seatsPerRow": "Ghế mỗi hàng",
-      "price": "Giá",
-      "save": "Lưu sơ đồ ghế",
-      "preview": "Xem trước",
-      "edit": "Chỉnh sửa"
-    }
-  },
-  "qr": {
-    "scanner": {
-      "title": "Quét QR",
-      "subtitle": "Quét mã QR trên vé",
-      "scanTicket": "Quét vé",
-      "manualEntry": "Nhập thủ công",
-      "ticketId": "Mã vé",
-      "verify": "Xác minh",
-      "validTicket": "Vé hợp lệ",
-      "invalidTicket": "Vé không hợp lệ",
-      "alreadyScanned": "Đã quét",
-      "ticketDetails": "Chi tiết vé",
-      "eventName": "Tên sự kiện",
-      "attendeeName": "Tên người tham dự",
-      "seatNumber": "Số ghế",
-      "scanTime": "Thời gian quét"
-    },
-    "history": {
-      "title": "Lịch sử quét",
-      "subtitle": "Xem tất cả vé đã quét",
-      "totalScans": "Tổng số lần quét",
-      "todayScans": "Lần quét hôm nay",
-      "export": "Xuất",
-      "filter": "Lọc",
-      "searchTicket": "Tìm vé...",
-      "all": "Tất cả",
-      "valid": "Hợp lệ",
-      "invalid": "Không hợp lệ",
-      "duplicate": "Trùng lặp"
-    }
-  },
   "promoCode": {
-    "management": {
-      "title": "Quản lý mã khuyến mãi",
-      "subtitle": "Tạo và quản lý mã khuyến mãi",
-      "createNew": "Tạo mã mới",
-      "code": "Mã",
-      "discountType": "Loại giảm giá",
-      "discountValue": "Giá trị giảm",
-      "percentage": "Phần trăm",
-      "fixedAmount": "Số tiền cố định",
-      "startDate": "Ngày bắt đầu",
-      "endDate": "Ngày kết thúc",
-      "usageLimit": "Giới hạn sử dụng",
-      "timesUsed": "Số lần sử dụng",
-      "status": "Trạng thái",
-      "active": "Đang hoạt động",
-      "expired": "Hết hạn",
-      "actions": "Thao tác",
-      "edit": "Sửa",
-      "delete": "Xóa",
-      "deactivate": "Vô hiệu hóa"
-    }
-  },
-  "review": {
-    "submission": {
-      "title": "Viết đánh giá",
-      "subtitle": "Chia sẻ trải nghiệm của bạn",
-      "rating": "Đánh giá",
-      "reviewTitle": "Tiêu đề đánh giá",
-      "reviewText": "Nội dung đánh giá",
-      "reviewPlaceholder": "Hãy cho chúng tôi biết về trải nghiệm của bạn...",
-      "wouldRecommend": "Bạn có giới thiệu sự kiện này không?",
-      "yes": "Có",
-      "no": "Không",
-      "submitReview": "Gửi đánh giá",
-      "submitting": "Đang gửi...",
-      "thankYou": "Cảm ơn bạn đã đánh giá!",
-      "error": "Không thể gửi đánh giá. Vui lòng thử lại."
+    "title": "Quản lý mã khuyến mãi",
+    "createNewCode": "Tạo mã mới",
+    "bulkImport": "Nhập hàng loạt",
+    "searchPlaceholder": "Tìm kiếm mã hoặc mô tả...",
+    "statusPlaceholder": "Trạng thái",
+    "filters": {
+      "allStatus": "Tất cả trạng thái",
+      "active": "Hoạt động",
+      "inactive": "Không hoạt động"
     },
-    "list": {
-      "title": "Đánh giá",
-      "subtitle": "Những gì người tham dự nói",
-      "averageRating": "Đánh giá trung bình",
-      "totalReviews": "đánh giá",
-      "writeReview": "Viết đánh giá",
-      "mostHelpful": "Hữu ích nhất",
-      "mostRecent": "Mới nhất",
-      "highestRated": "Đánh giá cao nhất",
-      "lowestRated": "Đánh giá thấp nhất",
-      "helpful": "Hữu ích",
-      "notHelpful": "Không hữu ích",
-      "reportReview": "Báo cáo"
-    }
-  },
-  "payment": {
-    "return": {
-      "processing": "Đang xử lý thanh toán...",
-      "success": "Thanh toán thành công!",
-      "failed": "Thanh toán thất bại",
-      "successMessage": "Thanh toán của bạn đã được xử lý thành công",
-      "failedMessage": "Có vấn đề khi xử lý thanh toán của bạn",
-      "returnToHome": "Về trang chủ",
-      "tryAgain": "Thử lại",
-      "contactSupport": "Liên hệ hỗ trợ"
-    }
-  },
-  "transfer": {
-    "ticket": {
-      "title": "Chuyển vé",
-      "subtitle": "Chuyển vé của bạn cho người khác",
-      "recipientEmail": "Email người nhận",
-      "recipientName": "Tên người nhận",
-      "message": "Tin nhắn cá nhân (Tùy chọn)",
-      "messagePlaceholder": "Thêm tin nhắn cá nhân...",
-      "confirmTransfer": "Xác nhận chuyển",
-      "transferring": "Đang chuyển...",
-      "successMessage": "Đã chuyển vé thành công!",
-      "errorMessage": "Không thể chuyển vé. Vui lòng thử lại.",
-      "warning": "Sau khi chuyển, bạn sẽ không thể sử dụng vé này",
-      "ticketInfo": "Thông tin vé"
-    }
-  },
-  "refund": {
-    "request": {
-      "title": "Yêu cầu hoàn tiền",
-      "subtitle": "Gửi yêu cầu hoàn tiền",
-      "reason": "Lý do hoàn tiền",
-      "selectReason": "Chọn lý do",
-      "cannotAttend": "Không thể tham dự",
-      "eventCancelled": "Sự kiện bị hủy",
-      "wrongTickets": "Mua nhầm vé",
-      "other": "Khác",
-      "additionalDetails": "Chi tiết bổ sung",
-      "detailsPlaceholder": "Vui lòng cung cấp thêm thông tin...",
-      "refundMethod": "Phương thức hoàn tiền",
-      "originalPayment": "Phương thức thanh toán gốc",
-      "bankTransfer": "Chuyển khoản ngân hàng",
-      "submitRequest": "Gửi yêu cầu",
-      "submitting": "Đang gửi...",
-      "successMessage": "Đã gửi yêu cầu hoàn tiền thành công",
-      "errorMessage": "Không thể gửi yêu cầu hoàn tiền",
-      "refundPolicy": "Chính sách hoàn tiền",
-      "processingTime": "Hoàn tiền thường mất 5-7 ngày làm việc để xử lý"
-    }
-  },
-  "analytics": {
-    "event": {
-      "title": "Phân tích sự kiện",
-      "overview": "Tổng quan",
-      "sales": "Doanh số",
-      "attendance": "Tham dự",
-      "revenue": "Doanh thu",
-      "ticketsSold": "Vé đã bán",
-      "totalRevenue": "Tổng doanh thu",
-      "averageTicketPrice": "Giá vé trung bình",
-      "salesByDay": "Doanh số theo ngày",
-      "salesByTicketType": "Doanh số theo loại vé",
-      "attendeesByLocation": "Người tham dự theo địa điểm",
-      "conversionRate": "Tỷ lệ chuyển đổi",
-      "pageViews": "Lượt xem trang",
-      "uniqueVisitors": "Khách truy cập duy nhất",
-      "exportData": "Xuất dữ liệu"
-    }
-  },
-  "wizard": {
-    "organizer": {
-      "title": "Tạo sự kiện của bạn",
-      "step1": "Thông tin cơ bản",
-      "step2": "Chi tiết",
-      "step3": "Vé",
-      "step4": "Xem lại",
-      "eventName": "Tên sự kiện",
-      "eventDescription": "Mô tả sự kiện",
-      "category": "Danh mục",
-      "selectCategory": "Chọn danh mục",
-      "eventDate": "Ngày sự kiện",
-      "eventTime": "Giờ sự kiện",
-      "venue": "Địa điểm",
-      "venueName": "Tên địa điểm",
-      "venueAddress": "Địa chỉ địa điểm",
-      "city": "Thành phố",
-      "state": "Tỉnh/Thành",
-      "capacity": "Sức chứa",
-      "eventImage": "Hình ảnh sự kiện",
-      "uploadImage": "Tải hình ảnh",
-      "ticketTypes": "Loại vé",
-      "addTicketType": "Thêm loại vé",
-      "ticketName": "Tên vé",
-      "ticketPrice": "Giá vé",
-      "ticketQuantity": "Số lượng",
-      "salesStartDate": "Ngày bắt đầu bán",
-      "salesEndDate": "Ngày kết thúc bán",
-      "previous": "Trước",
-      "next": "Tiếp theo",
-      "publish": "Xuất bản sự kiện",
-      "saveDraft": "Lưu nháp"
-    }
-  },
-  "management": {
-    "event": {
-      "title": "Quản lý sự kiện",
-      "subtitle": "Quản lý các sự kiện của bạn",
-      "createEvent": "Tạo sự kiện",
-      "all": "Tất cả",
-      "upcoming": "Sắp diễn ra",
-      "past": "Đã qua",
-      "draft": "Nháp",
-      "published": "Đã xuất bản",
-      "cancelled": "Đã hủy",
-      "searchEvents": "Tìm sự kiện...",
-      "filters": "Bộ lọc",
-      "sortBy": "Sắp xếp theo",
-      "eventName": "Tên sự kiện",
-      "date": "Ngày",
-      "ticketsSold": "Vé đã bán",
-      "revenue": "Doanh thu",
-      "status": "Trạng thái",
-      "actions": "Thao tác",
+    "stats": {
+      "totalCodes": "Tổng số mã",
+      "activeCodes": "Mã đang hoạt động",
+      "totalRedemptions": "Tổng lượt sử dụng",
+      "avgDiscount": "Giảm giá TB",
+      "allPromoCodes": "Tất cả mã khuyến mãi",
+      "currentlyAvailable": "Đang khả dụng",
+      "timesUsed": "Lượt sử dụng",
+      "codesRedeemed": "Mã đã đổi",
+      "averageValue": "Giá trị giảm giá trung bình"
+    },
+    "loading": "Đang tải mã khuyến mãi...",
+    "emptyState": {
+      "title": "Chưa có mã khuyến mãi",
+      "description": "Tạo mã khuyến mãi đầu tiên để bắt đầu"
+    },
+    "status": {
+      "active": "Hoạt động",
+      "inactive": "Không hoạt động"
+    },
+    "card": {
+      "validPeriod": "Thời hạn hợp lệ",
+      "minPurchase": "Giá trị tối thiểu:",
+      "usage": "Lượt sử dụng",
+      "used": "đã dùng",
       "edit": "Sửa",
-      "duplicate": "Nhân bản",
+      "stats": "Thống kê",
+      "activate": "Kích hoạt",
+      "deactivate": "Vô hiệu hóa"
+    },
+    "createDialog": {
+      "title": "Tạo mã khuyến mãi",
+      "description": "Thiết lập mã giảm giá khuyến mãi mới",
+      "fields": {
+        "code": "Mã khuyến mãi",
+        "description": "Mô tả",
+        "discountPercent": "Phần trăm giảm giá (%)",
+        "discountAmount": "Số tiền giảm giá (VND)",
+        "maxUses": "Tổng lượt sử dụng tối đa",
+        "maxUsesPerUser": "Lượt sử dụng tối đa mỗi người",
+        "validFrom": "Có hiệu lực từ",
+        "validTo": "Có hiệu lực đến",
+        "minimumPurchase": "Giá trị mua hàng tối thiểu (VND)"
+      },
+      "placeholders": {
+        "code": "SUMMER2025",
+        "description": "Mô tả ngắn gọn về mã khuyến mãi này",
+        "discountPercent": "20",
+        "discountAmount": "50000",
+        "optional": "Tùy chọn"
+      },
+      "help": {
+        "codeFormat": "Chữ cái và số, 4-20 ký tự",
+        "discountPercent": "Để trống nếu dùng số tiền cố định",
+        "discountAmount": "Để trống nếu dùng phần trăm"
+      },
+      "buttons": {
+        "generate": "Tạo ngẫu nhiên",
+        "cancel": "Hủy",
+        "creating": "Đang tạo...",
+        "createAndActivate": "Tạo & Kích hoạt"
+      }
+    },
+    "editDialog": {
+      "title": "Sửa mã khuyến mãi",
+      "description": "Cập nhật chi tiết mã khuyến mãi",
+      "fields": {
+        "code": "Mã khuyến mãi",
+        "description": "Mô tả",
+        "discountPercent": "Phần trăm giảm giá (%)",
+        "discountAmount": "Số tiền giảm giá (VND)",
+        "maxUses": "Tổng lượt sử dụng tối đa",
+        "maxUsesPerUser": "Lượt sử dụng tối đa mỗi người",
+        "validFrom": "Có hiệu lực từ",
+        "validTo": "Có hiệu lực đến",
+        "minimumPurchase": "Giá trị mua hàng tối thiểu (VND)"
+      },
+      "placeholders": {
+        "code": "SUMMER2025",
+        "description": "Mô tả ngắn gọn về mã khuyến mãi này",
+        "discountPercent": "20",
+        "discountAmount": "50000",
+        "optional": "Tùy chọn"
+      },
+      "help": {
+        "codeFormat": "Chữ cái và số, 4-20 ký tự",
+        "discountPercent": "Để trống nếu dùng số tiền cố định",
+        "discountAmount": "Để trống nếu dùng phần trăm"
+      },
+      "buttons": {
+        "cancel": "Hủy",
+        "updating": "Đang cập nhật...",
+        "update": "Cập nhật mã"
+      }
+    },
+    "statsDialog": {
+      "title": "Thống kê mã khuyến mãi",
+      "totalUses": "Tổng lượt sử dụng",
+      "remaining": "Còn lại",
+      "moreStats": "Thống kê chi tiết hơn sẽ xuất hiện ở đây...",
+      "close": "Đóng"
+    },
+    "deleteDialog": {
+      "title": "Xóa mã khuyến mãi?",
+      "description": "Bạn có chắc chắn muốn xóa mã khuyến mãi này? Hành động này không thể hoàn tác.",
       "cancel": "Hủy",
-      "delete": "Xóa",
-      "viewAnalytics": "Xem phân tích"
+      "confirm": "Xóa"
+    },
+    "accessRestricted": {
+      "title": "Truy cập bị hạn chế",
+      "description": "Bạn cần quyền Admin hoặc Organizer để quản lý mã khuyến mãi.",
+      "currentRole": "Vai trò hiện tại:"
+    },
+    "errors": {
+      "noPermission": "Bạn không có quyền xem mã khuyến mãi",
+      "pleaseLogin": "Vui lòng đăng nhập để xem mã khuyến mãi",
+      "loadFailed": "Không thể tải mã khuyến mãi",
+      "createFailed": "Tạo mã khuyến mãi thất bại",
+      "updateFailed": "Cập nhật mã khuyến mãi thất bại",
+      "deleteFailed": "Xóa mã khuyến mãi thất bại",
+      "codeRequired": "Mã khuyến mãi là bắt buộc",
+      "descriptionRequired": "Mô tả là bắt buộc",
+      "discountRequired": "Phải nhập phần trăm giảm giá hoặc số tiền giảm giá",
+      "discountBothSet": "Không thể đặt cả phần trăm và số tiền giảm giá. Vui lòng chọn một",
+      "discountPercentRange": "Phần trăm giảm giá phải từ 1 đến 100",
+      "discountAmountInvalid": "Số tiền giảm giá phải lớn hơn 0",
+      "validFromRequired": "Ngày bắt đầu hiệu lực là bắt buộc",
+      "validToRequired": "Ngày kết thúc hiệu lực là bắt buộc",
+      "validToBeforeFrom": "Ngày kết thúc phải sau ngày bắt đầu",
+      "codeExists": "Mã khuyến mãi này đã tồn tại",
+      "eventNotFound": "Không tìm thấy sự kiện",
+      "unauthorized": "Bạn chỉ có thể tạo mã khuyến mãi cho sự kiện của mình"
+    },
+    "notifications": {
+      "copiedToClipboard": "Đã sao chép mã khuyến mãi vào clipboard",
+      "createdSuccessfully": "Tạo mã khuyến mãi thành công",
+      "updatedSuccessfully": "Cập nhật mã khuyến mãi thành công",
+      "deletedSuccessfully": "Xóa mã khuyến mãi thành công",
+      "activatedSuccessfully": "Kích hoạt mã khuyến mãi thành công",
+      "deactivatedSuccessfully": "Vô hiệu hóa mã khuyến mãi thành công"
+    },
+    "seat": {
+      "selection": {
+        "title": "Chọn ghế của bạn",
+        "stage": "Sân khấu",
+        "available": "Còn trống",
+        "selected": "Đã chọn",
+        "unavailable": "Không khả dụng",
+        "vip": "VIP",
+        "regular": "Thường",
+        "selectedSeats": "Ghế đã chọn",
+        "totalPrice": "Tổng giá",
+        "continueToCheckout": "Tiếp tục thanh toán",
+        "clearSelection": "Xóa lựa chọn"
+      },
+      "builder": {
+        "title": "Công cụ tạo sơ đồ ghế",
+        "subtitle": "Thiết kế bố cục chỗ ngồi của địa điểm",
+        "addSection": "Thêm khu vực",
+        "sectionName": "Tên khu vực",
+        "rows": "Số hàng",
+        "seatsPerRow": "Ghế mỗi hàng",
+        "price": "Giá",
+        "save": "Lưu sơ đồ ghế",
+        "preview": "Xem trước",
+        "edit": "Chỉnh sửa"
+      }
+    },
+    "qr": {
+      "scanner": {
+        "title": "Quét QR",
+        "subtitle": "Quét mã QR trên vé",
+        "scanTicket": "Quét vé",
+        "manualEntry": "Nhập thủ công",
+        "ticketId": "Mã vé",
+        "verify": "Xác minh",
+        "validTicket": "Vé hợp lệ",
+        "invalidTicket": "Vé không hợp lệ",
+        "alreadyScanned": "Đã quét",
+        "ticketDetails": "Chi tiết vé",
+        "eventName": "Tên sự kiện",
+        "attendeeName": "Tên người tham dự",
+        "seatNumber": "Số ghế",
+        "scanTime": "Thời gian quét"
+      },
+      "history": {
+        "title": "Lịch sử quét",
+        "subtitle": "Xem tất cả vé đã quét",
+        "totalScans": "Tổng số lần quét",
+        "todayScans": "Lần quét hôm nay",
+        "export": "Xuất",
+        "filter": "Lọc",
+        "searchTicket": "Tìm vé...",
+        "all": "Tất cả",
+        "valid": "Hợp lệ",
+        "invalid": "Không hợp lệ",
+        "duplicate": "Trùng lặp"
+      }
+    },
+    "review": {
+      "submission": {
+        "title": "Viết đánh giá",
+        "subtitle": "Chia sẻ trải nghiệm của bạn",
+        "rating": "Đánh giá",
+        "reviewTitle": "Tiêu đề đánh giá",
+        "reviewText": "Nội dung đánh giá",
+        "reviewPlaceholder": "Hãy cho chúng tôi biết về trải nghiệm của bạn...",
+        "wouldRecommend": "Bạn có giới thiệu sự kiện này không?",
+        "yes": "Có",
+        "no": "Không",
+        "submitReview": "Gửi đánh giá",
+        "submitting": "Đang gửi...",
+        "thankYou": "Cảm ơn bạn đã đánh giá!",
+        "error": "Không thể gửi đánh giá. Vui lòng thử lại."
+      },
+      "list": {
+        "title": "Đánh giá",
+        "subtitle": "Những gì người tham dự nói",
+        "averageRating": "Đánh giá trung bình",
+        "totalReviews": "đánh giá",
+        "writeReview": "Viết đánh giá",
+        "mostHelpful": "Hữu ích nhất",
+        "mostRecent": "Mới nhất",
+        "highestRated": "Đánh giá cao nhất",
+        "lowestRated": "Đánh giá thấp nhất",
+        "helpful": "Hữu ích",
+        "notHelpful": "Không hữu ích",
+        "reportReview": "Báo cáo"
+      }
+    },
+    "payment": {
+      "return": {
+        "processing": "Đang xử lý thanh toán...",
+        "success": "Thanh toán thành công!",
+        "failed": "Thanh toán thất bại",
+        "successMessage": "Thanh toán của bạn đã được xử lý thành công",
+        "failedMessage": "Có vấn đề khi xử lý thanh toán của bạn",
+        "returnToHome": "Về trang chủ",
+        "tryAgain": "Thử lại",
+        "contactSupport": "Liên hệ hỗ trợ"
+      }
+    },
+    "transfer": {
+      "ticket": {
+        "title": "Chuyển vé",
+        "subtitle": "Chuyển vé của bạn cho người khác",
+        "recipientEmail": "Email người nhận",
+        "recipientName": "Tên người nhận",
+        "message": "Tin nhắn cá nhân (Tùy chọn)",
+        "messagePlaceholder": "Thêm tin nhắn cá nhân...",
+        "confirmTransfer": "Xác nhận chuyển",
+        "transferring": "Đang chuyển...",
+        "successMessage": "Đã chuyển vé thành công!",
+        "errorMessage": "Không thể chuyển vé. Vui lòng thử lại.",
+        "warning": "Sau khi chuyển, bạn sẽ không thể sử dụng vé này",
+        "ticketInfo": "Thông tin vé"
+      }
+    },
+    "refund": {
+      "request": {
+        "title": "Yêu cầu hoàn tiền",
+        "subtitle": "Gửi yêu cầu hoàn tiền",
+        "reason": "Lý do hoàn tiền",
+        "selectReason": "Chọn lý do",
+        "cannotAttend": "Không thể tham dự",
+        "eventCancelled": "Sự kiện bị hủy",
+        "wrongTickets": "Mua nhầm vé",
+        "other": "Khác",
+        "additionalDetails": "Chi tiết bổ sung",
+        "detailsPlaceholder": "Vui lòng cung cấp thêm thông tin...",
+        "refundMethod": "Phương thức hoàn tiền",
+        "originalPayment": "Phương thức thanh toán gốc",
+        "bankTransfer": "Chuyển khoản ngân hàng",
+        "submitRequest": "Gửi yêu cầu",
+        "submitting": "Đang gửi...",
+        "successMessage": "Đã gửi yêu cầu hoàn tiền thành công",
+        "errorMessage": "Không thể gửi yêu cầu hoàn tiền",
+        "refundPolicy": "Chính sách hoàn tiền",
+        "processingTime": "Hoàn tiền thường mất 5-7 ngày làm việc để xử lý"
+      }
+    },
+    "analytics": {
+      "event": {
+        "title": "Phân tích sự kiện",
+        "overview": "Tổng quan",
+        "sales": "Doanh số",
+        "attendance": "Tham dự",
+        "revenue": "Doanh thu",
+        "ticketsSold": "Vé đã bán",
+        "totalRevenue": "Tổng doanh thu",
+        "averageTicketPrice": "Giá vé trung bình",
+        "salesByDay": "Doanh số theo ngày",
+        "salesByTicketType": "Doanh số theo loại vé",
+        "attendeesByLocation": "Người tham dự theo địa điểm",
+        "conversionRate": "Tỷ lệ chuyển đổi",
+        "pageViews": "Lượt xem trang",
+        "uniqueVisitors": "Khách truy cập duy nhất",
+        "exportData": "Xuất dữ liệu"
+      }
+    },
+    "wizard": {
+      "organizer": {
+        "title": "Tạo sự kiện của bạn",
+        "step1": "Thông tin cơ bản",
+        "step2": "Chi tiết",
+        "step3": "Vé",
+        "step4": "Xem lại",
+        "eventName": "Tên sự kiện",
+        "eventDescription": "Mô tả sự kiện",
+        "category": "Danh mục",
+        "selectCategory": "Chọn danh mục",
+        "eventDate": "Ngày sự kiện",
+        "eventTime": "Giờ sự kiện",
+        "venue": "Địa điểm",
+        "venueName": "Tên địa điểm",
+        "venueAddress": "Địa chỉ địa điểm",
+        "city": "Thành phố",
+        "state": "Tỉnh/Thành",
+        "capacity": "Sức chứa",
+        "eventImage": "Hình ảnh sự kiện",
+        "uploadImage": "Tải hình ảnh",
+        "ticketTypes": "Loại vé",
+        "addTicketType": "Thêm loại vé",
+        "ticketName": "Tên vé",
+        "ticketPrice": "Giá vé",
+        "ticketQuantity": "Số lượng",
+        "salesStartDate": "Ngày bắt đầu bán",
+        "salesEndDate": "Ngày kết thúc bán",
+        "previous": "Trước",
+        "next": "Tiếp theo",
+        "publish": "Xuất bản sự kiện",
+        "saveDraft": "Lưu nháp"
+      }
+    },
+    "management": {
+      "event": {
+        "title": "Quản lý sự kiện",
+        "subtitle": "Quản lý các sự kiện của bạn",
+        "createEvent": "Tạo sự kiện",
+        "all": "Tất cả",
+        "upcoming": "Sắp diễn ra",
+        "past": "Đã qua",
+        "draft": "Nháp",
+        "published": "Đã xuất bản",
+        "cancelled": "Đã hủy",
+        "searchEvents": "Tìm sự kiện...",
+        "filters": "Bộ lọc",
+        "sortBy": "Sắp xếp theo",
+        "eventName": "Tên sự kiện",
+        "date": "Ngày",
+        "ticketsSold": "Vé đã bán",
+        "revenue": "Doanh thu",
+        "status": "Trạng thái",
+        "actions": "Thao tác",
+        "edit": "Sửa",
+        "duplicate": "Nhân bản",
+        "cancel": "Hủy",
+        "delete": "Xóa",
+        "viewAnalytics": "Xem phân tích"
+      }
+    },
+    "policy": {
+      "policy": "Chính sách vé",
+      "please": "Vui lòng xem xét trước khi mua",
+      "Refundable": "Hoàn tiền",
+      "Non-refundable": "Không hoàn tiền",
+      "Transferable": "Có thể chuyển nhượng",
+      "Non-transferable": "Không thể chuyển nhượng",
+      "notify": "Tất cả vé đều là vé chính thức và đã được xác minh. Vui lòng kiểm tra email để biết thông tin giao vé sau khi mua.",
+      "text1": "vé có thể được chuyển nhượng cho người khác",
+      "text2": "vé không thể được chuyển nhượng cho người khác"
     }
-  },
-  "policy":{
-    "policy": "Chính sách vé",
-    "please": "Vui lòng xem xét trước khi mua",
-    "Refundable": "Hoàn tiền",
-    "Non-refundable": "Không hoàn tiền",
-    "Transferable": "Có thể chuyển nhượng",
-    "Non-transferable": "Không thể chuyển nhượng",
-    "notify": "Tất cả vé đều là vé chính thức và đã được xác minh. Vui lòng kiểm tra email để biết thông tin giao vé sau khi mua.",
-    "text1": "vé có thể được chuyển nhượng cho người khác",
-    "text2": "vé không thể được chuyển nhượng cho người khác"
   }
-  
 }

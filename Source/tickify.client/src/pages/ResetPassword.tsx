@@ -7,6 +7,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { authService } from '../services/authService';
 
 interface ResetPasswordProps {
@@ -156,7 +157,7 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
           <CardContent className="p-8">
             <div className="text-center">
               <Loader2 className="mx-auto text-purple-600 animate-spin mb-4" size={48} />
-              <p className="text-gray-600">Validating reset token...</p>
+              <p className="text-gray-600">{t('auth.validatingToken')}</p>
             </div>
           </CardContent>
         </Card>
@@ -171,12 +172,12 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
           <CardContent className="p-8">
             <div className="text-center">
               <XCircle className="mx-auto text-red-500 mb-4" size={48} />
-              <h2 className="text-neutral-900 mb-2">Invalid or Expired Token</h2>
+              <h2 className="text-neutral-900 mb-2">{t('auth.invalidToken')}</h2>
               <p className="text-gray-600 mb-6">
-                This password reset link is invalid or has expired. Please request a new one.
+                {t('auth.invalidTokenMessage')}
               </p>
               <Button onClick={() => onNavigate('forgot-password')} className="bg-purple-600 hover:bg-purple-700">
-                Request New Link
+                {t('auth.requestNewLink')}
               </Button>
             </div>
           </CardContent>
@@ -192,12 +193,12 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
           <CardContent className="p-8">
             <div className="text-center">
               <CheckCircle className="mx-auto text-green-500 mb-4" size={48} />
-              <h2 className="text-neutral-900 mb-2">Password Reset Successful</h2>
+              <h2 className="text-neutral-900 mb-2">{t('auth.resetPasswordSuccess')}</h2>
               <p className="text-gray-600 mb-6">
-                Your password has been reset successfully. Redirecting to login...
+                {t('auth.resetPasswordSuccessMessage')}
               </p>
               <Button onClick={() => onNavigate('login')} className="bg-purple-600 hover:bg-purple-700">
-                Go to Login
+                {t('auth.goToLoginButton')}
               </Button>
             </div>
           </CardContent>

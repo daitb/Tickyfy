@@ -27,4 +27,35 @@ public interface IEmailService
     Task SendSupportTicketUpdateEmailAsync(string to, string userName, string ticketNumber, string subject, string message, bool isStaffResponse);
 
     Task SendSupportTicketResolvedEmailAsync(string to, string userName, string ticketNumber, string subject);
+    Task SendTicketTransferNotificationAsync(
+    string recipientEmail, 
+    string recipientName, 
+    string senderName, 
+    string ticketCode, 
+    string message, 
+    string acceptanceToken, 
+    int transferId);
+
+    Task SendTicketTransferAcceptedNotificationAsync(
+        string senderEmail,
+        string senderName,
+        string recipientName,
+        string ticketCode);
+
+    Task SendTicketTransferRejectedNotificationAsync(
+        string senderEmail,
+        string senderName,
+        string recipientName,
+        string ticketCode);
+
+    Task SendTicketTransferAcceptedConfirmationAsync(
+        string recipientEmail,
+        string recipientName,
+        string ticketCode);
+
+    Task SendTicketTransferRejectedConfirmationAsync(
+        string recipientEmail,
+        string recipientName,
+        string ticketCode);
+
 }

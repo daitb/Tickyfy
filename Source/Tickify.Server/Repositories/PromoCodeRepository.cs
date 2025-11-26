@@ -46,6 +46,23 @@ public class PromoCodeRepository : IPromoCodeRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<PromoCode>> GetAllAsync()
+    {
+        return await _context.PromoCodes
+            .Include(p => p.Event)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<PromoCode>> GetByOrganizerIdAsync(int organizerId)
+    {
+        return await _context.PromoCodes
+            .Include(p => p.Event)
+            .Where(p => p.OrganizerId == organizerId)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<PromoCode> CreateAsync(PromoCode promoCode)
     {
         _context.PromoCodes.Add(promoCode);

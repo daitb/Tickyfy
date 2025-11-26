@@ -31,12 +31,18 @@ public class BookingController : ControllerBase
 
     /// Create a new booking with transaction locking to prevent race conditions
     [HttpPost]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<BookingConfirmationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<BookingConfirmationDto>>> CreateBooking(
         [FromBody] CreateBookingDto createBookingDto)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdClaim))
+        {
+            return Unauthorized(ApiResponse<BookingConfirmationDto>.FailureResponse("Authentication required to create booking"));
+        }
+        var userId = int.Parse(userIdClaim);
         
         // Create booking with transaction locking (IsolationLevel.Serializable)
         var booking = await _bookingService.CreateBookingAsync(createBookingDto, userId);

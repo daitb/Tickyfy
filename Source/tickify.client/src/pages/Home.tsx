@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { HeroSlider } from '../components/HeroSlider';
-import { EventCard } from '../components/EventCard';
-import { Badge } from '../components/ui/badge';
-import { ArrowRight, TrendingUp, Star } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { eventService } from '../services/eventService';
-import type { Category } from '../types';
-import { useTranslation } from 'react-i18next';
+import React, { useState, useEffect } from "react";
+import { HeroSlider } from "../components/HeroSlider";
+import { EventCard } from "../components/EventCard";
+import { Badge } from "../components/ui/badge";
+import { ArrowRight, TrendingUp, Star } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { eventService } from "../services/eventService";
+import type { Category } from "../types";
+import { useTranslation } from "react-i18next";
 
 interface HomeProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -15,7 +15,9 @@ interface HomeProps {
 
 export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
   const { t } = useTranslation();
-  const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<Category | "all">(
+    "all"
+  );
   const [events, setEvents] = useState<any[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [trendingEvents, setTrendingEvents] = useState<any[]>([]);
@@ -24,68 +26,87 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
 
   useEffect(() => {
     // Fetch all events for categories and upcoming events
+    console.log("Home: Fetching events...");
     Promise.all([
       eventService.getEvents(),
       eventService.getFeaturedEvents(4),
-      eventService.getUpcomingEvents(3)
-    ]).then(([allEvents, featured, upcoming]) => {
-      setEvents(allEvents || []);
-      const cats = Array.from(new Set((allEvents || []).map((e: any) => e.category).filter(Boolean)));
-      setAvailableCategories(cats);
-      setTrendingEvents(upcoming || []);
-      setSpecialEvents(featured || []);
-      setUpcomingEventsList(allEvents || []);
-    }).catch((error) => {
-      console.error('Error loading events:', error);
-      setEvents([]);
-      setAvailableCategories([]);
-      setTrendingEvents([]);
-      setSpecialEvents([]);
-      setUpcomingEventsList([]);
-    });
+      eventService.getUpcomingEvents(3),
+    ])
+      .then(([allEvents, featured, upcoming]) => {
+        console.log("Home: Events loaded", {
+          allEvents: allEvents?.length,
+          featured: featured?.length,
+          upcoming: upcoming?.length,
+        });
+        setEvents(allEvents || []);
+        const cats = Array.from(
+          new Set((allEvents || []).map((e: any) => e.category).filter(Boolean))
+        );
+        setAvailableCategories(cats);
+        setTrendingEvents(upcoming || []);
+        setSpecialEvents(featured || []);
+        setUpcomingEventsList(allEvents || []);
+      })
+      .catch((error) => {
+        console.error("Home: Error loading events:", error);
+        if (error?.response) {
+          console.error(
+            "Response error:",
+            error.response.status,
+            error.response.data
+          );
+        }
+        setEvents([]);
+        setAvailableCategories([]);
+        setTrendingEvents([]);
+        setSpecialEvents([]);
+        setUpcomingEventsList([]);
+      });
   }, []);
 
   const handleViewDetails = (eventId: string) => {
-    onNavigate('event-detail', eventId);
+    onNavigate("event-detail", eventId);
   };
 
-  const filteredEvents = selectedCategory === 'all' 
-    ? upcomingEventsList 
-    : upcomingEventsList.filter(e => e.category === selectedCategory);
+  const filteredEvents =
+    selectedCategory === "all"
+      ? upcomingEventsList
+      : upcomingEventsList.filter((e) => e.category === selectedCategory);
 
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Slider - pauses when search is open */}
-      <HeroSlider 
-        onViewDetails={handleViewDetails}
-        isPaused={isSearchOpen}
-      />
+      <HeroSlider onViewDetails={handleViewDetails} isPaused={isSearchOpen} />
 
       {/* Categories Filter */}
       <section className="bg-white border-b border-neutral-100">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
             <Badge
-              variant={selectedCategory === 'all' ? 'default' : 'secondary'}
+              variant={selectedCategory === "all" ? "default" : "secondary"}
               className={`cursor-pointer whitespace-nowrap ${
-                selectedCategory === 'all' 
-                  ? 'bg-teal-500 hover:bg-teal-600 text-white' 
-                  : 'bg-neutral-100 hover:bg-neutral-200'
+                selectedCategory === "all"
+                  ? "bg-teal-500 hover:bg-teal-600 text-white"
+                  : "bg-neutral-100 hover:bg-neutral-200"
               }`}
-              onClick={() => setSelectedCategory('all')}
+              onClick={() => setSelectedCategory("all")}
             >
-              {t('home.categories.all')}
+              {t("home.categories.all")}
             </Badge>
             {availableCategories.map((category) => (
               <Badge
                 key={category}
-                variant={selectedCategory === category ? 'default' : 'secondary'}
+                variant={
+                  selectedCategory === category ? "default" : "secondary"
+                }
                 className={`cursor-pointer whitespace-nowrap ${
-                  selectedCategory === category 
-                    ? 'bg-teal-500 hover:bg-teal-600 text-white' 
-                    : 'bg-neutral-100 hover:bg-neutral-200'
+                  selectedCategory === category
+                    ? "bg-teal-500 hover:bg-teal-600 text-white"
+                    : "bg-neutral-100 hover:bg-neutral-200"
                 }`}
-                onClick={() => setSelectedCategory(category as Category | 'all')}
+                onClick={() =>
+                  setSelectedCategory(category as Category | "all")
+                }
               >
                 {category}
               </Badge>
@@ -100,14 +121,14 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <Star className="text-teal-500" size={28} />
-              <h2 className="text-neutral-900">{t('home.specialEvents')}</h2>
+              <h2 className="text-neutral-900">{t("home.specialEvents")}</h2>
             </div>
-            <Button 
-              variant="ghost" 
-              onClick={() => onNavigate('listing')}
+            <Button
+              variant="ghost"
+              onClick={() => onNavigate("listing")}
               className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
             >
-              {t('common.viewAll')}
+              {t("common.viewAll")}
               <ArrowRight size={16} className="ml-2" />
             </Button>
           </div>
@@ -117,7 +138,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
               <EventCard
                 key={event.id}
                 event={event}
-                onClick={() => onNavigate('event-detail', event.id)}
+                onClick={() => onNavigate("event-detail", event.id)}
               />
             ))}
           </div>
@@ -130,7 +151,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <TrendingUp className="text-teal-500" size={28} />
-              <h2 className="text-neutral-900">{t('home.trendingEvents')}</h2>
+              <h2 className="text-neutral-900">{t("home.trendingEvents")}</h2>
             </div>
           </div>
 
@@ -139,7 +160,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
               <EventCard
                 key={event.id}
                 event={event}
-                onClick={() => onNavigate('event-detail', event.id)}
+                onClick={() => onNavigate("event-detail", event.id)}
               />
             ))}
           </div>
@@ -151,14 +172,16 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-neutral-900">
-              {selectedCategory === 'all' ? t('home.upcomingEvents') : `${selectedCategory} ${t('home.events')}`}
+              {selectedCategory === "all"
+                ? t("home.upcomingEvents")
+                : `${selectedCategory} ${t("home.events")}`}
             </h2>
-            <Button 
-              variant="ghost" 
-              onClick={() => onNavigate('listing')}
+            <Button
+              variant="ghost"
+              onClick={() => onNavigate("listing")}
               className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
             >
-              {t('common.viewAll')}
+              {t("common.viewAll")}
               <ArrowRight size={16} className="ml-2" />
             </Button>
           </div>
@@ -168,7 +191,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
               <EventCard
                 key={event.id}
                 event={event}
-                onClick={() => onNavigate('event-detail', event.id)}
+                onClick={() => onNavigate("event-detail", event.id)}
               />
             ))}
           </div>
