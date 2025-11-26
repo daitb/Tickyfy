@@ -43,6 +43,10 @@ public class TicketRepository : ITicketRepository
 
     public async Task<IEnumerable<Ticket>> GetByUserIdAsync(int userId)
     {
+        // Only get tickets where:
+        // 1. Ticket has a booking
+        // 2. Booking belongs to the user
+        // 3. Ticket still belongs to that booking (not transferred to another booking)
         return await _context.Tickets
             .Include(t => t.Booking)
                 .ThenInclude(b => b!.Event)
@@ -96,5 +100,13 @@ public class TicketRepository : ITicketRepository
                 && t.Booking != null
                 && t.Booking.EventId == eventId 
                 && t.Status == TicketStatus.Valid);
+    }
+
+    public async Task<int> CountByUserIdAsync(int userId)
+    {
+        return await _context.Tickets
+            .Include(t => t.Booking)
+            .Where(t => t.Booking != null && t.Booking.UserId == userId)
+            .CountAsync();
     }
 }

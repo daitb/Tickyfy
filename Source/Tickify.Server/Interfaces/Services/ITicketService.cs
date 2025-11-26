@@ -14,4 +14,7 @@ public interface ITicketService
     Task<TicketDto> ScanTicketAsync(TicketScanDto scanDto);
     Task<bool> ValidateTicketAsync(string ticketCode, int eventId);
     Task<IEnumerable<TicketDto>> GetTransferableTicketsAsync(int userId, int bookingId);
+    Task<IEnumerable<TicketTransferResponseDto>> GetPendingTransfersAsync(int userId);
+    Task<int> GetUserTicketsCountAsync(int userId);
+        
 }

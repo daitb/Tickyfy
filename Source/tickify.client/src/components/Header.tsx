@@ -109,6 +109,7 @@ export function Header({
                 className="bg-white text-teal-600 hover:bg-neutral-100 gap-2 hidden lg:flex"
               >
                 <Plus size={18} />
+                {t("header.becomeOrganizer")}
                 {t("header.createEvent")}
               </Button>
             )}

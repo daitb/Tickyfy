@@ -135,8 +135,13 @@ class AuthService {
 
     try {
       const parsed = JSON.parse(userStr) as UserDto;
-      if (parsed && (parsed.organizerId === undefined || parsed.organizerId === null)) {
-        const organizerId = this.getOrganizerIdFromToken(localStorage.getItem("authToken") || undefined);
+      if (
+        parsed &&
+        (parsed.organizerId === undefined || parsed.organizerId === null)
+      ) {
+        const organizerId = this.getOrganizerIdFromToken(
+          localStorage.getItem("authToken") || undefined
+        );
         if (organizerId) {
           parsed.organizerId = organizerId;
           localStorage.setItem("user", JSON.stringify(parsed));
@@ -156,7 +161,9 @@ class AuthService {
     if (user?.organizerId) {
       return user.organizerId;
     }
-    return this.getOrganizerIdFromToken(localStorage.getItem("authToken") || undefined);
+    return this.getOrganizerIdFromToken(
+      localStorage.getItem("authToken") || undefined
+    );
   }
 
   /**
@@ -195,7 +202,7 @@ class AuthService {
   async verifyEmail(token: string, email?: string): Promise<void> {
     // Backend expects { email, token }
     // If email is not provided, try to get it from user or let backend handle it
-    const payload = email ? { email, token } : { token, email: '' };
+    const payload = email ? { email, token } : { token, email: "" };
     await apiClient.post("/Auth/verify-email", payload);
   }
 
@@ -216,15 +223,33 @@ class AuthService {
   /**
    * Reset password with token
    */
-  async resetPassword(email: string, token: string, newPassword: string, confirmPassword: string): Promise<void> {
-    await apiClient.post("/Auth/reset-password", { email, token, newPassword, confirmPassword });
+  async resetPassword(
+    email: string,
+    token: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<void> {
+    await apiClient.post("/Auth/reset-password", {
+      email,
+      token,
+      newPassword,
+      confirmPassword,
+    });
   }
 
   /**
    * Change password for authenticated user
    */
-  async changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<void> {
-    await apiClient.post("/Auth/change-password", { currentPassword, newPassword, confirmPassword });
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<void> {
+    await apiClient.post("/Auth/change-password", {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
   }
 
   /**
@@ -250,10 +275,13 @@ class AuthService {
       email: payload.email,
       fullName: payload.name,
       providerId: payload.sub,
-      profilePicture: payload.picture
+      profilePicture: payload.picture,
     };
 
-    const response = await apiClient.post<LoginResponse>("/auth/external-login", externalLoginDto);
+    const response = await apiClient.post<LoginResponse>(
+      "/auth/external-login",
+      externalLoginDto
+    );
 
     console.log("AuthService.googleLogin - Response:", response.data);
 
@@ -330,7 +358,10 @@ class AuthService {
       const decoded = atob(padded);
       return JSON.parse(decoded) as Record<string, unknown>;
     } catch (error) {
-      console.warn("AuthService.parseJwt - Failed to parse token payload", error);
+      console.warn(
+        "AuthService.parseJwt - Failed to parse token payload",
+        error
+      );
       return null;
     }
   }
