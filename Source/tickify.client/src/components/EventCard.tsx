@@ -3,6 +3,8 @@ import React from 'react';
 import type { Event } from '../types';
 import { Badge } from './ui/badge';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { WishlistButton } from './WishlistButton';
+import { authService } from '../services/authService';
 
 interface EventCardProps {
   event: Event;
@@ -10,6 +12,9 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onClick }: EventCardProps) {
+  const isAuthenticated = authService.isAuthenticated();
+  const eventId = parseInt(event.id, 10);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -30,12 +35,20 @@ export function EventCard({ event, onClick }: EventCardProps) {
       onClick={onClick}
       className="group cursor-pointer bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
     >
-      <div className="aspect-[4/3] overflow-hidden bg-neutral-100">
+      <div className="aspect-[4/3] overflow-hidden bg-neutral-100 relative">
         <ImageWithFallback
           src={event.image}
           alt={event.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
+        {isAuthenticated && (
+          <div className="absolute top-3 right-3 z-10">
+            <WishlistButton
+              eventId={eventId}
+              size="md"
+            />
+          </div>
+        )}
       </div>
       <div className="p-4">
         <div className="flex items-center gap-2 mb-2">

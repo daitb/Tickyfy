@@ -114,9 +114,20 @@ export interface Filter {
 export type SortOption = 'popularity' | 'date' | 'price-asc' | 'price-desc';
 
 export interface WishlistItem {
-  id: string;
-  userId: string;
-  eventId: string;
+  wishlistId: number;
+  eventId: number;
+  title: string;
+  imageUrl?: string;
+  startDate: string;
+  venue: string;
+  city?: string;
+  category?: string;
+  status: string;
+  minPrice: number;
+  maxPrice: number;
+  availableTickets: number;
+  totalTickets: number;
+  isEventActive: boolean;
   addedAt: string;
 }
 

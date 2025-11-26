@@ -291,7 +291,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
       // Prepare event data
       const createEventDto: CreateEventDto = {
-        organizerId: organizerId,
+        organizerId: organizerId!,
         categoryId: categoryId,
         title: eventData.title,
         description: eventData.description,
