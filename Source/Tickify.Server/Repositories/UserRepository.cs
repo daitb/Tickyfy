@@ -143,4 +143,20 @@ public class UserRepository : IUserRepository
         return await _context.Organizers
             .FirstOrDefaultAsync(o => o.UserId == userId);
     }
+
+    public async Task<User> GetByIdAsync(int id)
+    {
+        var user = await GetUserByIdAsync(id);
+        if (user == null)
+            throw new KeyNotFoundException($"User with ID {id} not found");
+        return user;
+    }
+
+    public async Task<User> GetByEmailAsync(string email)
+    {
+        var user = await GetUserByEmailAsync(email);
+        if (user == null)
+            throw new KeyNotFoundException($"User with email {email} not found");
+        return user;
+    }
 }
