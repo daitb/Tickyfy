@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Tickify.Data;
 using Tickify.DTOs.Auth;
 using Tickify.Exceptions;
+using Tickify.Interfaces.Repositories;
 using Tickify.Models;
 using Tickify.Repositories;
 using Tickify.Services.Email;
@@ -38,7 +39,7 @@ public class AuthService : IAuthService
         _configuration = configuration;
     }
 
-    public async Task<LoginResponse> RegisterAsync(RegisterDto registerDto)
+    public async Task RegisterAsync(RegisterDto registerDto)
     {
         var existingUser = await _userRepository.GetUserByEmailAsync(registerDto.Email);
 
@@ -91,8 +92,6 @@ public class AuthService : IAuthService
                 //log error
             }
         });
-
-        return await GenerateLoginResponse(user);
     }
 
     public async Task<LoginResponse> LoginAsync(LoginDto loginDto)
@@ -112,6 +111,11 @@ public class AuthService : IAuthService
         if (!user.IsActive)
         {
             throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
+        }
+
+        if (!user.IsEmailVerified)
+        {
+            throw new UnauthorizedException("Vui lòng xác thực email trước khi đăng nhập. Kiểm tra hộp thư của bạn.");
         }
 
         return await GenerateLoginResponse(user);
@@ -178,6 +182,44 @@ public class AuthService : IAuthService
 
         _userRepository.UpdateUser(user);
         await _userRepository.SaveChangesAsync();
+    }
+
+    public async Task ResendVerificationEmailAsync(string email)
+    {
+        var user = await _userRepository.GetUserByEmailAsync(email);
+
+        if (user == null)
+        {
+            // Don't reveal if user exists or not for security
+            return;
+        }
+
+        if (user.IsEmailVerified)
+        {
+            throw new BadRequestException("Email đã được xác thực");
+        }
+
+        // Generate new verification token
+        var verificationToken = Guid.NewGuid().ToString();
+        user.EmailVerificationToken = verificationToken;
+        user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24);
+
+        _userRepository.UpdateUser(user);
+        await _userRepository.SaveChangesAsync();
+
+        // Send verification email
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var verificationLink = $"{_configuration["AppSettings:FrontendUrl"]}/email-verification?token={verificationToken}&email={user.Email}";
+                await _emailService.SendVerificationEmailAsync(user.Email, user.FullName, verificationLink);
+            }
+            catch
+            {
+                // Log error
+            }
+        });
     }
 
     public async Task ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto)
@@ -308,7 +350,8 @@ public class AuthService : IAuthService
             userByEmail.AuthProvider = externalLoginDto.Provider;
             userByEmail.ProviderId = externalLoginDto.ProviderId;
             userByEmail.ProviderDisplayName = externalLoginDto.FullName;
-            userByEmail.IsEmailVerified = true; // OAuth providers verify email
+            // DO NOT automatically verify email for existing local accounts
+            // Only OAuth providers verify their own emails, not existing accounts
             userByEmail.UpdatedAt = DateTime.UtcNow;
 
             if (!string.IsNullOrEmpty(externalLoginDto.ProfilePicture) && string.IsNullOrEmpty(userByEmail.ProfilePicture))
@@ -322,6 +365,12 @@ public class AuthService : IAuthService
             if (!userByEmail.IsActive)
             {
                 throw new UnauthorizedException("Tài khoản đã bị vô hiệu hóa");
+            }
+
+            // Check if email is verified for local accounts
+            if (!userByEmail.IsEmailVerified)
+            {
+                throw new UnauthorizedException("Vui lòng xác thực email trước khi đăng nhập. Kiểm tra hộp thư của bạn.");
             }
 
             return await GenerateLoginResponse(userByEmail);

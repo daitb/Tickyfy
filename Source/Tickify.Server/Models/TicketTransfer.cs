@@ -8,9 +8,13 @@ namespace Tickify.Models
         public int ToUserId { get; set; }
         public DateTime TransferredAt { get; set; } = DateTime.UtcNow;
         public string? Reason { get; set; }
-        public bool IsApproved { get; set; } = true;
+        public bool IsApproved { get; set; } = false;
         public int? ApprovedByUserId { get; set; }
-
+        // Token that recipient must present to accept/reject the transfer
+        public string? AcceptanceToken { get; set; }
+        // Optional expiry for the acceptance token
+        public DateTime? AcceptanceExpiresAt { get; set; }
+        
         // Navigation properties
         public Ticket Ticket { get; set; } = null!;
         public User FromUser { get; set; } = null!;

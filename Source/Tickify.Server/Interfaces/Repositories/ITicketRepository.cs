@@ -14,4 +14,5 @@ public interface ITicketRepository
     Task<bool> ExistsAsync(int id);
     Task<IEnumerable<Ticket>> CreateBulkAsync(IEnumerable<Ticket> tickets);
     Task<bool> IsTicketValidAsync(string ticketCode, int eventId);
+    Task<int> CountByUserIdAsync(int userId);
 }

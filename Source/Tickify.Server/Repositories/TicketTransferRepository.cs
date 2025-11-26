@@ -62,7 +62,33 @@ public class TicketTransferRepository : ITicketTransferRepository
 
     public async Task<TicketTransfer> UpdateAsync(TicketTransfer ticketTransfer)
     {
-        _context.TicketTransfers.Update(ticketTransfer);
+        // Check if entity is already being tracked
+        var entry = _context.Entry(ticketTransfer);
+        
+        if (entry.State == Microsoft.EntityFrameworkCore.EntityState.Detached)
+        {
+            // Entity is not tracked, try to find it first
+            var existing = await _context.TicketTransfers.FindAsync(ticketTransfer.Id);
+            if (existing != null)
+            {
+                // Update existing tracked entity
+                _context.Entry(existing).CurrentValues.SetValues(ticketTransfer);
+                await _context.SaveChangesAsync();
+                return existing;
+            }
+            else
+            {
+                // New entity, attach and mark as modified
+                _context.TicketTransfers.Update(ticketTransfer);
+            }
+        }
+        // If entity is already tracked, EF will automatically detect changes
+        // Just ensure it's marked as modified if needed
+        else if (entry.State == Microsoft.EntityFrameworkCore.EntityState.Unchanged)
+        {
+            entry.State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+        }
+        
         await _context.SaveChangesAsync();
         return ticketTransfer;
     }
