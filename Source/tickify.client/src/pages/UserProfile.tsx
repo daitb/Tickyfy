@@ -47,6 +47,7 @@ import {
 } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { userService } from '../services/userService';
+import { authService } from '../services/authService';
 
 interface UserProfileProps {
   onNavigate: (page: string) => void;
@@ -91,6 +92,8 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
     new: false,
     confirm: false,
   });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState(0);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
   // Preferences state
@@ -153,14 +156,14 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
     if (file) {
       // Validate file size (5MB)
       if (file.size > 5 * 1024 * 1024) {
-        setError('Kích thước file không được vượt quá 5MB');
+        setError(t('pages.userProfile.avatarSizeError'));
         return;
       }
 
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
       if (!allowedTypes.includes(file.type)) {
-        setError('Chỉ chấp nhận file ảnh (JPEG, PNG, GIF)');
+        setError(t('pages.userProfile.avatarTypeError'));
         return;
       }
 
@@ -178,10 +181,10 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
         // Upload to server
         const avatarUrl = await userService.uploadAvatar(file);
         setAvatarPreview(avatarUrl);
-        setSuccess('Cập nhật avatar thành công');
+        setSuccess(t('pages.userProfile.avatarUpdateSuccess'));
       } catch (err: any) {
         console.error('Upload avatar error:', err);
-        setError(err.response?.data?.message || 'Không thể upload avatar');
+        setError(err.response?.data?.message || t('pages.userProfile.uploadAvatarError'));
       }
     }
   };
@@ -200,10 +203,10 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
 
       setOriginalData(formData);
       setIsEditing(false);
-      setSuccess('Cập nhật profile thành công');
+      setSuccess(t('pages.userProfile.profileUpdateSuccess'));
     } catch (err: any) {
       console.error('Save profile error:', err);
-      setError(err.response?.data?.message || 'Không thể cập nhật profile');
+      setError(err.response?.data?.message || t('pages.userProfile.profileUpdateError'));
     } finally {
       setIsSaving(false);
     }
@@ -218,23 +221,62 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
 
   const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setError('New passwords do not match');
+      setError(t('pages.userProfile.passwordMismatch'));
       return;
     }
     if (passwordData.newPassword.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError(t('pages.userProfile.passwordMinLength'));
       return;
     }
     try {
+      setIsChangingPassword(true);
       setError('');
       setSuccess('');
-      // Call API to change password
-      // await userService.changePassword(passwordData);
-      setSuccess('Password changed successfully');
+      
+      await authService.changePassword(
+        passwordData.currentPassword,
+        passwordData.newPassword,
+        passwordData.confirmPassword
+      );
+      
+      setSuccess(t('pages.userProfile.passwordChangeSuccess'));
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setPasswordStrength(0);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to change password');
+      console.error('Change password error:', err);
+      setError(err.response?.data?.message || t('pages.userProfile.passwordChangeError'));
+    } finally {
+      setIsChangingPassword(false);
     }
+  };
+
+  const calculatePasswordStrength = (password: string) => {
+    let strength = 0;
+    if (password.length >= 8) strength += 25;
+    if (password.length >= 12) strength += 25;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25;
+    if (/[0-9]/.test(password)) strength += 12.5;
+    if (/[^a-zA-Z0-9]/.test(password)) strength += 12.5;
+    return strength;
+  };
+
+  const handleNewPasswordChange = (value: string) => {
+    setPasswordData({ ...passwordData, newPassword: value });
+    setPasswordStrength(calculatePasswordStrength(value));
+  };
+
+  const getPasswordStrengthColor = () => {
+    if (passwordStrength < 25) return 'bg-red-500';
+    if (passwordStrength < 50) return 'bg-orange-500';
+    if (passwordStrength < 75) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+
+  const getPasswordStrengthText = () => {
+    if (passwordStrength < 25) return t('pages.userProfile.passwordWeak');
+    if (passwordStrength < 50) return t('pages.userProfile.passwordMedium');
+    if (passwordStrength < 75) return t('pages.userProfile.passwordGood');
+    return t('pages.userProfile.passwordStrong');
   };
 
   const handlePreferencesUpdate = async () => {
@@ -243,9 +285,9 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
       setSuccess('');
       // Call API to update preferences
       // await userService.updatePreferences(preferences);
-      setSuccess('Preferences updated successfully');
+      setSuccess(t('pages.userProfile.preferencesUpdateSuccess'));
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update preferences');
+      setError(err.response?.data?.message || t('pages.userProfile.preferencesUpdateError'));
     }
   };
 
@@ -256,7 +298,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="mx-auto animate-spin text-purple-600 mb-4" size={48} />
-          <p className="text-gray-600">Đang tải thông tin profile...</p>
+          <p className="text-gray-600">{t('pages.userProfile.loadingProfile')}</p>
         </div>
       </div>
     );
@@ -297,7 +339,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                     />
                   </div>
                   <h3 className="text-neutral-900 mb-1">{formData.fullName}</h3>
-                  <Badge className="bg-purple-100 text-purple-700">Regular User</Badge>
+                  <Badge className="bg-purple-100 text-purple-700">{t('pages.userProfile.regularUser')}</Badge>
                 </div>
 
                 {/* Navigation Tabs */}
@@ -308,21 +350,21 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                       className="w-full justify-start cursor-pointer data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 hover:bg-gray-100 transition-colors"
                     >
                       <User size={16} className="mr-2" />
-                      Profile
+                      {t('pages.userProfile.profile')}
                     </TabsTrigger>
                     <TabsTrigger
                       value="security"
                       className="w-full justify-start cursor-pointer data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 hover:bg-gray-100 transition-colors"
                     >
                       <Shield size={16} className="mr-2" />
-                      Security
+                      {t('pages.userProfile.security')}
                     </TabsTrigger>
                     <TabsTrigger
                       value="preferences"
                       className="w-full justify-start cursor-pointer data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 hover:bg-gray-100 transition-colors"
                     >
                       <Settings size={16} className="mr-2" />
-                      Preferences
+                      {t('pages.userProfile.preferences')}
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
@@ -336,20 +378,20 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
               {/* Profile Tab */}
               <TabsContent value="profile" className="mt-0">
                 <div className="flex items-center justify-between mb-6">
-                  <h1>My Profile</h1>
+                  <h1>{t('pages.userProfile.myProfile')}</h1>
                   {!isEditing ? (
                     <Button
                       onClick={() => setIsEditing(true)}
                       className="bg-purple-600 hover:bg-purple-700"
                     >
                       <Edit size={16} className="mr-2" />
-                      Edit Profile
+                      {t('pages.userProfile.editProfile')}
                     </Button>
                   ) : (
                     <div className="flex gap-2">
                       <Button variant="outline" onClick={handleCancel}>
                         <X size={16} className="mr-2" />
-                        Cancel
+                        {t('pages.userProfile.cancel')}
                       </Button>
                       <Button
                         onClick={handleSave}
@@ -359,12 +401,12 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                         {isSaving ? (
                           <>
                             <Loader2 size={16} className="mr-2 animate-spin" />
-                            Đang lưu...
+                            {t('pages.userProfile.savingChanges')}
                           </>
                         ) : (
                           <>
                             <Save size={16} className="mr-2" />
-                            Save Changes
+                            {t('pages.userProfile.saveChanges')}
                           </>
                         )}
                       </Button>
@@ -389,11 +431,11 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                 {/* Personal Information */}
                 <Card className="mb-6">
                   <CardHeader>
-                    <CardTitle>Personal Information</CardTitle>
+                    <CardTitle>{t('pages.userProfile.personalInfo')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="fullName">Full Name</Label>
+                      <Label htmlFor="fullName">{t('pages.userProfile.fullName')}</Label>
                       <Input
                         id="fullName"
                         value={formData.fullName}
@@ -404,16 +446,16 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
 
                     <div>
                       <Label htmlFor="email">
-                        Email Address
+                        {t('pages.userProfile.emailAddress')}
                         {!isEditing && formData.isEmailVerified && (
                           <Badge className="ml-2 bg-green-100 text-green-700">
                             <CheckCircle size={12} className="mr-1" />
-                            Verified
+                            {t('pages.userProfile.verified')}
                           </Badge>
                         )}
                         {!isEditing && !formData.isEmailVerified && (
                           <Badge className="ml-2 bg-yellow-100 text-yellow-700">
-                            Not Verified
+                            {t('pages.userProfile.notVerified')}
                           </Badge>
                         )}
                       </Label>
@@ -421,7 +463,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                     </div>
 
                     <div>
-                      <Label htmlFor="phoneNumber">Phone Number</Label>
+                      <Label htmlFor="phoneNumber">{t('pages.userProfile.phoneNumber')}</Label>
                       <Input
                         id="phoneNumber"
                         value={formData.phoneNumber}
@@ -431,7 +473,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                     </div>
 
                     <div>
-                      <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                      <Label htmlFor="dateOfBirth">{t('pages.userProfile.dateOfBirth')}</Label>
                       <Input
                         id="dateOfBirth"
                         type="date"
@@ -446,7 +488,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                 {/* Account Statistics */}
                 <Card className="mb-6">
                   <CardHeader>
-                    <CardTitle>Account Statistics</CardTitle>
+                    <CardTitle>{t('pages.userProfile.accountStatistics')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4">
@@ -456,7 +498,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                         </div>
                         <div>
                           <p className="text-2xl font-bold text-purple-600">{profileStats.totalBookings}</p>
-                          <p className="text-xs text-gray-600">Total Bookings</p>
+                          <p className="text-xs text-gray-600">{t('pages.userProfile.totalBookings')}</p>
                         </div>
                       </div>
                       
@@ -466,7 +508,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                         </div>
                         <div>
                           <p className="text-2xl font-bold text-pink-600">{profileStats.totalEventsAttended}</p>
-                          <p className="text-xs text-gray-600">Events Attended</p>
+                          <p className="text-xs text-gray-600">{t('pages.userProfile.eventsAttended')}</p>
                         </div>
                       </div>
                       
@@ -482,14 +524,14 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                               day: 'numeric'
                             }) : 'N/A'}
                           </p>
-                          <p className="text-xs text-gray-600">Member Since</p>
+                          <p className="text-xs text-gray-600">{t('pages.userProfile.memberSince')}</p>
                         </div>
                       </div>
                     </div>
                     
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-xs text-gray-500">
-                        💡 <strong>Roles:</strong> {profileStats.roles.length > 0 ? profileStats.roles.join(', ') : 'User'}
+                        💡 <strong>{t('pages.userProfile.roles')}:</strong> {profileStats.roles.length > 0 ? profileStats.roles.join(', ') : 'User'}
                       </p>
                     </div>
                   </CardContent>
@@ -503,38 +545,70 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                     className="text-red-600 hover:text-red-700"
                   >
                     <Trash2 size={14} className="mr-1" />
-                    Delete Account
+                    {t('pages.userProfile.deleteAccount')}
                   </Button>
                 </div>
               </TabsContent>
 
               {/* Security Tab */}
               <TabsContent value="security" className="mt-0">
-                <h1 className="mb-6">Security Settings</h1>
+                <h1 className="mb-6">{t('pages.userProfile.securitySettings')}</h1>
+
+                {/* Error Alert */}
+                {error && activeTab === 'security' && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                    <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <X size={12} className="text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-red-800 text-sm">{t('pages.userProfile.errorTitle')}</p>
+                      <p className="text-sm text-red-600">{error}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Success Alert */}
+                {success && activeTab === 'security' && (
+                  <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                    <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle size={12} className="text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-green-800 text-sm">{t('pages.userProfile.successTitle')}</p>
+                      <p className="text-sm text-green-600">{success}</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Change Password */}
                 <Card className="mb-6">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Lock size={20} className="text-purple-600" />
-                      Change Password
+                      {t('pages.userProfile.changePassword')}
                     </CardTitle>
+                    <p className="text-sm text-gray-600 mt-2">
+                      {t('pages.userProfile.passwordDescription')}
+                    </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="currentPassword">Current Password</Label>
-                      <div className="relative">
+                      <Label htmlFor="currentPassword" className="text-sm font-medium">
+                        {t('pages.userProfile.currentPassword')}
+                      </Label>
+                      <div className="relative mt-1.5">
                         <Input
                           id="currentPassword"
                           type={showPasswords.current ? 'text' : 'password'}
                           value={passwordData.currentPassword}
                           onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                          placeholder="Enter current password"
+                          placeholder={t('pages.userProfile.currentPasswordPlaceholder')}
+                          className="pr-10"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                         >
                           {showPasswords.current ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
@@ -542,150 +616,139 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                     </div>
 
                     <div>
-                      <Label htmlFor="newPassword">New Password</Label>
-                      <div className="relative">
+                      <Label htmlFor="newPassword" className="text-sm font-medium">
+                        {t('pages.userProfile.newPassword')}
+                      </Label>
+                      <div className="relative mt-1.5">
                         <Input
                           id="newPassword"
                           type={showPasswords.new ? 'text' : 'password'}
                           value={passwordData.newPassword}
-                          onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                          placeholder="Enter new password (min 8 characters)"
+                          onChange={(e) => handleNewPasswordChange(e.target.value)}
+                          placeholder={t('pages.userProfile.newPasswordPlaceholder')}
+                          className="pr-10"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                         >
                           {showPasswords.new ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
                       </div>
+                      
+                      {/* Password Strength Indicator */}
+                      {passwordData.newPassword && (
+                        <div className="mt-2 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600">{t('userProfile.passwordStrengthLabel')}</span>
+                            <span className={`text-xs font-medium ${
+                              passwordStrength < 25 ? 'text-red-600' :
+                              passwordStrength < 50 ? 'text-orange-600' :
+                              passwordStrength < 75 ? 'text-yellow-600' :
+                              'text-green-600'
+                            }`}>
+                              {getPasswordStrengthText()}
+                            </span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-300 ${getPasswordStrengthColor()}`}
+                              style={{ width: `${passwordStrength}%` }}
+                            />
+                          </div>
+                          <div className="text-xs text-gray-500 space-y-0.5 mt-2">
+                            <p className={passwordData.newPassword.length >= 8 ? 'text-green-600' : ''}>
+                              {passwordData.newPassword.length >= 8 ? '✓' : '○'} {t('pages.userProfile.passwordRequirement8Chars')}
+                            </p>
+                            <p className={/[A-Z]/.test(passwordData.newPassword) && /[a-z]/.test(passwordData.newPassword) ? 'text-green-600' : ''}>
+                              {/[A-Z]/.test(passwordData.newPassword) && /[a-z]/.test(passwordData.newPassword) ? '✓' : '○'} {t('userProfile.passwordRequirementUpperLower')}
+                            </p>
+                            <p className={/[0-9]/.test(passwordData.newPassword) ? 'text-green-600' : ''}>
+                              {/[0-9]/.test(passwordData.newPassword) ? '✓' : '○'} {t('pages.userProfile.passwordRequirementNumber')}
+                            </p>
+                            <p className={/[^a-zA-Z0-9]/.test(passwordData.newPassword) ? 'text-green-600' : ''}>
+                              {/[^a-zA-Z0-9]/.test(passwordData.newPassword) ? '✓' : '○'} {t('pages.userProfile.passwordRequirementSpecial')}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div>
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                      <div className="relative">
+                      <Label htmlFor="confirmPassword" className="text-sm font-medium">
+                        {t('pages.userProfile.confirmNewPassword')}
+                      </Label>
+                      <div className="relative mt-1.5">
                         <Input
                           id="confirmPassword"
                           type={showPasswords.confirm ? 'text' : 'password'}
                           value={passwordData.confirmPassword}
                           onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                          placeholder="Confirm new password"
+                          placeholder={t('pages.userProfile.confirmPasswordPlaceholder')}
+                          className="pr-10"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                         >
                           {showPasswords.confirm ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
                       </div>
-                    </div>
-
-                    <Button
-                      onClick={handlePasswordChange}
-                      className="bg-purple-600 hover:bg-purple-700 w-full"
-                      disabled={!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
-                    >
-                      <Key size={16} className="mr-2" />
-                      Update Password
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* Two-Factor Authentication */}
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Smartphone size={20} className="text-purple-600" />
-                      Two-Factor Authentication
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="font-medium">Enable 2FA</p>
-                        <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={twoFactorEnabled}
-                          onChange={(e) => setTwoFactorEnabled(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                      </label>
-                    </div>
-                    {twoFactorEnabled && (
-                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm text-green-800">
-                          ✓ Two-factor authentication is enabled. You'll need to enter a code from your authenticator app when logging in.
+                      {passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
+                        <p className="text-xs text-red-600 mt-1.5">{t('pages.userProfile.passwordMismatch')}</p>
+                      )}
+                      {passwordData.confirmPassword && passwordData.newPassword === passwordData.confirmPassword && (
+                        <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
+                          <CheckCircle size={12} /> {t('pages.userProfile.passwordMatch')}
                         </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Active Sessions */}
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Monitor size={20} className="text-purple-600" />
-                      Active Sessions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                            <Monitor className="text-green-600" size={20} />
-                          </div>
-                          <div>
-                            <p className="font-medium">Windows PC - Chrome</p>
-                            <p className="text-sm text-gray-600">Ho Chi Minh City, Vietnam • Current session</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-green-100 text-green-700">Active</Badge>
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                            <Smartphone className="text-gray-600" size={20} />
-                          </div>
-                          <div>
-                            <p className="font-medium">iPhone - Safari</p>
-                            <p className="text-sm text-gray-600">Ho Chi Minh City, Vietnam • 2 days ago</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                          Revoke
-                        </Button>
-                      </div>
+                      )}
                     </div>
 
-                    <Button variant="outline" className="w-full mt-4">
-                      Sign Out All Other Sessions
-                    </Button>
+                    <div className="pt-2">
+                      <Button
+                        onClick={handlePasswordChange}
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 w-full"
+                        disabled={!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword || isChangingPassword}
+                      >
+                        {isChangingPassword ? (
+                          <>
+                            <Loader2 size={16} className="mr-2 animate-spin" />
+                            {t('pages.userProfile.updating')}
+                          </>
+                        ) : (
+                          <>
+                            <Key size={16} className="mr-2" />
+                            {t('pages.userProfile.updatePassword')}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        <strong>💡 {t('pages.userProfile.passwordNote').split(':')[0]}:</strong> {t('pages.userProfile.passwordNote').split(':')[1]}
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
 
               <TabsContent value="preferences" className="mt-0">
-                <h1 className="mb-6">Preferences</h1>
+                <h1 className="mb-6">{t('pages.userProfile.preferences')}</h1>
 
                 {/* Language & Region */}
                 <Card className="mb-6">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Globe size={20} className="text-purple-600" />
-                      Language & Region
+                      {t('pages.userProfile.languageRegion')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="language">Language</Label>
+                      <Label htmlFor="language">{t('pages.userProfile.language')}</Label>
                       <Select
                         value={preferences.language}
                         onValueChange={(value) => setPreferences({ ...preferences, language: value })}
@@ -694,14 +757,14 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="vi">Tiếng Việt</SelectItem>
-                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="vi">{t('pages.userProfile.vietnamese')}</SelectItem>
+                          <SelectItem value="en">{t('pages.userProfile.english')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div>
-                      <Label htmlFor="timezone">Timezone</Label>
+                      <Label htmlFor="timezone">{t('pages.userProfile.timezone')}</Label>
                       <Select
                         value={preferences.timezone}
                         onValueChange={(value) => setPreferences({ ...preferences, timezone: value })}
@@ -725,20 +788,20 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Bell size={20} className="text-purple-600" />
-                      Notification Preferences
+                      {t('pages.userProfile.notificationPreferences')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
                       <p className="text-sm text-blue-800">
-                        <strong>💡 Note:</strong> View your notifications in the global notifications menu (top bar bell icon 🔔) for easier access across the app.
+                        {t('pages.userProfile.notificationNote')}
                       </p>
                     </div>
 
                     <div className="flex items-center justify-between py-3 border-b">
                       <div>
-                        <p className="font-medium">Email Notifications</p>
-                        <p className="text-sm text-gray-600">Receive notifications via email</p>
+                        <p className="font-medium">{t('pages.userProfile.emailNotifications')}</p>
+                        <p className="text-sm text-gray-600">{t('pages.userProfile.receiveEmailNotifications')}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -753,8 +816,8 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
 
                     <div className="flex items-center justify-between py-3 border-b">
                       <div>
-                        <p className="font-medium">Push Notifications</p>
-                        <p className="text-sm text-gray-600">Receive push notifications in browser</p>
+                        <p className="font-medium">{t('pages.userProfile.pushNotifications')}</p>
+                        <p className="text-sm text-gray-600">{t('pages.userProfile.receivePushNotifications')}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -769,8 +832,8 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
 
                     <div className="flex items-center justify-between py-3">
                       <div>
-                        <p className="font-medium">Marketing Emails</p>
-                        <p className="text-sm text-gray-600">Receive promotional and marketing content</p>
+                        <p className="font-medium">{t('pages.userProfile.marketingEmails')}</p>
+                        <p className="text-sm text-gray-600">{t('pages.userProfile.receiveMarketingEmails')}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -790,12 +853,12 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Shield size={20} className="text-purple-600" />
-                      Privacy Settings
+                      {t('pages.userProfile.privacySettings')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="profileVisibility">Profile Visibility</Label>
+                      <Label htmlFor="profileVisibility">{t('pages.userProfile.profileVisibility')}</Label>
                       <Select
                         value={preferences.profileVisibility}
                         onValueChange={(value) => setPreferences({ ...preferences, profileVisibility: value })}
@@ -804,32 +867,32 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="public">Public - Anyone can view your profile</SelectItem>
-                          <SelectItem value="private">Private - Only you can view your profile</SelectItem>
+                          <SelectItem value="public">{t('pages.userProfile.profileVisibilityPublic')}</SelectItem>
+                          <SelectItem value="private">{t('pages.userProfile.profileVisibilityPrivate')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="pt-4 border-t">
                       <p className="text-sm text-gray-600 mb-3">
-                        Control what information is visible on your public profile:
+                        {t('pages.userProfile.controlProfileInfo')}
                       </p>
                       <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm">
                           <input type="checkbox" defaultChecked className="rounded" />
-                          <span>Show events I'm attending</span>
+                          <span>{t('pages.userProfile.showEventsAttending')}</span>
                         </label>
                         <label className="flex items-center gap-2 text-sm">
                           <input type="checkbox" defaultChecked className="rounded" />
-                          <span>Show my reviews</span>
+                          <span>{t('pages.userProfile.showMyReviews')}</span>
                         </label>
                         <label className="flex items-center gap-2 text-sm">
                           <input type="checkbox" className="rounded" />
-                          <span>Show my email address</span>
+                          <span>{t('pages.userProfile.showEmailAddress')}</span>
                         </label>
                         <label className="flex items-center gap-2 text-sm">
                           <input type="checkbox" className="rounded" />
-                          <span>Show my phone number</span>
+                          <span>{t('pages.userProfile.showPhoneNumber')}</span>
                         </label>
                       </div>
                     </div>
@@ -842,7 +905,7 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 w-full"
                 >
                   <Save size={16} className="mr-2" />
-                  Save Preferences
+                  {t('pages.userProfile.savePreferences')}
                 </Button>
               </TabsContent>
             </Tabs>
@@ -854,18 +917,17 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Account</DialogTitle>
+            <DialogTitle>{t('pages.userProfile.deleteAccountTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete your account? This action cannot be undone and all your data will
-              be permanently deleted.
+              {t('pages.userProfile.deleteAccountDescription')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              Cancel
+              {t('pages.userProfile.cancel')}
             </Button>
             <Button className="bg-red-500 hover:bg-red-600" onClick={() => setShowDeleteDialog(false)}>
-              Delete Account
+              {t('pages.userProfile.deleteAccount')}
             </Button>
           </DialogFooter>
         </DialogContent>
