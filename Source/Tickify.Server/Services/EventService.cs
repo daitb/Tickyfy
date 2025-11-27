@@ -803,6 +803,9 @@ public class EventService : IEventService
             MinPrice = eventEntity.TicketTypes?.Any() == true
                 ? eventEntity.TicketTypes.Min(tt => tt.Price)
                 : 0,
+            MaxPrice = eventEntity.TicketTypes?.Any() == true
+                ? eventEntity.TicketTypes.Max(tt => tt.Price)
+                : 0,
             IsFeatured = false, // TODO: Add to Event model
             Status = eventEntity.Status.ToString()
         };
