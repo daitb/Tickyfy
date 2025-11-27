@@ -447,10 +447,26 @@ public sealed class MoMoProvider : IPaymentProvider
             if (quantity <= 0) quantity = 1;
         }
 
-        // Note: Seat assignment is skipped here because we don't have access to the original
-        // SeatIds from CreateBookingDto in the webhook. Seats should be assigned when booking
-        // is created or through a separate process. For now, tickets are created without seat assignment.
-        // TODO: Store SeatIds in Booking model or create a BookingSeats junction table to track seat assignments.
+        // Get seat IDs from booking if available (stored as JSON array)
+        List<int>? seatIds = null;
+        if (!string.IsNullOrEmpty(booking.SeatIdsJson))
+        {
+            try
+            {
+                seatIds = JsonSerializer.Deserialize<List<int>>(booking.SeatIdsJson);
+                Console.WriteLine($"[MoMo] Found {seatIds?.Count ?? 0} seat IDs for booking {bookingId}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MoMo] Error deserializing SeatIdsJson: {ex.Message}");
+            }
+        }
+
+        // Verify seat count matches ticket quantity
+        if (seatIds != null && seatIds.Count != quantity)
+        {
+            Console.WriteLine($"[MoMo] Warning: Seat count ({seatIds.Count}) doesn't match quantity ({quantity}) for booking {bookingId}");
+        }
 
         // Create tickets
         var ticketsToCreate = new List<Ticket>();
@@ -463,7 +479,9 @@ public sealed class MoMoProvider : IPaymentProvider
                 TicketCode = GenerateTicketCode(bookingId, i + 1),
                 Price = selectedTicketType.Price,
                 Status = TicketStatus.Valid,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                // Assign seat if available
+                SeatId = (seatIds != null && i < seatIds.Count) ? seatIds[i] : null
             };
 
             ticketsToCreate.Add(ticket);

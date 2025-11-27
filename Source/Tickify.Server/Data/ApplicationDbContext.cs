@@ -307,6 +307,13 @@ namespace Tickify.Data
                 .HasForeignKey(b => b.PromoCodeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Booking - TicketType relationship (to track which ticket type was booked)
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.TicketType)
+                .WithMany()
+                .HasForeignKey(b => b.TicketTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // TicketScan - Ticket relationship
             modelBuilder.Entity<TicketScan>()
                 .HasOne(ts => ts.Ticket)
@@ -435,6 +442,9 @@ namespace Tickify.Data
             modelBuilder.Entity<Booking>()
                 .HasIndex(b => b.BookingDate);
 
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.TicketTypeId); // For quantity restoration
+
             // Tickets - Check-in and validation
             modelBuilder.Entity<Ticket>()
                 .HasIndex(t => t.BookingId);
@@ -516,6 +526,10 @@ namespace Tickify.Data
 
             modelBuilder.Entity<Booking>()
                 .Property(b => b.DiscountAmount)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<Booking>()
+                .Property(b => b.OriginalAmount)
                 .HasPrecision(18, 2);
 
             modelBuilder.Entity<Payment>()
@@ -602,8 +616,23 @@ namespace Tickify.Data
 
             modelBuilder.Entity<Booking>()
                 .ToTable(t => t.HasCheckConstraint(
-                    "CK_Bookings_Discount_LTE_Total",
-                    "[DiscountAmount] >= 0 AND [DiscountAmount] <= [TotalAmount]"));
+                    "CK_Bookings_OriginalAmount_NonNegative",
+                    "[OriginalAmount] >= 0"));
+
+            modelBuilder.Entity<Booking>()
+                .ToTable(t => t.HasCheckConstraint(
+                    "CK_Bookings_Discount_LTE_Original",
+                    "[DiscountAmount] >= 0 AND [DiscountAmount] <= [OriginalAmount]"));
+
+            modelBuilder.Entity<Booking>()
+                .ToTable(t => t.HasCheckConstraint(
+                    "CK_Bookings_Total_EQ_Original_Minus_Discount",
+                    "[TotalAmount] = [OriginalAmount] - [DiscountAmount]"));
+
+            modelBuilder.Entity<Booking>()
+                .ToTable(t => t.HasCheckConstraint(
+                    "CK_Bookings_Quantity_Positive",
+                    "[Quantity] > 0"));
 
             modelBuilder.Entity<Booking>()
                 .ToTable(t => t.HasCheckConstraint(

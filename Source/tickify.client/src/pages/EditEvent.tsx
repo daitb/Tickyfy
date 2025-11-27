@@ -15,6 +15,7 @@ import {
   Upload,
   Loader2,
   Tag,
+  Layout,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -805,11 +806,23 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                   {t("editEvent.addTicketType")}
                 </Button>
 
-                <div className="flex items-center gap-2 pt-4">
-                  <Checkbox id="seat-selection" />
-                  <Label htmlFor="seat-selection" className="text-sm">
-                    {t("editEvent.enableSeatSelection")}
-                  </Label>
+                <div className="space-y-3 pt-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="seat-selection" />
+                    <Label htmlFor="seat-selection" className="text-sm">
+                      {t("editEvent.enableSeatSelection")}
+                    </Label>
+                  </div>
+                  {eventId && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => onNavigate("seat-map-builder", eventId)}
+                    >
+                      <Layout size={16} className="mr-2" />
+                      {t("editEvent.manageSeatMap") || "Manage Seat Map"}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

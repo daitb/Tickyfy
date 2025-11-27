@@ -84,20 +84,51 @@ public class MappingProfile : Profile
         // ============================================
         
         // Booking mappings
-        CreateMap<Booking, BookingDto>();
-        CreateMap<Booking, BookingDetailDto>();
-        CreateMap<Booking, BookingListDto>();
+        CreateMap<Booking, BookingDto>()
+            .ForMember(dest => dest.BookingId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.BookingNumber, opt => opt.MapFrom(src => src.BookingCode))
+            .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : string.Empty))
+            .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity))
+            .ForMember(dest => dest.TotalPrice, opt => opt.MapFrom(src => src.TotalAmount))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
+        
+        CreateMap<Booking, BookingDetailDto>()
+            .ForMember(dest => dest.BookingId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.BookingNumber, opt => opt.MapFrom(src => src.BookingCode))
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : string.Empty))
+            .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : string.Empty))
+            .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : string.Empty))
+            .ForMember(dest => dest.EventVenue, opt => opt.MapFrom(src => src.Event != null ? src.Event.Location : string.Empty))
+            .ForMember(dest => dest.EventStartDate, opt => opt.MapFrom(src => src.Event != null ? src.Event.StartDate : DateTime.MinValue))
+            .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity))
+            .ForMember(dest => dest.SubTotal, opt => opt.MapFrom(src => src.OriginalAmount))
+            .ForMember(dest => dest.Discount, opt => opt.MapFrom(src => src.DiscountAmount))
+            .ForMember(dest => dest.TotalPrice, opt => opt.MapFrom(src => src.TotalAmount))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
+            .ForMember(dest => dest.PromoCode, opt => opt.MapFrom(src => src.PromoCode != null ? src.PromoCode.Code : null));
+        
+        CreateMap<Booking, BookingListDto>()
+            .ForMember(dest => dest.BookingId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.BookingNumber, opt => opt.MapFrom(src => src.BookingCode))
+            .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : string.Empty))
+            .ForMember(dest => dest.EventImageUrl, opt => opt.MapFrom(src => src.Event != null ? src.Event.BannerImage : null))
+            .ForMember(dest => dest.EventStartDate, opt => opt.MapFrom(src => src.Event != null ? src.Event.StartDate : DateTime.MinValue))
+            .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity))
+            .ForMember(dest => dest.TotalPrice, opt => opt.MapFrom(src => src.TotalAmount))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
+        
         CreateMap<Booking, BookingConfirmationDto>()
             .ForMember(dest => dest.BookingId, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.BookingNumber, opt => opt.MapFrom(src => src.BookingCode))
             .ForMember(dest => dest.EventTitle, opt => opt.MapFrom(src => src.Event != null ? src.Event.Title : string.Empty))
             .ForMember(dest => dest.EventStartDate, opt => opt.MapFrom(src => src.Event != null ? src.Event.StartDate : DateTime.MinValue))
             .ForMember(dest => dest.EventVenue, opt => opt.MapFrom(src => src.Event != null ? src.Event.Location : string.Empty))
-            .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Tickets != null ? src.Tickets.Count : 0))
+            .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity))
             .ForMember(dest => dest.TotalPrice, opt => opt.MapFrom(src => src.TotalAmount))
             .ForMember(dest => dest.TicketNumbers, opt => opt.MapFrom(src => src.Tickets != null ? src.Tickets.Select(t => t.TicketCode).ToList() : new List<string>()))
             .ForMember(dest => dest.PaymentStatus, opt => opt.MapFrom(src => src.Payment != null ? src.Payment.Status.ToString() : "Pending"))
             .ForMember(dest => dest.Message, opt => opt.MapFrom(src => "Booking created successfully. Please complete payment within 15 minutes."));
+        
         CreateMap<CreateBookingDto, Booking>();
 
         // Ticket mappings
@@ -123,11 +154,22 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.UsedAt, opt => opt.MapFrom(src => src.UsedAt))
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt));
 
-        // Seat mappings (original)
-        CreateMap<Seat, DTOs.Seat.SeatDto>();
-        CreateMap<DTOs.Seat.CreateSeatDto, Seat>();
+        // Seat mappings (Developer 3 - Week 1-2)
+        CreateMap<Seat, DTOs.Seat.SeatDto>()
+            .ForMember(dest => dest.FullSeatCode, opt => opt.MapFrom(src => $"{src.Row}{src.SeatNumber}"))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
+            .ForMember(dest => dest.TicketTypeName, opt => opt.Ignore())
+            .ForMember(dest => dest.TicketTypePrice, opt => opt.Ignore())
+            .ForMember(dest => dest.ZoneName, opt => opt.Ignore());
         
-        // Seat Management mappings (Week 2 - Seat Selection)
+        CreateMap<DTOs.Seat.CreateSeatDto, Seat>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.Status, opt => opt.Ignore())
+            .ForMember(dest => dest.IsBlocked, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
+        
+        // Seat Management mappings (SeatMap & SeatZone)
         CreateMap<SeatMap, SeatMapResponseDto>();
         CreateMap<CreateSeatMapDto, SeatMap>();
         CreateMap<UpdateSeatMapDto, SeatMap>()
@@ -135,13 +177,11 @@ public class MappingProfile : Profile
         
         CreateMap<SeatZone, SeatZoneResponseDto>();
         CreateMap<CreateSeatZoneDto, SeatZone>();
-        CreateMap<CreateSeatZoneDto, SeatZone>();
         
         CreateMap<Seat, DTOs.SeatMap.SeatResponseDto>()
             .ForMember(dest => dest.FullSeatCode, opt => opt.MapFrom(src => $"{src.Row}{src.SeatNumber}"))
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.IsBlocked ? "Blocked" : (src.ReservedByUserId.HasValue ? "Reserved" : "Available")))
             .ForMember(dest => dest.IsReserved, opt => opt.MapFrom(src => src.ReservedByUserId.HasValue));
-        CreateMap<CreateSeatDto, Seat>();
 
         // PromoCode mappings
         CreateMap<PromoCode, PromoCodeDto>()

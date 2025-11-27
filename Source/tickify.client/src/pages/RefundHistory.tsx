@@ -32,7 +32,8 @@ import {
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Separator } from '../components/ui/separator';
 import { getMyRefundRequests, getRefundById, type RefundRequest, type RefundStatus } from '../services/refundService';
-import { bookingService, type BookingDto } from '../services/bookingService';
+import { bookingService } from '../services/bookingService';
+import type { BookingDetailDto } from '../services/bookingService';
 import { eventService } from '../services/eventService';
 
 interface RefundHistoryProps {
@@ -47,8 +48,8 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRefund, setSelectedRefund] = useState<RefundRequest | null>(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [bookings, setBookings] = useState<Map<number, BookingDto>>(new Map());
-  const [events, setEvents] = useState<Map<string, any>>(new Map());
+  const [bookings, setBookings] = useState<Map<number, BookingDetailDto>>(new Map());
+  const [events, setEvents] = useState<Map<number, any>>(new Map());
 
   useEffect(() => {
     loadRefunds();
@@ -62,18 +63,18 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
       setRefunds(data);
 
       // Load booking and event details
-      const bookingMap = new Map<number, BookingDto>();
-      const eventMap = new Map<string, any>();
+      const bookingMap = new Map<number, BookingDetailDto>();
+      const eventMap = new Map<number, any>();
 
       for (const refund of data) {
         try {
           // Try to get booking details if available
-          const booking = await bookingService.getBookingById(refund.bookingId.toString());
+          const booking = await bookingService.getBookingById(refund.bookingId);
           bookingMap.set(refund.bookingId, booking);
           
           if (booking.eventId) {
             try {
-              const event = await eventService.getEventById(parseInt(booking.eventId));
+              const event = await eventService.getEventById(booking.eventId);
               eventMap.set(booking.eventId, event);
             } catch (err) {
               console.error('Failed to load event:', err);

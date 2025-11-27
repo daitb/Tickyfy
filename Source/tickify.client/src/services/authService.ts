@@ -177,7 +177,21 @@ class AuthService {
   async refreshToken(): Promise<string> {
     const response = await apiClient.post<LoginResponse>("/auth/refresh-token");
     const loginResponse = response.data;
-    const user = this.persistAuthenticatedUser(loginResponse);
+    
+    // Save new tokens to localStorage
+    localStorage.setItem("authToken", loginResponse.accessToken);
+    localStorage.setItem("refreshToken", loginResponse.refreshToken);
+    
+    // Update user data if needed
+    const user: UserDto = {
+      userId: loginResponse.userId.toString(),
+      fullName: loginResponse.fullName,
+      email: loginResponse.email,
+      role: loginResponse.roles[0],
+      isEmailVerified: true,
+    };
+    localStorage.setItem("user", JSON.stringify(user));
+    
     console.log("AuthService.refreshToken - refreshed for user", user.userId);
     return loginResponse.accessToken;
   }
@@ -275,6 +289,9 @@ class AuthService {
     localStorage.setItem("authToken", loginResponse.accessToken);
     localStorage.setItem("refreshToken", loginResponse.refreshToken);
 
+    const primaryRole = loginResponse.roles[0]; // Take first role
+    const resolvedOrganizerId = this.getOrganizerIdFromToken(loginResponse.accessToken);
+
     const user: UserDto = {
       userId: loginResponse.userId.toString(),
       fullName: loginResponse.fullName,
@@ -287,13 +304,12 @@ class AuthService {
       user.organizerId = resolvedOrganizerId;
     }
 
-    localStorage.setItem("authToken", loginResponse.accessToken);
     localStorage.setItem("user", JSON.stringify(user));
 
     // Notify the rest of the app
     window.dispatchEvent(new Event("auth-change"));
 
-    return user;
+    return loginResponse;
   }
 
   private handlePendingRedirect(): void {

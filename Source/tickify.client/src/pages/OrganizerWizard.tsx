@@ -9,6 +9,9 @@ import {
   X,
   CheckCircle,
   AlertCircle,
+  Tag,
+  Armchair,
+  Eraser,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -22,6 +25,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Switch } from "../components/ui/switch";
+import { Checkbox } from "../components/ui/checkbox";
 import { ProgressSteps } from "../components/ProgressSteps";
 import { cities } from "../mockData";
 import { eventService, type CreateEventDto } from "../services/eventService";
@@ -31,7 +35,7 @@ import { imageService } from "../services/imageService";
 import type { Category, Event, TicketTier } from "../types";
 
 interface OrganizerWizardProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, eventId?: string) => void;
 }
 
 export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
@@ -39,6 +43,36 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isPublishing, setIsPublishing] = useState(false);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [enableSeatSelection, setEnableSeatSelection] = useState(false);
+
+  // Seat map builder state
+  interface SeatMapZone {
+    id: string;
+    name: string;
+    color: string;
+    price: number;
+  }
+  interface SeatMapSeat {
+    id: string;
+    row: number;
+    col: number;
+    zoneId: string | null;
+    isBlocked: boolean;
+    isWheelchair: boolean;
+    label?: string;
+  }
+  const [seatMapZones, setSeatMapZones] = useState<SeatMapZone[]>([
+    { id: "zone1", name: "Zone 1", color: "#00C16A", price: 0 },
+  ]);
+  const [seatMapSeats, setSeatMapSeats] = useState<SeatMapSeat[]>([]);
+  const [seatMapGridSize, setSeatMapGridSize] = useState({
+    rows: 10,
+    cols: 15,
+  });
+  const [selectedSeatMapZone, setSelectedSeatMapZone] =
+    useState<string>("zone1");
+  const [seatMapTool, setSeatMapTool] = useState<"seat" | "eraser">("seat");
+
   const [eventData, setEventData] = useState<Partial<Event>>({
     category: "Music",
     city: cities[0],
@@ -53,6 +87,10 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   const [ticketTiers, setTicketTiers] = useState<Partial<TicketTier>[]>([
     { name: "", price: 0, total: 100, description: "" },
   ]);
+
+  // Promo codes state
+  const [availablePromoCodes, setAvailablePromoCodes] = useState<any[]>([]);
+  const [selectedPromoCodes, setSelectedPromoCodes] = useState<number[]>([]);
 
   // Image upload states
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -108,9 +146,10 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     { number: 1, label: "Basics" },
     { number: 2, label: "Schedule & Venue" },
     { number: 3, label: "Ticketing" },
-    { number: 4, label: "Promo Codes" },
-    { number: 5, label: "Policies" },
-    { number: 6, label: "Review" },
+    { number: 4, label: "Seat Map" },
+    { number: 5, label: "Promo Codes" },
+    { number: 6, label: "Policies" },
+    { number: 7, label: "Review" },
   ];
 
   const handleInputChange = (field: string, value: any) => {
@@ -231,8 +270,16 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     }
   };
 
+  const handlePromoCodeToggle = (promoCodeId: number) => {
+    setSelectedPromoCodes((prev) =>
+      prev.includes(promoCodeId)
+        ? prev.filter((id) => id !== promoCodeId)
+        : [...prev, promoCodeId]
+    );
+  };
+
   const handleNext = () => {
-    if (currentStep < 6) {
+    if (currentStep < 7) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -333,7 +380,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
       // Prepare event data
       const createEventDto: CreateEventDto = {
-        organizerId: organizerId,
+        organizerId: organizerId!,
         categoryId: categoryId,
         title: eventData.title,
         description: eventData.description,
@@ -362,7 +409,29 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       alert(
         `Event "${createdEvent.title}" created successfully! It will be reviewed by admin.`
       );
-      onNavigate("organizer-dashboard");
+
+      // If seat selection is enabled and seat map was created, navigate to seat map builder
+      // Otherwise, go to dashboard
+      if (enableSeatSelection && createdEvent.id) {
+        // If seat map was created in wizard, navigate to seat map builder to publish it
+        if (seatMapSeats.length > 0) {
+          // Store seat map data in sessionStorage to restore in seat map builder
+          sessionStorage.setItem(
+            `seatMapData_${createdEvent.id}`,
+            JSON.stringify({
+              zones: seatMapZones,
+              seats: seatMapSeats,
+              gridSize: seatMapGridSize,
+            })
+          );
+          onNavigate("seat-map-builder", createdEvent.id);
+        } else {
+          // No seat map created, but seat selection enabled - can create later
+          onNavigate("organizer-dashboard");
+        }
+      } else {
+        onNavigate("organizer-dashboard");
+      }
     } catch (error: any) {
       console.error("Error creating event:", error);
       console.error("Error response data:", error.response?.data);
@@ -794,8 +863,282 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
             </div>
           )}
 
-          {/* Step 4: Promo Codes */}
+          {/* Step 4: Seat Map */}
           {currentStep === 4 && (
+            <div className="space-y-6">
+              <h3 className="mb-6">Seat Map Configuration</h3>
+
+              <div className="space-y-4">
+                <div className="bg-neutral-50 rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <input
+                      type="checkbox"
+                      id="enable-seat-selection"
+                      checked={enableSeatSelection}
+                      onChange={(e) => setEnableSeatSelection(e.target.checked)}
+                      className="w-5 h-5 text-orange-500 rounded border-neutral-300 focus:ring-orange-500"
+                    />
+                    <Label
+                      htmlFor="enable-seat-selection"
+                      className="text-base font-medium cursor-pointer"
+                    >
+                      Enable Seat Selection for this Event
+                    </Label>
+                  </div>
+
+                  <p className="text-sm text-neutral-600 mb-4">
+                    If enabled, customers will be able to select specific seats
+                    when booking tickets. Create your seat map below or skip to
+                    continue.
+                  </p>
+                </div>
+
+                {enableSeatSelection ? (
+                  <div className="bg-white rounded-xl border border-neutral-200 p-6">
+                    {/* Seat Map Builder UI */}
+                    <div className="space-y-4">
+                      {/* Zones */}
+                      <div>
+                        <Label className="mb-2 block">Zones & Pricing</Label>
+                        <div className="flex gap-2 mb-3">
+                          {seatMapZones.map((zone) => (
+                            <div
+                              key={zone.id}
+                              onClick={() => setSelectedSeatMapZone(zone.id)}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 cursor-pointer ${
+                                selectedSeatMapZone === zone.id
+                                  ? "border-orange-500 bg-orange-50"
+                                  : "border-neutral-200"
+                              }`}
+                            >
+                              <div
+                                className="w-4 h-4 rounded"
+                                style={{ backgroundColor: zone.color }}
+                              />
+                              <span className="text-sm">{zone.name}</span>
+                              <span className="text-xs text-neutral-500">
+                                ${zone.price}
+                              </span>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const newZone: SeatMapZone = {
+                                id: `zone${seatMapZones.length + 1}`,
+                                name: `Zone ${seatMapZones.length + 1}`,
+                                color: "#00C16A",
+                                price: 0,
+                              };
+                              setSeatMapZones([...seatMapZones, newZone]);
+                              setSelectedSeatMapZone(newZone.id);
+                            }}
+                          >
+                            <Plus size={14} className="mr-1" />
+                            Add Zone
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Tools */}
+                      <div>
+                        <Label className="mb-2 block">Tools</Label>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={
+                              seatMapTool === "seat" ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setSeatMapTool("seat")}
+                          >
+                            <Armchair size={16} className="mr-2" />
+                            Add Seat
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={
+                              seatMapTool === "eraser" ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setSeatMapTool("eraser")}
+                          >
+                            <Eraser size={16} className="mr-2" />
+                            Erase
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Grid Size */}
+                      <div>
+                        <Label className="mb-2 block">Grid Size</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">Rows</Label>
+                            <Input
+                              type="number"
+                              value={seatMapGridSize.rows}
+                              onChange={(e) =>
+                                setSeatMapGridSize({
+                                  ...seatMapGridSize,
+                                  rows: parseInt(e.target.value) || 10,
+                                })
+                              }
+                              min="5"
+                              max="30"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Columns</Label>
+                            <Input
+                              type="number"
+                              value={seatMapGridSize.cols}
+                              onChange={(e) =>
+                                setSeatMapGridSize({
+                                  ...seatMapGridSize,
+                                  cols: parseInt(e.target.value) || 15,
+                                })
+                              }
+                              min="5"
+                              max="40"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Seat Grid */}
+                      <div>
+                        <Label className="mb-2 block">
+                          Seat Map ({seatMapSeats.length} seats)
+                        </Label>
+                        <div className="bg-neutral-50 rounded-lg p-4 overflow-auto max-h-96">
+                          <div className="mb-4 text-center">
+                            <div className="inline-block bg-neutral-200 px-8 py-3 rounded-lg">
+                              <div className="text-sm text-neutral-700">
+                                STAGE
+                              </div>
+                            </div>
+                          </div>
+                          <div
+                            className="inline-grid gap-1 mx-auto"
+                            style={{
+                              gridTemplateColumns: `repeat(${seatMapGridSize.cols}, 24px)`,
+                            }}
+                          >
+                            {Array.from(
+                              {
+                                length:
+                                  seatMapGridSize.rows * seatMapGridSize.cols,
+                              },
+                              (_, idx) => {
+                                const row = Math.floor(
+                                  idx / seatMapGridSize.cols
+                                );
+                                const col = idx % seatMapGridSize.cols;
+                                const seat = seatMapSeats.find(
+                                  (s) => s.row === row && s.col === col
+                                );
+                                const zone = seat
+                                  ? seatMapZones.find(
+                                      (z) => z.id === seat.zoneId
+                                    )
+                                  : null;
+
+                                return (
+                                  <div
+                                    key={`${row}-${col}`}
+                                    onClick={() => {
+                                      if (seatMapTool === "eraser") {
+                                        setSeatMapSeats(
+                                          seatMapSeats.filter(
+                                            (s) =>
+                                              !(s.row === row && s.col === col)
+                                          )
+                                        );
+                                      } else {
+                                        const existingSeat = seatMapSeats.find(
+                                          (s) => s.row === row && s.col === col
+                                        );
+                                        if (existingSeat) {
+                                          setSeatMapSeats(
+                                            seatMapSeats.map((s) =>
+                                              s.row === row && s.col === col
+                                                ? {
+                                                    ...s,
+                                                    zoneId: selectedSeatMapZone,
+                                                  }
+                                                : s
+                                            )
+                                          );
+                                        } else {
+                                          const newSeat: SeatMapSeat = {
+                                            id: `${row}-${col}`,
+                                            row,
+                                            col,
+                                            zoneId: selectedSeatMapZone,
+                                            isBlocked: false,
+                                            isWheelchair: false,
+                                          };
+                                          setSeatMapSeats([
+                                            ...seatMapSeats,
+                                            newSeat,
+                                          ]);
+                                        }
+                                      }
+                                    }}
+                                    className={`w-6 h-6 rounded cursor-pointer transition-all ${
+                                      seat
+                                        ? "shadow-sm"
+                                        : "bg-neutral-100 border border-neutral-200"
+                                    }`}
+                                    style={{
+                                      backgroundColor: seat
+                                        ? zone?.color || "#E0E0E0"
+                                        : undefined,
+                                    }}
+                                    title={
+                                      seat
+                                        ? `${zone?.name || "No zone"} - Row ${
+                                            row + 1
+                                          }, Col ${col + 1}`
+                                        : `Row ${row + 1}, Col ${col + 1}`
+                                    }
+                                  />
+                                );
+                              }
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <p className="text-sm text-blue-700">
+                          <strong>Tip:</strong> Click on the grid to add seats.
+                          Select a zone first, then click to place seats. Use
+                          Erase tool to remove seats. You can continue without
+                          creating a seat map and add it later.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                    <p className="text-sm text-blue-700">
+                      <strong>Note:</strong> If you don't enable seat selection,
+                      tickets will be sold without specific seat assignments.
+                      You can enable this feature later and create a seat map
+                      from the event management page.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Promo Codes */}
+          {currentStep === 5 && (
             <div className="space-y-6">
               <h3 className="mb-6">Promo Codes</h3>
 
@@ -905,8 +1248,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
             </div>
           )}
 
-          {/* Step 5: Policies */}
-          {currentStep === 5 && (
+          {/* Step 6: Policies */}
+          {currentStep === 6 && (
             <div className="space-y-6">
               <h3 className="mb-6">Ticket Policies</h3>
 
@@ -967,8 +1310,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
             </div>
           )}
 
-          {/* Step 6: Review */}
-          {currentStep === 6 && (
+          {/* Step 7: Review */}
+          {currentStep === 7 && (
             <div className="space-y-6">
               <h3 className="mb-6">Review & Publish</h3>
 
@@ -1011,6 +1354,26 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                         </span>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <div className="bg-neutral-50 rounded-xl p-4">
+                  <h4 className="mb-3">Seat Selection</h4>
+                  <div className="text-sm">
+                    <span
+                      className={
+                        enableSeatSelection
+                          ? "text-green-600 font-medium"
+                          : "text-neutral-500"
+                      }
+                    >
+                      {enableSeatSelection ? "✓ Enabled" : "Disabled"}
+                    </span>
+                    {enableSeatSelection && (
+                      <p className="text-xs text-neutral-500 mt-1">
+                        Seat map can be created after event is published
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1092,7 +1455,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                 Back
               </Button>
             )}
-            {currentStep < 6 ? (
+            {currentStep < 7 ? (
               <Button
                 onClick={handleNext}
                 className="flex-1 bg-orange-500 hover:bg-orange-600"

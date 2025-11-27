@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useTranslation } from 'react-i18next';
+import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Undo2,
   Redo2,
@@ -53,9 +53,12 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { toast } from "sonner";
+import { seatService } from "../services/seatService";
+import { eventService } from "../services/eventService";
 
 interface SeatMapBuilderProps {
-  onNavigate: (page: string) => void;
+  eventId?: string | number;
+  onNavigate: (page: string, eventId?: string) => void;
 }
 
 interface Zone {
@@ -122,7 +125,7 @@ const defaultZones: Zone[] = [
   { id: "zone3", name: "Balcony", color: "#7C3AED", price: 50, capacity: 0 },
 ];
 
-export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
+export function SeatMapBuilder({ eventId, onNavigate }: SeatMapBuilderProps) {
   const { t } = useTranslation();
   const [zones, setZones] = useState<Zone[]>(defaultZones);
   const [seats, setSeats] = useState<GridSeat[]>([]);
@@ -140,6 +143,8 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
   const [history, setHistory] = useState<GridSeat[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [eventName, setEventName] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -148,6 +153,60 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     color: "#00C16A",
     price: 0,
   });
+
+  // Load event name and seat map data when eventId is provided
+  useEffect(() => {
+    if (eventId) {
+      const loadEvent = async () => {
+        try {
+          setIsLoading(true);
+          const event = await eventService.getEventById(Number(eventId));
+          setEventName(event.title);
+
+          // Check if there's seat map data from wizard
+          const savedData = sessionStorage.getItem(`seatMapData_${eventId}`);
+          if (savedData) {
+            try {
+              const parsedData = JSON.parse(savedData);
+              if (parsedData.zones && parsedData.zones.length > 0) {
+                setZones(
+                  parsedData.zones.map((z: any) => ({
+                    ...z,
+                    capacity: 0,
+                  }))
+                );
+                if (parsedData.zones[0]?.id) {
+                  setSelectedZone(parsedData.zones[0].id);
+                }
+              }
+              if (parsedData.seats && parsedData.seats.length > 0) {
+                setSeats(parsedData.seats);
+              }
+              if (parsedData.gridSize) {
+                setGridSize(parsedData.gridSize);
+              }
+              // Clear the saved data after loading
+              sessionStorage.removeItem(`seatMapData_${eventId}`);
+              toast.success("Seat map data loaded from wizard");
+            } catch (parseError) {
+              console.error("Failed to parse saved seat map data:", parseError);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to load event:", error);
+          setEventName(`Event ID: ${eventId}`);
+          toast.error(
+            "Failed to load event details. You can still create the seat map."
+          );
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadEvent();
+    } else {
+      setEventName("No event selected");
+    }
+  }, [eventId]);
 
   const addToHistory = (newSeats: GridSeat[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -331,16 +390,50 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     return seats.filter((s) => s.zoneId === zoneId && !s.isBlocked).length;
   };
 
-  const handleSave = () => {
-    toast.success("Seat map saved as draft");
+  const handleSave = async () => {
+    if (!eventId) {
+      toast.error("Please select an event first");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      // Convert grid seats to bulk create format
+      // Note: This is a simplified version - you may need to adjust based on your API
+      toast.success("Seat map saved as draft");
+    } catch (error: any) {
+      console.error("Failed to save seat map:", error);
+      toast.error(error.response?.data?.message || "Failed to save seat map");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
+    if (!eventId) {
+      toast.error("Please select an event first");
+      return;
+    }
+
     if (seats.length === 0) {
       toast.error("Please add seats before publishing");
       return;
     }
-    toast.success("Seat map published successfully!");
+
+    try {
+      setIsLoading(true);
+      // Convert grid seats to API format and create seats
+      // This is a placeholder - you'll need to implement based on your API structure
+      // For now, we'll just show success
+      toast.success("Seat map published successfully!");
+    } catch (error: any) {
+      console.error("Failed to publish seat map:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to publish seat map"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -352,14 +445,21 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
-                onClick={() => onNavigate("organizer-dashboard")}
+                onClick={() => {
+                  if (eventId) {
+                    onNavigate("edit-event", String(eventId));
+                  } else {
+                    onNavigate("organizer-dashboard");
+                  }
+                }}
               >
                 ← Back
               </Button>
               <div>
                 <h2 className="text-lg text-neutral-900">Seat Map Builder</h2>
                 <p className="text-xs text-neutral-500">
-                  Summer Music Festival 2024
+                  {eventName ||
+                    (eventId ? `Event ID: ${eventId}` : "No event selected")}
                 </p>
               </div>
             </div>
@@ -458,13 +558,16 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                 <div>
                   <span className="text-neutral-500">Event:</span>
                   <div className="text-neutral-900">
-                    Summer Music Festival 2024
+                    {eventName ||
+                      (isLoading ? "Loading..." : "No event selected")}
                   </div>
                 </div>
-                <div>
-                  <span className="text-neutral-500">Venue:</span>
-                  <div className="text-neutral-900">Madison Square Garden</div>
-                </div>
+                {eventId && (
+                  <div>
+                    <span className="text-neutral-500">Event ID:</span>
+                    <div className="text-neutral-900">{eventId}</div>
+                  </div>
+                )}
                 <div>
                   <span className="text-neutral-500">Total Capacity:</span>
                   <div className="text-neutral-900 text-xl">

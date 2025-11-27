@@ -105,6 +105,9 @@ namespace Tickify
             // Seat Management Services & Repositories (Week 2 - Seat Selection)
             builder.Services.AddScoped<Tickify.Repositories.ISeatMapRepository, Tickify.Repositories.SeatMapRepository>();
             builder.Services.AddScoped<Tickify.Services.ISeatMapService, Tickify.Services.SeatMapService>();
+            
+            // Seat Service (Developer 3 - Week 2)
+            builder.Services.AddScoped<Tickify.Interfaces.Services.ISeatService, Tickify.Services.SeatService>();
 
             // Category, Organizer & Support Services (Developer 2 - Week 2)
             builder.Services.AddScoped<ICategoryService, CategoryService>();

@@ -10,14 +10,12 @@ import {
   X,
   AlertTriangle,
   Clock,
-  User,
-  Ticket,
   ChevronUp,
   ChevronDown,
   Download,
   Settings,
   WifiOff,
-  Wifi,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -34,7 +32,8 @@ import {
 import { Switch } from '../components/ui/switch';
 import { Label } from '../components/ui/label';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { mockEvents } from '../mockData';
+import { ticketService, type TicketScanDto, type TicketDto } from '../services/ticketService';
+import { toast } from 'sonner';
 
 interface QRScannerProps {
   eventId?: string;
@@ -42,43 +41,25 @@ interface QRScannerProps {
 }
 
 interface ScanResult {
-  id: string;
-  attendeeName: string;
-  ticketCode: string;
-  ticketType: string;
-  seat?: string;
-  timestamp: string;
+  ticket: TicketDto;
   status: 'success' | 'error' | 'duplicate';
-  photo?: string;
+  errorMessage?: string;
+  timestamp: Date;
 }
 
-const mockScans: ScanResult[] = [
-  {
-    id: '1',
-    attendeeName: 'John Doe',
-    ticketCode: 'TIX-001',
-    ticketType: 'VIP',
-    seat: 'A12',
-    timestamp: '2 mins ago',
-    status: 'success',
-  },
-  {
-    id: '2',
-    attendeeName: 'Jane Smith',
-    ticketCode: 'TIX-002',
-    ticketType: 'Standard',
-    timestamp: '5 mins ago',
-    status: 'success',
-  },
-  {
-    id: '3',
-    attendeeName: 'Bob Johnson',
-    ticketCode: 'TIX-003',
-    ticketType: 'VIP',
-    timestamp: '8 mins ago',
-    status: 'duplicate',
-  },
-];
+interface ScanHistory {
+  id: number;
+  ticketNumber: string;
+  ticketType: string;
+  seatNumber?: string;
+  timestamp: Date;
+  status: 'success' | 'error' | 'duplicate';
+}
+
+interface Event {
+  id: string;
+  title: string;
+}
 
 export function QRScanner({ eventId, onNavigate }: QRScannerProps) {
   const { t } = useTranslation();
@@ -87,66 +68,179 @@ export function QRScanner({ eventId, onNavigate }: QRScannerProps) {
   const [zoom, setZoom] = useState(1);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [showManualEntry, setShowManualEntry] = useState(false);
-  const [manualTicketId, setManualTicketId] = useState('');
+  const [manualTicketCode, setManualTicketCode] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
-  const [pendingSyncs, setPendingSyncs] = useState(5);
-  const [checkedIn, setCheckedIn] = useState(123);
-  const [totalCapacity] = useState(500);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanHistory, setScanHistory] = useState<ScanHistory[]>([]);
+  const [eventTitle, setEventTitle] = useState('Event Scanner');
+  const [event, setEvent] = useState<Event | null>(null);
 
-  const event = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
+  // Settings
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [vibrationEnabled, setVibrationEnabled] = useState(true);
+  const [autoAdvance, setAutoAdvance] = useState(true);
+
+  // Check online status
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOffline(!navigator.onLine);
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, []);
 
   const handleEnableCamera = () => {
     setCameraEnabled(true);
+    // In real implementation, request camera permissions here
   };
 
-  const simulateScan = (type: 'success' | 'error' | 'duplicate') => {
-    const results = {
-      success: {
-        id: Date.now().toString(),
-        attendeeName: 'Alice Williams',
-        ticketCode: 'TIX-' + Math.floor(Math.random() * 1000),
-        ticketType: 'Standard',
-        seat: 'B15',
-        timestamp: 'Just now',
-        status: 'success' as const,
-        photo: '/api/placeholder/80/80',
-      },
-      error: {
-        id: Date.now().toString(),
-        attendeeName: 'Invalid Ticket',
-        ticketCode: 'TIX-INVALID',
-        ticketType: '',
-        timestamp: 'Just now',
-        status: 'error' as const,
-      },
-      duplicate: {
-        id: Date.now().toString(),
-        attendeeName: 'Charlie Brown',
-        ticketCode: 'TIX-789',
-        ticketType: 'VIP',
-        timestamp: 'Just now',
-        status: 'duplicate' as const,
-      },
-    };
+  const playSound = (type: 'success' | 'error') => {
+    if (!soundEnabled) return;
+    // Play sound based on type
+    const audio = new Audio(type === 'success' ? '/sounds/success.mp3' : '/sounds/error.mp3');
+    audio.play().catch(() => {
+      // Ignore sound errors
+    });
+  };
 
-    setScanResult(results[type]);
-    if (type === 'success') {
-      setCheckedIn(checkedIn + 1);
+  const vibrate = (pattern: number | number[]) => {
+    if (!vibrationEnabled || !navigator.vibrate) return;
+    navigator.vibrate(pattern);
+  };
+
+  const handleScanTicket = async (ticketCode: string) => {
+    if (!eventId || !ticketCode || isScanning) return;
+
+    try {
+      setIsScanning(true);
+
+      const scanData: TicketScanDto = {
+        ticketNumber: ticketCode,
+        eventId: parseInt(eventId),
+        scanLocation: 'Main Entrance',
+        scanType: 'Entry',
+        deviceId: navigator.userAgent,
+      };
+
+      const scannedTicket = await ticketService.scanTicket(scanData);
+
+      // Success
+      const result: ScanResult = {
+        ticket: scannedTicket,
+        status: 'success',
+        timestamp: new Date(),
+      };
+
+      setScanResult(result);
+      
+      // Add to history
+      setScanHistory(prev => [{
+        id: scannedTicket.ticketId,
+        ticketNumber: scannedTicket.ticketNumber,
+        ticketType: scannedTicket.ticketTypeName,
+        seatNumber: scannedTicket.seatNumber,
+        timestamp: new Date(),
+        status: 'success' as const,
+      }, ...prev].slice(0, 50)); // Keep last 50 scans
+
+      playSound('success');
+      vibrate(200);
+      toast.success('Ticket checked in successfully!');
+
+      // Auto-dismiss if enabled
+      if (autoAdvance) {
+        setTimeout(() => {
+          setScanResult(null);
+        }, 2000);
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to scan ticket';
+      
+      // Check if it's a duplicate scan (already used)
+      const isDuplicate = errorMessage.toLowerCase().includes('already') || 
+                          errorMessage.toLowerCase().includes('used');
+
+      const result: ScanResult = {
+        ticket: {} as TicketDto, // Empty ticket for error case
+        status: isDuplicate ? 'duplicate' : 'error',
+        errorMessage,
+        timestamp: new Date(),
+      };
+
+      setScanResult(result);
+      
+      // Add to history
+      const historyStatus: 'duplicate' | 'error' = isDuplicate ? 'duplicate' : 'error';
+      setScanHistory(prev => [{
+        id: Date.now(),
+        ticketNumber: ticketCode,
+        ticketType: 'Unknown',
+        timestamp: new Date(),
+        status: historyStatus,
+      }, ...prev].slice(0, 50));
+
+      playSound('error');
+      vibrate([100, 50, 100]);
+      toast.error(errorMessage);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleManualVerify = async () => {
+    if (!manualTicketCode.trim()) return;
+    
+    await handleScanTicket(manualTicketCode.trim());
+    setManualTicketCode('');
+    setShowManualEntry(false);
+  };
+
+  const formatTimestamp = (timestamp: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - timestamp.getTime();
+    const minutes = Math.floor(diff / 60000);
+    
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes} min${minutes > 1 ? 's' : ''} ago`;
+    
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    
+    return timestamp.toLocaleDateString();
+  };
+
+  const exportHistory = () => {
+    if (scanHistory.length === 0) {
+      toast.error('No scan history to export');
+      return;
     }
 
-    // Auto-dismiss after 3 seconds
-    setTimeout(() => {
-      setScanResult(null);
-    }, 3000);
-  };
+    const csv = [
+      ['Ticket Number', 'Ticket Type', 'Seat', 'Status', 'Timestamp'].join(','),
+      ...scanHistory.map(scan => [
+        scan.ticketNumber,
+        scan.ticketType,
+        scan.seatNumber || 'N/A',
+        scan.status,
+        scan.timestamp.toISOString(),
+      ].join(','))
+    ].join('\n');
 
-  const handleManualVerify = () => {
-    if (!manualTicketId.trim()) return;
-    simulateScan('success');
-    setManualTicketId('');
-    setShowManualEntry(false);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `scan-history-${eventId}-${new Date().toISOString()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    toast.success('History exported successfully');
   };
 
   return (
@@ -164,16 +258,16 @@ export function QRScanner({ eventId, onNavigate }: QRScannerProps) {
           </Button>
 
           <div className="flex-1 mx-4 text-center">
-            <h2 className="text-white truncate text-sm">{event.title}</h2>
+            <h2 className="text-white truncate text-sm">{eventTitle}</h2>
             <div className="text-xs text-gray-400 mt-1">
-              {checkedIn}/{totalCapacity} checked in
+              {scanHistory.filter(s => s.status === 'success').length} checked in
             </div>
           </div>
 
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onNavigate('event-detail', event.id)}
+            onClick={() => event && onNavigate('event-detail', event.id)}
             className="text-white"
           >
             <Info size={20} />
@@ -196,10 +290,7 @@ export function QRScanner({ eventId, onNavigate }: QRScannerProps) {
         <Alert className="bg-yellow-900 border-yellow-700 mx-4 mt-4">
           <WifiOff className="text-yellow-500" size={16} />
           <AlertDescription className="text-yellow-200">
-            Offline Mode - {pendingSyncs} scans pending sync
-            <Button size="sm" variant="link" className="text-yellow-200 underline ml-2">
-              Sync Now
-            </Button>
+            Offline Mode - Cannot scan tickets without internet connection
           </AlertDescription>
         </Alert>
       )}
@@ -292,30 +383,15 @@ export function QRScanner({ eventId, onNavigate }: QRScannerProps) {
               </div>
             </div>
 
-            {/* Test Buttons (for demo) */}
-            <div className="absolute top-4 right-4 space-y-2">
-              <Button
-                size="sm"
-                onClick={() => simulateScan('success')}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                Test Success
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => simulateScan('error')}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Test Error
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => simulateScan('duplicate')}
-                className="bg-yellow-600 hover:bg-yellow-700"
-              >
-                Test Duplicate
-              </Button>
-            </div>
+            {/* Scanning Indicator */}
+            {isScanning && (
+              <div className="absolute top-4 left-0 right-0 flex justify-center">
+                <div className="bg-black/80 px-4 py-2 rounded-full flex items-center gap-2">
+                  <Loader2 className="animate-spin" size={16} />
+                  <span className="text-sm">Scanning...</span>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -335,26 +411,39 @@ export function QRScanner({ eventId, onNavigate }: QRScannerProps) {
           <Card className="mt-2 bg-gray-800 border-gray-700">
             <CardContent className="p-4">
               <Input
-                value={manualTicketId}
-                onChange={(e) => setManualTicketId(e.target.value)}
-                placeholder="Enter ticket ID..."
+                value={manualTicketCode}
+                onChange={(e) => setManualTicketCode(e.target.value)}
+                placeholder="Enter ticket code..."
                 className="mb-3 bg-gray-900 text-white border-gray-700"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && manualTicketCode.trim()) {
+                    handleManualVerify();
+                  }
+                }}
               />
               <div className="flex gap-2">
                 <Button
                   onClick={handleManualVerify}
-                  disabled={!manualTicketId.trim()}
+                  disabled={!manualTicketCode.trim() || isScanning}
                   className="flex-1 bg-purple-600 hover:bg-purple-700"
                 >
-                  Verify
+                  {isScanning ? (
+                    <>
+                      <Loader2 className="mr-2 animate-spin" size={16} />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Verify'
+                  )}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setManualTicketId('');
+                    setManualTicketCode('');
                     setShowManualEntry(false);
                   }}
                   className="flex-1 bg-gray-900 text-white border-gray-700"
+                  disabled={isScanning}
                 >
                   Cancel
                 </Button>
@@ -371,41 +460,58 @@ export function QRScanner({ eventId, onNavigate }: QRScannerProps) {
           onClick={() => setShowHistory(!showHistory)}
           className="w-full bg-gray-800 text-white border-gray-700"
         >
-          Recent Scans ({mockScans.length})
+          Recent Scans ({scanHistory.length})
           {showHistory ? <ChevronUp size={16} className="ml-2" /> : <ChevronDown size={16} className="ml-2" />}
         </Button>
 
         {showHistory && (
           <Card className="mt-2 bg-gray-800 border-gray-700">
             <CardContent className="p-4">
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {mockScans.map((scan) => (
-                  <div
-                    key={scan.id}
-                    className="flex items-center justify-between p-3 bg-gray-900 rounded"
-                  >
-                    <div className="flex-1">
-                      <div className="text-white text-sm">{scan.attendeeName}</div>
-                      <div className="text-gray-400 text-xs">
-                        {scan.ticketType} • {scan.timestamp}
+              {scanHistory.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  No scan history yet
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {scanHistory.map((scan) => (
+                      <div
+                        key={`${scan.id}-${scan.timestamp.getTime()}`}
+                        className="flex items-center justify-between p-3 bg-gray-900 rounded"
+                      >
+                        <div className="flex-1">
+                          <div className="text-white text-sm font-mono">
+                            {scan.ticketNumber}
+                          </div>
+                          <div className="text-gray-400 text-xs">
+                            {scan.ticketType}
+                            {scan.seatNumber && ` • ${scan.seatNumber}`}
+                            {' • '}
+                            {formatTimestamp(scan.timestamp)}
+                          </div>
+                        </div>
+                        {scan.status === 'success' && (
+                          <Check className="text-green-500" size={20} />
+                        )}
+                        {scan.status === 'error' && (
+                          <X className="text-red-500" size={20} />
+                        )}
+                        {scan.status === 'duplicate' && (
+                          <AlertTriangle className="text-yellow-500" size={20} />
+                        )}
                       </div>
-                    </div>
-                    {scan.status === 'success' && (
-                      <Check className="text-green-500" size={20} />
-                    )}
-                    {scan.status === 'error' && (
-                      <X className="text-red-500" size={20} />
-                    )}
-                    {scan.status === 'duplicate' && (
-                      <AlertTriangle className="text-yellow-500" size={20} />
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-              <Button variant="outline" className="w-full mt-3 bg-gray-900 text-white border-gray-700">
-                <Download size={16} className="mr-2" />
-                Export CSV
-              </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full mt-3 bg-gray-900 text-white border-gray-700"
+                    onClick={exportHistory}
+                  >
+                    <Download size={16} className="mr-2" />
+                    Export CSV
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         )}
@@ -415,7 +521,7 @@ export function QRScanner({ eventId, onNavigate }: QRScannerProps) {
       <div className="px-4 mt-4 pb-4 flex gap-2">
         <Button
           variant="outline"
-          onClick={() => onNavigate('scan-history', event.id)}
+          onClick={() => event && onNavigate('scan-history', event.id)}
           className="flex-1 bg-gray-800 text-white border-gray-700"
         >
           View Full History
@@ -458,40 +564,42 @@ export function QRScanner({ eventId, onNavigate }: QRScannerProps) {
                 {scanResult.status === 'duplicate' && 'Already Checked In'}
               </DialogTitle>
 
-              {scanResult.status === 'success' && (
+              {scanResult.status === 'success' && scanResult.ticket && (
                 <DialogDescription className="text-center space-y-3">
-                  <div className="text-lg text-gray-900">{scanResult.attendeeName}</div>
-                  <Badge>{scanResult.ticketType}</Badge>
-                  {scanResult.seat && (
-                    <div className="text-sm text-gray-600">Seat: {scanResult.seat}</div>
+                  <div className="text-lg text-gray-900 font-mono">
+                    {scanResult.ticket.ticketNumber}
+                  </div>
+                  <Badge>{scanResult.ticket.ticketTypeName}</Badge>
+                  {scanResult.ticket.seatNumber && (
+                    <div className="text-sm text-gray-600">
+                      Seat: {scanResult.ticket.seatNumber}
+                    </div>
                   )}
                   <div className="text-xs text-gray-500 flex items-center justify-center gap-2">
                     <Clock size={12} />
-                    {scanResult.timestamp}
+                    {scanResult.timestamp.toLocaleTimeString()}
                   </div>
                 </DialogDescription>
               )}
 
               {scanResult.status === 'duplicate' && (
                 <DialogDescription className="text-center">
-                  <p className="text-gray-600 mb-2">This ticket was already scanned</p>
-                  <p className="text-sm text-gray-500">Original check-in: 10:30 AM by Staff 1</p>
+                  <p className="text-gray-600 mb-2">
+                    {scanResult.errorMessage || 'This ticket was already scanned'}
+                  </p>
                 </DialogDescription>
               )}
 
               {scanResult.status === 'error' && (
                 <DialogDescription className="text-center">
-                  <p className="text-gray-600">This ticket is not valid for this event</p>
+                  <p className="text-gray-600">
+                    {scanResult.errorMessage || 'This ticket is not valid for this event'}
+                  </p>
                 </DialogDescription>
               )}
             </DialogHeader>
 
-            <DialogFooter>
-              {scanResult.status === 'duplicate' && (
-                <Button className="w-full bg-yellow-600 hover:bg-yellow-700">
-                  Allow Re-entry
-                </Button>
-              )}
+            <DialogFooter className="flex-col gap-2">
               <Button
                 onClick={() => setScanResult(null)}
                 className="w-full bg-purple-600 hover:bg-purple-700"
@@ -513,15 +621,24 @@ export function QRScanner({ eventId, onNavigate }: QRScannerProps) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label>Enable sound on scan</Label>
-              <Switch defaultChecked />
+              <Switch 
+                checked={soundEnabled} 
+                onCheckedChange={setSoundEnabled}
+              />
             </div>
             <div className="flex items-center justify-between">
               <Label>Enable vibration</Label>
-              <Switch defaultChecked />
+              <Switch 
+                checked={vibrationEnabled} 
+                onCheckedChange={setVibrationEnabled}
+              />
             </div>
             <div className="flex items-center justify-between">
               <Label>Auto-advance after scan</Label>
-              <Switch />
+              <Switch 
+                checked={autoAdvance} 
+                onCheckedChange={setAutoAdvance}
+              />
             </div>
           </div>
 

@@ -165,11 +165,18 @@ public class BookingController : ControllerBase
             ));
         }
 
-        // Get tickets using TicketService
-        var tickets = await _ticketService.GetUserTicketsAsync(userId);
-        var bookingTickets = tickets.Where(t => t.BookingId == id);
+        // Get tickets for this booking
+        // Only returns tickets that still belong to this booking and to the user
+        // Note: If tickets were transferred, they will have a different BookingId and won't appear here
+        var userTickets = await _ticketService.GetUserTicketsAsync(userId);
+        var bookingTickets = userTickets.Where(t => t.BookingId == id).ToList();
 
-        return Ok(ApiResponse<IEnumerable<TicketDetailDto>>.SuccessResponse(bookingTickets));
+        return Ok(ApiResponse<IEnumerable<TicketDetailDto>>.SuccessResponse(
+            bookingTickets,
+            bookingTickets.Any() 
+                ? $"Found {bookingTickets.Count} ticket(s) in this booking"
+                : "No tickets found in this booking. They may have been transferred."
+        ));
     }
 
     /// Apply promo code to a pending booking

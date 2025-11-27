@@ -596,14 +596,21 @@ namespace Tickify.Data
                             if (!exists)
                             {
                                 var qty = 2;
-                                var total = tt.Price * qty;
+                                var originalAmount = tt.Price * qty;
+                                var discountAmount = 0m;
+                                var totalAmount = originalAmount - discountAmount;
+                                
                                 var booking = new Booking
                                 {
                                     BookingCode = $"BKG-{Guid.NewGuid().ToString().Substring(0,8).ToUpper()}",
                                     UserId = sampleCustomer.Id,
                                     EventId = firstEventForBooking.Id,
-                                    TotalAmount = total,
-                                    DiscountAmount = 0m,
+                                    TicketTypeId = tt.Id,
+                                    Quantity = qty,
+                                    OriginalAmount = originalAmount,
+                                    TotalAmount = totalAmount,
+                                    DiscountAmount = discountAmount,
+                                    SeatIdsJson = null, // No seats for this sample booking
                                     Status = BookingStatus.Confirmed,
                                     BookingDate = DateTime.UtcNow,
                                     ExpiresAt = null

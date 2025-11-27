@@ -101,6 +101,8 @@ export default function App() {
 
     if (path === "/" || path === "/home") return "home";
     if (path === "/listing") return "listing";
+    // Check for seat selection route first (before event-detail)
+    if (path.match(/^\/event\/\d+\/seats$/)) return "seat-selection";
     if (path.startsWith("/event/")) return "event-detail";
     if (path === "/cart") return "cart";
     if (path === "/checkout") return "checkout";
@@ -124,7 +126,7 @@ export default function App() {
     if (path === "/reset-password") return "reset-password";
     if (path === "/user-profile") return "user-profile";
     if (path === "/seat-selection") return "seat-selection";
-    if (path === "/seat-map-builder") return "seat-map-builder";
+    if (path.startsWith("/seat-map-builder")) return "seat-map-builder";
     if (path === "/review-submission") return "review-submission";
     if (path === "/qr-scanner") return "qr-scanner";
     if (path === "/email-verification") return "email-verification";
@@ -182,6 +184,12 @@ export default function App() {
 
     // Extract eventId from URL
     if (path.startsWith("/event/")) {
+      const eventId = path.split("/event/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
+
+    // Extract eventId from seat selection URL (/event/:id/seats)
+    if (path.match(/^\/event\/\d+\/seats$/)) {
       const eventId = path.split("/event/")[1]?.split("/")[0];
       if (eventId) setSelectedEventId(eventId);
     }
@@ -248,6 +256,16 @@ export default function App() {
   }, []);
 
   const handleNavigate = (page: string, id?: string) => {
+    // If page is already a full path (starts with /), use it directly
+    if (page.startsWith("/")) {
+      navigate(page);
+      window.scrollTo(0, 0);
+      // Update current page based on path
+      const pageFromPath = getPageFromPath();
+      setCurrentPage(pageFromPath);
+      return;
+    }
+
     setCurrentPage(page as Page);
 
     // Navigate using React Router
@@ -268,6 +286,9 @@ export default function App() {
         path = `/transfer-ticket/${id}`;
       } else if (page === "event-analytics") {
         path = `/event-analytics/${id}`;
+      } else if (page === "seat-map-builder") {
+        setSelectedEventId(id);
+        path = `/seat-map-builder/${id}`;
       } else {
         setSelectedEventId(id);
       }
@@ -325,14 +346,18 @@ export default function App() {
       case "checkout":
         return (
           <Checkout
-            items={cartItems}
             onNavigate={handleNavigate}
             onCompleteOrder={handleCompleteOrder}
           />
         );
 
       case "success":
-        return <Success order={lastOrder} onNavigate={handleNavigate} />;
+        return (
+          <Success
+            bookingId={lastOrder?.id ? parseInt(lastOrder.id) : undefined}
+            onNavigate={handleNavigate}
+          />
+        );
 
       case "my-tickets":
         return (
@@ -363,7 +388,6 @@ export default function App() {
         return (
           <TicketDetail
             ticketId={ticketIdFromUrl || undefined}
-            orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
@@ -433,11 +457,37 @@ export default function App() {
       case "user-profile":
         return <UserProfile onNavigate={handleNavigate} />;
 
-      case "seat-selection":
-        return <SeatSelection onNavigate={handleNavigate} />;
+      case "seat-selection": {
+        // Extract eventId from URL for seat selection
+        const eventIdFromUrl = location.pathname.match(
+          /^\/event\/(\d+)\/seats$/
+        )
+          ? location.pathname.split("/event/")[1]?.split("/")[0]
+          : selectedEventId;
 
-      case "seat-map-builder":
-        return <SeatMapBuilder onNavigate={handleNavigate} />;
+        return (
+          <SeatSelection
+            eventId={eventIdFromUrl ? parseInt(eventIdFromUrl) : undefined}
+            onNavigate={handleNavigate}
+          />
+        );
+      }
+
+      case "seat-map-builder": {
+        // Extract eventId from URL or use selectedEventId
+        const eventIdFromUrl = location.pathname.match(
+          /seat-map-builder\/(\d+)/
+        )
+          ? location.pathname.split("/seat-map-builder/")[1]?.split("/")[0]
+          : selectedEventId;
+
+        return (
+          <SeatMapBuilder
+            eventId={eventIdFromUrl ? parseInt(eventIdFromUrl) : undefined}
+            onNavigate={handleNavigate}
+          />
+        );
+      }
 
       case "review-submission":
         return <ReviewSubmission onNavigate={handleNavigate} />;

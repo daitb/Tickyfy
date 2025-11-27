@@ -7,8 +7,7 @@ public class TicketTransferValidator : AbstractValidator<TicketTransferDto>
 {
     public TicketTransferValidator()
     {
-        RuleFor(x => x.TicketId)
-            .GreaterThan(0).WithMessage("TicketId phải lớn hơn 0");
+        // TicketId is passed in the route, not in the DTO
 
         RuleFor(x => x.RecipientEmail)
             .NotEmpty().WithMessage("Email người nhận là bắt buộc")

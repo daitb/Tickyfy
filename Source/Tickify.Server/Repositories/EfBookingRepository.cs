@@ -54,7 +54,7 @@ namespace Tickify.Repositories
 
         public async Task<IEnumerable<Booking>> GetExpiredBookingsAsync()
             => await _db.Bookings
-                .Where(b => b.ExpiresAt != null && b.ExpiresAt < DateTime.UtcNow) 
+                .Where(b => b.Status == BookingStatus.Pending && b.ExpiresAt != null && b.ExpiresAt < DateTime.UtcNow) 
                 .ToListAsync();
     }
 }

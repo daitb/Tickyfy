@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Calendar, MapPin, User, Minus, Plus, Clock, Share2 } from 'lucide-react';
+import { Calendar, MapPin, User, Minus, Plus, Clock, Share2, Ticket } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { MiniCartBar } from '../components/MiniCartBar';
 import { HoldTimer } from '../components/HoldTimer';
@@ -17,6 +17,8 @@ import RelatedEvents from '../components/event-detail/RelatedEvents';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { eventService } from '../services/eventService';
 import type { CartItem } from '../types';
+import { useBooking } from '../contexts/BookingContext';
+import { toast } from 'sonner';
 
 interface EventDetailProps {
   eventId: string;
@@ -26,10 +28,12 @@ interface EventDetailProps {
 
 export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailProps) {
   const { t } = useTranslation();
+  const { setEventInfo, setTicketType } = useBooking();
   const [event, setEvent] = useState<any | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [showTimer, setShowTimer] = useState(false);
   const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
+  const [selectedTier, setSelectedTier] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -101,6 +105,39 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
     
     onAddToCart(items);
     onNavigate('cart');
+  };
+
+  // NEW: Handle booking flow with seat selection
+  const handleBookTickets = (tier: any) => {
+    try {
+      // Validate event has required data
+      if (!event.id || !tier.id) {
+        toast.error('Invalid event or ticket data');
+        return;
+      }
+
+      // Initialize booking context
+      setEventInfo(
+        parseInt(event.id),
+        event.title,
+        `${formatDate(event.date)} • ${event.time}`,
+        event.venue,
+        event.image
+      );
+
+      setTicketType(
+        parseInt(tier.id),
+        tier.name,
+        tier.price
+      );
+
+      // Navigate to seat selection with event ID in URL
+      onNavigate(`/event/${event.id}/seats`);
+      toast.success(`Selected ${tier.name} ticket. Choose your seats!`);
+    } catch (error) {
+      console.error('Error starting booking:', error);
+      toast.error('Failed to start booking. Please try again.');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -274,39 +311,52 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="text-sm text-neutral-500">
-                        {tier.available > 0 ? (
-                          `${tier.available} ${t('events.available')}`
-                        ) : (
-                          <span className="text-red-600">{t('events.soldOut')}</span>
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-neutral-500">
+                          {tier.available > 0 ? (
+                            `${tier.available} ${t('events.available')}`
+                          ) : (
+                            <span className="text-red-600">{t('events.soldOut')}</span>
+                          )}
+                        </div>
+
+                        {tier.available > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-8 h-8 p-0"
+                              onClick={() => handleQuantityChange(tier.id, -1)}
+                              disabled={!quantities[tier.id]}
+                            >
+                              <Minus size={16} />
+                            </Button>
+                            <span className="w-8 text-center">
+                              {quantities[tier.id] || 0}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-8 h-8 p-0"
+                              onClick={() => handleQuantityChange(tier.id, 1)}
+                              disabled={quantities[tier.id] >= tier.available}
+                            >
+                              <Plus size={16} />
+                            </Button>
+                          </div>
                         )}
                       </div>
 
+                      {/* NEW: Book Tickets Button */}
                       {tier.available > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-8 h-8 p-0"
-                            onClick={() => handleQuantityChange(tier.id, -1)}
-                            disabled={!quantities[tier.id]}
-                          >
-                            <Minus size={16} />
-                          </Button>
-                          <span className="w-8 text-center">
-                            {quantities[tier.id] || 0}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-8 h-8 p-0"
-                            onClick={() => handleQuantityChange(tier.id, 1)}
-                            disabled={quantities[tier.id] >= tier.available}
-                          >
-                            <Plus size={16} />
-                          </Button>
-                        </div>
+                        <Button
+                          className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white"
+                          onClick={() => handleBookTickets(tier)}
+                        >
+                          <Ticket size={16} className="mr-2" />
+                          {t('events.bookTickets') || 'Book Tickets'}
+                        </Button>
                       )}
                     </div>
                   </div>

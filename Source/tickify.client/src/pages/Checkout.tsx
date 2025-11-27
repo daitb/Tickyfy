@@ -12,7 +12,7 @@ import {
 } from "../components/PaymentMethodSelector";
 import { Separator } from "../components/ui/separator";
 import { eventService } from "../services/eventService";
-import type { CartItem, Order } from "../types";
+import type { Order } from "../types";
 import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
 import { createPaymentIntent } from "../services/paymentService";
@@ -27,19 +27,20 @@ import {
   validateCardholderName,
   formatPhoneNumber,
 } from "../utils/validation";
+import { useBooking } from "../contexts/BookingContext";
+import { toast } from "sonner";
 
 interface CheckoutProps {
-  items: CartItem[];
   onNavigate: (page: string) => void;
-  onCompleteOrder: (order: Order) => void;
+  onCompleteOrder?: (order: Order) => void;
 }
 
 export function Checkout({
-  items,
   onNavigate,
   onCompleteOrder,
 }: CheckoutProps) {
   const { t } = useTranslation();
+  const { bookingState, setBookingResult } = useBooking();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     email: "",
@@ -64,70 +65,49 @@ export function Checkout({
   const [paymentDetails, setPaymentDetails] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
-  const [eventsMap, setEventsMap] = useState<Record<number, any>>({});
+  const [eventDetails, setEventDetails] = useState<any>(null);
   const steps = [
     { number: 1, label: t('booking.checkout.step1') },
     { number: 2, label: t('booking.checkout.step2') },
     { number: 3, label: t('booking.checkout.step3') },
   ];
 
-  // Utility: extract trailing numeric ID from strings like 'evt-1' or return number as-is
-  const extractTrailingNumber = (val: string | number | undefined) => {
-    if (typeof val === "number") return val;
-    if (!val) return NaN;
-    const s = String(val);
-    const m = s.match(/(\d+)$/);
-    return m ? parseInt(m[1], 10) : NaN;
-  };
-
-  // When cart items change, fetch event metadata from backend for display
+  // Fetch event details for display
   useEffect(() => {
-    const ids = Array.from(
-      new Set(
-        items
-          .map((i) => extractTrailingNumber(i.eventId))
-          .filter((n) => !isNaN(n))
-      )
-    ) as number[];
-
-    ids.forEach((id) => {
-      if (eventsMap[id]) return;
+    if (bookingState.eventId) {
       eventService
-        .getEventById(id)
-        .then((ev) => setEventsMap((prev) => ({ ...prev, [id]: ev })))
-        .catch(() => {
-          // ignore missing events for now
+        .getEventById(bookingState.eventId)
+        .then((ev) => setEventDetails(ev))
+        .catch((err) => {
+          console.error('Failed to fetch event details:', err);
         });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+    }
+  }, [bookingState.eventId]);
 
-  if (items.length === 0) {
+  // Check if we have required booking data
+  if (!bookingState.eventId || !bookingState.ticketTypeId || bookingState.selectedSeats.length === 0) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <ShoppingBag className="mx-auto mb-4 text-neutral-400" size={48} />
-          <h2 className="mb-2">{t('booking.checkout.cartEmpty')}</h2>
+          <h2 className="mb-2">No Booking Selected</h2>
           <p className="text-neutral-600 mb-6">
-            {t('booking.checkout.cartEmptyMessage')}
+            Please select an event and seats before proceeding to checkout.
           </p>
           <Button
             onClick={() => onNavigate("home")}
             className="bg-teal-500 hover:bg-teal-600"
           >
-            {t('booking.cart.browseEvents')}
+            Browse Events
           </Button>
         </div>
       </div>
     );
   }
 
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const serviceFee = subtotal * 0.05;
-  const total = subtotal + serviceFee;
+  const subtotal = bookingState.subtotal;
+  const serviceFee = bookingState.serviceFee;
+  const total = bookingState.total;
 
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
@@ -264,33 +244,54 @@ export function Checkout({
 
       // Check if user is authenticated
       if (!authService.isAuthenticated()) {
-        setError(t('booking.checkout.loginRequired'));
+        setError('Please login to complete your booking');
+        toast.error('Authentication required');
         onNavigate("login");
         setIsProcessing(false);
         return;
       }
 
-      // Get first item (in real app, would handle multiple events)
-      const firstItem = items[0];
-
-      const eventId = extractTrailingNumber(firstItem.eventId);
-      const ticketTypeId = extractTrailingNumber(firstItem.tierId);
-
-      if (isNaN(eventId) || isNaN(ticketTypeId)) {
-        setError(t('booking.checkout.invalidEventOrTicket'));
+      // Validate booking state
+      if (!bookingState.eventId || !bookingState.ticketTypeId) {
+        setError('Invalid booking data');
+        setIsProcessing(false);
         return;
       }
 
-      const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+      // Validate that seats are selected (required for seat-based events)
+      if (!bookingState.selectedSeats || bookingState.selectedSeats.length === 0) {
+        setError('Please select at least one seat before proceeding to checkout');
+        toast.error('No seats selected. Please go back and select your seats.');
+        setIsProcessing(false);
+        return;
+      }
 
-      // Create booking via API with numeric IDs
-      const booking = await bookingService.createBooking({
-        eventId: String(eventId),
-        ticketTypeId: String(ticketTypeId),
-        quantity: totalQuantity,
+      // Validate quantity matches selected seats
+      if (bookingState.quantity !== bookingState.selectedSeats.length) {
+        setError('Quantity mismatch. Please refresh and try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Prepare seat IDs
+      const seatIds = bookingState.selectedSeats.map((seat) => seat.id);
+
+      // Create booking via API
+      const bookingConfirmation = await bookingService.createBooking({
+        eventId: bookingState.eventId,
+        ticketTypeId: bookingState.ticketTypeId,
+        quantity: bookingState.quantity,
+        seatIds: seatIds.length > 0 ? seatIds : undefined,
+        promoCode: bookingState.promoCode,
       });
 
-      console.log("Booking created:", booking);
+      console.log("Booking created:", bookingConfirmation);
+
+      // Store booking result in context
+      setBookingResult(bookingConfirmation.bookingId, bookingConfirmation.bookingNumber);
+
+      // Show success message
+      toast.success('Booking created successfully!');
 
       // Now create payment intent for the booking
       const paymentProviderMap: { [key in PaymentMethod]: "momo" | "vnpay" } = {
@@ -303,7 +304,7 @@ export function Checkout({
       
       try {
         const paymentIntent = await createPaymentIntent({
-          bookingId: parseInt(String(booking.bookingId), 10),
+          bookingId: bookingConfirmation.bookingId,
           provider: provider,
         });
 
@@ -314,20 +315,21 @@ export function Checkout({
           window.location.href = paymentIntent.redirectUrl;
         } else {
           setError("No payment redirect URL received from provider");
+          toast.error('Payment initialization failed');
         }
       } catch (paymentErr: any) {
         console.error("Payment intent creation error:", paymentErr);
         setError(
           paymentErr.response?.data?.message ||
-            t('booking.checkout.paymentInitFailed')
+            'Failed to initialize payment'
         );
+        toast.error('Payment initialization failed');
       }
     } catch (err: any) {
       console.error("Booking creation error:", err);
-      setError(
-        err.response?.data?.message ||
-          t('booking.checkout.bookingCreateFailed')
-      );
+      const errorMessage = err.response?.data?.message || 'Failed to create booking';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -602,42 +604,41 @@ export function Checkout({
                         </div>
                       </div>
 
-                      {/* Items */}
+                      {/* Booking Summary */}
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <h4 className="mb-4">{t('booking.checkout.ticketSummary')}</h4>
                         <div className="space-y-3">
-                          {items.map((item, index) => {
-                                                  const numericEventId = extractTrailingNumber(item.eventId);
-                                                  const event = eventsMap[numericEventId];
-                            return (
-                              <div key={index}>
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="text-neutral-900">
-                                      {item.eventTitle}
-                                    </div>
-                                    <div className="text-sm text-neutral-600 mt-1">
-                                      {item.tierName}
-                                    </div>
-                                    <div className="text-sm text-neutral-500 mt-1">
-                                      {event?.date} • {event?.venue}
-                                    </div>
-                                  </div>
-                                  <div className="text-right ml-4">
-                                    <div className="text-neutral-900">
-                                      {formatPrice(item.price * item.quantity)}
-                                    </div>
-                                    <div className="text-sm text-neutral-500 mt-1">
-                                      {t('booking.quantity')}: {item.quantity}
-                                    </div>
-                                  </div>
+                          <div>
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-neutral-900">
+                                  {bookingState.eventTitle}
                                 </div>
-                                {index < items.length - 1 && (
-                                  <Separator className="mt-3" />
+                                <div className="text-sm text-neutral-600 mt-1">
+                                  {bookingState.ticketTypeName}
+                                </div>
+                                <div className="text-sm text-neutral-500 mt-1">
+                                  {bookingState.eventDate} • {bookingState.eventVenue}
+                                </div>
+                                {bookingState.selectedSeats.length > 0 && (
+                                  <div className="text-sm text-neutral-500 mt-2">
+                                    <strong>Seats:</strong>{' '}
+                                    {bookingState.selectedSeats
+                                      .map((s) => s.fullSeatCode)
+                                      .join(', ')}
+                                  </div>
                                 )}
                               </div>
-                            );
-                          })}
+                              <div className="text-right ml-4">
+                                <div className="text-neutral-900">
+                                  {formatPrice(subtotal)}
+                                </div>
+                                <div className="text-sm text-neutral-500 mt-1">
+                                  Quantity: {bookingState.quantity}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -714,18 +715,21 @@ export function Checkout({
               <div className="mt-4 bg-white rounded-xl p-5 shadow-sm">
                 <h4 className="mb-4">{t('booking.checkout.orderItems')}</h4>
                 <div className="space-y-3">
-                  {items.map((item, index) => (
-                    <div key={index} className="text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-neutral-600">
-                          {item.tierName}
-                        </span>
-                        <span className="text-neutral-900">
-                          ×{item.quantity}
-                        </span>
-                      </div>
+                  <div className="text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600">
+                        {bookingState.ticketTypeName}
+                      </span>
+                      <span className="text-neutral-900">
+                        ×{bookingState.quantity}
+                      </span>
                     </div>
-                  ))}
+                    {bookingState.selectedSeats.length > 0 && (
+                      <div className="text-xs text-neutral-500 mt-2">
+                        Seats: {bookingState.selectedSeats.map(s => s.fullSeatCode).join(', ')}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
