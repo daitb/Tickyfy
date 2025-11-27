@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { CreditCard, Smartphone, Wallet, Check, AlertCircle } from 'lucide-react';
-import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
@@ -15,8 +14,16 @@ import {
   formatPhoneNumber,
 } from '../utils/validation';
 
+interface PaymentMethodDetails {
+  phone?: string;
+  number?: string;
+  name?: string;
+  expiry?: string;
+  cvv?: string;
+}
+
 interface PaymentMethodSelectorProps {
-  onPaymentMethodChange: (method: PaymentMethod, details?: any) => void;
+  onPaymentMethodChange: (method: PaymentMethod, details?: PaymentMethodDetails) => void;
   selectedMethod?: PaymentMethod;
 }
 
@@ -28,7 +35,6 @@ export function PaymentMethodSelector({
 }: PaymentMethodSelectorProps) {
   const [method, setMethod] = useState<PaymentMethod>(selectedMethod || 'momo');
   const [momoPhone, setMomoPhone] = useState('');
-  const [vnpayPhone, setVnpayPhone] = useState('');
   const [cardDetails, setCardDetails] = useState({
     number: '',
     name: '',
@@ -193,7 +199,7 @@ export function PaymentMethodSelector({
       <div>
         <h3 className="mb-6">Select Payment Method</h3>
         
-        <RadioGroup value={method} onValueChange={handleMethodChange as any}>
+        <RadioGroup value={method} onValueChange={(value) => handleMethodChange(value as PaymentMethod)}>
           <div className="space-y-3">
             {paymentMethods.map((pm) => {
               const Icon = pm.icon;
