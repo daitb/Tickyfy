@@ -32,17 +32,20 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
     loadDashboardData(organizerId);
   }, [organizerId]);
 
-  const loadDashboardData = async (currentOrganizerId: number) => {
+  const loadDashboardData = async (targetOrganizerId?: number) => {
     try {
+      const effectiveOrganizerId = targetOrganizerId ?? organizerId;
+      if (!effectiveOrganizerId) return;
+
       setIsLoading(true);
       setError('');
 
       // GET /api/organizers/{id}/events
-      const eventsData = await organizerService.getOrganizerEvents(currentOrganizerId);
+      const eventsData = await organizerService.getOrganizerEvents(effectiveOrganizerId);
       setEvents(eventsData);
 
       // GET /api/organizers/{id}/earnings
-      const earningsData = await organizerService.getOrganizerEarnings(currentOrganizerId);
+      const earningsData = await organizerService.getOrganizerEarnings(effectiveOrganizerId);
       setEarnings(earningsData);
     } catch (err: any) {
       console.error('Error loading dashboard data:', err);
@@ -126,7 +129,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={loadDashboardData}>Retry</Button>
+          <Button onClick={() => loadDashboardData()} disabled={!organizerId}>Retry</Button>
         </div>
       </div>
     );
@@ -222,26 +225,24 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
             <Card>
               <CardHeader>
                 <CardTitle>Sales Trend</CardTitle>
-                <CardDescription>Last 7 days ticket sales</CardDescription>
+                <CardDescription>Monthly revenue performance</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={salesData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
+                    <XAxis dataKey="month" />
                     <YAxis />
                     <Tooltip 
-                      formatter={(value: any, name: string) => {
-                        if (name === 'revenue') return formatPrice(value);
-                        return value;
-                      }}
+                      formatter={(value: number) => formatPrice(value)}
+                      labelFormatter={(label) => label}
                     />
                     <Line 
                       type="monotone" 
-                      dataKey="sales" 
+                      dataKey="revenue" 
                       stroke="#f97316" 
                       strokeWidth={2}
-                      name="Tickets"
+                      name="Revenue"
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -262,7 +263,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                         <div className="flex-1">
                           <div className="text-neutral-900 mb-1">{event.title}</div>
                           <div className="text-sm text-neutral-500">
-                            Top revenue generator
+                            {event.ticketsSold} tickets sold
                           </div>
                         </div>
                         <div className="text-right">

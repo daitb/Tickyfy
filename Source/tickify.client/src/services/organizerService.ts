@@ -56,14 +56,18 @@ export interface OrganizerEarningsDto {
   netEarnings: number;
   pendingPayouts: number;
   completedPayouts: number;
+  availableBalance: number;
+  totalTicketsSold: number;
   monthlyRevenue: Array<{
     month: string;
     revenue: number;
+    ticketsSold: number;
   }>;
   topEvents: Array<{
     eventId: number;
     title: string;
     revenue: number;
+    ticketsSold: number;
   }>;
 }
 
