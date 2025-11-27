@@ -284,13 +284,13 @@ export function Checkout({
       const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
       // Create booking via API with numeric IDs
-      const booking = await bookingService.createBooking({
-        eventId: String(eventId),
-        ticketTypeId: String(ticketTypeId),
+      const response = await bookingService.createBooking({
+        eventId: eventId,
+        ticketTypeId: ticketTypeId,
         quantity: totalQuantity,
       });
 
-      console.log("Booking created:", booking);
+      console.log("Booking created:", response);
 
       // Now create payment intent for the booking
       const paymentProviderMap: { [key in PaymentMethod]: "momo" | "vnpay" } = {
@@ -303,7 +303,7 @@ export function Checkout({
       
       try {
         const paymentIntent = await createPaymentIntent({
-          bookingId: parseInt(String(booking.bookingId), 10),
+          bookingId: response.bookingId,
           provider: provider,
         });
 

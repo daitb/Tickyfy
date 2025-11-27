@@ -1,0 +1,820 @@
+using Microsoft.EntityFrameworkCore;
+using Tickify.Models;
+
+namespace Tickify.Data
+{
+    public static class DbInitializer
+    {
+        public static async Task SeedAsync(ApplicationDbContext context)
+        {
+            try
+            {
+                // Ensure database is created
+                await context.Database.EnsureCreatedAsync();
+
+                // Seed Roles
+                if (!await context.Roles.AnyAsync())
+                {
+                    Console.WriteLine("Seeding Roles...");
+                    var roles = new[]
+                    {
+                        new Role
+                        {
+                            Name = "Admin",
+                            Description = "Full system administrator with all permissions",
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Role
+                        {
+                            Name = "Staff",
+                            Description = "Support staff - Handle customer support and ticket verification",
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Role
+                        {
+                            Name = "Organizer",
+                            Description = "Event organizer - Create and manage events",
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Role
+                        {
+                            Name = "Customer",
+                            Description = "Regular customer - Book tickets and attend events",
+                            CreatedAt = DateTime.UtcNow
+                        }
+                    };
+
+                    await context.Roles.AddRangeAsync(roles);
+                    await context.SaveChangesAsync();
+                    Console.WriteLine("✅ Roles seeded successfully!");
+                }
+
+                // Seed Categories
+                if (!await context.Categories.AnyAsync())
+                {
+                    Console.WriteLine("Seeding Categories...");
+                    var categories = new[]
+                    {
+                        new Category
+                        {
+                            Name = "Music & Concerts",
+                            Description = "Live music performances, concerts, and music festivals",
+                            IconUrl = "🎵",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "Sports & Fitness",
+                            Description = "Sports events, marathons, and fitness activities",
+                            IconUrl = "⚽",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "Business & Professional",
+                            Description = "Conferences, seminars, workshops, and networking events",
+                            IconUrl = "💼",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "Technology & Innovation",
+                            Description = "Tech conferences, hackathons, and startup events",
+                            IconUrl = "💻",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "Arts & Culture",
+                            Description = "Art exhibitions, cultural festivals, and theater performances",
+                            IconUrl = "🎨",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "Food & Drink",
+                            Description = "Food festivals, cooking classes, and culinary events",
+                            IconUrl = "🍔",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "Entertainment",
+                            Description = "Comedy shows, movies, stand-up, and entertainment events",
+                            IconUrl = "🎭",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "Education & Learning",
+                            Description = "Educational workshops, training sessions, and academic events",
+                            IconUrl = "📚",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        }
+                    };
+
+                    await context.Categories.AddRangeAsync(categories);
+                    await context.SaveChangesAsync();
+                    Console.WriteLine("✅ Categories seeded successfully!");
+                }
+
+                // Seed Admin User
+                if (!await context.Users.AnyAsync())
+                {
+                    Console.WriteLine("Seeding Admin User...");
+
+                    // Note: In production, use BCrypt or ASP.NET Core Identity for password hashing
+                    var admin = new User
+                    {
+                        Email = "admin@tickify.com",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123456"),
+                        FullName = "System Administrator",
+                        PhoneNumber = "+84123456789",
+                        IsActive = true,
+                        IsEmailVerified = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await context.Users.AddAsync(admin);
+                    await context.SaveChangesAsync();
+
+                    // Assign Admin role
+                    var adminRole = await context.Roles.FirstAsync(r => r.Name == "Admin");
+                    var adminUserRole = new UserRole
+                    {
+                        UserId = admin.Id,
+                        RoleId = adminRole.Id,
+                        AssignedAt = DateTime.UtcNow
+                    };
+
+                    await context.UserRoles.AddAsync(adminUserRole);
+                    await context.SaveChangesAsync();
+
+                    Console.WriteLine("✅ Admin user created successfully!");
+                    Console.WriteLine($"   Email: admin@tickify.com");
+                    Console.WriteLine($"   Password: Admin@123456");
+                }
+
+                // Seed Sample Customer
+                if (await context.Users.CountAsync() == 1)
+                {
+                    Console.WriteLine("Seeding Sample Customer...");
+
+                    var customer = new User
+                    {
+                        Email = "customer@example.com",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
+                        FullName = "John Doe",
+                        PhoneNumber = "+84987654321",
+                        IsActive = true,
+                        IsEmailVerified = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await context.Users.AddAsync(customer);
+                    await context.SaveChangesAsync();
+
+                    // Assign Customer role
+                    var customerRole = await context.Roles.FirstAsync(r => r.Name == "Customer");
+                    var customerUserRole = new UserRole
+                    {
+                        UserId = customer.Id,
+                        RoleId = customerRole.Id,
+                        AssignedAt = DateTime.UtcNow
+                    };
+
+                    await context.UserRoles.AddAsync(customerUserRole);
+                    await context.SaveChangesAsync();
+
+                    Console.WriteLine("✅ Sample customer created!");
+                    Console.WriteLine($"   Email: customer@example.com");
+                    Console.WriteLine($"   Password: Customer@123");
+                }
+
+                Console.WriteLine("\n🎉 Database seeding completed successfully!");
+                Console.WriteLine("\n📝 Default Accounts:");
+                Console.WriteLine("   Admin: admin@tickify.com / Admin@123456");
+                Console.WriteLine("   Customer: customer@example.com / Customer@123");
+                Console.WriteLine("\n💡 To add more test data, run the SQL script:");
+                Console.WriteLine("   Documents/SeedTestData.sql");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error seeding database: {ex.Message}");
+                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
+                throw;
+            }
+        }
+    }
+}
+                {
+                    Console.WriteLine("Seeding Sample Users...");
+
+                    var users = new List<User>
+                    {
+                        // Customers
+                        new User
+                        {
+                            Email = "customer@example.com",
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
+                            FullName = "John Doe",
+                            PhoneNumber = "+84987654321",
+                            IsActive = true,
+                            IsEmailVerified = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new User
+                        {
+                            Email = "jane.smith@example.com",
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
+                            FullName = "Jane Smith",
+                            PhoneNumber = "+84987654322",
+                            IsActive = true,
+                            IsEmailVerified = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new User
+                        {
+                            Email = "mike.johnson@example.com",
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
+                            FullName = "Mike Johnson",
+                            PhoneNumber = "+84987654323",
+                            IsActive = true,
+                            IsEmailVerified = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new User
+                        {
+                            Email = "sarah.wilson@example.com",
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
+                            FullName = "Sarah Wilson",
+                            PhoneNumber = "+84987654324",
+                            IsActive = true,
+                            IsEmailVerified = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        // Staff Members
+                        new User
+                        {
+                            Email = "staff@tickify.com",
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Staff@123"),
+                            FullName = "David Staff",
+                            PhoneNumber = "+84987654325",
+                            IsActive = true,
+                            IsEmailVerified = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new User
+                        {
+                            Email = "support@tickify.com",
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Staff@123"),
+                            FullName = "Emily Support",
+                            PhoneNumber = "+84987654326",
+                            IsActive = true,
+                            IsEmailVerified = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        // Organizers
+                        new User
+                        {
+                            Email = "organizer1@example.com",
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Organizer@123"),
+                            FullName = "Alex Organizer",
+                            PhoneNumber = "+84987654327",
+                            IsActive = true,
+                            IsEmailVerified = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new User
+                        {
+                            Email = "organizer2@example.com",
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Organizer@123"),
+                            FullName = "Maria Events",
+                            PhoneNumber = "+84987654328",
+                            IsActive = true,
+                            IsEmailVerified = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new User
+                        {
+                            Email = "organizer3@example.com",
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Organizer@123"),
+                            FullName = "Robert Concerts",
+                            PhoneNumber = "+84987654329",
+                            IsActive = true,
+                            IsEmailVerified = true,
+                            CreatedAt = DateTime.UtcNow
+                        }
+                    };
+
+                    await context.Users.AddRangeAsync(users);
+                    await context.SaveChangesAsync();
+
+                    // Assign roles
+                    var customerRole = await context.Roles.FirstAsync(r => r.Name == "Customer");
+                    var staffRole = await context.Roles.FirstAsync(r => r.Name == "Staff");
+                    var organizerRole = await context.Roles.FirstAsync(r => r.Name == "Organizer");
+
+                    var userRoles = new List<UserRole>
+                    {
+                        // Customers (first 4 users)
+                        new UserRole { UserId = users[0].Id, RoleId = customerRole.Id, AssignedAt = DateTime.UtcNow },
+                        new UserRole { UserId = users[1].Id, RoleId = customerRole.Id, AssignedAt = DateTime.UtcNow },
+                        new UserRole { UserId = users[2].Id, RoleId = customerRole.Id, AssignedAt = DateTime.UtcNow },
+                        new UserRole { UserId = users[3].Id, RoleId = customerRole.Id, AssignedAt = DateTime.UtcNow },
+                        // Staff (next 2 users)
+                        new UserRole { UserId = users[4].Id, RoleId = staffRole.Id, AssignedAt = DateTime.UtcNow },
+                        new UserRole { UserId = users[5].Id, RoleId = staffRole.Id, AssignedAt = DateTime.UtcNow },
+                        // Organizers (last 3 users)
+                        new UserRole { UserId = users[6].Id, RoleId = organizerRole.Id, AssignedAt = DateTime.UtcNow },
+                        new UserRole { UserId = users[7].Id, RoleId = organizerRole.Id, AssignedAt = DateTime.UtcNow },
+                        new UserRole { UserId = users[8].Id, RoleId = organizerRole.Id, AssignedAt = DateTime.UtcNow }
+                    };
+
+                    await context.UserRoles.AddRangeAsync(userRoles);
+                    await context.SaveChangesAsync();
+
+                    Console.WriteLine("✅ Sample users created!");
+                    Console.WriteLine($"   Customers: 4 users (customer@example.com, jane.smith@example.com, mike.johnson@example.com, sarah.wilson@example.com)");
+                    Console.WriteLine($"   Staff: 2 users (staff@tickify.com, support@tickify.com)");
+                    Console.WriteLine($"   Organizers: 3 users (organizer1-3@example.com)");
+                    Console.WriteLine($"   Default Password: Customer@123, Staff@123, or Organizer@123");
+                }
+
+                // Seed Organizers
+                if (!await context.Organizers.AnyAsync())
+                {
+                    Console.WriteLine("Seeding Organizers...");
+
+                    var organizerUsers = await context.Users
+                        .Join(context.UserRoles, u => u.Id, ur => ur.UserId, (u, ur) => new { u, ur })
+                        .Join(context.Roles, x => x.ur.RoleId, r => r.Id, (x, r) => new { x.u, r })
+                        .Where(x => x.r.Name == "Organizer")
+                        .Select(x => x.u)
+                        .ToListAsync();
+
+                    var staffUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "staff@tickify.com");
+
+                    var organizers = new List<Organizer>
+                    {
+                        new Organizer
+                        {
+                            UserId = organizerUsers[0].Id,
+                            CompanyName = "TechEvents Vietnam",
+                            BusinessRegistrationNumber = "0123456789",
+                            TaxCode = "TAX123456",
+                            CompanyAddress = "123 Nguyen Hue, District 1, Ho Chi Minh City",
+                            CompanyPhone = "+84281234567",
+                            CompanyEmail = "contact@techevents.vn",
+                            Website = "https://techevents.vn",
+                            Description = "Leading technology events organizer in Vietnam",
+                            IsVerified = true,
+                            VerifiedByStaffId = staffUser?.Id,
+                            VerifiedAt = DateTime.UtcNow,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Organizer
+                        {
+                            UserId = organizerUsers[1].Id,
+                            CompanyName = "MusicFest Productions",
+                            BusinessRegistrationNumber = "0987654321",
+                            TaxCode = "TAX654321",
+                            CompanyAddress = "456 Le Loi, District 3, Ho Chi Minh City",
+                            CompanyPhone = "+84289876543",
+                            CompanyEmail = "info@musicfest.vn",
+                            Website = "https://musicfest.vn",
+                            Description = "Professional music festival and concert organizer",
+                            IsVerified = true,
+                            VerifiedByStaffId = staffUser?.Id,
+                            VerifiedAt = DateTime.UtcNow,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Organizer
+                        {
+                            UserId = organizerUsers[2].Id,
+                            CompanyName = "Sports & Wellness Co.",
+                            BusinessRegistrationNumber = "0555555555",
+                            TaxCode = "TAX555555",
+                            CompanyAddress = "789 Tran Hung Dao, District 5, Ho Chi Minh City",
+                            CompanyPhone = "+84285555555",
+                            CompanyEmail = "hello@sportswellness.vn",
+                            Website = "https://sportswellness.vn",
+                            Description = "Organizing sports events and wellness activities",
+                            IsVerified = true,
+                            VerifiedByStaffId = staffUser?.Id,
+                            VerifiedAt = DateTime.UtcNow,
+                            CreatedAt = DateTime.UtcNow
+                        }
+                    };
+
+                    await context.Organizers.AddRangeAsync(organizers);
+                    await context.SaveChangesAsync();
+
+                    Console.WriteLine("✅ Organizers seeded successfully!");
+                }
+
+                // Seed Events
+                if (!await context.Events.AnyAsync())
+                {
+                    Console.WriteLine("Seeding Events...");
+
+                    var organizers = await context.Organizers.ToListAsync();
+                    var categories = await context.Categories.ToListAsync();
+                    var staffUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "staff@tickify.com");
+
+                    var events = new List<Event>
+                    {
+                        // Music Events
+                        new Event
+                        {
+                            OrganizerId = organizers[1].Id,
+                            CategoryId = categories.First(c => c.Name == "Music & Concerts").Id,
+                            Title = "Summer Music Festival 2025",
+                            Description = "The biggest summer music festival featuring top international and local artists. Experience three days of non-stop music across multiple stages.",
+                            Location = "Ho Chi Minh City",
+                            Address = "Crescent Mall Open Area, Phu My Hung, District 7",
+                            BannerImage = "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1200",
+                            PosterImage = "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800",
+                            StartDate = DateTime.UtcNow.AddDays(30),
+                            EndDate = DateTime.UtcNow.AddDays(32),
+                            MaxCapacity = 5000,
+                            MinimumAge = 16,
+                            Status = EventStatus.Published,
+                            ApprovedByStaffId = staffUser?.Id,
+                            ApprovedAt = DateTime.UtcNow.AddDays(-5),
+                            CreatedAt = DateTime.UtcNow.AddDays(-10)
+                        },
+                        new Event
+                        {
+                            OrganizerId = organizers[1].Id,
+                            CategoryId = categories.First(c => c.Name == "Music & Concerts").Id,
+                            Title = "Jazz Night at Saigon",
+                            Description = "An intimate evening of smooth jazz with renowned local and international jazz musicians.",
+                            Location = "Hai Ba Trung, District 3, HCMC",
+                            City = "Ho Chi Minh City",
+                            Venue = "Saigon Opera House",
+                            StartDate = DateTime.UtcNow.AddDays(15),
+                            EndDate = DateTime.UtcNow.AddDays(15),
+                            ImageUrl = "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=800",
+                            Status = "Published",
+                            IsPublished = true,
+                            PublishedAt = DateTime.UtcNow.AddDays(-3),
+                            TotalTickets = 300,
+                            AvailableTickets = 150,
+                            CreatedAt = DateTime.UtcNow.AddDays(-7),
+                            IsFeatured = true
+                        },
+                        // Tech Events
+                        new Event
+                        {
+                            OrganizerId = organizers[0].Id,
+                            CategoryId = categories.First(c => c.Name == "Technology & Innovation").Id,
+                            Title = "Vietnam Tech Summit 2025",
+                            Description = "Annual technology summit bringing together industry leaders, innovators, and tech enthusiasts. Network, learn, and discover the future of technology.",
+                            Location = "Nguyen Hue, District 1, HCMC",
+                            City = "Ho Chi Minh City",
+                            Venue = "Saigon Convention Center",
+                            StartDate = DateTime.UtcNow.AddDays(20),
+                            EndDate = DateTime.UtcNow.AddDays(21),
+                            ImageUrl = "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
+                            Status = "Published",
+                            IsPublished = true,
+                            PublishedAt = DateTime.UtcNow.AddDays(-8),
+                            TotalTickets = 1000,
+                            AvailableTickets = 600,
+                            CreatedAt = DateTime.UtcNow.AddDays(-15),
+                            IsFeatured = true
+                        },
+                        new Event
+                        {
+                            OrganizerId = organizers[0].Id,
+                            CategoryId = categories.First(c => c.Name == "Technology & Innovation").Id,
+                            Title = "AI & Machine Learning Workshop",
+                            Description = "Hands-on workshop covering the latest in AI and ML. Perfect for developers and data scientists.",
+                            Location = "Quang Trung Software City, District 12, HCMC",
+                            City = "Ho Chi Minh City",
+                            Venue = "Innovation Hub",
+                            StartDate = DateTime.UtcNow.AddDays(12),
+                            EndDate = DateTime.UtcNow.AddDays(12),
+                            ImageUrl = "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800",
+                            Status = "Published",
+                            IsPublished = true,
+                            PublishedAt = DateTime.UtcNow.AddDays(-2),
+                            TotalTickets = 150,
+                            AvailableTickets = 80,
+                            CreatedAt = DateTime.UtcNow.AddDays(-5)
+                        },
+                        // Sports Events
+                        new Event
+                        {
+                            OrganizerId = organizers[2].Id,
+                            CategoryId = categories.First(c => c.Name == "Sports & Fitness").Id,
+                            Title = "Saigon Marathon 2025",
+                            Description = "Annual international marathon event. Choose from Full Marathon, Half Marathon, or 10K Fun Run.",
+                            Location = "Thu Thiem Tunnel, District 2, HCMC",
+                            City = "Ho Chi Minh City",
+                            Venue = "Starting at Thu Thiem Bridge",
+                            StartDate = DateTime.UtcNow.AddDays(45),
+                            EndDate = DateTime.UtcNow.AddDays(45),
+                            ImageUrl = "https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=800",
+                            Status = "Published",
+                            IsPublished = true,
+                            PublishedAt = DateTime.UtcNow.AddDays(-12),
+                            TotalTickets = 10000,
+                            AvailableTickets = 7500,
+                            CreatedAt = DateTime.UtcNow.AddDays(-20),
+                            IsFeatured = true
+                        },
+                        new Event
+                        {
+                            OrganizerId = organizers[2].Id,
+                            CategoryId = categories.First(c => c.Name == "Sports & Fitness").Id,
+                            Title = "Yoga & Wellness Day",
+                            Description = "A day dedicated to wellness with yoga sessions, meditation, and healthy living workshops.",
+                            Location = "Van Thanh Park, Binh Thanh District, HCMC",
+                            City = "Ho Chi Minh City",
+                            Venue = "Van Thanh Park",
+                            StartDate = DateTime.UtcNow.AddDays(8),
+                            EndDate = DateTime.UtcNow.AddDays(8),
+                            ImageUrl = "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800",
+                            Status = "Published",
+                            IsPublished = true,
+                            PublishedAt = DateTime.UtcNow.AddDays(-4),
+                            TotalTickets = 500,
+                            AvailableTickets = 350,
+                            CreatedAt = DateTime.UtcNow.AddDays(-6)
+                        },
+                        // Food & Drink
+                        new Event
+                        {
+                            OrganizerId = organizers[0].Id,
+                            CategoryId = categories.First(c => c.Name == "Food & Drink").Id,
+                            Title = "Street Food Festival",
+                            Description = "Discover the best street food from around Vietnam and the world. Over 100 food stalls!",
+                            Location = "23/9 Park, District 1, HCMC",
+                            City = "Ho Chi Minh City",
+                            Venue = "September 23 Park",
+                            StartDate = DateTime.UtcNow.AddDays(25),
+                            EndDate = DateTime.UtcNow.AddDays(27),
+                            ImageUrl = "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800",
+                            Status = "Published",
+                            IsPublished = true,
+                            PublishedAt = DateTime.UtcNow.AddDays(-6),
+                            TotalTickets = 3000,
+                            AvailableTickets = 2200,
+                            CreatedAt = DateTime.UtcNow.AddDays(-9),
+                            IsFeatured = true
+                        },
+                        // Arts & Culture
+                        new Event
+                        {
+                            OrganizerId = organizers[1].Id,
+                            CategoryId = categories.First(c => c.Name == "Arts & Culture").Id,
+                            Title = "Modern Art Exhibition",
+                            Description = "Featuring contemporary Vietnamese artists and their interpretations of modern life.",
+                            Location = "Dong Khoi, District 1, HCMC",
+                            City = "Ho Chi Minh City",
+                            Venue = "Saigon Art Gallery",
+                            StartDate = DateTime.UtcNow.AddDays(10),
+                            EndDate = DateTime.UtcNow.AddDays(40),
+                            ImageUrl = "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=800",
+                            Status = "Published",
+                            IsPublished = true,
+                            PublishedAt = DateTime.UtcNow.AddDays(-1),
+                            TotalTickets = 800,
+                            AvailableTickets = 650,
+                            CreatedAt = DateTime.UtcNow.AddDays(-3)
+                        },
+                        // Business
+                        new Event
+                        {
+                            OrganizerId = organizers[0].Id,
+                            CategoryId = categories.First(c => c.Name == "Business & Professional").Id,
+                            Title = "Startup Networking Night",
+                            Description = "Connect with entrepreneurs, investors, and innovators in the startup ecosystem.",
+                            Location = "Vo Van Kiet, District 5, HCMC",
+                            City = "Ho Chi Minh City",
+                            Venue = "The Deck Saigon",
+                            StartDate = DateTime.UtcNow.AddDays(18),
+                            EndDate = DateTime.UtcNow.AddDays(18),
+                            ImageUrl = "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800",
+                            Status = "Published",
+                            IsPublished = true,
+                            PublishedAt = DateTime.UtcNow.AddDays(-7),
+                            TotalTickets = 200,
+                            AvailableTickets = 120,
+                            CreatedAt = DateTime.UtcNow.AddDays(-10)
+                        },
+                        // Entertainment
+                        new Event
+                        {
+                            OrganizerId = organizers[1].Id,
+                            CategoryId = categories.First(c => c.Name == "Entertainment").Id,
+                            Title = "Stand-up Comedy Night",
+                            Description = "An evening of laughter with top Vietnamese comedians. Suitable for ages 18+.",
+                            Location = "Hai Ba Trung, District 1, HCMC",
+                            City = "Ho Chi Minh City",
+                            Venue = "The Comedy Club",
+                            StartDate = DateTime.UtcNow.AddDays(7),
+                            EndDate = DateTime.UtcNow.AddDays(7),
+                            ImageUrl = "https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800",
+                            Status = "Published",
+                            IsPublished = true,
+                            PublishedAt = DateTime.UtcNow.AddDays(-2),
+                            TotalTickets = 250,
+                            AvailableTickets = 180,
+                            CreatedAt = DateTime.UtcNow.AddDays(-4)
+                        }
+                    };
+
+                    await context.Events.AddRangeAsync(events);
+                    await context.SaveChangesAsync();
+
+                    Console.WriteLine("✅ Events seeded successfully! (10 events created)");
+
+                    // Seed Ticket Types for each event
+                    Console.WriteLine("Seeding Ticket Types...");
+                    var ticketTypes = new List<TicketType>();
+
+                    foreach (var evt in events)
+                    {
+                        if (evt.Title.Contains("Music Festival"))
+                        {
+                            ticketTypes.AddRange(new[]
+                            {
+                                new TicketType { EventId = evt.Id, Name = "VIP Pass", Description = "Full access to all stages + VIP lounge", Price = 2500000, Quantity = 500, AvailableQuantity = 350, CreatedAt = DateTime.UtcNow },
+                                new TicketType { EventId = evt.Id, Name = "General Admission", Description = "Access to all stages", Price = 1200000, Quantity = 3000, AvailableQuantity = 2100, CreatedAt = DateTime.UtcNow },
+                                new TicketType { EventId = evt.Id, Name = "Single Day", Description = "One day access", Price = 500000, Quantity = 1500, AvailableQuantity = 1050, CreatedAt = DateTime.UtcNow }
+                            });
+                        }
+                        else if (evt.Title.Contains("Marathon"))
+                        {
+                            ticketTypes.AddRange(new[]
+                            {
+                                new TicketType { EventId = evt.Id, Name = "Full Marathon", Description = "42.195 km", Price = 800000, Quantity = 2000, AvailableQuantity = 1500, CreatedAt = DateTime.UtcNow },
+                                new TicketType { EventId = evt.Id, Name = "Half Marathon", Description = "21 km", Price = 500000, Quantity = 3000, AvailableQuantity = 2250, CreatedAt = DateTime.UtcNow },
+                                new TicketType { EventId = evt.Id, Name = "10K Fun Run", Description = "10 km", Price = 300000, Quantity = 5000, AvailableQuantity = 3750, CreatedAt = DateTime.UtcNow }
+                            });
+                        }
+                        else if (evt.Title.Contains("Tech Summit"))
+                        {
+                            ticketTypes.AddRange(new[]
+                            {
+                                new TicketType { EventId = evt.Id, Name = "Conference Pass", Description = "2-day full access", Price = 3000000, Quantity = 600, AvailableQuantity = 360, CreatedAt = DateTime.UtcNow },
+                                new TicketType { EventId = evt.Id, Name = "Workshop Bundle", Description = "Conference + workshops", Price = 4500000, Quantity = 200, AvailableQuantity = 120, CreatedAt = DateTime.UtcNow },
+                                new TicketType { EventId = evt.Id, Name = "Student", Description = "Student discount ticket", Price = 1500000, Quantity = 200, AvailableQuantity = 120, CreatedAt = DateTime.UtcNow }
+                            });
+                        }
+                        else
+                        {
+                            ticketTypes.AddRange(new[]
+                            {
+                                new TicketType { EventId = evt.Id, Name = "Standard", Description = "Regular admission", Price = 500000, Quantity = (int)(evt.TotalTickets * 0.7), AvailableQuantity = (int)(evt.AvailableTickets * 0.7), CreatedAt = DateTime.UtcNow },
+                                new TicketType { EventId = evt.Id, Name = "Premium", Description = "Premium experience with extras", Price = 1000000, Quantity = (int)(evt.TotalTickets * 0.3), AvailableQuantity = (int)(evt.AvailableTickets * 0.3), CreatedAt = DateTime.UtcNow }
+                            });
+                        }
+                    }
+
+                    await context.TicketTypes.AddRangeAsync(ticketTypes);
+                    await context.SaveChangesAsync();
+
+                    Console.WriteLine($"✅ Ticket Types seeded successfully! ({ticketTypes.Count} ticket types)");
+                }
+
+                // Seed Sample Bookings and Reviews
+                if (!await context.Bookings.AnyAsync())
+                {
+                    Console.WriteLine("Seeding Sample Bookings and Reviews...");
+
+                    var customers = await context.Users
+                        .Join(context.UserRoles, u => u.Id, ur => ur.UserId, (u, ur) => new { u, ur })
+                        .Join(context.Roles, x => x.ur.RoleId, r => r.Id, (x, r) => new { x.u, r })
+                        .Where(x => x.r.Name == "Customer")
+                        .Select(x => x.u)
+                        .ToListAsync();
+
+                    var events = await context.Events.Include(e => e.TicketTypes).ToListAsync();
+                    var bookings = new List<Booking>();
+                    var tickets = new List<Ticket>();
+                    var reviews = new List<Review>();
+
+                    var random = new Random();
+
+                    // Create bookings for past events (completed with reviews)
+                    foreach (var customer in customers.Take(3))
+                    {
+                        var pastEvent = events.FirstOrDefault(e => e.StartDate > DateTime.UtcNow.AddDays(-30) && e.StartDate < DateTime.UtcNow);
+                        if (pastEvent != null && pastEvent.TicketTypes.Any())
+                        {
+                            var ticketType = pastEvent.TicketTypes.First();
+                            var quantity = random.Next(1, 3);
+
+                            var booking = new Booking
+                            {
+                                UserId = customer.Id,
+                                EventId = pastEvent.Id,
+                                BookingDate = DateTime.UtcNow.AddDays(-25),
+                                TotalAmount = ticketType.Price * quantity,
+                                PaymentStatus = "Completed",
+                                PaymentMethod = "VNPay",
+                                BookingStatus = "Confirmed",
+                                TransactionId = $"TXN{random.Next(100000, 999999)}",
+                                CreatedAt = DateTime.UtcNow.AddDays(-25)
+                            };
+                            bookings.Add(booking);
+
+                            // Add review
+                            reviews.Add(new Review
+                            {
+                                EventId = pastEvent.Id,
+                                UserId = customer.Id,
+                                Rating = random.Next(4, 6),
+                                Comment = new[] {
+                                    "Amazing experience! Highly recommended.",
+                                    "Great event, well organized and fun!",
+                                    "Loved every moment, will definitely come again.",
+                                    "Fantastic atmosphere and great performances!"
+                                }[random.Next(4)],
+                                CreatedAt = DateTime.UtcNow.AddDays(-20)
+                            });
+                        }
+                    }
+
+                    // Create upcoming bookings
+                    for (int i = 0; i < customers.Count; i++)
+                    {
+                        var upcomingEvents = events.Where(e => e.StartDate > DateTime.UtcNow).OrderBy(e => e.StartDate).Take(2);
+                        foreach (var upcomingEvent in upcomingEvents)
+                        {
+                            if (upcomingEvent.TicketTypes.Any())
+                            {
+                                var ticketType = upcomingEvent.TicketTypes.ElementAt(random.Next(upcomingEvent.TicketTypes.Count));
+                                var quantity = random.Next(1, 4);
+
+                                var booking = new Booking
+                                {
+                                    UserId = customers[i].Id,
+                                    EventId = upcomingEvent.Id,
+                                    BookingDate = DateTime.UtcNow.AddDays(-random.Next(1, 10)),
+                                    TotalAmount = ticketType.Price * quantity,
+                                    PaymentStatus = "Completed",
+                                    PaymentMethod = random.Next(2) == 0 ? "VNPay" : "MoMo",
+                                    BookingStatus = "Confirmed",
+                                    TransactionId = $"TXN{random.Next(100000, 999999)}",
+                                    CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 10))
+                                };
+                                bookings.Add(booking);
+                            }
+                        }
+                    }
+
+                    await context.Bookings.AddRangeAsync(bookings);
+                    await context.SaveChangesAsync();
+
+                    // Create tickets for bookings
+                    foreach (var booking in bookings)
+                    {
+                        var ticketType = await context.TicketTypes.FirstAsync(tt => tt.EventId == booking.EventId);
+                        var quantity = (int)(booking.TotalAmount / ticketType.Price);
+
+                        for (int i = 0; i < quantity; i++)
+                        {
+                            tickets.Add(new Ticket
+                            {
+                                BookingId = booking.Id,
+                                TicketTypeId = ticketType.Id,
+                                UserId = booking.UserId,
+                                QRCode = Guid.NewGuid().ToString(),
+                                Status = "Active",
+                                IsCheckedIn = booking.BookingStatus == "Completed",
+                                CreatedAt = booking.CreatedAt
+                            });
+                        }
+                    }
+
+                    await context.Tickets.AddRangeAsync(tickets);
+                    await context.Reviews.AddRangeAsync(reviews);
+                    await context.SaveChangesAsync();
+
+                    Console.WriteLine($"✅ Bookings seeded! ({bookings.Count} bookings, {tickets.Count} tickets, {reviews.Count} reviews)");
+                }
+
+                Console.WriteLine("\n🎉 Database seeding completed successfully!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error seeding database: {ex.Message}");
+                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
+                throw;
+            }
+        }
+    }
+}

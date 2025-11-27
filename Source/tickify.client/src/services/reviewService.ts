@@ -30,7 +30,7 @@ class ReviewService {
    * Create a new review
    */
   async createReview(data: CreateReviewDto): Promise<ReviewDto> {
-    const response = await apiClient.post<ReviewDto>("/Review", data);
+    const response = await apiClient.post<ReviewDto>("/reviews", data);
     return response.data;
   }
 
@@ -38,7 +38,7 @@ class ReviewService {
    * Get review by ID
    */
   async getReviewById(reviewId: number): Promise<ReviewDto> {
-    const response = await apiClient.get<ReviewDto>(`/Review/${reviewId}`);
+    const response = await apiClient.get<ReviewDto>(`/reviews/${reviewId}`);
     return response.data;
   }
 
@@ -46,7 +46,7 @@ class ReviewService {
    * Get reviews for an event
    */
   async getEventReviews(eventId: number): Promise<ReviewDto[]> {
-    const response = await apiClient.get<ReviewDto[]>(`/Review/event/${eventId}`);
+    const response = await apiClient.get<ReviewDto[]>(`/reviews/event/${eventId}`);
     return response.data;
   }
 
@@ -54,7 +54,7 @@ class ReviewService {
    * Get current user's reviews
    */
   async getMyReviews(): Promise<ReviewDto[]> {
-    const response = await apiClient.get<ReviewDto[]>("/Review/my-reviews");
+    const response = await apiClient.get<ReviewDto[]>("/reviews/my-reviews");
     return response.data;
   }
 
@@ -62,7 +62,7 @@ class ReviewService {
    * Update a review
    */
   async updateReview(reviewId: number, data: UpdateReviewDto): Promise<ReviewDto> {
-    const response = await apiClient.put<ReviewDto>(`/Review/${reviewId}`, data);
+    const response = await apiClient.put<ReviewDto>(`/reviews/${reviewId}`, data);
     return response.data;
   }
 
@@ -70,7 +70,7 @@ class ReviewService {
    * Delete a review
    */
   async deleteReview(reviewId: number): Promise<void> {
-    await apiClient.delete(`/Review/${reviewId}`);
+    await apiClient.delete(`/reviews/${reviewId}`);
   }
 }
 

@@ -36,31 +36,32 @@ public sealed class ReviewService : IReviewService
     {
         var uid = GetUserId(user);
         
+        // TODO: For production, uncomment these validations
         // Validate that user attended the event (has scanned tickets)
-        var userTickets = await _tickets.GetByUserIdAsync(uid);
-        var eventTickets = userTickets.Where(t => t.Booking?.EventId == dto.EventId).ToList();
+        // var userTickets = await _tickets.GetByUserIdAsync(uid);
+        // var eventTickets = userTickets.Where(t => t.Booking?.EventId == dto.EventId).ToList();
         
-        if (!eventTickets.Any())
-        {
-            throw new InvalidOperationException("You must have tickets for this event to review it.");
-        }
+        // if (!eventTickets.Any())
+        // {
+        //     throw new InvalidOperationException("You must have tickets for this event to review it.");
+        // }
 
         // Check if any ticket was scanned (user attended)
-        var hasAttended = false;
-        foreach (var ticket in eventTickets)
-        {
-            var scans = await _ticketScans.GetByTicketIdAsync(ticket.Id);
-            if (scans.Any(s => s.IsValid))
-            {
-                hasAttended = true;
-                break;
-            }
-        }
+        // var hasAttended = false;
+        // foreach (var ticket in eventTickets)
+        // {
+        //     var scans = await _ticketScans.GetByTicketIdAsync(ticket.Id);
+        //     if (scans.Any(s => s.IsValid))
+        //     {
+        //         hasAttended = true;
+        //         break;
+        //     }
+        // }
 
-        if (!hasAttended)
-        {
-            throw new InvalidOperationException("You must have attended the event (ticket scanned) to submit a review.");
-        }
+        // if (!hasAttended)
+        // {
+        //     throw new InvalidOperationException("You must have attended the event (ticket scanned) to submit a review.");
+        // }
 
         // Check if user already reviewed this event
         var existingReview = (await _reviews.GetByUserIdAsync(uid))

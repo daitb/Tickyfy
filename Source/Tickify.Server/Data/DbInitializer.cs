@@ -695,6 +695,11 @@ namespace Tickify.Data
                 }
 
                 Console.WriteLine("\n🎉 Database seeding completed successfully!");
+                Console.WriteLine("\n📝 Default Accounts:");
+                Console.WriteLine("   Admin: admin@tickify.com / Admin@123456");
+                Console.WriteLine("   Customer: customer@example.com / Customer@123");
+                Console.WriteLine("\n💡 To add more test data, run the SQL script:");
+                Console.WriteLine("   Documents/SeedTestData.sql");
             }
             catch (Exception ex)
             {

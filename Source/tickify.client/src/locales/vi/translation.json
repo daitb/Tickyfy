@@ -1026,6 +1026,152 @@
       "active": "Hoạt động",
       "inactive": "Không hoạt động"
     },
+    "list": {
+      "title": "Đánh giá",
+      "subtitle": "Những gì người tham dự nói",
+      "averageRating": "Đánh giá trung bình",
+      "totalReviews": "đánh giá",
+      "writeReview": "Viết đánh giá",
+      "mostHelpful": "Hữu ích nhất",
+      "mostRecent": "Mới nhất",
+      "highestRated": "Đánh giá cao nhất",
+      "lowestRated": "Đánh giá thấp nhất",
+      "helpful": "Hữu ích",
+      "notHelpful": "Không hữu ích",
+      "reportReview": "Báo cáo"
+    },
+    "title": "Đánh giá",
+    "review": "đánh giá",
+    "reviews": "đánh giá",
+    "viewAll": "Xem tất cả đánh giá",
+    "noReviews": "Chưa có đánh giá",
+    "noReviewsYet": "Chưa có đánh giá nào cho sự kiện này",
+    "beFirst": "Hãy là người đầu tiên đánh giá"
+  },
+  "payment": {
+    "return": {
+      "processing": "Đang xử lý thanh toán...",
+      "success": "Thanh toán thành công!",
+      "failed": "Thanh toán thất bại",
+      "successMessage": "Thanh toán của bạn đã được xử lý thành công",
+      "failedMessage": "Có vấn đề khi xử lý thanh toán của bạn",
+      "returnToHome": "Về trang chủ",
+      "tryAgain": "Thử lại",
+      "contactSupport": "Liên hệ hỗ trợ"
+    }
+  },
+  "transfer": {
+    "ticket": {
+      "title": "Chuyển vé",
+      "subtitle": "Chuyển vé của bạn cho người khác",
+      "recipientEmail": "Email người nhận",
+      "recipientName": "Tên người nhận",
+      "message": "Tin nhắn cá nhân (Tùy chọn)",
+      "messagePlaceholder": "Thêm tin nhắn cá nhân...",
+      "confirmTransfer": "Xác nhận chuyển",
+      "transferring": "Đang chuyển...",
+      "successMessage": "Đã chuyển vé thành công!",
+      "errorMessage": "Không thể chuyển vé. Vui lòng thử lại.",
+      "warning": "Sau khi chuyển, bạn sẽ không thể sử dụng vé này",
+      "ticketInfo": "Thông tin vé"
+    }
+  },
+  "refund": {
+    "request": {
+      "title": "Yêu cầu hoàn tiền",
+      "subtitle": "Gửi yêu cầu hoàn tiền",
+      "reason": "Lý do hoàn tiền",
+      "selectReason": "Chọn lý do",
+      "cannotAttend": "Không thể tham dự",
+      "eventCancelled": "Sự kiện bị hủy",
+      "wrongTickets": "Mua nhầm vé",
+      "other": "Khác",
+      "additionalDetails": "Chi tiết bổ sung",
+      "detailsPlaceholder": "Vui lòng cung cấp thêm thông tin...",
+      "refundMethod": "Phương thức hoàn tiền",
+      "originalPayment": "Phương thức thanh toán gốc",
+      "bankTransfer": "Chuyển khoản ngân hàng",
+      "submitRequest": "Gửi yêu cầu",
+      "submitting": "Đang gửi...",
+      "successMessage": "Đã gửi yêu cầu hoàn tiền thành công",
+      "errorMessage": "Không thể gửi yêu cầu hoàn tiền",
+      "refundPolicy": "Chính sách hoàn tiền",
+      "processingTime": "Hoàn tiền thường mất 5-7 ngày làm việc để xử lý"
+    }
+  },
+  "analytics": {
+    "event": {
+      "title": "Phân tích sự kiện",
+      "overview": "Tổng quan",
+      "sales": "Doanh số",
+      "attendance": "Tham dự",
+      "revenue": "Doanh thu",
+      "ticketsSold": "Vé đã bán",
+      "totalRevenue": "Tổng doanh thu",
+      "averageTicketPrice": "Giá vé trung bình",
+      "salesByDay": "Doanh số theo ngày",
+      "salesByTicketType": "Doanh số theo loại vé",
+      "attendeesByLocation": "Người tham dự theo địa điểm",
+      "conversionRate": "Tỷ lệ chuyển đổi",
+      "pageViews": "Lượt xem trang",
+      "uniqueVisitors": "Khách truy cập duy nhất",
+      "exportData": "Xuất dữ liệu"
+    }
+  },
+  "wizard": {
+    "organizer": {
+      "title": "Tạo sự kiện của bạn",
+      "step1": "Thông tin cơ bản",
+      "step2": "Chi tiết",
+      "step3": "Vé",
+      "step4": "Xem lại",
+      "eventName": "Tên sự kiện",
+      "eventDescription": "Mô tả sự kiện",
+      "category": "Danh mục",
+      "selectCategory": "Chọn danh mục",
+      "eventDate": "Ngày sự kiện",
+      "eventTime": "Giờ sự kiện",
+      "venue": "Địa điểm",
+      "venueName": "Tên địa điểm",
+      "venueAddress": "Địa chỉ địa điểm",
+      "city": "Thành phố",
+      "state": "Tỉnh/Thành",
+      "capacity": "Sức chứa",
+      "eventImage": "Hình ảnh sự kiện",
+      "uploadImage": "Tải hình ảnh",
+      "ticketTypes": "Loại vé",
+      "addTicketType": "Thêm loại vé",
+      "ticketName": "Tên vé",
+      "ticketPrice": "Giá vé",
+      "ticketQuantity": "Số lượng",
+      "salesStartDate": "Ngày bắt đầu bán",
+      "salesEndDate": "Ngày kết thúc bán",
+      "previous": "Trước",
+      "next": "Tiếp theo",
+      "publish": "Xuất bản sự kiện",
+      "saveDraft": "Lưu nháp"
+    }
+  },
+  "management": {
+    "event": {
+      "title": "Quản lý sự kiện",
+      "subtitle": "Quản lý các sự kiện của bạn",
+      "createEvent": "Tạo sự kiện",
+      "all": "Tất cả",
+      "upcoming": "Sắp diễn ra",
+      "past": "Đã qua",
+      "draft": "Nháp",
+      "published": "Đã xuất bản",
+      "cancelled": "Đã hủy",
+      "searchEvents": "Tìm sự kiện...",
+      "filters": "Bộ lọc",
+      "sortBy": "Sắp xếp theo",
+      "eventName": "Tên sự kiện",
+      "date": "Ngày",
+      "ticketsSold": "Vé đã bán",
+      "revenue": "Doanh thu",
+      "status": "Trạng thái",
+      "actions": "Thao tác",
     "stats": {
       "totalCodes": "Tổng số mã",
       "activeCodes": "Mã đang hoạt động",
@@ -1399,4 +1545,5 @@
       "text2": "vé không thể được chuyển nhượng cho người khác"
     }
   }
+}
 }

@@ -76,7 +76,7 @@ class UserService {
     const params: any = { pageNumber, pageSize };
     if (searchTerm) params.searchTerm = searchTerm;
 
-    const response = await apiClient.get<PagedResult<UserListDto>>("/Users", {
+    const response = await apiClient.get<PagedResult<UserListDto>>("/users", {
       params,
     });
     return response.data;
@@ -86,7 +86,7 @@ class UserService {
    * Get user by ID (Admin only)
    */
   async getUserById(id: number): Promise<UserDetailDto> {
-    const response = await apiClient.get<UserDetailDto>(`/Users/${id}`);
+    const response = await apiClient.get<UserDetailDto>(`/users/${id}`);
     return response.data;
   }
 
@@ -94,7 +94,7 @@ class UserService {
    * Get current user profile
    */
   async getCurrentUserProfile(): Promise<UserProfileDto> {
-    const response = await apiClient.get<UserProfileDto>("/Users/profile");
+    const response = await apiClient.get<UserProfileDto>("/users/profile");
     return response.data;
   }
 
@@ -102,7 +102,7 @@ class UserService {
    * Update current user profile
    */
   async updateProfile(data: UpdateProfileDto): Promise<UserProfileDto> {
-    const response = await apiClient.put<UserProfileDto>("/Users/profile", data);
+    const response = await apiClient.put<UserProfileDto>("/users/profile", data);
     return response.data;
   }
 
@@ -113,7 +113,7 @@ class UserService {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await apiClient.post<string>("/Users/profile/avatar", formData, {
+    const response = await apiClient.post<string>("/users/profile/avatar", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -125,21 +125,21 @@ class UserService {
    * Assign role to user (Admin only)
    */
   async assignRole(userId: number, roleId: number): Promise<void> {
-    await apiClient.post(`/Users/${userId}/assign-role`, { roleId });
+    await apiClient.post(`/users/${userId}/assign-role`, { roleId });
   }
 
   /**
    * Toggle user active status (Admin only)
    */
   async toggleActiveStatus(userId: number): Promise<void> {
-    await apiClient.put(`/Users/${userId}/toggle-active`);
+    await apiClient.put(`/users/${userId}/toggle-active`);
   }
 
   /**
    * Delete user (Admin only)
    */
   async deleteUser(userId: number): Promise<void> {
-    await apiClient.delete(`/Users/${userId}`);
+    await apiClient.delete(`/users/${userId}`);
   }
 }
 

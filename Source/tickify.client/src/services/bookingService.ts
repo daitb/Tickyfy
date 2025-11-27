@@ -2,18 +2,18 @@ import apiClient from "./apiClient";
 
 // ===== INTERFACES =====
 export interface CreateBookingDto {
-  eventId: string;
-  ticketTypeId: string;
+  eventId: number;
+  ticketTypeId: number;
   quantity: number;
-  seatIds?: string[];
+  seatIds?: number[];
   promoCode?: string;
 }
 
 export interface BookingDto {
-  bookingId: string;
-  userId: string;
-  eventId: string;
-  ticketTypeId: string;
+  bookingId: number;
+  userId: number;
+  eventId: number;
+  ticketTypeId: number;
   quantity: number;
   totalAmount: number;
   discountAmount: number;
@@ -25,21 +25,34 @@ export interface BookingDto {
   tickets?: any[];
 }
 
+export interface BookingConfirmationDto {
+  bookingId: number;
+  bookingNumber: string;
+  eventTitle: string;
+  eventStartDate: string;
+  eventVenue: string;
+  quantity: number;
+  totalPrice: number;
+  ticketNumbers: string[];
+  paymentStatus: string;
+  message: string;
+}
+
 // ===== BOOKING SERVICE =====
 class BookingService {
   /**
    * Create a new booking
    */
-  async createBooking(data: CreateBookingDto): Promise<BookingDto> {
-    const response = await apiClient.post<BookingDto>("/Booking", data);
-    return response.data;
+  async createBooking(data: CreateBookingDto): Promise<BookingConfirmationDto> {
+    const response = await apiClient.post<BookingConfirmationDto>("/bookings", data);
+    return response.data; // apiClient interceptor already unwrapped .data.data
   }
 
   /**
    * Get booking by ID
    */
-  async getBookingById(bookingId: string): Promise<BookingDto> {
-    const response = await apiClient.get<BookingDto>(`/Booking/${bookingId}`);
+  async getBookingById(bookingId: number): Promise<BookingDto> {
+    const response = await apiClient.get<BookingDto>(`/bookings/${bookingId}`);
     return response.data;
   }
 
@@ -47,15 +60,15 @@ class BookingService {
    * Get all bookings for current user
    */
   async getUserBookings(): Promise<BookingDto[]> {
-    const response = await apiClient.get<BookingDto[]>("/Booking/user");
+    const response = await apiClient.get<BookingDto[]>("/bookings/my-bookings");
     return response.data;
   }
 
   /**
    * Cancel a booking
    */
-  async cancelBooking(bookingId: string): Promise<void> {
-    await apiClient.post(`/Booking/${bookingId}/cancel`);
+  async cancelBooking(bookingId: number): Promise<void> {
+    await apiClient.post(`/bookings/${bookingId}/cancel`);
   }
 }
 

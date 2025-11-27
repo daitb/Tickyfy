@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Smartphone, Wallet, Check, AlertCircle } from 'lucide-react';
+import { CreditCard, Wallet, Check, AlertCircle } from 'lucide-react';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
@@ -23,7 +23,7 @@ interface PaymentMethodDetails {
 }
 
 interface PaymentMethodSelectorProps {
-  onPaymentMethodChange: (method: PaymentMethod, details?: PaymentMethodDetails) => void;
+  onPaymentMethodChange: (method: PaymentMethod, details?: Record<string, unknown>) => void;
   selectedMethod?: PaymentMethod;
 }
 
@@ -33,7 +33,9 @@ export function PaymentMethodSelector({
   onPaymentMethodChange, 
   selectedMethod 
 }: PaymentMethodSelectorProps) {
-  const [method, setMethod] = useState<PaymentMethod>(selectedMethod || 'momo');
+  // Nếu selectedMethod là vnpay, chuyển sang momo vì vnpay đã bị ẩn
+  const initialMethod = selectedMethod === 'vnpay' ? 'momo' : (selectedMethod || 'momo');
+  const [method, setMethod] = useState<PaymentMethod>(initialMethod);
   const [momoPhone, setMomoPhone] = useState('');
   const [cardDetails, setCardDetails] = useState({
     number: '',
@@ -176,14 +178,15 @@ export function PaymentMethodSelector({
       color: 'bg-pink-500',
       popular: true
     },
-    {
-      id: 'vnpay' as PaymentMethod,
-      name: 'VNPay',
-      icon: Smartphone,
-      description: 'Pay via VNPay gateway',
-      color: 'bg-blue-500',
-      popular: true
-    },
+
+    // {
+    //   id: 'vnpay' as PaymentMethod,
+    //   name: 'VNPay',
+    //   icon: Smartphone,
+    //   description: 'Pay via VNPay gateway',
+    //   color: 'bg-blue-500',
+    //   popular: true
+    // },
     {
       id: 'credit-card' as PaymentMethod,
       name: 'Credit/Debit Card',
@@ -300,7 +303,8 @@ export function PaymentMethodSelector({
           </div>
         )}
 
-        {method === 'vnpay' && (
+
+        {/* {method === 'vnpay' && (
           <div className="space-y-4 animate-in fade-in duration-300">
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <h4 className="mb-2 text-blue-900">How to pay with VNPay</h4>
@@ -326,7 +330,7 @@ export function PaymentMethodSelector({
               </div>
             </div>
           </div>
-        )}
+        )} */}
 
         {method === 'credit-card' && (
           <div className="space-y-4 animate-in fade-in duration-300">

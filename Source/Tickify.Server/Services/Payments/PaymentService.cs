@@ -39,6 +39,24 @@ public sealed class PaymentService : IPaymentService
         // So the amount to pay is just TotalAmount
         var amount = booking.TotalAmount;
         
+        // Log thông tin thanh toán để debug
+        // Lưu ý: TotalAmount đã bao gồm service fee (5% của subtotal)
+        // Công thức: TotalAmount = subtotal - discount + serviceFee
+        // Service fee = subtotal * 0.05, không bị discount
+        // Reverse calculation để ước tính subtotal và service fee từ TotalAmount
+        // Nếu: amount = subtotal - discount + (subtotal * 0.05)
+        // Thì: amount = subtotal * 1.05 - discount
+        // Nên: subtotal = (amount + discount) / 1.05
+        var estimatedSubtotal = (amount + booking.DiscountAmount) / 1.05m;
+        var estimatedServiceFee = estimatedSubtotal * 0.05m;
+        
+        Console.WriteLine($"[PaymentService] Creating payment for Booking {dto.BookingId}:");
+        Console.WriteLine($"[PaymentService]   - TotalAmount (final, includes service fee): {amount}");
+        Console.WriteLine($"[PaymentService]   - DiscountAmount: {booking.DiscountAmount}");
+        Console.WriteLine($"[PaymentService]   - Estimated Subtotal (before discount): {estimatedSubtotal:F2}");
+        Console.WriteLine($"[PaymentService]   - Estimated Service Fee (5%): {estimatedServiceFee:F2}");
+        Console.WriteLine($"[PaymentService]   - Provider: {dto.Provider}");
+        
         if (amount < 0)
             throw new InvalidOperationException($"Invalid payment amount: {amount}. Amount cannot be negative");
 

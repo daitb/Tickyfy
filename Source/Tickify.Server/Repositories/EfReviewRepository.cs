@@ -36,6 +36,11 @@ public sealed class EfReviewRepository : IReviewRepository
     {
         _db.Reviews.Add(r);
         await _db.SaveChangesAsync();
+        
+        // Reload with User and Event to populate navigation properties
+        await _db.Entry(r).Reference(x => x.User).LoadAsync();
+        await _db.Entry(r).Reference(x => x.Event).LoadAsync();
+        
         return r;
     }
 

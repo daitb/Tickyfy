@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { EventReviews } from "./pages/EventReviews";
 import { RefundRequest } from "./pages/RefundRequest";
@@ -25,6 +25,7 @@ import { EventAnalytics } from "./pages/EventAnalytics";
 import { EditEvent } from "./pages/EditEvent";
 import { ScanHistory } from "./pages/ScanHistory";
 import { PromoCodeManagement } from "./pages/PromoCodeManagement";
+import { OrganizerPayouts } from "./pages/OrganizerPayouts";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { ResetPassword } from "./pages/ResetPassword";
 import { UserProfile } from "./pages/UserProfile";
@@ -41,6 +42,15 @@ import { StaffChatPage } from "./pages/StaffChatPage";
 import { BecomeOrganizer } from "./pages/BecomeOrganizer";
 import { UserManagement } from "./pages/UserManagement";
 import PaymentReturn from "./pages/PaymentReturn";
+import { About } from "./pages/About";
+import { Privacy } from "./pages/Privacy";
+import { Terms } from "./pages/Terms";
+import { FAQ } from "./pages/FAQ";
+import { Contact } from "./pages/Contact";
+import { RefundPolicy } from "./pages/RefundPolicy";
+import { ForOrganizers } from "./pages/ForOrganizers";
+import { HelpCenter } from "./pages/HelpCenter";
+import { Error } from "./pages/Error";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -69,6 +79,7 @@ type Page =
   | "edit-event"
   | "scan-history"
   | "promo-codes"
+  | "organizer-payouts"
   | "notifications"
   | "notification-preferences"
   | "reset-password"
@@ -89,14 +100,23 @@ type Page =
   | "login"
   | "register"
   | "forgot-password"
-  | "payment-return";
+  | "payment-return"
+  | "about"
+  | "privacy"
+  | "terms"
+  | "faq"
+  | "contact"
+  | "refund-policy"
+  | "for-organizers"
+  | "help-center"
+  | "error";
 
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
   // Determine initial page from URL or prop
-  const getPageFromPath = () => {
+  const getPageFromPath = useCallback(() => {
     const path = location.pathname;
 
     if (path === "/" || path === "/home") return "home";
@@ -119,6 +139,7 @@ export default function App() {
     if (path === "/edit-event") return "edit-event";
     if (path === "/scan-history") return "scan-history";
     if (path === "/promo-codes") return "promo-codes";
+    if (path === "/organizer-payouts") return "organizer-payouts";
     if (path === "/notifications") return "notifications";
     if (path === "/notification-preferences") return "notification-preferences";
     if (path === "/reset-password") return "reset-password";
@@ -140,13 +161,20 @@ export default function App() {
     if (path === "/register") return "register";
     if (path === "/forgot-password") return "forgot-password";
     if (path.startsWith("/payment/return")) return "payment-return";
+    if (path === "/about") return "about";
+    if (path === "/privacy") return "privacy";
+    if (path === "/terms") return "terms";
+    if (path === "/faq") return "faq";
+    if (path === "/contact") return "contact";
+    if (path === "/refund-policy") return "refund-policy";
+    if (path === "/for-organizers") return "for-organizers";
+    if (path === "/help-center") return "help-center";
+    if (path === "/error") return "error";
 
     return "home";
-  };
+  }, [location.pathname]);
 
-  const [currentPage, setCurrentPage] = useState<Page>(() => {
-    return getPageFromPath();
-  });
+  const [currentPage, setCurrentPage] = useState<Page>(getPageFromPath);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -172,12 +200,16 @@ export default function App() {
   });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Sync page state with URL on mount and URL changes
-  useEffect(() => {
-    const page = getPageFromPath();
-    setCurrentPage(page);
+  // Derive page from URL - no need for effect
+  const currentPageFromUrl = useMemo(() => getPageFromPath(), [getPageFromPath]);
 
-    // Extract IDs from URL params
+  // Update currentPage when URL changes
+  useEffect(() => {
+    setCurrentPage(currentPageFromUrl);
+  }, [currentPageFromUrl]);
+
+  // Extract IDs from URL params
+  useEffect(() => {
     const path = location.pathname;
 
     // Extract eventId from URL
@@ -295,7 +327,7 @@ export default function App() {
       case "listing":
         return <EventListing onNavigate={handleNavigate} />;
 
-      case "event-detail":
+      case "event-detail": {
         // Extract eventId from URL directly to avoid race condition
         const eventIdFromUrl = location.pathname.startsWith("/event/")
           ? location.pathname.split("/event/")[1]?.split("/")[0]
@@ -312,6 +344,7 @@ export default function App() {
             onAddToCart={handleAddToCart}
           />
         );
+      }
 
       case "cart":
         return (
@@ -421,6 +454,9 @@ export default function App() {
       case "promo-codes":
         return <PromoCodeManagement />;
 
+      case "organizer-payouts":
+        return <OrganizerPayouts onNavigate={handleNavigate} />;
+
       case "notifications":
         return <NotificationsPage onNavigate={handleNavigate} />;
 
@@ -482,6 +518,33 @@ export default function App() {
 
       case "payment-return":
         return <PaymentReturn />;
+
+      case "about":
+        return <About />;
+
+      case "privacy":
+        return <Privacy />;
+
+      case "terms":
+        return <Terms />;
+
+      case "faq":
+        return <FAQ />;
+
+      case "contact":
+        return <Contact />;
+
+      case "refund-policy":
+        return <RefundPolicy />;
+
+      case "for-organizers":
+        return <ForOrganizers onNavigate={handleNavigate} />;
+
+      case "help-center":
+        return <HelpCenter />;
+
+      case "error":
+        return <Error />;
 
       default:
         return <Home onNavigate={handleNavigate} />;

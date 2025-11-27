@@ -141,25 +141,40 @@ public sealed class VNPayProvider : IPaymentProvider
             // Process based on response code
             if (rspCode == "00")
             {
-                payment.Status = PaymentStatus.Completed;
-                payment.TransactionId = filtered.GetValueOrDefault("vnp_TransactionNo");
-                payment.PaidAt = DateTime.UtcNow;
-                await _payments.UpdateAsync(payment, ct);
-
-                // Update booking status
-                var booking = await _bookings.GetAsync(payment.BookingId, ct);
-                if (booking != null && booking.Status == BookingStatus.Pending)
+                // Sử dụng transaction để đảm bảo data consistency
+                using var transaction = await _context.Database.BeginTransactionAsync(ct);
+                try
                 {
-                    booking.Status = BookingStatus.Confirmed;
-                    booking.ExpiresAt = null;
-                    await _bookings.UpdateAsync(booking, ct);
+                    payment.Status = PaymentStatus.Completed;
+                    payment.TransactionId = filtered.GetValueOrDefault("vnp_TransactionNo");
+                    payment.PaidAt = DateTime.UtcNow;
+                    await _payments.UpdateAsync(payment, ct);
 
-                    // Create tickets for the confirmed booking
-                    await CreateTicketsForBookingAsync(booking.Id, ct);
+                    // Update booking status
+                    var booking = await _bookings.GetAsync(payment.BookingId, ct);
+                    if (booking != null && booking.Status == BookingStatus.Pending)
+                    {
+                        booking.Status = BookingStatus.Confirmed;
+                        booking.ExpiresAt = null;
+                        await _bookings.UpdateAsync(booking, ct);
+
+                        // Create tickets for the confirmed booking
+                        await CreateTicketsForBookingAsync(booking.Id, ct);
+                    }
+
+                    // Commit transaction
+                    await transaction.CommitAsync(ct);
+
+                    Console.WriteLine($"[VNPay VerifyFromReturnUrl] Payment {paymentId} completed successfully from return URL");
+                    return true;
                 }
-
-                Console.WriteLine($"[VNPay VerifyFromReturnUrl] Payment {paymentId} completed successfully from return URL");
-                return true;
+                catch (Exception ex)
+                {
+                    // Rollback transaction nếu có lỗi
+                    await transaction.RollbackAsync(ct);
+                    Console.WriteLine($"[VNPay VerifyFromReturnUrl] Transaction rollback due to error: {ex.Message}");
+                    throw;
+                }
             }
             else
             {
@@ -229,9 +244,16 @@ public sealed class VNPayProvider : IPaymentProvider
         }
 
         // Prepare parameters in alphabetical order (VNPAY requirement)
+        // VNPay yêu cầu amount ở đơn vị nhỏ nhất (đồng), nên nhân 100
+        // Dùng Math.Round để tránh mất độ chính xác khi cast
+        var vnpAmount = (long)Math.Round(amount * 1);
+        
+        // Log amount conversion để debug
+        Console.WriteLine($"[VNPay] Amount conversion: {amount} VND -> {vnpAmount} (smallest unit)");
+        
         var dict = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["vnp_Amount"] = ((long)(amount * 100)).ToString(), // Convert to VND (smallest unit)
+            ["vnp_Amount"] = vnpAmount.ToString(), // Convert to VND (smallest unit)
             ["vnp_Command"] = "pay",
             ["vnp_CreateDate"] = DateTime.UtcNow.ToString("yyyyMMddHHmmss"),
             ["vnp_CurrCode"] = "VND",
@@ -371,25 +393,40 @@ public sealed class VNPayProvider : IPaymentProvider
             // Process based on response code
             if (rspCode == "00")
             {
-                payment.Status = PaymentStatus.Completed;
-                payment.TransactionId = filtered.GetValueOrDefault("vnp_TransactionNo");
-                payment.PaidAt = DateTime.UtcNow;
-                await _payments.UpdateAsync(payment, ct);
-
-                // Update booking status
-                var booking = await _bookings.GetAsync(payment.BookingId, ct);
-                if (booking != null && booking.Status == BookingStatus.Pending)
+                // Sử dụng transaction để đảm bảo data consistency
+                using var transaction = await _context.Database.BeginTransactionAsync(ct);
+                try
                 {
-                    booking.Status = BookingStatus.Confirmed;
-                    booking.ExpiresAt = null;
-                    await _bookings.UpdateAsync(booking, ct);
+                    payment.Status = PaymentStatus.Completed;
+                    payment.TransactionId = filtered.GetValueOrDefault("vnp_TransactionNo");
+                    payment.PaidAt = DateTime.UtcNow;
+                    await _payments.UpdateAsync(payment, ct);
 
-                    // Create tickets for the confirmed booking
-                    await CreateTicketsForBookingAsync(booking.Id, ct);
+                    // Update booking status
+                    var booking = await _bookings.GetAsync(payment.BookingId, ct);
+                    if (booking != null && booking.Status == BookingStatus.Pending)
+                    {
+                        booking.Status = BookingStatus.Confirmed;
+                        booking.ExpiresAt = null;
+                        await _bookings.UpdateAsync(booking, ct);
+
+                        // Create tickets for the confirmed booking
+                        await CreateTicketsForBookingAsync(booking.Id, ct);
+                    }
+
+                    // Commit transaction
+                    await transaction.CommitAsync(ct);
+
+                    Console.WriteLine($"[VNPay Webhook] Payment {paymentId} completed successfully");
+                    return true;
                 }
-
-                Console.WriteLine($"[VNPay Webhook] Payment {paymentId} completed successfully");
-                return true;
+                catch (Exception ex)
+                {
+                    // Rollback transaction nếu có lỗi
+                    await transaction.RollbackAsync(ct);
+                    Console.WriteLine($"[VNPay Webhook] Transaction rollback due to error: {ex.Message}");
+                    throw;
+                }
             }
             else
             {

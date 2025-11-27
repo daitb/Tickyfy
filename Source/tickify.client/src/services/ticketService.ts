@@ -34,7 +34,7 @@ class TicketService {
    * Get ticket by ID
    */
   async getTicketById(ticketId: string): Promise<TicketDto> {
-    const response = await apiClient.get<TicketDto>(`/Ticket/${ticketId}`);
+    const response = await apiClient.get<TicketDto>(`/tickets/${ticketId}`);
     return response.data;
   }
 
@@ -42,7 +42,7 @@ class TicketService {
    * Get all tickets for current user
    */
   async getMyTickets(): Promise<TicketDto[]> {
-    const response = await apiClient.get<TicketDto[]>("/Ticket/my-tickets");
+    const response = await apiClient.get<TicketDto[]>("/tickets/my-tickets");
     return response.data;
   }
 
@@ -53,14 +53,14 @@ class TicketService {
     ticketId: string,
     data: TransferTicketDto
   ): Promise<void> {
-    await apiClient.post(`/Ticket/${ticketId}/transfer`, data);
+    await apiClient.post(`/tickets/${ticketId}/transfer`, data);
   }
 
   /**
    * Cancel a ticket
    */
   async cancelTicket(ticketId: string): Promise<void> {
-    await apiClient.post(`/Ticket/${ticketId}/cancel`);
+    await apiClient.post(`/tickets/${ticketId}/cancel`);
   }
 
   /**
@@ -72,7 +72,7 @@ class TicketService {
     const response = await apiClient.post<{
       isValid: boolean;
       message: string;
-    }>(`/Ticket/${ticketId}/validate`);
+    }>(`/tickets/${ticketId}/validate`);
     return response.data;
   }
 
@@ -80,14 +80,14 @@ class TicketService {
    * Check in ticket
    */
   async checkInTicket(ticketId: string): Promise<void> {
-    await apiClient.post(`/Ticket/${ticketId}/check-in`);
+    await apiClient.post(`/tickets/${ticketId}/check-in`);
   }
 
   /**
    * Download ticket as PDF
    */
   async downloadTicket(ticketId: string): Promise<Blob> {
-    const response = await apiClient.get(`/Ticket/${ticketId}/download`, {
+    const response = await apiClient.get(`/tickets/${ticketId}/download`, {
       responseType: "blob",
     });
     return response.data;

@@ -23,7 +23,7 @@ export async function createPaymentIntent(body: {
     vnpay: "VNPay",
   };
 
-  const res = await apiClient.post<PaymentIntent>("/payment/create-intent", {
+  const res = await apiClient.post<PaymentIntent>("/payments/create-intent", {
     bookingId: body.bookingId,
     provider: providerMap[body.provider],
   });
@@ -36,7 +36,7 @@ export async function createPaymentIntent(body: {
  */
 export async function verifyPayment(paymentId: number) {
   const res = await apiClient.post<{ success: boolean }>(
-    `/payment/${paymentId}/verify`
+    `/payments/${paymentId}/verify`
   );
   // ApiResponse wrapper is already unwrapped by interceptor, so res.data is { success: boolean }
   return res.data.success;
@@ -50,7 +50,7 @@ export async function verifyPaymentFromReturnUrl(paymentId: number, queryParams:
   // Convert URLSearchParams to query string
   const queryString = queryParams.toString();
   const res = await apiClient.post<{ success: boolean }>(
-    `/payment/${paymentId}/verify-return-url${queryString ? `?${queryString}` : ''}`
+    `/payments/${paymentId}/verify-return-url${queryString ? `?${queryString}` : ''}`
   );
   return res.data.success;
 }
@@ -59,7 +59,7 @@ export async function verifyPaymentFromReturnUrl(paymentId: number, queryParams:
  * Lấy danh sách payment theo booking
  */
 export async function getPaymentsByBooking(bookingId: number) {
-  const res = await apiClient.get(`/payment/booking/${bookingId}`);
+  const res = await apiClient.get(`/payments/booking/${bookingId}`);
   return res.data;
 }
 
@@ -67,6 +67,6 @@ export async function getPaymentsByBooking(bookingId: number) {
  * Lấy thông tin 1 payment
  */
 export async function getPaymentById(paymentId: number) {
-  const res = await apiClient.get(`/payment/${paymentId}`);
+  const res = await apiClient.get(`/payments/${paymentId}`);
   return res.data;
 }

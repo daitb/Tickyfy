@@ -1038,6 +1038,152 @@
       "active": "Active",
       "inactive": "Inactive"
     },
+    "list": {
+      "title": "Reviews",
+      "subtitle": "What attendees are saying",
+      "averageRating": "Average Rating",
+      "totalReviews": "reviews",
+      "writeReview": "Write a Review",
+      "mostHelpful": "Most Helpful",
+      "mostRecent": "Most Recent",
+      "highestRated": "Highest Rated",
+      "lowestRated": "Lowest Rated",
+      "helpful": "Helpful",
+      "notHelpful": "Not Helpful",
+      "reportReview": "Report"
+    },
+    "title": "Reviews",
+    "review": "review",
+    "reviews": "reviews",
+    "viewAll": "View All Reviews",
+    "noReviews": "No Reviews",
+    "noReviewsYet": "No reviews yet for this event",
+    "beFirst": "Be the first to review"
+  },
+  "payment": {
+    "return": {
+      "processing": "Processing Payment...",
+      "success": "Payment Successful!",
+      "failed": "Payment Failed",
+      "successMessage": "Your payment has been processed successfully",
+      "failedMessage": "There was an issue processing your payment",
+      "returnToHome": "Return to Home",
+      "tryAgain": "Try Again",
+      "contactSupport": "Contact Support"
+    }
+  },
+  "transfer": {
+    "ticket": {
+      "title": "Transfer Ticket",
+      "subtitle": "Transfer your ticket to someone else",
+      "recipientEmail": "Recipient Email",
+      "recipientName": "Recipient Name",
+      "message": "Personal Message (Optional)",
+      "messagePlaceholder": "Add a personal message...",
+      "confirmTransfer": "Confirm Transfer",
+      "transferring": "Transferring...",
+      "successMessage": "Ticket transferred successfully!",
+      "errorMessage": "Failed to transfer ticket. Please try again.",
+      "warning": "Once transferred, you won't be able to use this ticket",
+      "ticketInfo": "Ticket Information"
+    }
+  },
+  "refund": {
+    "request": {
+      "title": "Request Refund",
+      "subtitle": "Submit a refund request",
+      "reason": "Reason for Refund",
+      "selectReason": "Select a reason",
+      "cannotAttend": "Cannot attend",
+      "eventCancelled": "Event cancelled",
+      "wrongTickets": "Purchased wrong tickets",
+      "other": "Other",
+      "additionalDetails": "Additional Details",
+      "detailsPlaceholder": "Please provide more information...",
+      "refundMethod": "Refund Method",
+      "originalPayment": "Original Payment Method",
+      "bankTransfer": "Bank Transfer",
+      "submitRequest": "Submit Request",
+      "submitting": "Submitting...",
+      "successMessage": "Refund request submitted successfully",
+      "errorMessage": "Failed to submit refund request",
+      "refundPolicy": "Refund Policy",
+      "processingTime": "Refunds typically take 5-7 business days to process"
+    }
+  },
+  "analytics": {
+    "event": {
+      "title": "Event Analytics",
+      "overview": "Overview",
+      "sales": "Sales",
+      "attendance": "Attendance",
+      "revenue": "Revenue",
+      "ticketsSold": "Tickets Sold",
+      "totalRevenue": "Total Revenue",
+      "averageTicketPrice": "Average Ticket Price",
+      "salesByDay": "Sales by Day",
+      "salesByTicketType": "Sales by Ticket Type",
+      "attendeesByLocation": "Attendees by Location",
+      "conversionRate": "Conversion Rate",
+      "pageViews": "Page Views",
+      "uniqueVisitors": "Unique Visitors",
+      "exportData": "Export Data"
+    }
+  },
+  "wizard": {
+    "organizer": {
+      "title": "Create Your Event",
+      "step1": "Basic Info",
+      "step2": "Details",
+      "step3": "Tickets",
+      "step4": "Review",
+      "eventName": "Event Name",
+      "eventDescription": "Event Description",
+      "category": "Category",
+      "selectCategory": "Select a category",
+      "eventDate": "Event Date",
+      "eventTime": "Event Time",
+      "venue": "Venue",
+      "venueName": "Venue Name",
+      "venueAddress": "Venue Address",
+      "city": "City",
+      "state": "State",
+      "capacity": "Capacity",
+      "eventImage": "Event Image",
+      "uploadImage": "Upload Image",
+      "ticketTypes": "Ticket Types",
+      "addTicketType": "Add Ticket Type",
+      "ticketName": "Ticket Name",
+      "ticketPrice": "Ticket Price",
+      "ticketQuantity": "Quantity",
+      "salesStartDate": "Sales Start Date",
+      "salesEndDate": "Sales End Date",
+      "previous": "Previous",
+      "next": "Next",
+      "publish": "Publish Event",
+      "saveDraft": "Save as Draft"
+    }
+  },
+  "management": {
+    "event": {
+      "title": "Event Management",
+      "subtitle": "Manage your events",
+      "createEvent": "Create Event",
+      "all": "All",
+      "upcoming": "Upcoming",
+      "past": "Past",
+      "draft": "Draft",
+      "published": "Published",
+      "cancelled": "Cancelled",
+      "searchEvents": "Search events...",
+      "filters": "Filters",
+      "sortBy": "Sort by",
+      "eventName": "Event Name",
+      "date": "Date",
+      "ticketsSold": "Tickets Sold",
+      "revenue": "Revenue",
+      "status": "Status",
+      "actions": "Actions",
     "stats": {
       "totalCodes": "Total Codes",
       "activeCodes": "Active Codes",
@@ -1411,4 +1557,5 @@
       "text2": "tickets cannot be transferred to others"
     }
   }
+}
 }

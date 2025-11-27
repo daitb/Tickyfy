@@ -11,6 +11,7 @@ import {
   QrCode,
   History,
   UserCog,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { InlineSearchBar } from "./InlineSearchBar";
@@ -103,6 +104,22 @@ export function Header({
               <NotificationDropdown onNavigate={onNavigate} />
             )}
 
+            {/* Chat Button - Only for authenticated users */}
+            {isAuthenticated && (
+              <Button
+                onClick={() => onNavigate("chat")}
+                variant="ghost"
+                size="sm"
+                className={`cursor-pointer gap-2 text-white hover:bg-teal-600 ${
+                  currentPage === "chat" ? "bg-teal-600" : ""
+                }`}
+                title="Chat"
+              >
+                <MessageCircle size={18} />
+                <span className="hidden sm:inline">Chat</span>
+              </Button>
+            )}
+            
             {/* Create Event Button - Only for Organizers */}
             {isAuthenticated && userRole === "organizer" && (
               <Button
@@ -118,7 +135,7 @@ export function Header({
             )}
 
             {/* My Tickets */}
-            <Button
+            {/* <Button
               onClick={() => onNavigate("my-tickets")}
               variant="ghost"
               size="sm"
@@ -127,8 +144,8 @@ export function Header({
               }`}
             >
               <Ticket size={18} />
-              <span className="hidden sm:inline">{t("header.myTickets")}</span>
-            </Button>
+              <span className="hidden sm:inline">{t('header.myTickets')}</span>
+            </Button> */}
 
             {/* Account Dropdown */}
             {isAuthenticated ? (

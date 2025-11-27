@@ -71,7 +71,13 @@ export function canAccessRoute(path: string, userRole: UserRole): boolean {
   // If no permission defined, allow access (for safety, could be changed to deny)
   if (!permission) return true;
 
-  return permission.allowedRoles.includes(userRole);
+  // Map backend roles to frontend roles (Customer -> user)
+  let normalizedRole = userRole.toLowerCase();
+  if (normalizedRole === "customer") {
+    normalizedRole = "user";
+  }
+
+  return permission.allowedRoles.includes(normalizedRole as UserRole);
 }
 
 // Get redirect path for unauthorized access
