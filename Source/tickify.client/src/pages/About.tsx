@@ -1,8 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { Calendar, Users, Shield, Headphones } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, Users, Shield, Headphones, FileText, HelpCircle, Mail, TrendingUp } from 'lucide-react';
+import { Button } from '../components/ui/button';
 
 export function About() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const features = [
     {
@@ -76,7 +79,7 @@ export function About() {
         </div>
 
         {/* Company Story */}
-        <div className="bg-primary text-primary-foreground rounded-lg shadow-lg p-8">
+        <div className="bg-primary text-primary-foreground rounded-lg shadow-lg p-8 mb-8">
           <h2 className="text-3xl font-bold mb-4">
             {t('about.story.title', 'Our Story')}
           </h2>
@@ -86,6 +89,51 @@ export function About() {
           <p className="text-lg leading-relaxed">
             {t('about.story.paragraph2', 'Today, we serve thousands of organizers and millions of attendees worldwide, helping them create memorable experiences that bring people together. From small community gatherings to large-scale conferences, Tickify is proud to be part of your journey.')}
           </p>
+        </div>
+
+        {/* Related Links */}
+        <div className="bg-card rounded-lg border shadow-sm p-6">
+          <h3 className="text-xl font-bold mb-4 text-center">
+            {t('about.relatedLinks.title', 'Explore More')}
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/for-organizers')}
+              className="justify-start"
+            >
+              <TrendingUp className="w-4 h-4 mr-2" />
+              {t('about.relatedLinks.organizers', 'For Organizers')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/help-center')}
+              className="justify-start"
+            >
+              <HelpCircle className="w-4 h-4 mr-2" />
+              {t('about.relatedLinks.helpCenter', 'Help Center')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/contact')}
+              className="justify-start"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              {t('about.relatedLinks.contact', 'Contact Us')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/faq')}
+              className="justify-start"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              {t('about.relatedLinks.faq', 'FAQ')}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

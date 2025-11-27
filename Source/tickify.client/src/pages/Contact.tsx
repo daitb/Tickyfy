@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Mail, Phone, MapPin, Send } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Mail, Phone, MapPin, Send, HelpCircle, FileText } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -8,6 +9,7 @@ import { Label } from '../components/ui/label';
 
 export function Contact() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -223,7 +225,7 @@ export function Contact() {
             ))}
 
             {/* Business Hours */}
-            <div className="bg-primary text-primary-foreground rounded-lg shadow-sm p-6">
+            <div className="bg-primary text-primary-foreground rounded-lg shadow-sm p-6 mb-4">
               <h3 className="text-lg font-bold mb-3">
                 {t('contact.hours.title', 'Business Hours')}
               </h3>
@@ -233,6 +235,33 @@ export function Contact() {
               <p>
                 {t('contact.hours.weekend', 'Saturday - Sunday: 10:00 AM - 4:00 PM')}
               </p>
+            </div>
+
+            {/* Quick Links */}
+            <div className="bg-card rounded-lg border shadow-sm p-6">
+              <h3 className="text-lg font-bold mb-3">
+                {t('contact.quickLinks.title', 'Quick Links')}
+              </h3>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/faq')}
+                  className="w-full justify-start"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  {t('contact.quickLinks.faq', 'FAQ')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/help-center')}
+                  className="w-full justify-start"
+                >
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  {t('contact.quickLinks.helpCenter', 'Help Center')}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

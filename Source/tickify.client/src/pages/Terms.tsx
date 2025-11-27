@@ -1,7 +1,11 @@
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '../components/ui/button';
+import { FileText, HelpCircle, Mail, Shield, RefreshCcw } from 'lucide-react';
 
 export function Terms() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const sections = [
     {
@@ -98,6 +102,51 @@ export function Terms() {
           </div>
 
           <div className="border-t mt-8 pt-8" />
+
+          {/* Related Links */}
+          <div className="mt-8 p-6 bg-muted rounded-lg">
+            <h3 className="text-lg font-bold mb-4">
+              {t('terms.relatedLinks.title', 'Related Information')}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/privacy')}
+                className="justify-start"
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                {t('terms.relatedLinks.privacy', 'Privacy Policy')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/refund-policy')}
+                className="justify-start"
+              >
+                <RefreshCcw className="w-4 h-4 mr-2" />
+                {t('terms.relatedLinks.refund', 'Refund Policy')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/help-center')}
+                className="justify-start"
+              >
+                <HelpCircle className="w-4 h-4 mr-2" />
+                {t('terms.relatedLinks.helpCenter', 'Help Center')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/contact')}
+                className="justify-start"
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                {t('terms.relatedLinks.contact', 'Contact Us')}
+              </Button>
+            </div>
+          </div>
 
           {/* Footer Notice */}
           <div className="mt-6 p-4 bg-muted rounded-lg">

@@ -1,6 +1,13 @@
 import { Ticket, Mail, Phone, MapPin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export function Footer() {
+  const navigate = useNavigate();
+
+  const handleNavigate = (page: string) => {
+    navigate(`/${page}`);
+  };
+
   return (
     <footer className="bg-neutral-900 text-neutral-300 mt-auto">
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -23,16 +30,24 @@ export function Footer() {
             <h4 className="text-white mb-4">Company</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="hover:text-orange-500 transition-colors">About Us</a>
+                <button onClick={() => handleNavigate('about')} className="hover:text-orange-500 transition-colors text-left">
+                  About Us
+                </button>
               </li>
               <li>
-                <a href="#" className="hover:text-orange-500 transition-colors">Privacy Policy</a>
+                <button onClick={() => handleNavigate('privacy')} className="hover:text-orange-500 transition-colors text-left">
+                  Privacy Policy
+                </button>
               </li>
               <li>
-                <a href="#" className="hover:text-orange-500 transition-colors">Terms of Service</a>
+                <button onClick={() => handleNavigate('terms')} className="hover:text-orange-500 transition-colors text-left">
+                  Terms of Service
+                </button>
               </li>
               <li>
-                <a href="#" className="hover:text-orange-500 transition-colors">Refund Policy</a>
+                <button onClick={() => handleNavigate('refund-policy')} className="hover:text-orange-500 transition-colors text-left">
+                  Refund Policy
+                </button>
               </li>
             </ul>
           </div>
@@ -42,16 +57,24 @@ export function Footer() {
             <h4 className="text-white mb-4">Support</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="hover:text-orange-500 transition-colors">FAQ</a>
+                <button onClick={() => handleNavigate('faq')} className="hover:text-orange-500 transition-colors text-left">
+                  FAQ
+                </button>
               </li>
               <li>
-                <a href="#" className="hover:text-orange-500 transition-colors">Contact Us</a>
+                <button onClick={() => handleNavigate('contact')} className="hover:text-orange-500 transition-colors text-left">
+                  Contact Us
+                </button>
               </li>
               <li>
-                <a href="#" className="hover:text-orange-500 transition-colors">For Organizers</a>
+                <button onClick={() => handleNavigate('for-organizers')} className="hover:text-orange-500 transition-colors text-left">
+                  For Organizers
+                </button>
               </li>
               <li>
-                <a href="#" className="hover:text-orange-500 transition-colors">Help Center</a>
+                <button onClick={() => handleNavigate('help-center')} className="hover:text-orange-500 transition-colors text-left">
+                  Help Center
+                </button>
               </li>
             </ul>
           </div>

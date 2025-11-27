@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, HelpCircle, Mail, FileText } from 'lucide-react';
 import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
 import {
   Accordion,
   AccordionContent,
@@ -17,6 +19,7 @@ interface FAQItem {
 
 export function FAQ() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
   const faqData: FAQItem[] = [
@@ -198,16 +201,77 @@ export function FAQ() {
         )}
 
         {/* Contact Support */}
-        <div className="mt-8 bg-primary text-primary-foreground rounded-lg shadow-lg p-8 text-center">
+        <div className="mt-8 bg-primary text-primary-foreground rounded-lg shadow-lg p-8 text-center mb-8">
           <h2 className="text-2xl font-bold mb-3">
             {t('faq.stillNeedHelp.title', 'Still need help?')}
           </h2>
-          <p className="mb-2">
+          <p className="mb-4">
             {t('faq.stillNeedHelp.description', "Can't find the answer you're looking for? Our support team is here to help.")}
           </p>
-          <p>
+          <p className="mb-4">
             {t('faq.stillNeedHelp.contact', 'Contact us at')} <strong>support@tickify.com</strong>
           </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/contact')}
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              {t('faq.stillNeedHelp.contactButton', 'Contact Support')}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/help-center')}
+            >
+              <HelpCircle className="w-4 h-4 mr-2" />
+              {t('faq.stillNeedHelp.helpCenter', 'Help Center')}
+            </Button>
+          </div>
+        </div>
+
+        {/* Related Links */}
+        <div className="bg-card rounded-lg border shadow-sm p-6">
+          <h3 className="text-xl font-bold mb-4 text-center">
+            {t('faq.relatedLinks.title', 'Related Pages')}
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/help-center')}
+              className="justify-start"
+            >
+              <HelpCircle className="w-4 h-4 mr-2" />
+              {t('faq.relatedLinks.helpCenter', 'Help Center')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/contact')}
+              className="justify-start"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              {t('faq.relatedLinks.contact', 'Contact Us')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/refund-policy')}
+              className="justify-start"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              {t('faq.relatedLinks.refund', 'Refund Policy')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/for-organizers')}
+              className="justify-start"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              {t('faq.relatedLinks.organizers', 'For Organizers')}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

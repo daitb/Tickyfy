@@ -42,6 +42,15 @@ import { StaffChatPage } from "./pages/StaffChatPage";
 import { BecomeOrganizer } from "./pages/BecomeOrganizer";
 import { UserManagement } from "./pages/UserManagement";
 import PaymentReturn from "./pages/PaymentReturn";
+import { About } from "./pages/About";
+import { Privacy } from "./pages/Privacy";
+import { Terms } from "./pages/Terms";
+import { FAQ } from "./pages/FAQ";
+import { Contact } from "./pages/Contact";
+import { RefundPolicy } from "./pages/RefundPolicy";
+import { ForOrganizers } from "./pages/ForOrganizers";
+import { HelpCenter } from "./pages/HelpCenter";
+import { Error } from "./pages/Error";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -91,7 +100,16 @@ type Page =
   | "login"
   | "register"
   | "forgot-password"
-  | "payment-return";
+  | "payment-return"
+  | "about"
+  | "privacy"
+  | "terms"
+  | "faq"
+  | "contact"
+  | "refund-policy"
+  | "for-organizers"
+  | "help-center"
+  | "error";
 
 export default function App() {
   const location = useLocation();
@@ -143,6 +161,15 @@ export default function App() {
     if (path === "/register") return "register";
     if (path === "/forgot-password") return "forgot-password";
     if (path.startsWith("/payment/return")) return "payment-return";
+    if (path === "/about") return "about";
+    if (path === "/privacy") return "privacy";
+    if (path === "/terms") return "terms";
+    if (path === "/faq") return "faq";
+    if (path === "/contact") return "contact";
+    if (path === "/refund-policy") return "refund-policy";
+    if (path === "/for-organizers") return "for-organizers";
+    if (path === "/help-center") return "help-center";
+    if (path === "/error") return "error";
 
     return "home";
   }, [location.pathname]);
@@ -491,6 +518,33 @@ export default function App() {
 
       case "payment-return":
         return <PaymentReturn />;
+
+      case "about":
+        return <About />;
+
+      case "privacy":
+        return <Privacy />;
+
+      case "terms":
+        return <Terms />;
+
+      case "faq":
+        return <FAQ />;
+
+      case "contact":
+        return <Contact />;
+
+      case "refund-policy":
+        return <RefundPolicy />;
+
+      case "for-organizers":
+        return <ForOrganizers onNavigate={handleNavigate} />;
+
+      case "help-center":
+        return <HelpCenter />;
+
+      case "error":
+        return <Error />;
 
       default:
         return <Home onNavigate={handleNavigate} />;
