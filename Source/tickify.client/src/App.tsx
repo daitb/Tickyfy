@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { EventReviews } from "./pages/EventReviews";
 import { RefundRequest } from "./pages/RefundRequest";
@@ -98,7 +98,7 @@ export default function App() {
   const navigate = useNavigate();
 
   // Determine initial page from URL or prop
-  const getPageFromPath = () => {
+  const getPageFromPath = useCallback(() => {
     const path = location.pathname;
 
     if (path === "/" || path === "/home") return "home";
@@ -145,11 +145,9 @@ export default function App() {
     if (path.startsWith("/payment/return")) return "payment-return";
 
     return "home";
-  };
+  }, [location.pathname]);
 
-  const [currentPage, setCurrentPage] = useState<Page>(() => {
-    return getPageFromPath();
-  });
+  const [currentPage, setCurrentPage] = useState<Page>(getPageFromPath);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -175,12 +173,16 @@ export default function App() {
   });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Sync page state with URL on mount and URL changes
-  useEffect(() => {
-    const page = getPageFromPath();
-    setCurrentPage(page);
+  // Derive page from URL - no need for effect
+  const currentPageFromUrl = useMemo(() => getPageFromPath(), [getPageFromPath]);
 
-    // Extract IDs from URL params
+  // Update currentPage when URL changes
+  useEffect(() => {
+    setCurrentPage(currentPageFromUrl);
+  }, [currentPageFromUrl]);
+
+  // Extract IDs from URL params
+  useEffect(() => {
     const path = location.pathname;
 
     // Extract eventId from URL
@@ -298,7 +300,7 @@ export default function App() {
       case "listing":
         return <EventListing onNavigate={handleNavigate} />;
 
-      case "event-detail":
+      case "event-detail": {
         // Extract eventId from URL directly to avoid race condition
         const eventIdFromUrl = location.pathname.startsWith("/event/")
           ? location.pathname.split("/event/")[1]?.split("/")[0]
@@ -315,6 +317,7 @@ export default function App() {
             onAddToCart={handleAddToCart}
           />
         );
+      }
 
       case "cart":
         return (
