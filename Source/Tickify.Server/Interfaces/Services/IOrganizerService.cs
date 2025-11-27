@@ -15,10 +15,10 @@ public interface IOrganizerService
     Task<OrganizerProfileDto> UpdateOrganizerProfileAsync(int organizerId, int userId, CreateOrganizerDto dto);
 
     /// Get all events for an organizer
-    Task<List<object>> GetOrganizerEventsAsync(int organizerId, int userId);
+    Task<List<OrganizerEventDashboardDto>> GetOrganizerEventsAsync(int organizerId, int userId);
 
     /// Get organizer earnings dashboard
-    Task<object> GetOrganizerEarningsAsync(int organizerId, int userId);
+    Task<OrganizerEarningsDto> GetOrganizerEarningsAsync(int organizerId, int userId);
 
     /// Verify organizer (Admin only)
     Task<OrganizerDto> VerifyOrganizerAsync(int organizerId, int adminId);

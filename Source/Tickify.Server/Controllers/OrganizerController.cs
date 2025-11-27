@@ -131,11 +131,11 @@ public class OrganizerController : ControllerBase
     /// GET /api/organizers/{id}/events - Get organizer's events (Organizer only)
     [HttpGet("{id}/events")]
     [Authorize(Roles = "Organizer,Admin")]
-    [ProducesResponseType(typeof(ApiResponse<List<object>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<OrganizerEventDashboardDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<List<object>>>> GetOrganizerEvents(int id)
+    public async Task<ActionResult<ApiResponse<List<OrganizerEventDashboardDto>>>> GetOrganizerEvents(int id)
     {
         var userId = GetUserIdFromClaims();
         var isAdmin = User.IsInRole("Admin");
@@ -147,7 +147,7 @@ public class OrganizerController : ControllerBase
             ? await _organizerService.GetOrganizerEventsAsync(id, 0) // Admin bypass userId check
             : await _organizerService.GetOrganizerEventsAsync(id, userId);
 
-        return Ok(ApiResponse<List<object>>.SuccessResponse(
+        return Ok(ApiResponse<List<OrganizerEventDashboardDto>>.SuccessResponse(
             events,
             $"Retrieved {events.Count} events"
         ));
@@ -156,11 +156,11 @@ public class OrganizerController : ControllerBase
     /// GET /api/organizers/{id}/earnings - Get organizer earnings dashboard (Organizer only)
     [HttpGet("{id}/earnings")]
     [Authorize(Roles = "Organizer,Admin")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<OrganizerEarningsDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<object>>> GetOrganizerEarnings(int id)
+    public async Task<ActionResult<ApiResponse<OrganizerEarningsDto>>> GetOrganizerEarnings(int id)
     {
         var userId = GetUserIdFromClaims();
         var isAdmin = User.IsInRole("Admin");
@@ -172,7 +172,7 @@ public class OrganizerController : ControllerBase
             ? await _organizerService.GetOrganizerEarningsAsync(id, 0)
             : await _organizerService.GetOrganizerEarningsAsync(id, userId);
 
-        return Ok(ApiResponse<object>.SuccessResponse(
+        return Ok(ApiResponse<OrganizerEarningsDto>.SuccessResponse(
             earnings,
             "Organizer earnings retrieved successfully"
         ));

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Tickify.Data;
 using Tickify.DTOs.Event;
@@ -188,46 +190,59 @@ public class OrganizerService : IOrganizerService
     /// <summary>
     /// Get all events for an organizer
     /// </summary>
-    public async Task<List<object>> GetOrganizerEventsAsync(int organizerId, int userId)
+    public async Task<List<OrganizerEventDashboardDto>> GetOrganizerEventsAsync(int organizerId, int userId)
     {
         _logger.LogInformation("Fetching events for organizer ID: {OrganizerId}", organizerId);
 
-        var organizer = await _context.Organizers.FindAsync(organizerId);
+        var organizer = await _context.Organizers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == organizerId);
 
         if (organizer == null)
         {
             throw new NotFoundException($"Organizer with ID {organizerId} not found");
         }
 
-        // Verify ownership
-        if (organizer.UserId != userId)
+        var isAdminRequest = userId == 0;
+
+        // Verify ownership when request comes from organizer context
+        if (!isAdminRequest && organizer.UserId != userId)
         {
             throw new ForbiddenException("You don't have permission to view these events");
         }
 
         var events = await _context.Events
+            .AsNoTracking()
             .Where(e => e.OrganizerId == organizerId)
-            .OrderByDescending(e => e.CreatedAt)
-            .Select(e => new
+            .OrderByDescending(e => e.StartDate)
+            .Select(e => new OrganizerEventDashboardDto
             {
-                e.Id,
-                e.Title,
-                e.StartDate,
-                e.EndDate,
-                e.Status,
-                TicketsSold = e.Bookings!.Count(b => b.Status == BookingStatus.Confirmed),
-                TotalRevenue = e.Bookings!.Where(b => b.Status == BookingStatus.Confirmed).Sum(b => b.TotalAmount),
-                e.CreatedAt
+                EventId = e.Id,
+                Title = e.Title,
+                StartDate = e.StartDate,
+                Status = e.Status.ToString(),
+                TotalSeats = e.TicketTypes!
+                    .Select(tt => (int?)tt.TotalQuantity)
+                    .Sum() ?? 0,
+                SoldSeats = e.TicketTypes!
+                    .Select(tt => (int?)(tt.TotalQuantity - tt.AvailableQuantity))
+                    .Sum() ?? 0,
+                Revenue = e.Bookings!
+                    .Where(b => b.Status == BookingStatus.Confirmed
+                                && b.Payment != null
+                                && b.Payment.Status == PaymentStatus.Completed)
+                    .Select(b => (decimal?)b.Payment!.Amount)
+                    .Sum() ?? 0m
             })
             .ToListAsync();
 
-        return events.Cast<object>().ToList();
+        return events;
     }
 
     /// <summary>
     /// Get organizer earnings dashboard
     /// </summary>
-    public async Task<object> GetOrganizerEarningsAsync(int organizerId, int userId)
+    public async Task<OrganizerEarningsDto> GetOrganizerEarningsAsync(int organizerId, int userId)
     {
         _logger.LogInformation("Fetching earnings for organizer ID: {OrganizerId}", organizerId);
 
@@ -238,41 +253,113 @@ public class OrganizerService : IOrganizerService
             throw new NotFoundException($"Organizer with ID {organizerId} not found");
         }
 
+        var isAdminRequest = userId == 0;
+
         // Verify ownership
-        if (organizer.UserId != userId)
+        if (!isAdminRequest && organizer.UserId != userId)
         {
             throw new ForbiddenException("You don't have permission to view these earnings");
         }
 
-        var totalRevenue = await _context.Bookings
-            .Where(b => b.Event!.OrganizerId == organizerId && b.Status == BookingStatus.Confirmed)
-            .SumAsync(b => b.TotalAmount);
+        var completedPaymentQuery = _context.Payments
+            .AsNoTracking()
+            .Where(p =>
+                p.Status == PaymentStatus.Completed &&
+                p.Booking != null &&
+                p.Booking.Event != null &&
+                p.Booking.Event.OrganizerId == organizerId);
 
-        var platformFeeRate = 0.10m; // 10% platform fee
-        var platformFees = totalRevenue * platformFeeRate;
-        var organizerEarnings = totalRevenue - platformFees;
+        var totalRevenue = await completedPaymentQuery
+            .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
-        var totalPayouts = await _context.Payouts
-            .Where(p => p.OrganizerId == organizerId && p.Status == "Completed")
-            .SumAsync(p => p.Amount);
+        var totalTicketsSold = await _context.Tickets
+            .AsNoTracking()
+            .Where(t =>
+                t.Booking != null &&
+                t.Booking.Event != null &&
+                t.Booking.Event.OrganizerId == organizerId &&
+                t.Booking.Status == BookingStatus.Confirmed &&
+                t.Status != TicketStatus.Cancelled &&
+                t.Status != TicketStatus.Refunded)
+            .CountAsync();
 
-        var pendingPayouts = await _context.Payouts
-            .Where(p => p.OrganizerId == organizerId && p.Status == "Pending")
-            .SumAsync(p => p.Amount);
+        const decimal platformFeeRate = 0.10m;
+        var platformFees = Math.Round(totalRevenue * platformFeeRate, 2, MidpointRounding.AwayFromZero);
+        var netEarnings = totalRevenue - platformFees;
 
-        var availableBalance = organizerEarnings - totalPayouts - pendingPayouts;
-
-        var earnings = new
+        var completedStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            TotalRevenue = totalRevenue,
-            PlatformFees = platformFees,
-            OrganizerEarnings = organizerEarnings,
-            TotalPayouts = totalPayouts,
-            PendingPayouts = pendingPayouts,
-            AvailableBalance = availableBalance
+            "Processed",
+            "Completed"
+        };
+        var pendingStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Pending",
+            "Approved"
         };
 
-        return earnings;
+        var completedPayouts = await _context.Payouts
+            .AsNoTracking()
+            .Where(p => p.OrganizerId == organizerId && completedStatuses.Contains(p.Status))
+            .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+        var pendingPayouts = await _context.Payouts
+            .AsNoTracking()
+            .Where(p => p.OrganizerId == organizerId && pendingStatuses.Contains(p.Status))
+            .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+        var availableBalance = netEarnings - completedPayouts - pendingPayouts;
+
+        var monthlyRevenue = await completedPaymentQuery
+            .Where(p => p.PaidAt.HasValue)
+            .GroupBy(p => new { p.PaidAt!.Value.Year, p.PaidAt.Value.Month })
+            .OrderBy(g => g.Key.Year)
+            .ThenBy(g => g.Key.Month)
+            .Select(g => new OrganizerMonthlyRevenueDto
+            {
+                Month = new DateTime(g.Key.Year, g.Key.Month, 1)
+                    .ToString("MMM yyyy", CultureInfo.InvariantCulture),
+                Revenue = g.Sum(p => p.Amount),
+                TicketsSold = g.SelectMany(p => p.Booking!.Tickets!)
+                    .Count(t => t.Status != TicketStatus.Cancelled && t.Status != TicketStatus.Refunded)
+            })
+            .ToListAsync();
+
+        var topEvents = await _context.Events
+            .AsNoTracking()
+            .Where(e => e.OrganizerId == organizerId)
+            .Select(e => new OrganizerTopEventDto
+            {
+                EventId = e.Id,
+                Title = e.Title,
+                Revenue = e.Bookings!
+                    .Where(b => b.Status == BookingStatus.Confirmed
+                                && b.Payment != null
+                                && b.Payment.Status == PaymentStatus.Completed)
+                    .Select(b => (decimal?)b.Payment!.Amount)
+                    .Sum() ?? 0m,
+                TicketsSold = e.Bookings!
+                    .Where(b => b.Status == BookingStatus.Confirmed)
+                    .SelectMany(b => b.Tickets!)
+                    .Count(t => t.Status != TicketStatus.Cancelled && t.Status != TicketStatus.Refunded)
+            })
+            .OrderByDescending(e => e.Revenue)
+            .ThenByDescending(e => e.TicketsSold)
+            .Take(5)
+            .ToListAsync();
+
+        return new OrganizerEarningsDto
+        {
+            TotalRevenue = totalRevenue,
+            TotalPlatformFee = platformFees,
+            NetEarnings = netEarnings,
+            CompletedPayouts = completedPayouts,
+            PendingPayouts = pendingPayouts,
+            AvailableBalance = availableBalance,
+            TotalTicketsSold = totalTicketsSold,
+            MonthlyRevenue = monthlyRevenue,
+            TopEvents = topEvents
+        };
     }
 
     /// <summary>
