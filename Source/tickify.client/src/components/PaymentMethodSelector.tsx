@@ -14,6 +14,14 @@ import {
   formatPhoneNumber,
 } from '../utils/validation';
 
+interface PaymentMethodDetails {
+  phone?: string;
+  number?: string;
+  name?: string;
+  expiry?: string;
+  cvv?: string;
+}
+
 interface PaymentMethodSelectorProps {
   onPaymentMethodChange: (method: PaymentMethod, details?: Record<string, unknown>) => void;
   selectedMethod?: PaymentMethod;
