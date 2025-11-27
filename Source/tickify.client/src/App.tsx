@@ -159,16 +159,20 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     authService.isAuthenticated()
   );
-  const [userRole, setUserRole] = useState<"guest" | "user" | "organizer" | "staff" | "admin">(
-    () => {
-      const user = authService.getCurrentUser();
-      if (!user) return "guest";
-      let role = user?.role?.toLowerCase() || "user";
-      // Map backend roles to frontend roles
-      if (role === "customer") role = "user";
-      return role as "guest" | "user" | "organizer" | "staff" | "admin";
-    }
-  );
+  const [userRole, setUserRole] = useState<
+    "guest" | "user" | "organizer" | "staff" | "admin"
+  >(() => {
+    const user = authService.getCurrentUser();
+    if (!user) return "guest";
+    return (
+      (user?.role?.toLowerCase() as
+        | "guest"
+        | "user"
+        | "organizer"
+        | "staff"
+        | "admin") || "user"
+    );
+  });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Sync page state with URL on mount and URL changes
@@ -178,31 +182,31 @@ export default function App() {
 
     // Extract IDs from URL params
     const path = location.pathname;
-    
+
     // Extract eventId from URL
     if (path.startsWith("/event/")) {
       const eventId = path.split("/event/")[1]?.split("/")[0];
       if (eventId) setSelectedEventId(eventId);
     }
-    
+
     // Extract orderId from URL
     if (path.startsWith("/order/")) {
       const orderId = path.split("/order/")[1]?.split("/")[0];
       if (orderId) setSelectedOrderId(orderId);
     }
-    
+
     // Extract ticketId from URL
     if (path.startsWith("/ticket/")) {
       const ticketId = path.split("/ticket/")[1]?.split("/")[0];
       if (ticketId) setSelectedTicketId(ticketId);
     }
-    
+
     // Extract ticketId from transfer-ticket URL
     if (path.startsWith("/transfer-ticket/")) {
       const ticketId = path.split("/transfer-ticket/")[1]?.split("/")[0];
       if (ticketId) setSelectedTicketId(ticketId);
     }
-    
+
     // Extract eventId from event-analytics URL
     if (path.startsWith("/event-analytics/")) {
       const eventId = path.split("/event-analytics/")[1]?.split("/")[0];
@@ -219,10 +223,14 @@ export default function App() {
       if (authenticated) {
         const user = authService.getCurrentUser();
         if (user) {
-          let role = user.role?.toLowerCase() || "user";
-          // Map backend roles to frontend roles
-          if (role === "customer") role = "user";
-          setUserRole(role as "guest" | "user" | "organizer" | "staff" | "admin");
+          setUserRole(
+            (user.role?.toLowerCase() as
+              | "guest"
+              | "user"
+              | "organizer"
+              | "staff"
+              | "admin") || "user"
+          );
         }
       } else {
         setUserRole("guest");
@@ -291,13 +299,18 @@ export default function App() {
         return <EventListing onNavigate={handleNavigate} />;
 
       case "event-detail":
-        if (!selectedEventId) {
-          setCurrentPage("home");
+        // Extract eventId from URL directly to avoid race condition
+        const eventIdFromUrl = location.pathname.startsWith("/event/")
+          ? location.pathname.split("/event/")[1]?.split("/")[0]
+          : selectedEventId;
+
+        if (!eventIdFromUrl) {
+          navigate("/");
           return null;
         }
         return (
           <EventDetail
-            eventId={selectedEventId}
+            eventId={eventIdFromUrl}
             onNavigate={handleNavigate}
             onAddToCart={handleAddToCart}
           />
@@ -329,32 +342,52 @@ export default function App() {
           <MyTickets orders={completedOrders} onNavigate={handleNavigate} />
         );
 
-      case "order-detail":
+      case "order-detail": {
+        // Extract orderId from URL directly
+        const orderIdFromUrl = location.pathname.startsWith("/order/")
+          ? location.pathname.split("/order/")[1]?.split("/")[0]
+          : selectedOrderId;
+
         return (
           <OrderDetail
-            orderId={selectedOrderId || undefined}
+            orderId={orderIdFromUrl || undefined}
             orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
+      }
 
-      case "ticket-detail":
+      case "ticket-detail": {
+        // Extract ticketId from URL directly
+        const ticketIdFromUrl = location.pathname.startsWith("/ticket/")
+          ? location.pathname.split("/ticket/")[1]?.split("/")[0]
+          : selectedTicketId;
+
         return (
           <TicketDetail
-            ticketId={selectedTicketId || undefined}
+            ticketId={ticketIdFromUrl || undefined}
             orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
+      }
 
-      case "transfer-ticket":
+      case "transfer-ticket": {
+        // Extract ticketId from URL directly
+        const transferTicketIdFromUrl = location.pathname.startsWith(
+          "/transfer-ticket/"
+        )
+          ? location.pathname.split("/transfer-ticket/")[1]?.split("/")[0]
+          : selectedTicketId;
+
         return (
           <TransferTicket
-            ticketId={selectedTicketId || undefined}
+            ticketId={transferTicketIdFromUrl || undefined}
             orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
+      }
 
       case "wishlist":
         return <Wishlist onNavigate={handleNavigate} />;
@@ -389,7 +422,7 @@ export default function App() {
         return <ScanHistory onNavigate={handleNavigate} />;
 
       case "promo-codes":
-        return <PromoCodeManagement onNavigate={handleNavigate} />;
+        return <PromoCodeManagement />;
 
       case "organizer-payouts":
         return <OrganizerPayouts onNavigate={handleNavigate} />;

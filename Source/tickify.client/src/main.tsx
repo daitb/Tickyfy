@@ -3,6 +3,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 import "./i18n";
+import { WishlistProvider } from "./contexts/WishlistContext";
 
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter
@@ -11,6 +12,8 @@ createRoot(document.getElementById("root")!).render(
       v7_relativeSplatPath: true,
     }}
   >
-    <App />
+    <WishlistProvider>
+      <App />
+    </WishlistProvider>
   </BrowserRouter>
 );

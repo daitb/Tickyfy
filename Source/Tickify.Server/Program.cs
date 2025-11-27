@@ -101,7 +101,7 @@ namespace Tickify
             builder.Services.AddScoped<Tickify.Interfaces.Services.ITicketService, Tickify.Services.TicketService>();
             builder.Services.AddScoped<Tickify.Interfaces.Services.IBookingService, Tickify.Services.BookingService>();
             builder.Services.AddScoped<Tickify.Interfaces.Services.IPromoCodeService, Tickify.Services.PromoCodeService>();
-            
+
             // Seat Management Services & Repositories (Week 2 - Seat Selection)
             builder.Services.AddScoped<Tickify.Repositories.ISeatMapRepository, Tickify.Repositories.SeatMapRepository>();
             builder.Services.AddScoped<Tickify.Services.ISeatMapService, Tickify.Services.SeatMapService>();
@@ -110,6 +110,7 @@ namespace Tickify
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IOrganizerService, OrganizerService>();
             builder.Services.AddScoped<ISupportService, SupportService>();
+            builder.Services.AddScoped<IWishlistService, WishlistService>();
 
             // Chat Services & Repositories
             builder.Services.AddScoped<IChatRepository, EfChatRepository>();
@@ -155,7 +156,8 @@ namespace Tickify
                 // [ADD] Cho phép đọc token từ query cho SignalR
                 options.Events = new JwtBearerEvents
                 {
-                    OnMessageReceived = ctx => {
+                    OnMessageReceived = ctx =>
+                    {
                         var accessToken = ctx.Request.Query["access_token"];
                         if (!string.IsNullOrEmpty(accessToken) && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
                             ctx.Token = accessToken;
@@ -170,9 +172,9 @@ namespace Tickify
             // 5. CORS CONFIGURATION
             // Cho phép frontend gọi API (đọc từ appsettings.json)
             // ============================================
-            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                                  ?? new[] { "http://localhost:3000", "http://localhost:5173" };
-            
+
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
@@ -197,8 +199,9 @@ namespace Tickify
                 {
                     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
                     options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-                    // [ADD] Giới hạn độ sâu JSON để tránh reference loop lớn (tuỳ ý)
                     options.JsonSerializerOptions.MaxDepth = 64;
+                    // [ADD] Ensure encoding UTF-8 for Unicode characters
+                    options.JsonSerializerOptions.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
                 });
 
             // ============================================
@@ -320,7 +323,8 @@ namespace Tickify
             // Map SignalR hub
             app.MapHub<Tickify.Hubs.ChatHub>("/hubs/chat");
 
-            await app.RunAsync();
+            app.Run();
         }
     }
 }
+

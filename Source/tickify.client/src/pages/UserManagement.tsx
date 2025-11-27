@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import {
   Table,
   TableBody,
@@ -18,7 +23,15 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Badge } from "../components/ui/badge";
-import { Search, UserCog, CheckCircle, XCircle, Loader2, Ban, Trash2 } from "lucide-react";
+import {
+  Search,
+  UserCog,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Ban,
+  Trash2,
+} from "lucide-react";
 import { userService } from "../services/userService";
 import apiClient from "../services/apiClient";
 import { useTranslation } from "react-i18next";
@@ -57,7 +70,9 @@ interface UserManagementProps {
 export function UserManagement({ onNavigate }: UserManagementProps) {
   const { t } = useTranslation();
   const [users, setUsers] = useState<User[]>([]);
-  const [organizerRequests, setOrganizerRequests] = useState<OrganizerRequest[]>([]);
+  const [organizerRequests, setOrganizerRequests] = useState<
+    OrganizerRequest[]
+  >([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"users" | "requests">("users");
@@ -110,8 +125,8 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
   };
 
   const handleDeleteUser = async (userId: number) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa người dùng này?')) return;
-    
+    if (!confirm("Bạn có chắc chắn muốn xóa người dùng này?")) return;
+
     try {
       await userService.deleteUser(userId);
       await fetchData();
@@ -145,7 +160,9 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const pendingRequests = organizerRequests.filter((r) => r.status === "Pending");
+  const pendingRequests = organizerRequests.filter(
+    (r) => r.status === "Pending"
+  );
 
   return (
     <div className="min-h-screen bg-neutral-50 py-8 px-4">
@@ -184,7 +201,10 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
               <CardTitle>Danh sách người dùng</CardTitle>
               <div className="flex gap-4 mt-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+                  <Search
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                    size={20}
+                  />
                   <Input
                     placeholder="Tìm kiếm theo tên hoặc email..."
                     value={searchTerm}
@@ -212,16 +232,24 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
                   <TableBody>
                     {filteredUsers.map((user) => (
                       <TableRow key={user.userId}>
-                        <TableCell className="font-medium">{user.fullName}</TableCell>
+                        <TableCell className="font-medium">
+                          {user.fullName}
+                        </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
-                          <Badge variant={user.role === "Admin" ? "destructive" : "default"}>
+                          <Badge
+                            variant={
+                              user.role === "Admin" ? "destructive" : "default"
+                            }
+                          >
                             {user.role}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           {user.isEmailVerified ? (
-                            <Badge variant="default" className="bg-green-600">Đã xác thực</Badge>
+                            <Badge variant="default" className="bg-green-600">
+                              Đã xác thực
+                            </Badge>
                           ) : (
                             <Badge variant="secondary">Chưa xác thực</Badge>
                           )}
@@ -232,14 +260,18 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
                         <TableCell>
                           <Select
                             value={user.role}
-                            onValueChange={(value) => handleRoleChange(user.userId, value)}
+                            onValueChange={(value) =>
+                              handleRoleChange(user.userId, Number(value))
+                            }
                           >
                             <SelectTrigger className="w-[140px]">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="User">User</SelectItem>
-                              <SelectItem value="Organizer">Organizer</SelectItem>
+                              <SelectItem value="Organizer">
+                                Organizer
+                              </SelectItem>
                               <SelectItem value="Staff">Staff</SelectItem>
                               <SelectItem value="Admin">Admin</SelectItem>
                             </SelectContent>
@@ -262,7 +294,9 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
             ) : pendingRequests.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
-                  <p className="text-neutral-500">Không có yêu cầu nào đang chờ xử lý</p>
+                  <p className="text-neutral-500">
+                    Không có yêu cầu nào đang chờ xử lý
+                  </p>
                 </CardContent>
               </Card>
             ) : (
@@ -271,9 +305,12 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-lg">{request.organizationName}</CardTitle>
+                        <CardTitle className="text-lg">
+                          {request.organizationName}
+                        </CardTitle>
                         <p className="text-sm text-neutral-600 mt-1">
-                          Người yêu cầu: {request.user.fullName} ({request.user.email})
+                          Người yêu cầu: {request.user.fullName} (
+                          {request.user.email})
                         </p>
                       </div>
                       <Badge>{request.status}</Badge>
@@ -282,27 +319,47 @@ export function UserManagement({ onNavigate }: UserManagementProps) {
                   <CardContent>
                     <div className="grid md:grid-cols-2 gap-4 mb-4">
                       <div>
-                        <p className="text-sm font-medium text-neutral-700">Mã số thuế</p>
-                        <p className="text-sm text-neutral-600">{request.businessRegistration}</p>
+                        <p className="text-sm font-medium text-neutral-700">
+                          Mã số thuế
+                        </p>
+                        <p className="text-sm text-neutral-600">
+                          {request.businessRegistration}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-neutral-700">Số điện thoại</p>
-                        <p className="text-sm text-neutral-600">{request.phoneNumber}</p>
+                        <p className="text-sm font-medium text-neutral-700">
+                          Số điện thoại
+                        </p>
+                        <p className="text-sm text-neutral-600">
+                          {request.phoneNumber}
+                        </p>
                       </div>
                       <div className="md:col-span-2">
-                        <p className="text-sm font-medium text-neutral-700">Địa chỉ</p>
-                        <p className="text-sm text-neutral-600">{request.address}</p>
+                        <p className="text-sm font-medium text-neutral-700">
+                          Địa chỉ
+                        </p>
+                        <p className="text-sm text-neutral-600">
+                          {request.address}
+                        </p>
                       </div>
                       {request.description && (
                         <div className="md:col-span-2">
-                          <p className="text-sm font-medium text-neutral-700">Mô tả</p>
-                          <p className="text-sm text-neutral-600">{request.description}</p>
+                          <p className="text-sm font-medium text-neutral-700">
+                            Mô tả
+                          </p>
+                          <p className="text-sm text-neutral-600">
+                            {request.description}
+                          </p>
                         </div>
                       )}
                       <div>
-                        <p className="text-sm font-medium text-neutral-700">Ngày gửi</p>
+                        <p className="text-sm font-medium text-neutral-700">
+                          Ngày gửi
+                        </p>
                         <p className="text-sm text-neutral-600">
-                          {new Date(request.requestedAt).toLocaleString("vi-VN")}
+                          {new Date(request.requestedAt).toLocaleString(
+                            "vi-VN"
+                          )}
                         </p>
                       </div>
                     </div>

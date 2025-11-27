@@ -76,6 +76,7 @@ apiClient.interceptors.response.use(
     ) {
       // Unauthorized - clear token and redirect to login (but NOT during login attempt)
       localStorage.removeItem("authToken");
+      localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
       window.location.href = "/login";
     } else if (error.response?.status === 403) {

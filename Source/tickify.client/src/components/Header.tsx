@@ -24,10 +24,12 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Badge } from "./ui/badge";
 import { authService } from "../services/authService";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { useWishlistToggle } from "../hooks/useWishlistToggle";
 
 interface HeaderProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -45,6 +47,7 @@ export function Header({
   onSearchOpenChange,
 }: HeaderProps) {
   const { t } = useTranslation();
+  const { wishlistCount } = useWishlistToggle();
   
   const handleEventClick = (eventId: string) => {
     onNavigate("event-detail", eventId);
@@ -66,7 +69,11 @@ export function Header({
         <div className="flex items-center justify-between gap-4 h-20">
           {/* Logo */}
           <button
-            onClick={() => onNavigate("home")}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onNavigate("home");
+            }}
             className="cursor-pointer flex items-center gap-2 hover:opacity-90 transition-opacity flex-shrink-0"
           >
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
@@ -89,7 +96,7 @@ export function Header({
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Language Switcher */}
             <div className="hover:bg-teal-600 rounded-lg">
-              <LanguageSwitcher/>
+              <LanguageSwitcher />
             </div>
 
             {/* Notifications - Only for authenticated users */}
@@ -122,6 +129,7 @@ export function Header({
                 className="bg-white text-teal-600 hover:bg-neutral-100 gap-2 hidden lg:flex"
               >
                 <Plus size={18} />
+                {t("header.becomeOrganizer")}
                 {t("header.createEvent")}
               </Button>
             )}
@@ -164,11 +172,20 @@ export function Header({
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={() => onNavigate("my-tickets")}>
                     <Ticket size={16} className="mr-2" />
-                    {t('header.myTickets')}
+                    {t("header.myTickets")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onNavigate("wishlist")}>
-                    <Heart size={16} className="mr-2" />
-                    Wishlist
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center">
+                        <Heart size={16} className="mr-2" />
+                        Wishlist
+                      </div>
+                      {wishlistCount > 0 && (
+                        <Badge variant="secondary" className="ml-2 h-5 min-w-[20px] flex items-center justify-center px-1.5">
+                          {wishlistCount}
+                        </Badge>
+                      )}
+                    </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onNavigate("waitlist")}>
                     <Clock size={16} className="mr-2" />
@@ -197,7 +214,9 @@ export function Header({
                       </DropdownMenuItem>
                     </>
                   )}
-                  {(userRole === "staff" || userRole === "organizer" || userRole === "admin") && (
+                  {(userRole === "staff" ||
+                    userRole === "organizer" ||
+                    userRole === "admin") && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -221,13 +240,13 @@ export function Header({
                         onClick={() => onNavigate("admin-dashboard")}
                       >
                         <Shield size={16} className="mr-2" />
-                        {t('header.adminPanel')}
+                        {t("header.adminPanel")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onNavigate("user-management")}
                       >
                         <UserCog size={16} className="mr-2" />
-                        {t('header.userManagement')}
+                        {t("header.userManagement")}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -238,24 +257,24 @@ export function Header({
                         onClick={() => onNavigate("become-organizer")}
                       >
                         <Plus size={16} className="mr-2" />
-                        {t('header.becomeOrganizer')}
+                        {t("header.becomeOrganizer")}
                       </DropdownMenuItem>
                     </>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => onNavigate("user-profile")}>
                     <User size={16} className="mr-2" />
-                    {t('header.profile')}
+                    {t("header.profile")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => {
-                      authService.logout();
+                    onClick={async () => {
+                      await authService.logout();
                       // Logout will redirect to /login automatically
                     }}
                     className="text-red-600 focus:text-red-600"
                   >
                     <LogOut size={16} className="mr-2" />
-                    {t('header.logout')}
+                    {t("header.logout")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -266,7 +285,7 @@ export function Header({
                 size="sm"
                 className="bg-white text-teal-600 hover:bg-neutral-100"
               >
-                {t('header.login')}
+                {t("header.login")}
               </Button>
             )}
           </div>

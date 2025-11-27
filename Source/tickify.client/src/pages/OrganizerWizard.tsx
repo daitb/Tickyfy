@@ -52,14 +52,14 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   // Get today's date in YYYY-MM-DD format for date input min attribute
   const getTodayDate = () => {
     const today = new Date();
-    return today.toISOString().split('T')[0];
+    return today.toISOString().split("T")[0];
   };
 
   // Get tomorrow's date (minimum allowed event date)
   const getTomorrowDate = () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0];
+    return tomorrow.toISOString().split("T")[0];
   };
 
   // Get current time in HH:MM format
@@ -242,7 +242,9 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       // ===== STRICT DATE/TIME VALIDATION =====
       const now = new Date();
       const selectedDate = new Date(eventData.date);
-      const selectedDateTime = new Date(`${eventData.date}T${eventData.time}:00`);
+      const selectedDateTime = new Date(
+        `${eventData.date}T${eventData.time}:00`
+      );
 
       // Check if date is in the past
       const today = new Date();
@@ -251,7 +253,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       eventDateOnly.setHours(0, 0, 0, 0);
 
       if (eventDateOnly < today) {
-        alert('Event date cannot be in the past. Please select a future date.');
+        alert("Event date cannot be in the past. Please select a future date.");
         return;
       }
 
@@ -260,7 +262,9 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       minDateTime.setHours(minDateTime.getHours() + 24);
 
       if (selectedDateTime < minDateTime) {
-        alert('Event must be scheduled at least 24 hours in advance.\n\nPlease select a date and time that is at least 1 day from now.');
+        alert(
+          "Event must be scheduled at least 24 hours in advance.\n\nPlease select a date and time that is at least 1 day from now."
+        );
         return;
       }
 
@@ -268,14 +272,16 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       if (eventDateOnly.getTime() === today.getTime()) {
         const currentTime = getCurrentTime();
         if (eventData.time <= currentTime) {
-          alert(`Event time cannot be in the past.\n\nCurrent time: ${currentTime}\nSelected time: ${eventData.time}\n\nPlease select a future time or a future date.`);
+          alert(
+            `Event time cannot be in the past.\n\nCurrent time: ${currentTime}\nSelected time: ${eventData.time}\n\nPlease select a future time or a future date.`
+          );
           return;
         }
       }
 
       // Validate that event has at least one ticket tier
       if (ticketTiers.length === 0 || !ticketTiers[0].name) {
-        alert('Please add at least one ticket tier before publishing.');
+        alert("Please add at least one ticket tier before publishing.");
         return;
       }
 
@@ -291,7 +297,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
       // Prepare event data
       const createEventDto: CreateEventDto = {
-        organizerId: organizerId,
+        organizerId: organizerId!,
         categoryId: categoryId,
         title: eventData.title,
         description: eventData.description,
@@ -346,23 +352,27 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center px-4">
         <div className="max-w-xl w-full bg-white rounded-2xl p-8 text-center shadow-sm">
           <h1 className="text-2xl font-semibold mb-3">
-            {t('organizer.accessRequiredTitle', 'Organizer access required')}
+            {t("organizer.accessRequiredTitle", "Organizer access required")}
           </h1>
           <p className="text-neutral-600 mb-6">
             {t(
-              'organizer.accessRequiredDescription',
-              'You need an approved organizer profile before creating events.'
+              "organizer.accessRequiredDescription",
+              "You need an approved organizer profile before creating events."
             )}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button variant="outline" onClick={() => onNavigate('home')} className="flex-1">
-              {t('common.back')}
+            <Button
+              variant="outline"
+              onClick={() => onNavigate("home")}
+              className="flex-1"
+            >
+              {t("common.back")}
             </Button>
             <Button
-              onClick={() => onNavigate('become-organizer')}
+              onClick={() => onNavigate("become-organizer")}
               className="flex-1 bg-orange-500 hover:bg-orange-600"
             >
-              {t('organizer.becomeOrganizer')}
+              {t("organizer.becomeOrganizer")}
             </Button>
           </div>
         </div>
@@ -564,8 +574,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                     id="date"
                     type="date"
                     min={getTomorrowDate()}
-                    value={eventData.date || ''}
-                    onChange={(e) => handleInputChange('date', e.target.value)}
+                    value={eventData.date || ""}
+                    onChange={(e) => handleInputChange("date", e.target.value)}
                     className="mt-1"
                   />
                   <p className="text-xs text-neutral-500 mt-1">
