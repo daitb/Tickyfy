@@ -129,7 +129,6 @@ export function Header({
                 className="bg-white text-teal-600 hover:bg-neutral-100 gap-2 hidden lg:flex"
               >
                 <Plus size={18} />
-                {t("header.becomeOrganizer")}
                 {t("header.createEvent")}
               </Button>
             )}
@@ -175,21 +174,17 @@ export function Header({
                     {t("header.myTickets")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onNavigate("wishlist")}>
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center">
-                        <Heart size={16} className="mr-2" />
-                        Wishlist
-                      </div>
-                      {wishlistCount > 0 && (
-                        <Badge variant="secondary" className="ml-2 h-5 min-w-[20px] flex items-center justify-center px-1.5">
-                          {wishlistCount}
-                        </Badge>
-                      )}
-                    </div>
+                    <Heart size={16} className="mr-2" />
+                    {t("header.wishlist")}
+                    {wishlistCount > 0 && (
+                      <Badge variant="secondary" className="ml-auto h-5 min-w-[20px] flex items-center justify-center px-1.5">
+                        {wishlistCount}
+                      </Badge>
+                    )}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onNavigate("waitlist")}>
                     <Clock size={16} className="mr-2" />
-                    Waitlist
+                    {t("header.waitlist")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {(userRole === "organizer" || userRole === "admin") && (
@@ -198,19 +193,19 @@ export function Header({
                         onClick={() => onNavigate("organizer-dashboard")}
                       >
                         <LayoutDashboard size={16} className="mr-2" />
-                        Organizer Dashboard
+                        {t("header.organizerDashboard")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onNavigate("event-management")}
                       >
                         <Calendar size={16} className="mr-2" />
-                        Manage Events
+                        {t("header.manageEvents")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onNavigate("create-event")}
                       >
                         <Plus size={16} className="mr-2" />
-                        Create Event
+                        {t("header.createEvent")}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -223,13 +218,13 @@ export function Header({
                         onClick={() => onNavigate("qr-scanner")}
                       >
                         <QrCode size={16} className="mr-2" />
-                        QR Scanner
+                        {t("header.qrScanner")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onNavigate("scan-history")}
                       >
                         <History size={16} className="mr-2" />
-                        Scan History
+                        {t("header.scanHistory")}
                       </DropdownMenuItem>
                     </>
                   )}
