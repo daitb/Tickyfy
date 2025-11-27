@@ -279,7 +279,7 @@ export function Wishlist({ onNavigate }: WishlistProps) {
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />
                     {item.category && (
-                      <Badge className="absolute top-4 left-4 bg-white/90">
+                      <Badge className="absolute top-4 left-4 bg-neutral-100 text-neutral-900 shadow-sm">
                         {item.category}
                       </Badge>
                     )}
