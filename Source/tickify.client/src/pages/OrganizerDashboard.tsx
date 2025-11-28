@@ -50,6 +50,8 @@ import {
   Eye,
   Plus,
   Loader2,
+  Edit,
+  Layout,
 } from "lucide-react";
 import {
   organizerService,
@@ -525,22 +527,34 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex gap-2 justify-end">
-                                {(event.status === "Draft" ||
-                                  event.status === "Rejected") && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() =>
-                                      onNavigate(
-                                        "edit-event",
-                                        String(event.eventId)
-                                      )
-                                    }
-                                    className="text-blue-600 hover:bg-blue-50"
-                                  >
-                                    Edit
-                                  </Button>
-                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    onNavigate(
+                                      "edit-event",
+                                      String(event.eventId)
+                                    )
+                                  }
+                                  className="text-blue-600 hover:bg-blue-50"
+                                >
+                                  <Edit size={14} className="mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    onNavigate(
+                                      "seat-map-builder",
+                                      String(event.eventId)
+                                    )
+                                  }
+                                  className="text-purple-600 hover:bg-purple-50"
+                                >
+                                  <Layout size={14} className="mr-1" />
+                                  Seat Map
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -564,6 +578,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                                     )
                                   }
                                 >
+                                  <Eye size={14} className="mr-1" />
                                   View
                                 </Button>
                               </div>

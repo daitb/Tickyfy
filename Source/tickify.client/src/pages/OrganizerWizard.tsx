@@ -10,8 +10,7 @@ import {
   CheckCircle,
   AlertCircle,
   Tag,
-  Armchair,
-  Eraser,
+  Layout,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -25,14 +24,22 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Switch } from "../components/ui/switch";
-import { Checkbox } from "../components/ui/checkbox";
 import { ProgressSteps } from "../components/ProgressSteps";
 import { cities } from "../mockData";
 import { eventService, type CreateEventDto } from "../services/eventService";
 import { categoryService, type CategoryDto } from "../services/categoryService";
 import { authService } from "../services/authService";
 import { imageService } from "../services/imageService";
+import { seatMapService } from "../services/seatMapService";
+import { seatService } from "../services/seatService";
+import { toast } from "sonner";
 import type { Category, Event, TicketTier } from "../types";
+import {
+  vietnamStadiumTemplates,
+  generateSeatsFromTemplate,
+  convertTemplateZonesToBuilderFormat,
+  type SeatMapTemplate,
+} from "../data/seatMapTemplates";
 
 interface OrganizerWizardProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -45,33 +52,10 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [enableSeatSelection, setEnableSeatSelection] = useState(false);
 
-  // Seat map builder state
-  interface SeatMapZone {
-    id: string;
-    name: string;
-    color: string;
-    price: number;
-  }
-  interface SeatMapSeat {
-    id: string;
-    row: number;
-    col: number;
-    zoneId: string | null;
-    isBlocked: boolean;
-    isWheelchair: boolean;
-    label?: string;
-  }
-  const [seatMapZones, setSeatMapZones] = useState<SeatMapZone[]>([
-    { id: "zone1", name: "Zone 1", color: "#00C16A", price: 0 },
-  ]);
-  const [seatMapSeats, setSeatMapSeats] = useState<SeatMapSeat[]>([]);
-  const [seatMapGridSize, setSeatMapGridSize] = useState({
-    rows: 10,
-    cols: 15,
-  });
-  const [selectedSeatMapZone, setSelectedSeatMapZone] =
-    useState<string>("zone1");
-  const [seatMapTool, setSeatMapTool] = useState<"seat" | "eraser">("seat");
+  // Seat map selection state
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<SeatMapTemplate | null>(null);
+  const [seatMapBuilt, setSeatMapBuilt] = useState(false); // Flag to track if user built map in SeatMapBuilder
 
   const [eventData, setEventData] = useState<Partial<Event>>({
     category: "Music",
@@ -140,6 +124,48 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       }
     };
     loadCategories();
+  }, []);
+
+  // Load wizard state and draft seat map when returning from SeatMapBuilder
+  useEffect(() => {
+    const fromSeatMapBuilder =
+      sessionStorage.getItem("seatMapBuiltInWizard") === "true";
+    const draftData = sessionStorage.getItem("seatMapDraft");
+
+    if (fromSeatMapBuilder && draftData) {
+      try {
+        const parsedData = JSON.parse(draftData);
+        setSeatMapBuilt(true);
+        setSelectedTemplate(null); // Clear template selection if custom map was built
+        // Restore wizard state if exists
+        const wizardState = sessionStorage.getItem("organizerWizardState");
+        if (wizardState) {
+          const state = JSON.parse(wizardState);
+          if (state.currentStep) {
+            setCurrentStep(state.currentStep);
+          }
+          if (state.enableSeatSelection !== undefined) {
+            setEnableSeatSelection(state.enableSeatSelection);
+          }
+          // Don't restore selectedTemplate if custom map was built
+          // (it's already cleared above)
+          if (state.eventData) {
+            setEventData(state.eventData);
+          }
+          if (state.ticketTiers) {
+            setTicketTiers(state.ticketTiers);
+          }
+          if (state.selectedPromoCodes) {
+            setSelectedPromoCodes(state.selectedPromoCodes);
+          }
+        }
+        // Clear flags
+        sessionStorage.removeItem("seatMapBuiltInWizard");
+        sessionStorage.removeItem("seatMapBuilderFromWizard");
+      } catch (error) {
+        console.error("Failed to load draft seat map:", error);
+      }
+    }
   }, []);
 
   const steps = [
@@ -410,28 +436,221 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         `Event "${createdEvent.title}" created successfully! It will be reviewed by admin.`
       );
 
-      // If seat selection is enabled and seat map was created, navigate to seat map builder
-      // Otherwise, go to dashboard
+      // If seat selection is enabled, publish seat map to database
       if (enableSeatSelection && createdEvent.id) {
-        // If seat map was created in wizard, navigate to seat map builder to publish it
-        if (seatMapSeats.length > 0) {
-          // Store seat map data in sessionStorage to restore in seat map builder
-          sessionStorage.setItem(
-            `seatMapData_${createdEvent.id}`,
-            JSON.stringify({
-              zones: seatMapZones,
-              seats: seatMapSeats,
-              gridSize: seatMapGridSize,
-            })
+        const draftData = sessionStorage.getItem("seatMapDraft");
+        const eventIdNum = parseInt(createdEvent.id);
+
+        try {
+          if (selectedTemplate) {
+            // Apply selected template and publish to database
+            const generatedSeats = generateSeatsFromTemplate(selectedTemplate);
+            const templateZones =
+              convertTemplateZonesToBuilderFormat(selectedTemplate);
+
+            // Create seat map in database
+            const layoutConfig = JSON.stringify({
+              seats: generatedSeats,
+              gridSize: {
+                rows: selectedTemplate.rows,
+                cols: selectedTemplate.cols,
+              },
+            });
+
+            const createdSeatMap = await seatMapService.createSeatMap({
+              eventId: eventIdNum,
+              name: `${createdEvent.title} Seat Map`,
+              description: `Generated from template: ${selectedTemplate.name}`,
+              totalRows: selectedTemplate.rows,
+              totalColumns: selectedTemplate.cols,
+              layoutConfig: layoutConfig,
+            });
+            console.log("Seat map created:", createdSeatMap);
+
+            // Create seats for each zone/ticket type
+            const event = await eventService.getEventById(eventIdNum);
+            if (event.ticketTiers && event.ticketTiers.length > 0) {
+              const rowLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+              // Group seats by zone
+              const seatsByZone = new Map<string, typeof generatedSeats>();
+              generatedSeats.forEach((seat) => {
+                const zoneKey = seat.zoneId || "unassigned";
+                if (!seatsByZone.has(zoneKey)) {
+                  seatsByZone.set(zoneKey, []);
+                }
+                seatsByZone.get(zoneKey)!.push(seat);
+              });
+
+              // Create seats for each zone
+              let totalSeatsCreated = 0;
+              for (const [zoneKey, zoneSeats] of seatsByZone.entries()) {
+                const zone = templateZones.find((z) => z.id === zoneKey);
+                const matchingTicketType =
+                  event.ticketTiers.find((tt) =>
+                    tt.name
+                      .toLowerCase()
+                      .includes(zone?.name.toLowerCase() || "")
+                  ) || event.ticketTiers[0];
+
+                const seatItems = zoneSeats.map((seat) => {
+                  const rowLabel =
+                    rowLetters[seat.row % 26] || `Row${seat.row + 1}`;
+                  return {
+                    row: rowLabel,
+                    seatNumber: String(seat.col + 1),
+                    gridRow: seat.row,
+                    gridColumn: seat.col,
+                  };
+                });
+
+                try {
+                  await seatService.bulkCreateSeats({
+                    ticketTypeId: Number(matchingTicketType.id),
+                    seats: seatItems,
+                  });
+                  totalSeatsCreated += seatItems.length;
+                  console.log(
+                    `Created ${seatItems.length} seats for zone ${zoneKey}`
+                  );
+                } catch (seatError: any) {
+                  console.error(
+                    `Failed to create seats for zone ${zoneKey}:`,
+                    seatError.response?.data || seatError.message
+                  );
+                  toast.error(
+                    `Failed to create seats for ${zone?.name || zoneKey}: ${
+                      seatError.response?.data?.message || seatError.message
+                    }`
+                  );
+                }
+              }
+              console.log(`Total seats created: ${totalSeatsCreated}`);
+            }
+
+            toast.success("Seat map published successfully!");
+          } else if (seatMapBuilt && draftData) {
+            // User built custom map - publish to database
+            try {
+              const parsedDraft = JSON.parse(draftData);
+              const layoutConfig = JSON.stringify({
+                seats: parsedDraft.seats,
+                gridSize: parsedDraft.gridSize,
+              });
+
+              // Create seat map in database
+              const createdSeatMap = await seatMapService.createSeatMap({
+                eventId: eventIdNum,
+                name: `${createdEvent.title} Seat Map`,
+                description: "Generated from custom seat map builder",
+                totalRows: parsedDraft.gridSize.rows,
+                totalColumns: parsedDraft.gridSize.cols,
+                layoutConfig: layoutConfig,
+              });
+              console.log("Seat map created:", createdSeatMap);
+
+              // Create seats
+              const event = await eventService.getEventById(eventIdNum);
+              if (event.ticketTiers && event.ticketTiers.length > 0) {
+                const rowLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                const seatsByZone = new Map<string, typeof parsedDraft.seats>();
+
+                parsedDraft.seats.forEach((seat: any) => {
+                  const zoneKey = seat.zoneId || "unassigned";
+                  if (!seatsByZone.has(zoneKey)) {
+                    seatsByZone.set(zoneKey, []);
+                  }
+                  seatsByZone.get(zoneKey)!.push(seat);
+                });
+
+                let totalSeatsCreated = 0;
+                for (const [zoneKey, zoneSeats] of seatsByZone.entries()) {
+                  const zone = parsedDraft.zones.find(
+                    (z: any) => z.id === zoneKey
+                  );
+                  const matchingTicketType =
+                    event.ticketTiers.find((tt) =>
+                      tt.name
+                        .toLowerCase()
+                        .includes(zone?.name.toLowerCase() || "")
+                    ) || event.ticketTiers[0];
+
+                  const seatItems = zoneSeats.map((seat: any) => {
+                    const rowLabel =
+                      rowLetters[seat.row % 26] || `Row${seat.row + 1}`;
+                    return {
+                      row: rowLabel,
+                      seatNumber: String(seat.col + 1),
+                      gridRow: seat.row,
+                      gridColumn: seat.col,
+                    };
+                  });
+
+                  try {
+                    await seatService.bulkCreateSeats({
+                      ticketTypeId: Number(matchingTicketType.id),
+                      seats: seatItems,
+                    });
+                    totalSeatsCreated += seatItems.length;
+                    console.log(
+                      `Created ${seatItems.length} seats for zone ${zoneKey}`
+                    );
+                  } catch (seatError: any) {
+                    console.error(
+                      `Failed to create seats for zone ${zoneKey}:`,
+                      seatError.response?.data || seatError.message
+                    );
+                    toast.error(
+                      `Failed to create seats for ${zone?.name || zoneKey}: ${
+                        seatError.response?.data?.message || seatError.message
+                      }`
+                    );
+                  }
+                }
+                console.log(`Total seats created: ${totalSeatsCreated}`);
+              }
+
+              // Clear draft
+              sessionStorage.removeItem("seatMapDraft");
+              toast.success(`Seat map published successfully!`);
+            } catch (error: any) {
+              console.error("Failed to publish seat map:", error);
+              console.error(
+                "Error details:",
+                error.response?.data || error.message
+              );
+              toast.error(
+                `Event created but failed to publish seat map: ${
+                  error.response?.data?.message ||
+                  error.message ||
+                  "Unknown error"
+                }. You can create it later.`
+              );
+            }
+          } else {
+            // Seat selection enabled but no template/map selected - can create later
+            toast.info(
+              "Event created. You can create a seat map later from the event management page."
+            );
+          }
+        } catch (seatMapError: any) {
+          console.error("Failed to publish seat map:", seatMapError);
+          console.error(
+            "Error details:",
+            seatMapError.response?.data || seatMapError.message
           );
-          onNavigate("seat-map-builder", createdEvent.id);
-        } else {
-          // No seat map created, but seat selection enabled - can create later
-          onNavigate("organizer-dashboard");
+          toast.error(
+            `Event created but failed to publish seat map: ${
+              seatMapError.response?.data?.message ||
+              seatMapError.message ||
+              "Unknown error"
+            }. You can create it later.`
+          );
         }
-      } else {
-        onNavigate("organizer-dashboard");
       }
+
+      // Navigate to dashboard
+      onNavigate("organizer-dashboard");
     } catch (error: any) {
       console.error("Error creating event:", error);
       console.error("Error response data:", error.response?.data);
@@ -875,7 +1094,13 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                       type="checkbox"
                       id="enable-seat-selection"
                       checked={enableSeatSelection}
-                      onChange={(e) => setEnableSeatSelection(e.target.checked)}
+                      onChange={(e) => {
+                        setEnableSeatSelection(e.target.checked);
+                        if (!e.target.checked) {
+                          setSelectedTemplate(null);
+                          setSeatMapBuilt(false);
+                        }
+                      }}
                       className="w-5 h-5 text-orange-500 rounded border-neutral-300 focus:ring-orange-500"
                     />
                     <Label
@@ -888,240 +1113,172 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
                   <p className="text-sm text-neutral-600 mb-4">
                     If enabled, customers will be able to select specific seats
-                    when booking tickets. Create your seat map below or skip to
-                    continue.
+                    when booking tickets. Choose a template or build your own
+                    seat map.
                   </p>
                 </div>
 
                 {enableSeatSelection ? (
-                  <div className="bg-white rounded-xl border border-neutral-200 p-6">
-                    {/* Seat Map Builder UI */}
-                    <div className="space-y-4">
-                      {/* Zones */}
-                      <div>
-                        <Label className="mb-2 block">Zones & Pricing</Label>
-                        <div className="flex gap-2 mb-3">
-                          {seatMapZones.map((zone) => (
-                            <div
-                              key={zone.id}
-                              onClick={() => setSelectedSeatMapZone(zone.id)}
-                              className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 cursor-pointer ${
-                                selectedSeatMapZone === zone.id
-                                  ? "border-orange-500 bg-orange-50"
-                                  : "border-neutral-200"
-                              }`}
-                            >
-                              <div
-                                className="w-4 h-4 rounded"
-                                style={{ backgroundColor: zone.color }}
-                              />
-                              <span className="text-sm">{zone.name}</span>
-                              <span className="text-xs text-neutral-500">
-                                ${zone.price}
-                              </span>
-                            </div>
-                          ))}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const newZone: SeatMapZone = {
-                                id: `zone${seatMapZones.length + 1}`,
-                                name: `Zone ${seatMapZones.length + 1}`,
-                                color: "#00C16A",
-                                price: 0,
-                              };
-                              setSeatMapZones([...seatMapZones, newZone]);
-                              setSelectedSeatMapZone(newZone.id);
-                            }}
-                          >
-                            <Plus size={14} className="mr-1" />
-                            Add Zone
-                          </Button>
-                        </div>
-                      </div>
+                  <div className="space-y-6">
+                    {/* Option 1: Choose Template */}
+                    <div className="bg-white rounded-xl border border-neutral-200 p-6">
+                      <h4 className="text-lg font-semibold mb-4">
+                        1. Choose from Pre-built Templates
+                      </h4>
+                      <p className="text-sm text-neutral-600 mb-4">
+                        Select a seat map template based on real stadiums in
+                        Vietnam
+                      </p>
 
-                      {/* Tools */}
-                      <div>
-                        <Label className="mb-2 block">Tools</Label>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant={
-                              seatMapTool === "seat" ? "default" : "outline"
-                            }
-                            size="sm"
-                            onClick={() => setSeatMapTool("seat")}
-                          >
-                            <Armchair size={16} className="mr-2" />
-                            Add Seat
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={
-                              seatMapTool === "eraser" ? "default" : "outline"
-                            }
-                            size="sm"
-                            onClick={() => setSeatMapTool("eraser")}
-                          >
-                            <Eraser size={16} className="mr-2" />
-                            Erase
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Grid Size */}
-                      <div>
-                        <Label className="mb-2 block">Grid Size</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <Label className="text-xs">Rows</Label>
-                            <Input
-                              type="number"
-                              value={seatMapGridSize.rows}
-                              onChange={(e) =>
-                                setSeatMapGridSize({
-                                  ...seatMapGridSize,
-                                  rows: parseInt(e.target.value) || 10,
-                                })
-                              }
-                              min="5"
-                              max="30"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Columns</Label>
-                            <Input
-                              type="number"
-                              value={seatMapGridSize.cols}
-                              onChange={(e) =>
-                                setSeatMapGridSize({
-                                  ...seatMapGridSize,
-                                  cols: parseInt(e.target.value) || 15,
-                                })
-                              }
-                              min="5"
-                              max="40"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Seat Grid */}
-                      <div>
-                        <Label className="mb-2 block">
-                          Seat Map ({seatMapSeats.length} seats)
-                        </Label>
-                        <div className="bg-neutral-50 rounded-lg p-4 overflow-auto max-h-96">
-                          <div className="mb-4 text-center">
-                            <div className="inline-block bg-neutral-200 px-8 py-3 rounded-lg">
-                              <div className="text-sm text-neutral-700">
-                                STAGE
-                              </div>
-                            </div>
-                          </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {vietnamStadiumTemplates.map((template) => (
                           <div
-                            className="inline-grid gap-1 mx-auto"
-                            style={{
-                              gridTemplateColumns: `repeat(${seatMapGridSize.cols}, 24px)`,
-                            }}
-                          >
-                            {Array.from(
-                              {
-                                length:
-                                  seatMapGridSize.rows * seatMapGridSize.cols,
-                              },
-                              (_, idx) => {
-                                const row = Math.floor(
-                                  idx / seatMapGridSize.cols
-                                );
-                                const col = idx % seatMapGridSize.cols;
-                                const seat = seatMapSeats.find(
-                                  (s) => s.row === row && s.col === col
-                                );
-                                const zone = seat
-                                  ? seatMapZones.find(
-                                      (z) => z.id === seat.zoneId
-                                    )
-                                  : null;
-
-                                return (
-                                  <div
-                                    key={`${row}-${col}`}
-                                    onClick={() => {
-                                      if (seatMapTool === "eraser") {
-                                        setSeatMapSeats(
-                                          seatMapSeats.filter(
-                                            (s) =>
-                                              !(s.row === row && s.col === col)
-                                          )
-                                        );
-                                      } else {
-                                        const existingSeat = seatMapSeats.find(
-                                          (s) => s.row === row && s.col === col
-                                        );
-                                        if (existingSeat) {
-                                          setSeatMapSeats(
-                                            seatMapSeats.map((s) =>
-                                              s.row === row && s.col === col
-                                                ? {
-                                                    ...s,
-                                                    zoneId: selectedSeatMapZone,
-                                                  }
-                                                : s
-                                            )
-                                          );
-                                        } else {
-                                          const newSeat: SeatMapSeat = {
-                                            id: `${row}-${col}`,
-                                            row,
-                                            col,
-                                            zoneId: selectedSeatMapZone,
-                                            isBlocked: false,
-                                            isWheelchair: false,
-                                          };
-                                          setSeatMapSeats([
-                                            ...seatMapSeats,
-                                            newSeat,
-                                          ]);
-                                        }
-                                      }
-                                    }}
-                                    className={`w-6 h-6 rounded cursor-pointer transition-all ${
-                                      seat
-                                        ? "shadow-sm"
-                                        : "bg-neutral-100 border border-neutral-200"
-                                    }`}
-                                    style={{
-                                      backgroundColor: seat
-                                        ? zone?.color || "#E0E0E0"
-                                        : undefined,
-                                    }}
-                                    title={
-                                      seat
-                                        ? `${zone?.name || "No zone"} - Row ${
-                                            row + 1
-                                          }, Col ${col + 1}`
-                                        : `Row ${row + 1}, Col ${col + 1}`
-                                    }
-                                  />
-                                );
+                            key={template.id}
+                            onClick={() => {
+                              // Toggle selection: if already selected, deselect it
+                              if (selectedTemplate?.id === template.id) {
+                                setSelectedTemplate(null);
+                              } else {
+                                setSelectedTemplate(template);
+                                setSeatMapBuilt(false);
                               }
-                            )}
+                            }}
+                            className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                              selectedTemplate?.id === template.id
+                                ? "border-orange-500 bg-orange-50"
+                                : "border-neutral-200 hover:border-orange-300"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <h5 className="font-semibold text-neutral-900">
+                                  {template.name}
+                                </h5>
+                                <p className="text-xs text-neutral-500">
+                                  {template.venue}
+                                </p>
+                              </div>
+                              {selectedTemplate?.id === template.id && (
+                                <CheckCircle
+                                  className="text-orange-500 flex-shrink-0"
+                                  size={20}
+                                />
+                              )}
+                            </div>
+                            <p className="text-xs text-neutral-600 mb-3">
+                              {template.description}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-neutral-500">
+                              <span>{template.rows} rows</span>
+                              <span>×</span>
+                              <span>{template.cols} cols</span>
+                              <span>•</span>
+                              <span>{template.zones.length} zones</span>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-1">
+                              {template.zones.map((zone) => (
+                                <div
+                                  key={zone.id}
+                                  className="flex items-center gap-1 px-2 py-1 bg-neutral-100 rounded text-xs"
+                                >
+                                  <div
+                                    className="w-3 h-3 rounded"
+                                    style={{ backgroundColor: zone.color }}
+                                  />
+                                  <span className="text-neutral-700">
+                                    {zone.name}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                        <p className="text-sm text-blue-700">
-                          <strong>Tip:</strong> Click on the grid to add seats.
-                          Select a zone first, then click to place seats. Use
-                          Erase tool to remove seats. You can continue without
-                          creating a seat map and add it later.
-                        </p>
+                        ))}
                       </div>
                     </div>
+
+                    {/* Option 2: Build Custom Map */}
+                    <div className="bg-white rounded-xl border border-neutral-200 p-6">
+                      <h4 className="text-lg font-semibold mb-4">
+                        2. Build Custom Seat Map
+                      </h4>
+                      <p className="text-sm text-neutral-600 mb-4">
+                        Create your own seat map from scratch with our visual
+                        builder
+                      </p>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        className="w-full"
+                        onClick={() => {
+                          // Clear template selection when building custom map
+                          setSelectedTemplate(null);
+                          // Store wizard state in sessionStorage to restore when returning
+                          sessionStorage.setItem(
+                            "organizerWizardState",
+                            JSON.stringify({
+                              currentStep: 4,
+                              enableSeatSelection: true,
+                              selectedTemplate: null, // Clear template when building custom
+                              seatMapBuilt: true, // Mark that we're building custom map
+                              eventData: eventData,
+                              ticketTiers: ticketTiers,
+                              selectedPromoCodes: selectedPromoCodes,
+                            })
+                          );
+                          // Store flag to indicate we're in wizard mode
+                          sessionStorage.setItem(
+                            "seatMapBuilderFromWizard",
+                            "true"
+                          );
+                          // Navigate to seat map builder (draft mode, no eventId needed)
+                          onNavigate("seat-map-builder", "draft");
+                        }}
+                      >
+                        <Layout size={20} className="mr-2" />
+                        Open Seat Map Builder
+                      </Button>
+
+                      {seatMapBuilt && (
+                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <p className="text-sm text-green-700 flex items-center gap-2">
+                            <CheckCircle size={16} />
+                            Seat map has been built. You can continue to the
+                            next steps.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Selected Template Info */}
+                    {selectedTemplate && (
+                      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm text-blue-700 flex items-center gap-2 mb-2">
+                              <CheckCircle size={16} />
+                              <strong>Template Selected:</strong>{" "}
+                              {selectedTemplate.name}
+                            </p>
+                            <p className="text-xs text-blue-600">
+                              This template will be applied when you publish the
+                              event. You can customize it later in the seat map
+                              builder.
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedTemplate(null)}
+                            className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+                          >
+                            <X size={16} />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
@@ -1370,9 +1527,22 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                       {enableSeatSelection ? "✓ Enabled" : "Disabled"}
                     </span>
                     {enableSeatSelection && (
-                      <p className="text-xs text-neutral-500 mt-1">
-                        Seat map can be created after event is published
-                      </p>
+                      <div className="mt-2 space-y-1">
+                        {selectedTemplate ? (
+                          <p className="text-xs text-neutral-600">
+                            <strong>Template:</strong> {selectedTemplate.name}
+                          </p>
+                        ) : seatMapBuilt ? (
+                          <p className="text-xs text-neutral-600">
+                            <strong>Custom map:</strong> Built in seat map
+                            builder
+                          </p>
+                        ) : (
+                          <p className="text-xs text-neutral-500">
+                            Seat map will be created after event is published
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

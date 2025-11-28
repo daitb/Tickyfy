@@ -186,11 +186,9 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
         onNavigate("event-detail", eventId);
         break;
       case "edit":
-        // Navigate to edit page (would need to create this)
-        onNavigate("organizer-wizard", eventId);
+        onNavigate("edit-event", eventId);
         break;
       case "analytics":
-        // Navigate to analytics page
         onNavigate("event-analytics", eventId);
         break;
       case "duplicate":

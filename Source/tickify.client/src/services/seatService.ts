@@ -10,7 +10,7 @@ export interface SeatDto {
   fullSeatCode: string;
   gridRow?: number;
   gridColumn?: number;
-  status: 'Available' | 'Selected' | 'Sold' | 'Blocked' | 'Reserved';
+  status: "Available" | "Selected" | "Sold" | "Blocked" | "Reserved";
   isBlocked: boolean;
   blockedReason?: string;
   reservedByUserId?: number;
@@ -69,7 +69,9 @@ class SeatService {
   /**
    * GET /api/seats/ticket-type/{ticketTypeId} - Get seat availability by ticket type
    */
-  async getSeatAvailabilityByTicketType(ticketTypeId: number): Promise<SeatAvailabilityDto> {
+  async getSeatAvailabilityByTicketType(
+    ticketTypeId: number
+  ): Promise<SeatAvailabilityDto> {
     const response = await apiClient.get<ApiResponse<SeatAvailabilityDto>>(
       `/seats/ticket-type/${ticketTypeId}`
     );
@@ -81,7 +83,7 @@ class SeatService {
    */
   async bulkCreateSeats(data: BulkCreateSeatDto): Promise<SeatDto[]> {
     const response = await apiClient.post<ApiResponse<SeatDto[]>>(
-      '/seats/bulk-create',
+      "/seats/bulk-create",
       data
     );
     return response.data.data;
@@ -123,7 +125,7 @@ class SeatService {
    */
   async checkSeatAvailability(seatIds: number[]): Promise<boolean> {
     const response = await apiClient.post<ApiResponse<boolean>>(
-      '/seats/check-availability',
+      "/seats/check-availability",
       seatIds
     );
     return response.data.data;
@@ -134,17 +136,15 @@ class SeatService {
    */
   groupSeatsByRow(seats: SeatDto[]): Map<string, SeatDto[]> {
     const grouped = new Map<string, SeatDto[]>();
-    seats.forEach(seat => {
+    seats.forEach((seat) => {
       if (!grouped.has(seat.row)) {
         grouped.set(seat.row, []);
       }
       grouped.get(seat.row)!.push(seat);
     });
     // Sort seats in each row by seat number
-    grouped.forEach(rowSeats => {
-      rowSeats.sort((a, b) => 
-        parseInt(a.seatNumber) - parseInt(b.seatNumber)
-      );
+    grouped.forEach((rowSeats) => {
+      rowSeats.sort((a, b) => parseInt(a.seatNumber) - parseInt(b.seatNumber));
     });
     return grouped;
   }
@@ -154,7 +154,7 @@ class SeatService {
    */
   groupSeatsByTicketType(seats: SeatDto[]): Map<number, SeatDto[]> {
     const grouped = new Map<number, SeatDto[]>();
-    seats.forEach(seat => {
+    seats.forEach((seat) => {
       if (!grouped.has(seat.ticketTypeId)) {
         grouped.set(seat.ticketTypeId, []);
       }
@@ -165,4 +165,3 @@ class SeatService {
 }
 
 export const seatService = new SeatService();
-

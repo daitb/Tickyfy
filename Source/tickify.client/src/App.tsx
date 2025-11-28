@@ -118,6 +118,7 @@ export default function App() {
     if (path === "/organizer-dashboard") return "organizer-dashboard";
     if (path === "/event-management") return "event-management";
     if (path.startsWith("/event-analytics/")) return "event-analytics";
+    if (path.startsWith("/edit-event/")) return "edit-event";
     if (path === "/edit-event") return "edit-event";
     if (path === "/scan-history") return "scan-history";
     if (path === "/promo-codes") return "promo-codes";
@@ -286,9 +287,16 @@ export default function App() {
         path = `/transfer-ticket/${id}`;
       } else if (page === "event-analytics") {
         path = `/event-analytics/${id}`;
-      } else if (page === "seat-map-builder") {
+      } else if (page === "edit-event") {
         setSelectedEventId(id);
-        path = `/seat-map-builder/${id}`;
+        path = `/edit-event/${id}`;
+      } else if (page === "seat-map-builder") {
+        if (id === "draft") {
+          path = `/seat-map-builder/draft`;
+        } else {
+          setSelectedEventId(id);
+          path = `/seat-map-builder/${id}`;
+        }
       } else {
         setSelectedEventId(id);
       }
@@ -436,8 +444,19 @@ export default function App() {
           />
         );
 
-      case "edit-event":
-        return <EditEvent onNavigate={handleNavigate} />;
+      case "edit-event": {
+        // Extract eventId from URL
+        const eventIdFromUrl = location.pathname.startsWith("/edit-event/")
+          ? location.pathname.split("/edit-event/")[1]?.split("/")[0]
+          : selectedEventId;
+
+        return (
+          <EditEvent
+            eventId={eventIdFromUrl || undefined}
+            onNavigate={handleNavigate}
+          />
+        );
+      }
 
       case "scan-history":
         return <ScanHistory onNavigate={handleNavigate} />;
@@ -476,14 +495,24 @@ export default function App() {
       case "seat-map-builder": {
         // Extract eventId from URL or use selectedEventId
         const eventIdFromUrl = location.pathname.match(
-          /seat-map-builder\/(\d+)/
+          /seat-map-builder\/(.+)$/
         )
           ? location.pathname.split("/seat-map-builder/")[1]?.split("/")[0]
           : selectedEventId;
 
+        // Handle draft mode (when building map from wizard before event is created)
+        const isDraft =
+          eventIdFromUrl === "draft" || eventIdFromUrl === undefined;
+
         return (
           <SeatMapBuilder
-            eventId={eventIdFromUrl ? parseInt(eventIdFromUrl) : undefined}
+            eventId={
+              isDraft
+                ? "draft"
+                : eventIdFromUrl
+                ? parseInt(eventIdFromUrl)
+                : undefined
+            }
             onNavigate={handleNavigate}
           />
         );

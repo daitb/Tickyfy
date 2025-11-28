@@ -55,6 +55,7 @@ import {
 import { toast } from "sonner";
 import { seatService } from "../services/seatService";
 import { eventService } from "../services/eventService";
+import { seatMapService } from "../services/seatMapService";
 
 interface SeatMapBuilderProps {
   eventId?: string | number;
@@ -156,40 +157,183 @@ export function SeatMapBuilder({ eventId, onNavigate }: SeatMapBuilderProps) {
 
   // Load event name and seat map data when eventId is provided
   useEffect(() => {
-    if (eventId) {
+    const isDraftMode = eventId === "draft" || eventId === undefined;
+    const fromWizard =
+      sessionStorage.getItem("seatMapBuilderFromWizard") === "true";
+
+    if (isDraftMode && fromWizard) {
+      // Draft mode from wizard - load saved draft if exists
+      setEventName("Draft Event - Seat Map Builder");
+      const draftData = sessionStorage.getItem("seatMapDraft");
+      if (draftData) {
+        try {
+          const parsedData = JSON.parse(draftData);
+          if (parsedData.zones && parsedData.zones.length > 0) {
+            setZones(
+              parsedData.zones.map((z: any) => ({
+                ...z,
+                capacity: 0,
+              }))
+            );
+            if (parsedData.zones[0]?.id) {
+              setSelectedZone(parsedData.zones[0].id);
+            }
+          }
+          if (parsedData.seats && parsedData.seats.length > 0) {
+            setSeats(parsedData.seats);
+          }
+          if (parsedData.gridSize) {
+            setGridSize(parsedData.gridSize);
+          }
+          toast.success("Draft seat map loaded");
+        } catch (parseError) {
+          console.error("Failed to parse draft seat map data:", parseError);
+        }
+      }
+      setIsLoading(false);
+    } else if (eventId && eventId !== "draft") {
       const loadEvent = async () => {
         try {
           setIsLoading(true);
-          const event = await eventService.getEventById(Number(eventId));
+          const numericEventId =
+            typeof eventId === "number" ? eventId : Number(eventId);
+
+          if (isNaN(numericEventId)) {
+            throw new Error("Invalid event ID");
+          }
+
+          const event = await eventService.getEventById(numericEventId);
           setEventName(event.title);
 
-          // Check if there's seat map data from wizard
-          const savedData = sessionStorage.getItem(`seatMapData_${eventId}`);
-          if (savedData) {
-            try {
-              const parsedData = JSON.parse(savedData);
-              if (parsedData.zones && parsedData.zones.length > 0) {
-                setZones(
-                  parsedData.zones.map((z: any) => ({
-                    ...z,
-                    capacity: 0,
-                  }))
+          // Try to load existing seat map from API first
+          try {
+            console.log("Loading seat map for event:", numericEventId);
+            const seatMap = await seatMapService.getSeatMapByEvent(
+              String(numericEventId)
+            );
+            console.log("Seat map loaded:", seatMap);
+
+            if (seatMap) {
+              // Set grid size first
+              setGridSize({
+                rows: seatMap.totalRows || 15,
+                cols: seatMap.totalColumns || 20,
+              });
+
+              // Load zones from seat map
+              if (seatMap.zones && seatMap.zones.length > 0) {
+                const loadedZones: Zone[] = seatMap.zones.map((zone: any) => ({
+                  id: `zone${zone.id}`,
+                  name: zone.name || `Zone ${zone.id}`,
+                  color: zone.color || "#00C16A",
+                  price: Number(zone.zonePrice) || 0,
+                  capacity: zone.capacity || 0,
+                }));
+                setZones(loadedZones);
+                if (loadedZones[0]?.id) {
+                  setSelectedZone(loadedZones[0].id);
+                }
+                console.log("Loaded zones:", loadedZones);
+              } else {
+                // If no zones in seat map, use default zones
+                console.log("No zones found in seat map, using default zones");
+              }
+
+              // Load seats from API
+              try {
+                console.log("Loading seats for event:", numericEventId);
+                const seatsData = await seatService.getSeatsByEvent(
+                  numericEventId
                 );
-                if (parsedData.zones[0]?.id) {
-                  setSelectedZone(parsedData.zones[0].id);
+                console.log("Seats loaded:", seatsData?.length || 0, seatsData);
+
+                if (seatsData && seatsData.length > 0) {
+                  // Convert API seats to grid format
+                  const gridSeats: GridSeat[] = seatsData.map((seat) => ({
+                    id: `${seat.gridRow || 0}-${seat.gridColumn || 0}`,
+                    row: seat.gridRow || 0,
+                    col: seat.gridColumn || 0,
+                    zoneId: seat.seatZoneId ? `zone${seat.seatZoneId}` : null,
+                    isBlocked: seat.isBlocked || seat.status === "Blocked",
+                    isWheelchair: false, // TODO: Add wheelchair field to API
+                    label: seat.fullSeatCode || `${seat.row}${seat.seatNumber}`,
+                  }));
+
+                  setSeats(gridSeats);
+                  console.log("Converted grid seats:", gridSeats.length);
+                } else {
+                  console.log(
+                    "No seats found for this event, but seat map exists"
+                  );
+                  setSeats([]);
+                  toast.info(
+                    "Seat map loaded but no seats found. You can add seats now."
+                  );
+                }
+              } catch (seatsError: any) {
+                console.error("Error loading seats:", seatsError);
+                if (seatsError.response?.status === 404) {
+                  console.log("No seats found for this event");
+                  setSeats([]);
+                  toast.info(
+                    "Seat map loaded but no seats found. You can add seats now."
+                  );
+                } else {
+                  toast.warning(
+                    "Seat map loaded but could not load seats. You can still edit the map."
+                  );
+                  setSeats([]);
                 }
               }
-              if (parsedData.seats && parsedData.seats.length > 0) {
-                setSeats(parsedData.seats);
+
+              toast.success("Seat map loaded from database");
+            } else {
+              console.log("Seat map is null or undefined");
+            }
+          } catch (seatMapError: any) {
+            console.error("Error loading seat map:", seatMapError);
+            // If seat map doesn't exist (404), that's okay - user can create one
+            if (seatMapError.response?.status === 404) {
+              console.log(
+                "No existing seat map found for this event. User can create one."
+              );
+              toast.info("No seat map found. You can create one now.");
+            } else {
+              console.error("Error loading seat map:", seatMapError);
+              toast.error("Failed to load seat map. You can still create one.");
+            }
+
+            // Check sessionStorage for wizard data (fallback)
+            const savedData = sessionStorage.getItem(`seatMapData_${eventId}`);
+            if (savedData) {
+              try {
+                const parsedData = JSON.parse(savedData);
+                if (parsedData.zones && parsedData.zones.length > 0) {
+                  setZones(
+                    parsedData.zones.map((z: any) => ({
+                      ...z,
+                      capacity: 0,
+                    }))
+                  );
+                  if (parsedData.zones[0]?.id) {
+                    setSelectedZone(parsedData.zones[0].id);
+                  }
+                }
+                if (parsedData.seats && parsedData.seats.length > 0) {
+                  setSeats(parsedData.seats);
+                }
+                if (parsedData.gridSize) {
+                  setGridSize(parsedData.gridSize);
+                }
+                // Clear the saved data after loading
+                sessionStorage.removeItem(`seatMapData_${eventId}`);
+                toast.success("Seat map data loaded from wizard");
+              } catch (parseError) {
+                console.error(
+                  "Failed to parse saved seat map data:",
+                  parseError
+                );
               }
-              if (parsedData.gridSize) {
-                setGridSize(parsedData.gridSize);
-              }
-              // Clear the saved data after loading
-              sessionStorage.removeItem(`seatMapData_${eventId}`);
-              toast.success("Seat map data loaded from wizard");
-            } catch (parseError) {
-              console.error("Failed to parse saved seat map data:", parseError);
             }
           }
         } catch (error) {
@@ -205,6 +349,7 @@ export function SeatMapBuilder({ eventId, onNavigate }: SeatMapBuilderProps) {
       loadEvent();
     } else {
       setEventName("No event selected");
+      setIsLoading(false);
     }
   }, [eventId]);
 
@@ -391,7 +536,26 @@ export function SeatMapBuilder({ eventId, onNavigate }: SeatMapBuilderProps) {
   };
 
   const handleSave = async () => {
-    if (!eventId) {
+    const isDraftMode = eventId === "draft" || eventId === undefined;
+    const fromWizard =
+      sessionStorage.getItem("seatMapBuilderFromWizard") === "true";
+
+    if (isDraftMode && fromWizard) {
+      // Save draft to sessionStorage
+      sessionStorage.setItem(
+        "seatMapDraft",
+        JSON.stringify({
+          zones: zones,
+          seats: seats,
+          gridSize: gridSize,
+          selectedZone: selectedZone,
+        })
+      );
+      toast.success("Draft seat map saved");
+      return;
+    }
+
+    if (!eventId || eventId === "draft") {
       toast.error("Please select an event first");
       return;
     }
@@ -410,7 +574,31 @@ export function SeatMapBuilder({ eventId, onNavigate }: SeatMapBuilderProps) {
   };
 
   const handlePublish = async () => {
-    if (!eventId) {
+    const isDraftMode = eventId === "draft" || eventId === undefined;
+    const fromWizard =
+      sessionStorage.getItem("seatMapBuilderFromWizard") === "true";
+
+    if (isDraftMode && fromWizard) {
+      // Save draft and continue to next step in wizard
+      sessionStorage.setItem(
+        "seatMapDraft",
+        JSON.stringify({
+          zones: zones,
+          seats: seats,
+          gridSize: gridSize,
+          selectedZone: selectedZone,
+        })
+      );
+      sessionStorage.setItem("seatMapBuiltInWizard", "true");
+      toast.success("Seat map saved! Returning to wizard...");
+      // Navigate back to wizard
+      setTimeout(() => {
+        onNavigate("organizer-wizard");
+      }, 1000);
+      return;
+    }
+
+    if (!eventId || eventId === "draft") {
       toast.error("Please select an event first");
       return;
     }
@@ -422,10 +610,178 @@ export function SeatMapBuilder({ eventId, onNavigate }: SeatMapBuilderProps) {
 
     try {
       setIsLoading(true);
-      // Convert grid seats to API format and create seats
-      // This is a placeholder - you'll need to implement based on your API structure
-      // For now, we'll just show success
-      toast.success("Seat map published successfully!");
+      const eventIdNum = Number(eventId);
+
+      // 1. Get event to access ticket types
+      const event = await eventService.getEventById(eventIdNum);
+      if (!event.ticketTiers || event.ticketTiers.length === 0) {
+        toast.error(
+          "Event must have at least one ticket type to create seat map"
+        );
+        return;
+      }
+
+      // 2. Create or update seat map
+      const layoutConfig = JSON.stringify({ seats, gridSize });
+      let seatMapId: number;
+
+      try {
+        // Check if seat map already exists
+        const existingSeatMap = await seatMapService.getSeatMapByEvent(
+          String(eventIdNum)
+        );
+        if (existingSeatMap) {
+          // Update existing seat map
+          console.log("Updating existing seat map:", existingSeatMap.id);
+          const updated = await seatMapService.updateSeatMap(
+            String(existingSeatMap.id),
+            {
+              name: `${eventName || event.title} Seat Map`,
+              layoutConfig: layoutConfig,
+              totalRows: gridSize.rows,
+              totalColumns: gridSize.cols,
+            }
+          );
+          seatMapId = updated.id;
+          console.log("Seat map updated:", updated);
+
+          // Delete existing seats before creating new ones to avoid duplicates
+          try {
+            const existingSeats = await seatService.getSeatsByEvent(eventIdNum);
+            console.log(
+              `Found ${existingSeats.length} existing seats, will be replaced with new seats`
+            );
+            // Note: We'll create new seats below, which may cause duplicates if backend doesn't handle it
+            // The backend should handle duplicate prevention or we need a delete endpoint
+          } catch (deleteError: any) {
+            console.warn("Could not check existing seats:", deleteError);
+          }
+
+          toast.success("Seat map updated!");
+        } else {
+          // Create new seat map
+          const created = await seatMapService.createSeatMap({
+            eventId: eventIdNum,
+            name: `${eventName || event.title} Seat Map`,
+            description: "Generated from seat map builder",
+            totalRows: gridSize.rows,
+            totalColumns: gridSize.cols,
+            layoutConfig: layoutConfig,
+          });
+          seatMapId = created.id;
+          toast.success("Seat map created!");
+        }
+      } catch (seatMapError: any) {
+        console.error("Failed to create/update seat map:", seatMapError);
+        console.error(
+          "Error details:",
+          seatMapError.response?.data || seatMapError.message
+        );
+        toast.error(
+          `Failed to create seat map: ${
+            seatMapError.response?.data?.message ||
+            seatMapError.message ||
+            "Unknown error"
+          }`
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Convert grid seats to API format and group by zone
+      const rowLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const seatsByZone = new Map<string, GridSeat[]>();
+
+      seats.forEach((seat) => {
+        const zoneKey = seat.zoneId || "unassigned";
+        if (!seatsByZone.has(zoneKey)) {
+          seatsByZone.set(zoneKey, []);
+        }
+        seatsByZone.get(zoneKey)!.push(seat);
+      });
+
+      // 4. Create seats for each zone/ticket type
+      let totalSeatsCreated = 0;
+
+      for (const [zoneKey, zoneSeats] of seatsByZone.entries()) {
+        if (zoneKey === "unassigned" || !zoneKey) {
+          // Assign to first ticket type if no zone
+          const firstTicketType = event.ticketTiers[0];
+          const seatItems = zoneSeats.map((seat) => {
+            const rowLabel = rowLetters[seat.row % 26] || `Row${seat.row + 1}`;
+            return {
+              row: seat.label?.split(/\d/)[0] || rowLabel,
+              seatNumber: seat.label?.match(/\d+/)?.[0] || String(seat.col + 1),
+              gridRow: seat.row,
+              gridColumn: seat.col,
+            };
+          });
+
+          try {
+            await seatService.bulkCreateSeats({
+              ticketTypeId: Number(firstTicketType.id),
+              seats: seatItems,
+            });
+            totalSeatsCreated += seatItems.length;
+            console.log(
+              `Created ${seatItems.length} seats for unassigned zone`
+            );
+          } catch (error: any) {
+            console.error(`Failed to create seats for zone ${zoneKey}:`, error);
+            console.error(
+              "Error details:",
+              error.response?.data || error.message
+            );
+            toast.error(
+              `Failed to create seats: ${
+                error.response?.data?.message || error.message
+              }`
+            );
+          }
+        } else {
+          // Find matching ticket type by zone name or use first one
+          const zone = zones.find((z) => z.id === zoneKey);
+          const matchingTicketType =
+            event.ticketTiers.find((tt) =>
+              tt.name.toLowerCase().includes(zone?.name.toLowerCase() || "")
+            ) || event.ticketTiers[0];
+
+          const seatItems = zoneSeats.map((seat) => {
+            const rowLabel = rowLetters[seat.row % 26] || `Row${seat.row + 1}`;
+            return {
+              row: seat.label?.split(/\d/)[0] || rowLabel,
+              seatNumber: seat.label?.match(/\d+/)?.[0] || String(seat.col + 1),
+              gridRow: seat.row,
+              gridColumn: seat.col,
+            };
+          });
+
+          try {
+            await seatService.bulkCreateSeats({
+              ticketTypeId: Number(matchingTicketType.id),
+              seats: seatItems,
+            });
+            totalSeatsCreated += seatItems.length;
+            console.log(
+              `Created ${seatItems.length} seats for zone ${zoneKey} (${zone?.name})`
+            );
+          } catch (error: any) {
+            console.error(`Failed to create seats for zone ${zoneKey}:`, error);
+            console.error(
+              "Error details:",
+              error.response?.data || error.message
+            );
+            toast.error(
+              `Failed to create seats for ${zone?.name || zoneKey}: ${
+                error.response?.data?.message || error.message
+              }`
+            );
+          }
+        }
+      }
+
+      toast.success(`Seat map published! ${totalSeatsCreated} seats created.`);
+      onNavigate("edit-event", String(eventId));
     } catch (error: any) {
       console.error("Failed to publish seat map:", error);
       toast.error(
@@ -446,7 +802,26 @@ export function SeatMapBuilder({ eventId, onNavigate }: SeatMapBuilderProps) {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  if (eventId) {
+                  const isDraftMode =
+                    eventId === "draft" || eventId === undefined;
+                  const fromWizard =
+                    sessionStorage.getItem("seatMapBuilderFromWizard") ===
+                    "true";
+
+                  if (isDraftMode && fromWizard) {
+                    // Save draft before going back
+                    sessionStorage.setItem(
+                      "seatMapDraft",
+                      JSON.stringify({
+                        zones: zones,
+                        seats: seats,
+                        gridSize: gridSize,
+                        selectedZone: selectedZone,
+                      })
+                    );
+                    // Navigate back to wizard
+                    onNavigate("organizer-wizard");
+                  } else if (eventId && eventId !== "draft") {
                     onNavigate("edit-event", String(eventId));
                   } else {
                     onNavigate("organizer-dashboard");
@@ -527,19 +902,38 @@ export function SeatMapBuilder({ eventId, onNavigate }: SeatMapBuilderProps) {
                 Preview
               </Button>
 
-              <Button variant="outline" size="sm" onClick={handleSave}>
-                <Save size={16} className="mr-2" />
-                Save Draft
-              </Button>
-
-              <Button
-                className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
-                size="sm"
-                onClick={handlePublish}
-              >
-                <Check size={16} className="mr-2" />
-                Publish
-              </Button>
+              {(eventId === "draft" || !eventId) &&
+              sessionStorage.getItem("seatMapBuilderFromWizard") === "true" ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={handleSave}>
+                    <Save size={16} className="mr-2" />
+                    Save Draft
+                  </Button>
+                  <Button
+                    className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
+                    size="sm"
+                    onClick={handlePublish}
+                  >
+                    <Check size={16} className="mr-2" />
+                    Continue to Next Step
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={handleSave}>
+                    <Save size={16} className="mr-2" />
+                    Save Draft
+                  </Button>
+                  <Button
+                    className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
+                    size="sm"
+                    onClick={handlePublish}
+                  >
+                    <Check size={16} className="mr-2" />
+                    Publish
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

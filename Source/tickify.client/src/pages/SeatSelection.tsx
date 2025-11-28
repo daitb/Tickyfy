@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   ZoomIn,
@@ -13,13 +13,18 @@ import {
   X,
   ChevronDown,
   Loader2,
-  AlertCircle
-} from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Input } from '../components/ui/input';
-import { Alert, AlertDescription } from '../components/ui/alert';
+  AlertCircle,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Input } from "../components/ui/input";
+import { Alert, AlertDescription } from "../components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -27,11 +32,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/ui/dialog';
-import { seatService } from '../services/seatService';
-import type { SeatDto } from '../services/seatService';
-import { useBooking } from '../contexts/BookingContext';
-import { toast } from 'sonner';
+} from "../components/ui/dialog";
+import { seatService } from "../services/seatService";
+import type { SeatDto } from "../services/seatService";
+import { useBooking } from "../contexts/BookingContext";
+import { toast } from "sonner";
 
 interface SeatSelectionProps {
   eventId?: number;
@@ -41,15 +46,15 @@ interface SeatSelectionProps {
 export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
   const { t } = useTranslation();
   const { bookingState, addSeat, removeSeat, setSeats } = useBooking();
-  
+
   const [seats, setSeatsData] = useState<SeatDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredSeat, setHoveredSeat] = useState<SeatDto | null>(null);
-  const [selectedZone, setSelectedZone] = useState<string>('all');
+  const [selectedZone, setSelectedZone] = useState<string>("all");
   const [zoom, setZoom] = useState(1);
   const [showLegend, setShowLegend] = useState(true);
-  const [searchSeat, setSearchSeat] = useState('');
+  const [searchSeat, setSearchSeat] = useState("");
   const [timeRemaining, setTimeRemaining] = useState(600); // 10 minutes
   const [showTimerWarning, setShowTimerWarning] = useState(false);
   const [keepTogether, setKeepTogether] = useState(true);
@@ -59,8 +64,18 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
 
   // Fetch seats when component mounts
   useEffect(() => {
+    console.log(
+      "SeatSelection mounted with eventId:",
+      eventId,
+      "bookingState.eventId:",
+      bookingState.eventId,
+      "currentEventId:",
+      currentEventId
+    );
+
     if (!currentEventId) {
-      setError('No event selected');
+      console.warn("No eventId provided to SeatSelection");
+      setError("No event selected");
       setLoading(false);
       return;
     }
@@ -68,20 +83,39 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
     const fetchSeats = async () => {
       try {
         setLoading(true);
+        console.log("Fetching seats for event:", currentEventId);
         const fetchedSeats = await seatService.getSeatsByEvent(currentEventId);
-        setSeatsData(fetchedSeats);
+        // Ensure we always set an array, even if API returns undefined/null
+        const safeFetchedSeats = Array.isArray(fetchedSeats)
+          ? fetchedSeats
+          : [];
+        console.log(
+          "Fetched seats:",
+          safeFetchedSeats.length,
+          safeFetchedSeats
+        );
+
+        if (safeFetchedSeats.length === 0) {
+          console.warn("No seats found for event:", currentEventId);
+          // Don't show toast here, let the empty state UI handle it
+        }
+
+        setSeatsData(safeFetchedSeats);
         setError(null);
       } catch (err: any) {
-        console.error('Error fetching seats:', err);
-        setError(err.response?.data?.message || 'Failed to load seats');
-        toast.error('Failed to load seat map');
+        console.error("Error fetching seats:", err);
+        const errorMessage =
+          err.response?.data?.message || err.message || "Failed to load seats";
+        setError(errorMessage);
+        setSeatsData([]); // Set empty array on error
+        toast.error(`Failed to load seat map: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
     };
 
     fetchSeats();
-  }, [currentEventId]);
+  }, [currentEventId, eventId, bookingState.eventId]);
 
   // Countdown timer for seat hold
   useEffect(() => {
@@ -92,7 +126,9 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
         if (prev <= 1) {
           // Release seats
           setSeats([]);
-          toast.warning('Your seat selection has expired. Please select seats again.');
+          toast.warning(
+            "Your seat selection has expired. Please select seats again."
+          );
           return 600;
         }
 
@@ -110,13 +146,19 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handleSeatClick = async (seat: SeatDto) => {
     // Can't select sold, blocked, or reserved seats
-    if (seat.status === 'Sold' || seat.isBlocked || seat.status === 'Reserved') {
-      toast.error(`This seat is ${seat.status.toLowerCase()} and cannot be selected`);
+    if (
+      seat.status === "Sold" ||
+      seat.isBlocked ||
+      seat.status === "Reserved"
+    ) {
+      toast.error(
+        `This seat is ${seat.status.toLowerCase()} and cannot be selected`
+      );
       return;
     }
 
@@ -128,7 +170,7 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
       // Update local state
       setSeatsData((prev) =>
         prev.map((s) =>
-          s.id === seat.id ? { ...s, status: 'Available' as const } : s
+          s.id === seat.id ? { ...s, status: "Available" as const } : s
         )
       );
     } else {
@@ -137,7 +179,7 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
       // Update local state
       setSeatsData((prev) =>
         prev.map((s) =>
-          s.id === seat.id ? { ...s, status: 'Selected' as const } : s
+          s.id === seat.id ? { ...s, status: "Selected" as const } : s
         )
       );
     }
@@ -145,8 +187,9 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
 
   const handleAutoSelect = () => {
     // Find best available seats
-    const availableSeats = seats.filter(
-      (s) => s.status === 'Available' && !s.isBlocked
+    const safeSeats = Array.isArray(seats) ? seats : [];
+    const availableSeats = safeSeats.filter(
+      (s) => s.status === "Available" && !s.isBlocked
     );
 
     if (availableSeats.length >= 2) {
@@ -155,38 +198,43 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
         addSeat(seat);
         setSeatsData((prev) =>
           prev.map((s) =>
-            s.id === seat.id ? { ...s, status: 'Selected' as const } : s
+            s.id === seat.id ? { ...s, status: "Selected" as const } : s
           )
         );
       });
-      toast.success('Selected best available seats!');
+      toast.success("Selected best available seats!");
     } else {
-      toast.warning('Not enough seats available for auto-select');
+      toast.warning("Not enough seats available for auto-select");
     }
   };
 
   const getSeatColor = (seat: SeatDto, isHovered: boolean) => {
     const isSelected = bookingState.selectedSeats.some((s) => s.id === seat.id);
 
-    if (isHovered && seat.status !== 'Sold' && seat.status !== 'Reserved' && !seat.isBlocked) {
-      return 'scale-110 shadow-lg';
+    if (
+      isHovered &&
+      seat.status !== "Sold" &&
+      seat.status !== "Reserved" &&
+      !seat.isBlocked
+    ) {
+      return "scale-110 shadow-lg";
     }
 
     if (isSelected) {
-      return 'bg-teal-500 text-white cursor-pointer';
+      return "bg-teal-500 text-white cursor-pointer";
     }
 
     switch (seat.status) {
-      case 'Available':
-        return 'bg-green-100 hover:bg-green-200 cursor-pointer';
-      case 'Sold':
-        return 'bg-gray-300 cursor-not-allowed';
-      case 'Reserved':
-        return 'bg-orange-300 cursor-not-allowed';
-      case 'Blocked':
-        return 'bg-red-200 cursor-not-allowed';
+      case "Available":
+        return "bg-green-100 hover:bg-green-200 cursor-pointer";
+      case "Sold":
+        return "bg-gray-300 cursor-not-allowed";
+      case "Reserved":
+        return "bg-orange-300 cursor-not-allowed";
+      case "Blocked":
+        return "bg-red-200 cursor-not-allowed";
       default:
-        return 'bg-gray-200';
+        return "bg-gray-200";
     }
   };
 
@@ -194,28 +242,67 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
   const serviceFee = bookingState.serviceFee;
   const total = bookingState.total;
 
-  const filteredSeats =
-    selectedZone === 'all' ? seats : seats.filter((s) => s.seatZoneId?.toString() === selectedZone);
+  // Ensure seats is always an array
+  const safeSeats = Array.isArray(seats) ? seats : [];
 
-  const availableCount = seats.filter((s) => s.status === 'Available' && !s.isBlocked).length;
-  const soldCount = seats.filter((s) => s.status === 'Sold').length;
-  const selectedCount = bookingState.selectedSeats.length;
+  const filteredSeats =
+    selectedZone === "all"
+      ? safeSeats
+      : safeSeats.filter((s) => s.seatZoneId?.toString() === selectedZone);
+
+  const availableCount = safeSeats.filter(
+    (s) => s.status === "Available" && !s.isBlocked
+  ).length;
+  const soldCount = safeSeats.filter((s) => s.status === "Sold").length;
+  const selectedCount = bookingState.selectedSeats?.length || 0;
 
   // Group seats by row for display
-  const seatsByRow = filteredSeats.reduce((acc, seat) => {
-    if (!acc[seat.row]) {
-      acc[seat.row] = [];
+  const seatsByRow = filteredSeats.reduce((acc, seat, index) => {
+    // Ensure row is a string and not empty
+    // Use row (string like "A", "B") or fallback to gridRow (number) or generate from index
+    let rowKey: string;
+    if (seat.row && seat.row.toString().trim()) {
+      rowKey = seat.row.toString().trim();
+    } else if (seat.gridRow !== undefined && seat.gridRow !== null) {
+      // Convert gridRow (0-based) to row letter (A, B, C, ...)
+      const rowLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      rowKey = rowLetters[seat.gridRow % 26] || `Row${seat.gridRow + 1}`;
+    } else {
+      // Fallback: use index to create a row
+      rowKey = `Row${Math.floor(index / 20) + 1}`;
     }
-    acc[seat.row].push(seat);
+
+    if (!acc[rowKey]) {
+      acc[rowKey] = [];
+    }
+    acc[rowKey].push(seat);
     return acc;
   }, {} as Record<string, SeatDto[]>);
 
-  // Sort rows alphabetically
-  const sortedRows = Object.keys(seatsByRow).sort();
+  // Sort rows alphabetically (handle both string and numeric rows)
+  const sortedRows = Object.keys(seatsByRow).sort((a, b) => {
+    // Try to sort as numbers first, then as strings
+    const numA = parseInt(a);
+    const numB = parseInt(b);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numA - numB;
+    }
+    return a.localeCompare(b);
+  });
+
+  // Debug logging
+  if (safeSeats.length > 0 && sortedRows.length === 0) {
+    console.warn("Seats loaded but no rows found:", {
+      seatsCount: safeSeats.length,
+      filteredCount: filteredSeats.length,
+      sampleSeat: safeSeats[0],
+      seatsByRowKeys: Object.keys(seatsByRow),
+    });
+  }
 
   const handleContinueToCheckout = async () => {
     if (bookingState.selectedSeats.length === 0) {
-      toast.error('Please select at least one seat');
+      toast.error("Please select at least one seat");
       return;
     }
 
@@ -225,7 +312,9 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
       const available = await seatService.checkSeatAvailability(seatIds);
 
       if (!available) {
-        toast.error('Some selected seats are no longer available. Please select again.');
+        toast.error(
+          "Some selected seats are no longer available. Please select again."
+        );
         // Refresh seats
         if (currentEventId) {
           const freshSeats = await seatService.getSeatsByEvent(currentEventId);
@@ -235,10 +324,10 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
       }
 
       // Navigate to checkout
-      onNavigate('checkout');
+      onNavigate("checkout");
     } catch (err: any) {
-      console.error('Error checking seat availability:', err);
-      toast.error('Failed to verify seat availability');
+      console.error("Error checking seat availability:", err);
+      toast.error("Failed to verify seat availability");
     }
   };
 
@@ -260,9 +349,60 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
           <CardContent className="pt-6">
             <div className="text-center">
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Failed to Load Seats</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                Failed to Load Seats
+              </h3>
               <p className="text-neutral-600 mb-4">{error}</p>
-              <Button onClick={() => onNavigate('home')}>Return to Home</Button>
+              <div className="flex gap-2 justify-center">
+                {currentEventId && (
+                  <Button
+                    variant="outline"
+                    onClick={() => onNavigate(`/event/${currentEventId}`)}
+                  >
+                    Back to Event
+                  </Button>
+                )}
+                <Button onClick={() => onNavigate("home")}>
+                  Return to Home
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show friendly message when no seats are available
+  if (!loading && safeSeats.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white flex items-center justify-center">
+        <Card className="max-w-md w-full mx-4">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <AlertCircle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Seats Available</h3>
+              <p className="text-neutral-600 mb-4">
+                This event does not have a seat map configured yet. The
+                organizer needs to create a seat map before tickets can be
+                booked with seat selection.
+              </p>
+              <p className="text-sm text-neutral-500 mb-4">
+                Please contact the event organizer or check back later.
+              </p>
+              <div className="flex gap-2 justify-center">
+                {currentEventId && (
+                  <Button
+                    variant="outline"
+                    onClick={() => onNavigate(`/event/${currentEventId}`)}
+                  >
+                    Back to Event
+                  </Button>
+                )}
+                <Button onClick={() => onNavigate("home")}>
+                  Return to Home
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -283,7 +423,7 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
               if (currentEventId) {
                 onNavigate(`/event/${currentEventId}`);
               } else {
-                onNavigate('event-detail');
+                onNavigate("event-detail");
               }
             }}
           >
@@ -292,10 +432,16 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
           </Button>
 
           <div className="text-white">
-            <h1 className="mb-2">{bookingState.eventTitle || 'Select Your Seats'}</h1>
+            <h1 className="mb-2">
+              {bookingState.eventTitle || "Select Your Seats"}
+            </h1>
             <div className="flex items-center gap-4 text-sm">
-              {bookingState.eventDate && <span>📅 {bookingState.eventDate}</span>}
-              {bookingState.eventVenue && <span>📍 {bookingState.eventVenue}</span>}
+              {bookingState.eventDate && (
+                <span>📅 {bookingState.eventDate}</span>
+              )}
+              {bookingState.eventVenue && (
+                <span>📍 {bookingState.eventVenue}</span>
+              )}
             </div>
           </div>
         </div>
@@ -305,13 +451,13 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
       {selectedCount > 0 && (
         <div
           className={`sticky top-0 z-40 ${
-            timeRemaining < 300 ? 'bg-orange-500' : 'bg-purple-600'
+            timeRemaining < 300 ? "bg-orange-500" : "bg-purple-600"
           } text-white py-3 shadow-lg transition-colors`}
         >
           <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-3">
             <Clock size={20} />
             <span className="text-sm">
-              Time remaining to complete booking:{' '}
+              Time remaining to complete booking:{" "}
               <strong className="text-lg">{formatTime(timeRemaining)}</strong>
             </span>
           </div>
@@ -352,7 +498,9 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-neutral-900">
-                            ${seat.ticketTypePrice || bookingState.ticketTypePrice}
+                            $
+                            {seat.ticketTypePrice ||
+                              bookingState.ticketTypePrice}
                           </span>
                           <button
                             onClick={() => handleSeatClick(seat)}
@@ -367,15 +515,21 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
                     <div className="border-t pt-3 space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-neutral-600">Subtotal</span>
-                        <span className="text-neutral-900">${subtotal.toFixed(2)}</span>
+                        <span className="text-neutral-900">
+                          ${subtotal.toFixed(2)}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-neutral-600">Service Fee</span>
-                        <span className="text-neutral-900">${serviceFee.toFixed(2)}</span>
+                        <span className="text-neutral-900">
+                          ${serviceFee.toFixed(2)}
+                        </span>
                       </div>
                       <div className="flex justify-between text-lg pt-2 border-t">
                         <span className="text-neutral-900">Total</span>
-                        <span className="text-neutral-900">${total.toFixed(2)}</span>
+                        <span className="text-neutral-900">
+                          ${total.toFixed(2)}
+                        </span>
                       </div>
                     </div>
 
@@ -425,7 +579,11 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
                     >
                       <ZoomIn size={16} />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setZoom(1)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setZoom(1)}
+                    >
                       <Maximize2 size={16} />
                     </Button>
                   </div>
@@ -442,80 +600,115 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
                     <div className="text-sm text-gray-600 mb-1">🎭</div>
                     <div className="text-sm text-gray-700">STAGE</div>
                   </div>
-                  <div className="text-xs text-gray-500 mt-2">↑ Stage View ↑</div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    ↑ Stage View ↑
+                  </div>
                 </div>
 
                 {/* Seat Grid */}
-                <div
-                  className="overflow-auto"
-                  style={{
-                    transform: `scale(${zoom})`,
-                    transformOrigin: 'top center',
-                    transition: 'transform 0.2s',
-                  }}
-                >
-                  <div className="inline-block min-w-full">
-                    {sortedRows.map((row) => (
-                      <div key={row} className="flex items-center justify-center gap-1 mb-1">
-                        <div className="w-6 text-xs text-gray-500 text-right">{row}</div>
-                        {seatsByRow[row]
-                          .sort((a, b) => {
-                            const numA = parseInt(a.seatNumber);
-                            const numB = parseInt(b.seatNumber);
-                            return isNaN(numA) || isNaN(numB)
-                              ? a.seatNumber.localeCompare(b.seatNumber)
-                              : numA - numB;
-                          })
-                          .map((seat) => {
-                            const isSelected = bookingState.selectedSeats.some(
-                              (s) => s.id === seat.id
-                            );
-                            return (
-                              <div key={seat.id} className="relative group">
-                                <button
-                                  onClick={() => handleSeatClick(seat)}
-                                  onMouseEnter={() => setHoveredSeat(seat)}
-                                  onMouseLeave={() => setHoveredSeat(null)}
-                                  disabled={
-                                    seat.status === 'Sold' ||
-                                    seat.isBlocked ||
-                                    seat.status === 'Reserved'
-                                  }
-                                  className={`
+                {safeSeats.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-neutral-600 mb-4">
+                      No seats available for this event.
+                    </p>
+                    <p className="text-sm text-neutral-500">
+                      Please contact the organizer or check back later.
+                    </p>
+                  </div>
+                ) : sortedRows.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-neutral-600 mb-4">
+                      No seats match the current filter.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedZone("all")}
+                    >
+                      Show All Seats
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    className="overflow-auto"
+                    style={{
+                      transform: `scale(${zoom})`,
+                      transformOrigin: "top center",
+                      transition: "transform 0.2s",
+                    }}
+                  >
+                    <div className="inline-block min-w-full">
+                      {sortedRows.map((row) => (
+                        <div
+                          key={row}
+                          className="flex items-center justify-center gap-1 mb-1"
+                        >
+                          <div className="w-6 text-xs text-gray-500 text-right">
+                            {row}
+                          </div>
+                          {seatsByRow[row]
+                            .sort((a, b) => {
+                              const numA = parseInt(a.seatNumber);
+                              const numB = parseInt(b.seatNumber);
+                              return isNaN(numA) || isNaN(numB)
+                                ? a.seatNumber.localeCompare(b.seatNumber)
+                                : numA - numB;
+                            })
+                            .map((seat) => {
+                              const isSelected =
+                                bookingState.selectedSeats.some(
+                                  (s) => s.id === seat.id
+                                );
+                              return (
+                                <div key={seat.id} className="relative group">
+                                  <button
+                                    onClick={() => handleSeatClick(seat)}
+                                    onMouseEnter={() => setHoveredSeat(seat)}
+                                    onMouseLeave={() => setHoveredSeat(null)}
+                                    disabled={
+                                      seat.status === "Sold" ||
+                                      seat.isBlocked ||
+                                      seat.status === "Reserved"
+                                    }
+                                    className={`
                                     w-8 h-8 rounded text-xs flex items-center justify-center
                                     transition-all duration-200
-                                    ${getSeatColor(seat, hoveredSeat?.id === seat.id)}
+                                    ${getSeatColor(
+                                      seat,
+                                      hoveredSeat?.id === seat.id
+                                    )}
                                   `}
-                                >
-                                  {isSelected && <Check size={14} />}
-                                </button>
+                                  >
+                                    {isSelected && <Check size={14} />}
+                                  </button>
 
-                                {/* Tooltip */}
-                                {hoveredSeat?.id === seat.id && (
-                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50">
-                                    <div className="bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl whitespace-nowrap">
-                                      <div className="font-semibold mb-1">
-                                        Seat {seat.fullSeatCode}
-                                      </div>
-                                      <div className="text-gray-300">
-                                        {seat.zoneName || seat.ticketTypeName}
-                                      </div>
-                                      <div className="text-teal-400 mt-1">
-                                        ${seat.ticketTypePrice}
-                                      </div>
-                                      <div className="mt-1 text-xs">
-                                        Status: {seat.status}
+                                  {/* Tooltip */}
+                                  {hoveredSeat?.id === seat.id && (
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50">
+                                      <div className="bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl whitespace-nowrap">
+                                        <div className="font-semibold mb-1">
+                                          Seat {seat.fullSeatCode}
+                                        </div>
+                                        <div className="text-gray-300">
+                                          {seat.zoneName || seat.ticketTypeName}
+                                        </div>
+                                        <div className="text-teal-400 mt-1">
+                                          ${seat.ticketTypePrice}
+                                        </div>
+                                        <div className="mt-1 text-xs">
+                                          Status: {seat.status}
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </div>
-                    ))}
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -529,7 +722,9 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
                   <button onClick={() => setShowLegend(!showLegend)}>
                     <ChevronDown
                       size={20}
-                      className={`transition-transform ${showLegend ? 'rotate-180' : ''}`}
+                      className={`transition-transform ${
+                        showLegend ? "rotate-180" : ""
+                      }`}
                     />
                   </button>
                 </CardTitle>
@@ -541,7 +736,9 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
                       <div className="w-6 h-6 bg-green-100 rounded" />
                       <span className="text-sm">Available</span>
                     </div>
-                    <span className="text-xs text-neutral-500">{availableCount}</span>
+                    <span className="text-xs text-neutral-500">
+                      {availableCount}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -549,7 +746,9 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
                       <div className="w-6 h-6 bg-teal-500 rounded" />
                       <span className="text-sm">Selected</span>
                     </div>
-                    <span className="text-xs text-neutral-500">{selectedCount}</span>
+                    <span className="text-xs text-neutral-500">
+                      {selectedCount}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -557,7 +756,9 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
                       <div className="w-6 h-6 bg-gray-300 rounded" />
                       <span className="text-sm">Sold</span>
                     </div>
-                    <span className="text-xs text-neutral-500">{soldCount}</span>
+                    <span className="text-xs text-neutral-500">
+                      {soldCount}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -596,12 +797,12 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
                   <button
                     onClick={() => setKeepTogether(!keepTogether)}
                     className={`w-12 h-6 rounded-full transition-colors ${
-                      keepTogether ? 'bg-teal-500' : 'bg-gray-300'
+                      keepTogether ? "bg-teal-500" : "bg-gray-300"
                     }`}
                   >
                     <div
                       className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
-                        keepTogether ? 'translate-x-6' : 'translate-x-1'
+                        keepTogether ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
                   </button>
@@ -636,12 +837,15 @@ export function SeatSelection({ eventId, onNavigate }: SeatSelectionProps) {
               Time Running Out
             </DialogTitle>
             <DialogDescription>
-              You have less than 2 minutes to complete your booking. Your selected seats will
-              be released if you don't proceed soon.
+              You have less than 2 minutes to complete your booking. Your
+              selected seats will be released if you don't proceed soon.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTimerWarning(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowTimerWarning(false)}
+            >
               Continue Selecting
             </Button>
             <Button

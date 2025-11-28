@@ -82,13 +82,28 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
   useEffect(() => {
     if (eventId) {
       loadEventData();
+    } else {
+      setIsLoading(false);
+      alert("Event ID is required");
     }
   }, [eventId]);
 
   const loadEventData = async () => {
+    if (!eventId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const numericEventId = Number(eventId);
+    if (isNaN(numericEventId)) {
+      setIsLoading(false);
+      alert("Invalid event ID");
+      return;
+    }
+
     try {
       setIsLoading(true);
-      const eventData = await eventService.getEventById(Number(eventId));
+      const eventData = await eventService.getEventById(numericEventId);
       setEvent(eventData);
 
       // Populate form data

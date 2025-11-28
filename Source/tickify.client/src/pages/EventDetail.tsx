@@ -1,122 +1,150 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Calendar, MapPin, User, Minus, Plus, Clock, Share2, Ticket } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { MiniCartBar } from '../components/MiniCartBar';
-import { HoldTimer } from '../components/HoldTimer';
-import { PolicyBlock } from '../components/PolicyBlock';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import { Separator } from '../components/ui/separator';
-import { Badge } from '../components/ui/badge';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import EventHighlights from '../components/event-detail/EventHighlights';
-import FAQSection from '../components/event-detail/FAQSection';
-import LocationMap from '../components/event-detail/LocationMap';
-import ShareButtons from '../components/event-detail/ShareButtons';
-import RelatedEvents from '../components/event-detail/RelatedEvents';
-import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
-import { eventService } from '../services/eventService';
-import type { CartItem } from '../types';
-import { useBooking } from '../contexts/BookingContext';
-import { toast } from 'sonner';
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Calendar,
+  MapPin,
+  User,
+  Minus,
+  Plus,
+  Clock,
+  Share2,
+  Ticket,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { MiniCartBar } from "../components/MiniCartBar";
+import { HoldTimer } from "../components/HoldTimer";
+import { PolicyBlock } from "../components/PolicyBlock";
+import { Avatar, AvatarFallback } from "../components/ui/avatar";
+import { Separator } from "../components/ui/separator";
+import { Badge } from "../components/ui/badge";
+import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import EventHighlights from "../components/event-detail/EventHighlights";
+import FAQSection from "../components/event-detail/FAQSection";
+import LocationMap from "../components/event-detail/LocationMap";
+import ShareButtons from "../components/event-detail/ShareButtons";
+import RelatedEvents from "../components/event-detail/RelatedEvents";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../components/ui/popover";
+import { eventService } from "../services/eventService";
+import { useBooking } from "../contexts/BookingContext";
+import { toast } from "sonner";
 
 interface EventDetailProps {
   eventId: string;
   onNavigate: (page: string, eventId?: string) => void;
-  onAddToCart: (items: CartItem[]) => void;
+  onAddToCart?: (items: any[]) => void; // Optional, not used in seat selection flow
 }
 
-export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailProps) {
+export function EventDetail({
+  eventId,
+  onNavigate,
+  onAddToCart,
+}: EventDetailProps) {
   const { t } = useTranslation();
   const { setEventInfo, setTicketType } = useBooking();
   const [event, setEvent] = useState<any | null>(null);
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [showTimer, setShowTimer] = useState(false);
   const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    eventService.getEventByIdentifier(eventId)
-      .then((ev) => { if (mounted) setEvent(ev); })
-      .catch(() => { if (mounted) setEvent(null); });
-    return () => { mounted = false; };
+    setIsLoading(true);
+    setError(null);
+
+    if (!eventId) {
+      setError("Event ID is required");
+      setIsLoading(false);
+      return;
+    }
+
+    eventService
+      .getEventByIdentifier(eventId)
+      .then((ev) => {
+        if (mounted) {
+          setEvent(ev);
+          setError(null);
+        }
+      })
+      .catch((err) => {
+        console.error("Error loading event:", err);
+        if (mounted) {
+          setEvent(null);
+          setError(err.message || "Failed to load event");
+        }
+      })
+      .finally(() => {
+        if (mounted) setIsLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, [eventId]);
 
   // Get related events from the same category
   useEffect(() => {
     if (event?.category) {
-      eventService.getEvents()
-        .then(events => {
-          const related = events.filter(e => 
-            e.category === event.category && e.id !== event.id
-          ).slice(0, 4);
+      eventService
+        .getEvents()
+        .then((events) => {
+          const related = events
+            .filter((e) => e.category === event.category && e.id !== event.id)
+            .slice(0, 4);
           setRelatedEvents(related);
         })
         .catch(() => setRelatedEvents([]));
     }
   }, [event?.category, event?.id]);
 
-  if (!event) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2>{t('events.eventNotFound')}</h2>
-          <Button onClick={() => onNavigate('home')} className="mt-4">
-            {t('common.returnHome')}
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-neutral-600">Loading event...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event || error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold mb-2">
+            {error || t("events.eventNotFound")}
+          </h2>
+          <p className="text-neutral-600 mb-4">
+            {error
+              ? `Event ID: ${eventId}`
+              : "The event you're looking for doesn't exist."}
+          </p>
+          <Button onClick={() => onNavigate("home")} className="mt-4">
+            {t("common.returnHome")}
           </Button>
         </div>
       </div>
     );
   }
 
-  const handleQuantityChange = (tierId: string, delta: number) => {
-    const tier = event.ticketTiers.find((t: any) => t.id === tierId);
-    if (!tier) return;
-
-    const currentQty = quantities[tierId] || 0;
-    const newQty = Math.max(0, Math.min(tier.available, currentQty + delta));
-    
-    setQuantities({ ...quantities, [tierId]: newQty });
-    
-    if (newQty > 0 && !showTimer) {
-      setShowTimer(true);
-    }
-  };
-
-  const totalItems = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
-  const subtotal = event.ticketTiers.reduce((sum: number, tier: any) => {
-    return sum + (tier.price * (quantities[tier.id] || 0));
-  }, 0);
-
-  const handleCheckout = () => {
-    const items: CartItem[] = event.ticketTiers
-      .filter((tier: any) => quantities[tier.id] > 0)
-      .map((tier: any) => ({
-        eventId: event.id,
-        eventTitle: event.title,
-        eventDate: event.date,
-        eventVenue: event.venue,
-        tierId: tier.id,
-        tierName: tier.name,
-        price: tier.price,
-        quantity: quantities[tier.id]
-      }));
-    
-    onAddToCart(items);
-    onNavigate('cart');
-  };
+  // Quantity selection removed - users will select seats instead
+  // All pricing and checkout happens after seat selection in SeatSelection page
 
   // NEW: Handle booking flow with seat selection
-  const handleBookTickets = (tier: any) => {
+  const handleBookTickets = async (tier: any) => {
     try {
       // Validate event has required data
       if (!event.id || !tier.id) {
-        toast.error('Invalid event or ticket data');
+        toast.error("Invalid event or ticket data");
         return;
       }
 
-      // Initialize booking context
+      // Initialize booking context first
       setEventInfo(
         parseInt(event.id),
         event.title,
@@ -125,35 +153,47 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
         event.image
       );
 
-      setTicketType(
-        parseInt(tier.id),
-        tier.name,
-        tier.price
-      );
+      setTicketType(parseInt(tier.id), tier.name, tier.price);
 
-      // Navigate to seat selection with event ID in URL
+      // Check if event has seat map/seats available (non-blocking)
+      try {
+        const { seatService } = await import("../services/seatService");
+        const seats = await seatService.getSeatsByEvent(parseInt(event.id));
+
+        if (!seats || seats.length === 0) {
+          toast.warning(
+            "This event may not have seat selection available. You will be redirected to seat selection page."
+          );
+        }
+      } catch (seatError: any) {
+        // If seat service fails, still allow navigation but show warning
+        console.warn("Could not verify seat availability:", seatError);
+        toast.warning("Seat selection may not be available for this event.");
+      }
+
+      // Always navigate to seat selection (let the page handle empty state)
       onNavigate(`/event/${event.id}/seats`);
       toast.success(`Selected ${tier.name} ticket. Choose your seats!`);
     } catch (error) {
-      console.error('Error starting booking:', error);
-      toast.error('Failed to start booking. Please try again.');
+      console.error("Error starting booking:", error);
+      toast.error("Failed to start booking. Please try again.");
     }
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long',
-      month: 'long', 
-      day: 'numeric',
-      year: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
@@ -168,21 +208,24 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
           alt={event.title}
           className="w-full h-full object-cover opacity-90"
         />
-        
+
         {/* Share Button Overlay */}
         <div className="absolute top-4 right-4 z-10">
           <Popover>
             <PopoverTrigger asChild>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 size="sm"
                 className="bg-white/90 hover:bg-white backdrop-blur-sm"
               >
                 <Share2 size={16} className="mr-2" />
-                {t('common.share')}
+                {t("common.share")}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 border-0 shadow-xl" align="end">
+            <PopoverContent
+              className="w-auto p-0 border-0 shadow-xl"
+              align="end"
+            >
               <ShareButtons eventTitle={event.title} eventUrl={eventUrl} />
             </PopoverContent>
           </Popover>
@@ -195,17 +238,38 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-8 shadow-lg">
               <div className="flex items-start justify-between mb-4">
-                <Badge className="bg-teal-500 hover:bg-teal-600">{t(`editEvent.category${event.category}`)}</Badge>
-                {showTimer && <HoldTimer onExpire={() => setShowTimer(false)} />}
+                <Badge className="bg-teal-500 hover:bg-teal-600">
+                  {(() => {
+                    // Format category name for translation key (remove special chars, spaces)
+                    const categoryKey =
+                      event.category
+                        ?.replace(/[^a-zA-Z0-9]/g, "")
+                        .replace(/\s+/g, "") || "Other";
+                    const translationKey = `editEvent.category${categoryKey}`;
+                    const translated = t(translationKey);
+                    // If translation returns the key itself, use the original category name
+                    return translated === translationKey
+                      ? event.category
+                      : translated;
+                  })()}
+                </Badge>
+                {showTimer && (
+                  <HoldTimer onExpire={() => setShowTimer(false)} />
+                )}
               </div>
 
               <h1 className="mb-6">{event.title}</h1>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div className="flex items-start gap-3">
-                  <Calendar className="text-teal-500 mt-1 flex-shrink-0" size={20} />
+                  <Calendar
+                    className="text-teal-500 mt-1 flex-shrink-0"
+                    size={20}
+                  />
                   <div>
-                    <div className="text-sm text-neutral-500">{t('events.dateTime')}</div>
+                    <div className="text-sm text-neutral-500">
+                      {t("events.dateTime")}
+                    </div>
                     <div className="text-neutral-900">
                       {formatDate(event.date)}
                     </div>
@@ -214,9 +278,14 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <MapPin className="text-teal-500 mt-1 flex-shrink-0" size={20} />
+                  <MapPin
+                    className="text-teal-500 mt-1 flex-shrink-0"
+                    size={20}
+                  />
                   <div>
-                    <div className="text-sm text-neutral-500">{t('common.venue')}</div>
+                    <div className="text-sm text-neutral-500">
+                      {t("common.venue")}
+                    </div>
                     <div className="text-neutral-900">{event.venue}</div>
                     <div className="text-neutral-600">{event.city}</div>
                   </div>
@@ -226,7 +295,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
               <Separator className="my-8" />
 
               <div>
-                <h3 className="mb-4">{t('events.aboutThisEvent')}</h3>
+                <h3 className="mb-4">{t("events.aboutThisEvent")}</h3>
                 <div className="text-neutral-600 leading-relaxed space-y-4 whitespace-pre-line">
                   {event.fullDescription || event.description}
                 </div>
@@ -236,7 +305,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
 
               {/* Organizer */}
               <div>
-                <h3 className="mb-4">{t('events.organizer')}</h3>
+                <h3 className="mb-4">{t("events.organizer")}</h3>
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
                     <AvatarFallback className="bg-teal-100 text-teal-600">
@@ -244,15 +313,21 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="text-neutral-900">{event.organizerName}</div>
-                    <div className="text-sm text-neutral-500">{t('events.eventOrganizer')}</div>
+                    <div className="text-neutral-900">
+                      {event.organizerName}
+                    </div>
+                    <div className="text-sm text-neutral-500">
+                      {t("events.eventOrganizer")}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Event Highlights */}
-            {event.highlights && <EventHighlights highlights={event.highlights} />}
+            {event.highlights && (
+              <EventHighlights highlights={event.highlights} />
+            )}
 
             {/* Location Map */}
             {event.venueDetails && (
@@ -275,7 +350,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                 currentEventId={event.id}
                 relatedEvents={relatedEvents}
                 onEventClick={(id) => {
-                  onNavigate('event-detail', id);
+                  onNavigate("event-detail", id);
                   window.scrollTo(0, 0);
                 }}
               />
@@ -285,7 +360,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
           {/* Ticket Selection Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl p-6 shadow-lg sticky top-20">
-              <h3 className="mb-6">{t('events.selectTickets')}</h3>
+              <h3 className="mb-6">{t("events.selectTickets")}</h3>
 
               <div className="space-y-4">
                 {event.ticketTiers.map((tier: any) => (
@@ -293,10 +368,8 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                     key={tier.id}
                     className={`border rounded-xl p-4 transition-all ${
                       tier.available === 0
-                        ? 'border-neutral-200 bg-neutral-50 opacity-60'
-                        : quantities[tier.id] > 0
-                        ? 'border-teal-500 bg-teal-50'
-                        : 'border-neutral-200 hover:border-teal-300'
+                        ? "border-neutral-200 bg-neutral-50 opacity-60"
+                        : "border-neutral-200 hover:border-teal-300"
                     }`}
                   >
                     <div className="flex items-start justify-between mb-2">
@@ -307,55 +380,33 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                         </div>
                       </div>
                       <div className="text-right ml-4">
-                        <div className="text-neutral-900">{formatPrice(tier.price)}</div>
+                        <div className="text-neutral-900">
+                          {formatPrice(tier.price)}
+                        </div>
                       </div>
                     </div>
 
                     <div className="mt-4 space-y-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-3">
                         <div className="text-sm text-neutral-500">
                           {tier.available > 0 ? (
-                            `${tier.available} ${t('events.available')}`
+                            `${tier.available} ${t("events.available")}`
                           ) : (
-                            <span className="text-red-600">{t('events.soldOut')}</span>
+                            <span className="text-red-600">
+                              {t("events.soldOut")}
+                            </span>
                           )}
                         </div>
-
-                        {tier.available > 0 && (
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-8 h-8 p-0"
-                              onClick={() => handleQuantityChange(tier.id, -1)}
-                              disabled={!quantities[tier.id]}
-                            >
-                              <Minus size={16} />
-                            </Button>
-                            <span className="w-8 text-center">
-                              {quantities[tier.id] || 0}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-8 h-8 p-0"
-                              onClick={() => handleQuantityChange(tier.id, 1)}
-                              disabled={quantities[tier.id] >= tier.available}
-                            >
-                              <Plus size={16} />
-                            </Button>
-                          </div>
-                        )}
                       </div>
 
-                      {/* NEW: Book Tickets Button */}
+                      {/* Book Tickets Button - No quantity selection */}
                       {tier.available > 0 && (
                         <Button
                           className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white"
                           onClick={() => handleBookTickets(tier)}
                         >
                           <Ticket size={16} className="mr-2" />
-                          {t('events.bookTickets') || 'Book Tickets'}
+                          Book Tickets
                         </Button>
                       )}
                     </div>
@@ -367,11 +418,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
         </div>
       </div>
 
-      <MiniCartBar
-        itemCount={totalItems}
-        subtotal={subtotal}
-        onCheckout={handleCheckout}
-      />
+      {/* MiniCartBar removed - cart will be shown after seat selection */}
     </div>
   );
 }
