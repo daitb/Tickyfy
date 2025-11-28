@@ -126,7 +126,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={loadDashboardData}>Retry</Button>
+          <Button onClick={() => organizerId && loadDashboardData(organizerId)}>Retry</Button>
         </div>
       </div>
     );

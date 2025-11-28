@@ -7,6 +7,7 @@ import { Button } from "../components/ui/button";
 import { eventService } from "../services/eventService";
 import type { Category } from "../types";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 interface HomeProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -26,18 +27,12 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
 
   useEffect(() => {
     // Fetch all events for categories and upcoming events
-    console.log("Home: Fetching events...");
     Promise.all([
       eventService.getEvents(),
       eventService.getFeaturedEvents(4),
       eventService.getUpcomingEvents(3),
     ])
       .then(([allEvents, featured, upcoming]) => {
-        console.log("Home: Events loaded", {
-          allEvents: allEvents?.length,
-          featured: featured?.length,
-          upcoming: upcoming?.length,
-        });
         setEvents(allEvents || []);
         const cats = Array.from(
           new Set((allEvents || []).map((e: any) => e.category).filter(Boolean))
@@ -47,15 +42,8 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
         setSpecialEvents(featured || []);
         setUpcomingEventsList(allEvents || []);
       })
-      .catch((error) => {
-        console.error("Home: Error loading events:", error);
-        if (error?.response) {
-          console.error(
-            "Response error:",
-            error.response.status,
-            error.response.data
-          );
-        }
+      .catch((error: any) => {
+        // Silent fail for home page, just show empty state
         setEvents([]);
         setAvailableCategories([]);
         setTrendingEvents([]);

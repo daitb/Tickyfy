@@ -13,6 +13,7 @@ import { eventService, type CreateEventDto } from '../services/eventService';
 import { categoryService, type CategoryDto } from '../services/categoryService';
 import { authService } from '../services/authService';
 import { imageService } from '../services/imageService';
+import { toast } from 'sonner';
 import type { Category, Event, TicketTier } from "../types";
 
 interface OrganizerWizardProps {
@@ -122,9 +123,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     // Validate file
     const validationError = imageService.validateImageFile(file);
     if (validationError) {
-      console.error('[OrganizerWizard] Validation failed:', validationError);
       setUploadError(validationError);
-      alert(validationError);
+      toast.error(validationError);
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -184,7 +184,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         fileInputRef.current.value = '';
       }
       
-      alert(`Upload failed: ${errorMsg}`);
+      toast.error(`Tải ảnh thất bại: ${errorMsg}`);
     } finally {
       setIsUploadingImage(false);
     }
@@ -221,21 +221,21 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
       // Validate required fields
       if (!eventData.title || !eventData.description || !eventData.venue || !eventData.date || !eventData.time) {
-        alert('Please fill in all required fields');
+        toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
         return;
       }
 
       // Validate field lengths
       if (eventData.title.length < 5) {
-        alert('Event title must be at least 5 characters long');
+        toast.error('Tiêu đề sự kiện phải có ít nhất 5 ký tự');
         return;
       }
       if (eventData.description.length < 50) {
-        alert('Event description must be at least 50 characters long');
+        toast.error('Mô tả sự kiện phải có ít nhất 50 ký tự');
         return;
       }
       if (eventData.venue.length < 5) {
-        alert('Venue must be at least 5 characters long');
+        toast.error('Địa điểm phải có ít nhất 5 ký tự');
         return;
       }
 
@@ -253,7 +253,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       eventDateOnly.setHours(0, 0, 0, 0);
 
       if (eventDateOnly < today) {
-        alert("Event date cannot be in the past. Please select a future date.");
+        toast.error("Ngày sự kiện không thể ở quá khứ. Vui lòng chọn ngày trong tương lai.");
         return;
       }
 
@@ -262,9 +262,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       minDateTime.setHours(minDateTime.getHours() + 24);
 
       if (selectedDateTime < minDateTime) {
-        alert(
-          "Event must be scheduled at least 24 hours in advance.\n\nPlease select a date and time that is at least 1 day from now."
-        );
+        toast.error("Sự kiện phải được lên lịch ít nhất 24 giờ trước. Vui lòng chọn ngày và giờ ít nhất 1 ngày từ bây giờ.");
         return;
       }
 
@@ -272,16 +270,14 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       if (eventDateOnly.getTime() === today.getTime()) {
         const currentTime = getCurrentTime();
         if (eventData.time <= currentTime) {
-          alert(
-            `Event time cannot be in the past.\n\nCurrent time: ${currentTime}\nSelected time: ${eventData.time}\n\nPlease select a future time or a future date.`
-          );
+          toast.error(`Giờ sự kiện không thể ở quá khứ. Vui lòng chọn giờ trong tương lai hoặc ngày trong tương lai.`);
           return;
         }
       }
 
       // Validate that event has at least one ticket tier
       if (ticketTiers.length === 0 || !ticketTiers[0].name) {
-        alert("Please add at least one ticket tier before publishing.");
+        toast.error("Vui lòng thêm ít nhất một loại vé trước khi xuất bản.");
         return;
       }
 
@@ -315,25 +311,20 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         }))
       };
 
-      console.log('Creating event with data:', createEventDto);
-
       // POST /api/events - Create event
       const createdEvent = await eventService.createEvent(createEventDto);
 
-      alert(`Event "${createdEvent.title}" created successfully! It will be reviewed by admin.`);
+      toast.success(`Sự kiện "${createdEvent.title}" đã được tạo thành công! Sẽ được admin xem xét.`);
       onNavigate('organizer-dashboard');
     } catch (error: any) {
-      console.error('Error creating event:', error);
-      console.error('Error response data:', error.response?.data);
-      
       // Extract detailed error messages from backend validation
-      let errorMessage = 'Failed to create event. Please check your inputs.';
+      let errorMessage = 'Không thể tạo sự kiện. Vui lòng kiểm tra lại thông tin.';
       
       if (error.response?.data) {
         const data = error.response.data;
         // If backend returns validation errors array
         if (data.errors && Array.isArray(data.errors)) {
-          errorMessage = 'Validation errors:\n' + data.errors.join('\n');
+          errorMessage = 'Lỗi xác thực:\n' + data.errors.join('\n');
         } else if (data.message) {
           errorMessage = data.message;
         }
@@ -341,7 +332,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         errorMessage = error.message;
       }
       
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsPublishing(false);
     }

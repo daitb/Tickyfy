@@ -1,4 +1,5 @@
 import apiClient from "./apiClient";
+import { toast } from "sonner";
 
 export interface ImageUploadResponse {
   blobName: string;
@@ -22,17 +23,9 @@ class ImageService {
    * @returns Upload response with imageUrl and blobName
    */
   async uploadImage(file: File): Promise<ImageUploadResponse> {
-    console.log('[ImageService] Starting upload for file:', {
-      name: file.name,
-      size: `${(file.size / 1024).toFixed(2)} KB`,
-      type: file.type
-    });
-
     try {
       const formData = new FormData();
       formData.append('file', file);
-
-      console.log('[ImageService] Sending request to /api/images/upload');
       
       const response = await apiClient.post<ImageUploadResponse>('/images/upload', formData, {
         headers: {
@@ -40,19 +33,10 @@ class ImageService {
         },
       });
 
-      console.log('[ImageService] Upload successful:', {
-        blobName: response.data.blobName,
-        imageUrl: response.data.imageUrl,
-        message: response.data.message
-      });
-
       return response.data;
     } catch (error: any) {
-      console.error('[ImageService] Upload failed:', {
-        error: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
+      const errorMsg = error.response?.data?.message || 'Không thể tải ảnh lên. Vui lòng thử lại.';
+      toast.error(errorMsg);
       throw error;
     }
   }
@@ -63,17 +47,14 @@ class ImageService {
    * @param expiryHours - Hours before URL expires (default: 24)
    */
   async getImageUrl(blobName: string, expiryHours: number = 24): Promise<ImageUrlResponse> {
-    console.log('[ImageService] Getting URL for blob:', blobName);
-
     try {
       const response = await apiClient.get<ImageUrlResponse>(
         `/images/${blobName}?expiryHours=${expiryHours}`
       );
 
-      console.log('[ImageService] URL retrieved:', response.data.imageUrl);
       return response.data;
     } catch (error: any) {
-      console.error('[ImageService] Failed to get URL:', error.message);
+      // Silent fail for image URL retrieval, don't show toast
       throw error;
     }
   }
@@ -83,17 +64,15 @@ class ImageService {
    * @param blobName - Blob name to delete
    */
   async deleteImage(blobName: string): Promise<{ message: string; blobName: string }> {
-    console.log('[ImageService] Deleting blob:', blobName);
-
     try {
       const response = await apiClient.delete<{ message: string; blobName: string }>(
         `/images/${blobName}`
       );
 
-      console.log('[ImageService] ✅ Image deleted:', response.data.message);
       return response.data;
     } catch (error: any) {
-      console.error('[ImageService] ❌ Failed to delete:', error.message);
+      const errorMsg = error.response?.data?.message || 'Không thể xóa ảnh. Vui lòng thử lại.';
+      toast.error(errorMsg);
       throw error;
     }
   }
@@ -107,25 +86,14 @@ class ImageService {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     const maxSize = 5 * 1024 * 1024; // 5MB
 
-    console.log('[ImageService] Validating file:', {
-      name: file.name,
-      size: file.size,
-      type: file.type
-    });
-
     if (!allowedTypes.includes(file.type)) {
-      const error = 'Invalid file type. Only JPG, PNG, GIF, and WebP images are allowed.';
-      console.warn('[ImageService] ⚠️ Validation failed:', error);
-      return error;
+      return 'Loại file không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF và WebP.';
     }
 
     if (file.size > maxSize) {
-      const error = `File size exceeds 5MB limit. Your file: ${(file.size / 1024 / 1024).toFixed(2)}MB`;
-      console.warn('[ImageService] ⚠️ Validation failed:', error);
-      return error;
+      return `Kích thước file vượt quá 5MB. File của bạn: ${(file.size / 1024 / 1024).toFixed(2)}MB`;
     }
 
-    console.log('[ImageService] File validation passed');
     return null;
   }
 }

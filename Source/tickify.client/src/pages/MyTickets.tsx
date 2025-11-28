@@ -9,10 +9,12 @@ import { QRTicketCard } from "../components/QRTicketCard";
 import { ticketService, type TicketDto } from "../services/ticketService";
 import { authService } from "../services/authService";
 import { useTranslation } from 'react-i18next';
+import { toast } from "sonner";
+import { Badge } from "../components/ui/badge";
 
 interface MyTicketsProps {
   orders: any[];
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, id?: string) => void;
 }
 
 export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
@@ -37,6 +39,15 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
+  // Reload tickets when tickets are updated (e.g., after transfer)
+  useEffect(() => {
+    const handleTicketsUpdated = () => {
+      loadTickets();
+    };
+    window.addEventListener('tickets-updated', handleTicketsUpdated);
+    return () => window.removeEventListener('tickets-updated', handleTicketsUpdated);
+  }, []);
+
   const loadTickets = async () => {
     try {
       // Check if user is authenticated
@@ -45,9 +56,7 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
         return;
       }
 
-      console.log("[MyTickets] Loading tickets from API...");
       const userTickets = await ticketService.getMyTickets();
-      console.log("[MyTickets] Tickets loaded:", userTickets);
       
       if (userTickets && Array.isArray(userTickets)) {
         setTickets(userTickets);
@@ -56,13 +65,15 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
           setError(""); // Don't show error for empty tickets, just show empty state
         }
       } else {
-        console.warn("[MyTickets] Invalid tickets response:", userTickets);
         setTickets([]);
-        setError("Unable to load tickets. Please try again.");
+        const errorMsg = "Không thể tải danh sách vé. Vui lòng thử lại.";
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err: any) {
-      console.error("[MyTickets] Failed to load tickets:", err);
-      setError(err.response?.data?.message || err.message || "Failed to load tickets");
+      const errorMsg = err.response?.data?.message || err.message || "Không thể tải danh sách vé. Vui lòng thử lại.";
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -145,9 +156,14 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
         {bookingGroupsList.map((group) => (
           <div key={group.bookingId}>
             <div className="mb-4">
-              <h3 className="mb-1">{group.eventTitle}</h3>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="mb-1">{group.eventTitle}</h3>
+                <Badge variant="secondary" className="text-xs">
+                  {group.tickets.length} {group.tickets.length === 1 ? t('booking.myTickets.ticket') : t('booking.myTickets.tickets')}
+                </Badge>
+              </div>
               <p className="text-sm text-neutral-500">
-                Booking {group.bookingNumber} •{" "}
+                {t('booking.myTickets.booking')} {group.bookingNumber} •{" "}
                 {new Date(group.createdAt).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
@@ -167,10 +183,10 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
             <div className="flex items-center justify-between mb-4">
               <div></div>
               <button
-                onClick={() => onNavigate("order-detail")}
+                onClick={() => onNavigate("order-detail", group.bookingId?.toString() || group.bookingNumber)}
                 className="text-sm text-teal-600 hover:text-teal-700 underline"
               >
-                View Order Details
+                {t('booking.myTickets.viewOrderDetails')}
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -205,7 +221,7 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
-          <p className="text-neutral-600">Loading your tickets...</p>
+          <p className="text-neutral-600">{t('booking.myTickets.loading')}</p>
         </div>
       </div>
     );

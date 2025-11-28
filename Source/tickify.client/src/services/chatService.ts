@@ -1,5 +1,6 @@
 import apiClient from "./apiClient";
 import * as signalR from "@microsoft/signalr";
+import { toast } from "sonner";
 
 // ===== INTERFACES =====
 export interface ChatMessage {
@@ -144,9 +145,9 @@ class SignalRService {
 
     try {
       await this.connection.start();
-      console.log("SignalR connection established");
-    } catch (error) {
-      console.error("Error starting SignalR connection:", error);
+    } catch (error: any) {
+      const errorMsg = error.message || "Không thể kết nối chat. Vui lòng thử lại.";
+      toast.error(errorMsg);
       throw error;
     }
   }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Toaster } from "./components/ui/sonner";
 import { EventReviews } from "./pages/EventReviews";
 import { RefundRequest } from "./pages/RefundRequest";
 import { NotificationPreferences } from "./pages/NotificationPreferences";
@@ -572,6 +573,7 @@ export default function App() {
         )}
         <main className="flex-1">{renderPage()}</main>
         {!isStandalonePage && <Footer />}
+        <Toaster />
       </div>
     </ProtectedRoute>
   );

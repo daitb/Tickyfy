@@ -9,7 +9,11 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { mockOrders, mockEvents } from '../mockData';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { toast } from 'sonner';
+import { ticketService, type TicketDto } from '../services/ticketService';
+import { authService } from '../services/authService';
+import { useEffect } from 'react';
 import type { Order, OrderTicket } from '../types';
 
 interface TransferTicketProps {
@@ -26,17 +30,22 @@ interface TransferFormData {
   termsAccepted: boolean;
 }
 
-const STEPS = [
-  { number: 1, label: 'Select Ticket' },
-  { number: 2, label: 'Enter Details' },
-  { number: 3, label: 'Confirm' },
-  { number: 4, label: 'Complete' }
-];
+// STEPS sẽ được tạo động với translation
 
 export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketProps) {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedTicket, setSelectedTicket] = useState<OrderTicket & { eventTitle: string; eventDate: string; eventVenue: string } | null>(null);
+  
+  const STEPS = [
+    { number: 1, label: t('transfer.ticket.step1') },
+    { number: 2, label: t('transfer.ticket.step2') },
+    { number: 3, label: t('transfer.ticket.step3') },
+    { number: 4, label: t('transfer.ticket.step4') }
+  ];
+  const [selectedTicket, setSelectedTicket] = useState<TicketDto | null>(null);
+  const [transferableTickets, setTransferableTickets] = useState<TicketDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isTransferring, setIsTransferring] = useState(false);
   const [formData, setFormData] = useState<TransferFormData>({
     recipientEmail: '',
     recipientName: '',
@@ -46,43 +55,58 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [transferCode, setTransferCode] = useState<string>('');
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
-  // Get all transferable tickets from user's orders
-  const transferableTickets: Array<OrderTicket & { eventTitle: string; eventDate: string; eventVenue: string }> = [];
-  
-  (orders || mockOrders).forEach(order => {
-    const event = mockEvents.find(e => e.id === order.eventId);
-    if (event) {
-      order.tickets.forEach(ticket => {
-        transferableTickets.push({
-          ...ticket,
-          eventTitle: event.title,
-          eventDate: event.date,
-          eventVenue: event.venue
-        });
-      });
-    }
-  });
+  // Get current user email
+  const currentUser = authService.getCurrentUser();
+  const currentUserEmail = currentUser?.email || '';
 
-  // Pre-select ticket if ticketId is provided
-  useState(() => {
-    if (ticketId) {
-      const ticket = transferableTickets.find(t => t.id === ticketId);
-      if (ticket) {
-        setSelectedTicket(ticket);
-        setCurrentStep(2);
+  // Load transferable tickets from API
+  useEffect(() => {
+    const loadTransferableTickets = async () => {
+      try {
+        setIsLoading(true);
+        if (!authService.isAuthenticated()) {
+          onNavigate('login');
+          return;
+        }
+
+        const allTickets = await ticketService.getMyTickets();
+        
+        // Filter only transferable tickets: status = 'Valid' and not used
+        const transferable = allTickets.filter(ticket => 
+          ticket.status.toLowerCase() === 'valid' && 
+          !ticket.isUsed &&
+          !ticket.usedAt
+        );
+
+        setTransferableTickets(transferable);
+
+        // Pre-select ticket if ticketId is provided
+        if (ticketId) {
+          const ticket = transferable.find(t => t.ticketId.toString() === ticketId);
+          if (ticket) {
+            setSelectedTicket(ticket);
+            setCurrentStep(2);
+          }
+        }
+      } catch (err: any) {
+        const errorMsg = err.response?.data?.message || err.message || 'Không thể tải danh sách vé. Vui lòng thử lại.';
+        toast.error(errorMsg);
+      } finally {
+        setIsLoading(false);
       }
-    }
-  });
+    };
 
-  const currentUserEmail = 'user@example.com'; // Would come from auth store
+    loadTransferableTickets();
+  }, [ticketId, onNavigate]);
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
-  const handleTicketSelect = (ticket: typeof transferableTickets[0]) => {
+  const handleTicketSelect = (ticket: TicketDto) => {
     setSelectedTicket(ticket);
   };
 
@@ -98,25 +122,25 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
     const newErrors: Record<string, string> = {};
 
     if (!formData.recipientEmail.trim()) {
-      newErrors.recipientEmail = 'Recipient email is required';
+      newErrors.recipientEmail = t('transfer.ticket.recipientEmailRequired');
     } else if (!validateEmail(formData.recipientEmail)) {
-      newErrors.recipientEmail = 'Please enter a valid email address';
+      newErrors.recipientEmail = t('transfer.ticket.recipientEmailInvalid');
     } else if (formData.recipientEmail.toLowerCase() === currentUserEmail.toLowerCase()) {
-      newErrors.recipientEmail = 'You cannot transfer a ticket to yourself';
+      newErrors.recipientEmail = t('transfer.ticket.recipientEmailSelf');
     }
 
     if (formData.message.length > 200) {
-      newErrors.message = 'Message cannot exceed 200 characters';
+      newErrors.message = t('transfer.ticket.messageExceeded');
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep === 1) {
       if (!selectedTicket) {
-        alert('Please select a ticket to transfer');
+        toast.error(t('transfer.ticket.selectTicketError'));
         return;
       }
       setCurrentStep(2);
@@ -126,13 +150,19 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
       }
     } else if (currentStep === 3) {
       if (!formData.termsAccepted) {
-        setErrors({ terms: 'Please accept the terms to continue' });
+        const errorMsg = t('transfer.ticket.termsRequired');
+        setErrors({ terms: errorMsg });
+        toast.error(errorMsg);
         return;
       }
-      // Simulate API call
-      const code = `TRF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-      setTransferCode(code);
-      setCurrentStep(4);
+      
+      // Call API to transfer ticket
+      if (!selectedTicket) {
+        toast.error(t('transfer.ticket.selectTicketError'));
+        return;
+      }
+
+      await handleTransferTicket();
     }
   };
 
@@ -143,8 +173,47 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
   };
 
   const handleCancel = () => {
-    if (confirm('Are you sure you want to cancel this transfer?')) {
-      onNavigate('my-tickets');
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = () => {
+    setShowCancelDialog(false);
+    onNavigate('my-tickets');
+  };
+
+  const handleTransferTicket = async () => {
+    if (!selectedTicket) return;
+
+    try {
+      setIsTransferring(true);
+      
+      await ticketService.transferTicket(
+        selectedTicket.ticketId.toString(),
+        {
+          recipientEmail: formData.recipientEmail,
+          recipientName: formData.recipientName || formData.recipientEmail.split('@')[0]
+        }
+      );
+
+      // Generate transfer code for display
+      const code = `TRF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      setTransferCode(code);
+      setCurrentStep(4);
+      
+      // Remove transferred ticket from list
+      setTransferableTickets(prev => 
+        prev.filter(t => t.ticketId !== selectedTicket.ticketId)
+      );
+
+      toast.success(t('transfer.ticket.successMessage'));
+      
+      // Trigger reload in MyTickets page
+      window.dispatchEvent(new Event('tickets-updated'));
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || t('transfer.ticket.errorMessage');
+      toast.error(errorMsg);
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -173,11 +242,11 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
             className="mb-4"
           >
             <ArrowLeft size={16} className="mr-2" />
-            Back to My Tickets
+            {t('transfer.ticket.backToMyTickets')}
           </Button>
-          <h1 className="mb-2">Transfer Ticket</h1>
+          <h1 className="mb-2">{t('transfer.ticket.title')}</h1>
           <p className="text-neutral-600">
-            Transfer your ticket to another person
+            {t('transfer.ticket.subtitle')}
           </p>
         </div>
 
@@ -231,28 +300,41 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
             {currentStep === 1 && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="mb-4">Select a Ticket to Transfer</h3>
+                  <h3 className="mb-4">{t('transfer.ticket.selectTicket')}</h3>
                   <p className="text-sm text-neutral-600 mb-6">
-                    Choose from your available tickets below
+                    {t('transfer.ticket.selectTicketDescription')}
                   </p>
                 </div>
 
-                {transferableTickets.length === 0 ? (
+                {isLoading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
+                    <p className="text-neutral-600">{t('transfer.ticket.loadingTickets')}</p>
+                  </div>
+                ) : transferableTickets.length === 0 ? (
                   <div className="text-center py-12">
                     <TicketIcon className="mx-auto text-neutral-400 mb-4" size={48} />
-                    <h3 className="text-neutral-900 mb-2">No Transferable Tickets</h3>
+                    <h3 className="text-neutral-900 mb-2">{t('transfer.ticket.noTransferableTickets')}</h3>
                     <p className="text-neutral-600">
-                      You don't have any tickets available for transfer
+                      {t('transfer.ticket.noTransferableTicketsDescription')}
                     </p>
                   </div>
                 ) : (
+                  <div className="space-y-2 mb-4">
+                    <p className="text-sm text-neutral-600">
+                      {t('transfer.ticket.foundTickets')} <strong>{transferableTickets.length}</strong> {transferableTickets.length === 1 ? t('transfer.ticket.foundTicketsSingular') : t('transfer.ticket.foundTicketsPlural')} {t('transfer.ticket.foundTicketsSuffix')}
+                    </p>
+                  </div>
+                )}
+
+                {!isLoading && transferableTickets.length > 0 && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {transferableTickets.map((ticket) => (
                       <button
-                        key={ticket.id}
+                        key={ticket.ticketId}
                         onClick={() => handleTicketSelect(ticket)}
                         className={`text-left p-4 rounded-xl border-2 transition-all hover:shadow-md ${
-                          selectedTicket?.id === ticket.id
+                          selectedTicket?.ticketId === ticket.ticketId
                             ? 'border-teal-500 bg-teal-50'
                             : 'border-neutral-200 bg-white'
                         }`}
@@ -266,7 +348,7 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                               {ticket.eventTitle}
                             </div>
                             <div className="text-sm text-neutral-600">
-                              {new Date(ticket.eventDate).toLocaleDateString('en-US', {
+                              {new Date(ticket.eventStartDate).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
                                 year: 'numeric'
@@ -274,12 +356,17 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                             </div>
                             <div className="flex items-center gap-2 mt-2">
                               <Badge className="bg-teal-100 text-teal-700 text-xs">
-                                {ticket.tierName}
+                                {ticket.ticketTypeName}
                               </Badge>
                               <Badge className="bg-green-100 text-green-700 text-xs">
-                                Valid
+                                {ticket.status}
                               </Badge>
                             </div>
+                            {ticket.seatNumber && (
+                              <div className="text-xs text-neutral-500 mt-1">
+                                {t('transfer.ticket.seatLabel')} {ticket.seatNumber}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </button>
@@ -293,9 +380,9 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
             {currentStep === 2 && selectedTicket && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="mb-2">Transfer Details</h3>
+                  <h3 className="mb-2">{t('transfer.ticket.transferDetails')}</h3>
                   <p className="text-sm text-neutral-600">
-                    Enter the recipient's information
+                    {t('transfer.ticket.enterRecipientInfo')}
                   </p>
                 </div>
 
@@ -306,8 +393,13 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                     <div>
                       <div className="text-sm text-neutral-900">{selectedTicket.eventTitle}</div>
                       <div className="text-xs text-neutral-600">
-                        {selectedTicket.tierName} • {new Date(selectedTicket.eventDate).toLocaleDateString()}
+                        {selectedTicket.ticketTypeName} • {new Date(selectedTicket.eventStartDate).toLocaleDateString()}
                       </div>
+                      {selectedTicket.seatNumber && (
+                        <div className="text-xs text-neutral-500 mt-1">
+                          {t('transfer.ticket.seatLabel')} {selectedTicket.seatNumber}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -316,7 +408,7 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                 <Alert className="border-amber-200 bg-amber-50">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
                   <AlertDescription className="text-amber-800">
-                    You will no longer have access to this ticket after the transfer is completed
+                    {t('transfer.ticket.warning')}
                   </AlertDescription>
                 </Alert>
 
@@ -324,7 +416,7 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="recipientEmail">
-                      Recipient Email <span className="text-red-500">*</span>
+                      {t('transfer.ticket.recipientEmail')} <span className="text-red-500">*</span>
                     </Label>
                     <div className="relative mt-1">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
@@ -343,13 +435,13 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                   </div>
 
                   <div>
-                    <Label htmlFor="recipientName">Recipient Name (Optional)</Label>
+                    <Label htmlFor="recipientName">{t('transfer.ticket.recipientName')}</Label>
                     <div className="relative mt-1">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                       <Input
                         id="recipientName"
                         type="text"
-                        placeholder="John Doe"
+                        placeholder={t('transfer.ticket.recipientNamePlaceholder')}
                         value={formData.recipientName}
                         onChange={(e) => handleFormChange('recipientName', e.target.value)}
                         className="pl-10"
@@ -359,11 +451,11 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
 
                   <div>
                     <Label htmlFor="message">
-                      Transfer Message (Optional)
+                      {t('transfer.ticket.message')}
                     </Label>
                     <Textarea
                       id="message"
-                      placeholder="Add a personal message for the recipient..."
+                      placeholder={t('transfer.ticket.messagePlaceholder')}
                       value={formData.message}
                       onChange={(e) => handleFormChange('message', e.target.value)}
                       className="mt-1 min-h-[100px]"
@@ -371,7 +463,7 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                     />
                     <div className="flex justify-between mt-1">
                       <p className="text-xs text-neutral-500">
-                        {formData.message.length}/200 characters
+                        {formData.message.length}/200 {t('transfer.ticket.messageMaxLength')}
                       </p>
                       {errors.message && (
                         <p className="text-xs text-red-500">{errors.message}</p>
@@ -391,7 +483,7 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                       htmlFor="includeSeatInfo"
                       className="text-sm cursor-pointer"
                     >
-                      Include seat information in transfer
+                      {t('transfer.ticket.includeSeatInfo')}
                     </Label>
                   </div>
                 </div>
@@ -402,27 +494,27 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
             {currentStep === 3 && selectedTicket && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="mb-2">Confirm Transfer</h3>
+                  <h3 className="mb-2">{t('transfer.ticket.confirmTransfer')}</h3>
                   <p className="text-sm text-neutral-600">
-                    Please review the transfer details before confirming
+                    {t('transfer.ticket.reviewDetails')}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Ticket Info */}
                   <div>
-                    <h4 className="text-sm text-neutral-600 mb-3">Ticket Details</h4>
+                    <h4 className="text-sm text-neutral-600 mb-3">{t('transfer.ticket.ticketDetails')}</h4>
                     <Card className="border-teal-200 bg-teal-50">
                       <CardContent className="p-4">
                         <div className="space-y-2">
                           <div>
-                            <div className="text-xs text-neutral-600">Event</div>
+                            <div className="text-xs text-neutral-600">{t('transfer.ticket.event')}</div>
                             <div className="text-sm text-neutral-900">{selectedTicket.eventTitle}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-neutral-600">Date</div>
+                            <div className="text-xs text-neutral-600">{t('transfer.ticket.date')}</div>
                             <div className="text-sm text-neutral-900">
-                              {new Date(selectedTicket.eventDate).toLocaleDateString('en-US', {
+                              {new Date(selectedTicket.eventStartDate).toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 month: 'long',
                                 day: 'numeric',
@@ -431,13 +523,19 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-neutral-600">Tier</div>
-                            <div className="text-sm text-neutral-900">{selectedTicket.tierName}</div>
+                            <div className="text-xs text-neutral-600">{t('transfer.ticket.tier')}</div>
+                            <div className="text-sm text-neutral-900">{selectedTicket.ticketTypeName}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-neutral-600">Venue</div>
+                            <div className="text-xs text-neutral-600">{t('transfer.ticket.venue')}</div>
                             <div className="text-sm text-neutral-900">{selectedTicket.eventVenue}</div>
                           </div>
+                          {selectedTicket.seatNumber && (
+                            <div>
+                              <div className="text-xs text-neutral-600">{t('transfer.ticket.seat')}</div>
+                              <div className="text-sm text-neutral-900">{selectedTicket.seatNumber}</div>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -445,11 +543,11 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
 
                   {/* Transfer Info */}
                   <div>
-                    <h4 className="text-sm text-neutral-600 mb-3">Transfer Information</h4>
+                    <h4 className="text-sm text-neutral-600 mb-3">{t('transfer.ticket.transferInformation')}</h4>
                     <div className="space-y-4">
                       <div className="bg-neutral-50 rounded-lg p-4">
-                        <div className="text-xs text-neutral-600 mb-1">From</div>
-                        <div className="text-sm text-neutral-900">Current User</div>
+                        <div className="text-xs text-neutral-600 mb-1">{t('transfer.ticket.from')}</div>
+                        <div className="text-sm text-neutral-900">{currentUser?.fullName || t('common.currentUser')}</div>
                         <div className="text-xs text-neutral-600">{currentUserEmail}</div>
                       </div>
 
@@ -458,24 +556,24 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                       </div>
 
                       <div className="bg-neutral-50 rounded-lg p-4">
-                        <div className="text-xs text-neutral-600 mb-1">To</div>
+                        <div className="text-xs text-neutral-600 mb-1">{t('transfer.ticket.to')}</div>
                         <div className="text-sm text-neutral-900">
-                          {formData.recipientName || 'Recipient'}
+                          {formData.recipientName || t('transfer.ticket.recipient')}
                         </div>
                         <div className="text-xs text-neutral-600">{formData.recipientEmail}</div>
                       </div>
 
                       {formData.message && (
                         <div className="bg-neutral-50 rounded-lg p-4">
-                          <div className="text-xs text-neutral-600 mb-1">Message</div>
+                          <div className="text-xs text-neutral-600 mb-1">{t('transfer.ticket.message')}</div>
                           <div className="text-sm text-neutral-900 italic">"{formData.message}"</div>
                         </div>
                       )}
 
                       <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-neutral-900">Transfer Fee</span>
-                          <span className="text-green-600">Free</span>
+                          <span className="text-sm text-neutral-900">{t('transfer.ticket.transferFee')}</span>
+                          <span className="text-green-600">{t('transfer.ticket.free')}</span>
                         </div>
                       </div>
                     </div>
@@ -496,7 +594,7 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                       htmlFor="termsAccepted"
                       className="text-sm cursor-pointer"
                     >
-                      I confirm that the transfer details are correct and I understand that this action cannot be undone
+                      {t('transfer.ticket.termsAccept')}
                     </Label>
                   </div>
                   {errors.terms && (
@@ -512,18 +610,18 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="text-green-500" size={32} />
                 </div>
-                <h3 className="text-neutral-900 mb-2">Transfer Initiated!</h3>
+                <h3 className="text-neutral-900 mb-2">{t('transfer.ticket.transferInitiated')}</h3>
                 <p className="text-neutral-600 mb-6">
-                  The recipient will receive an email with an acceptance link
+                  {t('transfer.ticket.recipientWillReceiveEmail')}
                 </p>
 
                 <div className="bg-neutral-50 rounded-xl p-6 mb-6 max-w-md mx-auto">
-                  <div className="text-sm text-neutral-600 mb-2">Transfer Code</div>
+                  <div className="text-sm text-neutral-600 mb-2">{t('transfer.ticket.transferCode')}</div>
                   <div className="text-2xl text-teal-600 font-mono tracking-wider mb-4">
                     {transferCode}
                   </div>
                   <p className="text-xs text-neutral-500">
-                    Save this code for your records. The recipient will need to accept the transfer within 48 hours.
+                    {t('transfer.ticket.saveCodeForRecords')}
                   </p>
                 </div>
 
@@ -532,14 +630,14 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                     onClick={() => onNavigate('my-tickets')}
                     className="w-full bg-teal-500 hover:bg-teal-600"
                   >
-                    Back to My Tickets
+                    {t('transfer.ticket.backToMyTickets')}
                   </Button>
                   <Button
                     onClick={handleTransferAnother}
                     variant="outline"
                     className="w-full"
                   >
-                    Transfer Another Ticket
+                    {t('transfer.ticket.transferAnother')}
                   </Button>
                 </div>
               </div>
@@ -557,7 +655,7 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
                 className="flex-1"
               >
                 <ArrowLeft size={16} className="mr-2" />
-                Previous
+                {t('transfer.ticket.previous')}
               </Button>
             )}
             <Button
@@ -566,21 +664,26 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
               className="border-red-600 text-red-600 hover:bg-red-50"
             >
               <X size={16} className="mr-2" />
-              Cancel
+              {t('transfer.ticket.cancel')}
             </Button>
             <Button
               onClick={handleNext}
               className="flex-1 bg-teal-500 hover:bg-teal-600"
-              disabled={currentStep === 1 && !selectedTicket}
+              disabled={(currentStep === 1 && !selectedTicket) || isTransferring}
             >
-              {currentStep === 3 ? (
+              {isTransferring ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {t('transfer.ticket.transferring')}
+                </>
+              ) : currentStep === 3 ? (
                 <>
                   <Send size={16} className="mr-2" />
-                  Confirm & Send
+                  {t('transfer.ticket.confirmAndSend')}
                 </>
               ) : (
                 <>
-                  Next
+                  {t('transfer.ticket.next')}
                   <ArrowRight size={16} className="ml-2" />
                 </>
               )}
@@ -588,6 +691,26 @@ export function TransferTicket({ ticketId, orders, onNavigate }: TransferTicketP
           </div>
         )}
       </div>
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('common.cancelConfirm')}</DialogTitle>
+            <DialogDescription>
+              {t('common.cancelConfirmMessage')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              {t('common.no')}
+            </Button>
+            <Button variant="destructive" onClick={confirmCancel}>
+              {t('common.yes')}, {t('common.cancel')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import axios, {
   type AxiosResponse,
   AxiosError,
 } from "axios";
+import { toast } from "sonner";
 
 // Base API URL
 const API_BASE_URL = "http://localhost:5179/api";
@@ -33,15 +34,6 @@ apiClient.interceptors.request.use(
 // Response interceptor to handle common errors and extract data from ApiResponse wrapper
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log(
-      "ApiClient Response Interceptor - Original response:",
-      response
-    );
-    console.log(
-      "ApiClient Response Interceptor - Response data:",
-      response.data
-    );
-
     // Backend wraps responses in ApiResponse<T> with { success, message, data }
     // Extract the data field if it exists
     if (
@@ -49,26 +41,11 @@ apiClient.interceptors.response.use(
       typeof response.data === "object" &&
       "data" in response.data
     ) {
-      console.log("ApiClient Response Interceptor - Extracting data field");
       response.data = response.data.data;
-      console.log(
-        "ApiClient Response Interceptor - After extraction:",
-        response.data
-      );
     }
     return response;
   },
   (error: AxiosError) => {
-    console.error("ApiClient Error Interceptor - Error:", error);
-    console.error(
-      "ApiClient Error Interceptor - Error response:",
-      error.response
-    );
-    console.error(
-      "ApiClient Error Interceptor - Error response data:",
-      error.response?.data
-    );
-
     // Don't redirect on login failure (401), let the login page handle it
     if (
       error.response?.status === 401 &&
@@ -78,15 +55,14 @@ apiClient.interceptors.response.use(
       localStorage.removeItem("authToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
+      toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
       window.location.href = "/login";
     } else if (error.response?.status === 403) {
-      console.error(
-        "Forbidden: You do not have permission to access this resource"
-      );
+      toast.error("Bạn không có quyền truy cập tài nguyên này.");
     } else if (error.response?.status === 404) {
-      console.error("Not Found: The requested resource does not exist");
+      // 404 errors are usually handled by pages, don't show toast here
     } else if (error.response?.status && error.response.status >= 500) {
-      console.error("Server Error: Please try again later");
+      toast.error("Lỗi máy chủ. Vui lòng thử lại sau.");
     }
     return Promise.reject(error);
   }

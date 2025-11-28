@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
+import { toast } from 'sonner';
 
 export function Contact() {
   const { t } = useTranslation();
@@ -82,8 +83,9 @@ export function Contact() {
       });
       
       setTimeout(() => setShowSuccess(false), 6000);
-    } catch (error) {
-      console.error('Failed to send message:', error);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || 'Không thể gửi tin nhắn. Vui lòng thử lại.';
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
