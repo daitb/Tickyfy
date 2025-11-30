@@ -1,5 +1,5 @@
 import { Calendar, MapPin } from 'lucide-react';
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Event } from '../types';
 import { Badge } from './ui/badge';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -11,24 +11,33 @@ interface EventCardProps {
   onClick: () => void;
 }
 
-export function EventCard({ event, onClick }: EventCardProps) {
+/**
+ * EventCard component với memoization để tránh re-render không cần thiết
+ * Chỉ re-render khi event data hoặc onClick handler thay đổi
+ */
+export const EventCard = React.memo(function EventCard({ event, onClick }: EventCardProps) {
   const isAuthenticated = authService.isAuthenticated();
-  const eventId = parseInt(event.id, 10);
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
+  const eventId = useMemo(() => parseInt(event.id, 10), [event.id]);
 
   const formatPrice = (price: number) => {
     return `${(price / 1000).toFixed(0)}K VND`;
   };
 
-  const lowestPrice = Math.min(...event.ticketTiers.filter(t => t.available > 0).map(t => t.price));
+  // Memoize expensive calculations
+  const lowestPrice = useMemo(() => {
+    const availableTiers = event.ticketTiers.filter(t => t.available > 0);
+    if (availableTiers.length === 0) return 0;
+    return Math.min(...availableTiers.map(t => t.price));
+  }, [event.ticketTiers]);
+
+  const formattedDate = useMemo(() => {
+    const date = new Date(event.date);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }, [event.date]);
 
   return (
     <div 
@@ -62,7 +71,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
         <div className="space-y-2 text-neutral-600">
           <div className="flex items-center gap-2">
             <Calendar size={16} />
-            <span className="text-sm">{formatDate(event.date)}</span>
+            <span className="text-sm">{formattedDate}</span>
           </div>
           <div className="flex items-center gap-2">
             <MapPin size={16} />
@@ -76,4 +85,17 @@ export function EventCard({ event, onClick }: EventCardProps) {
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison function để optimize re-renders
+  // Chỉ re-render nếu event data hoặc onClick thay đổi
+  return (
+    prevProps.event.id === nextProps.event.id &&
+    prevProps.event.title === nextProps.event.title &&
+    prevProps.event.image === nextProps.event.image &&
+    prevProps.event.date === nextProps.event.date &&
+    prevProps.event.category === nextProps.event.category &&
+    prevProps.event.city === nextProps.event.city &&
+    JSON.stringify(prevProps.event.ticketTiers) === JSON.stringify(nextProps.event.ticketTiers) &&
+    prevProps.onClick === nextProps.onClick
+  );
+});

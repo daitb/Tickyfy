@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { HeroSlider } from "../components/HeroSlider";
 import { EventCard } from "../components/EventCard";
+import { EventCardSkeletonGrid } from "../components/skeletons/EventCardSkeleton";
 import { Badge } from "../components/ui/badge";
-import { ArrowRight, TrendingUp, Star } from "lucide-react";
+import { ArrowRight, TrendingUp, Star, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { eventService } from "../services/eventService";
 import type { Category } from "../types";
@@ -24,8 +25,10 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
   const [trendingEvents, setTrendingEvents] = useState<any[]>([]);
   const [specialEvents, setSpecialEvents] = useState<any[]>([]);
   const [upcomingEventsList, setUpcomingEventsList] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    setIsLoading(true);
     // Fetch all events for categories and upcoming events
     Promise.all([
       eventService.getEvents(),
@@ -49,6 +52,9 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
         setTrendingEvents([]);
         setSpecialEvents([]);
         setUpcomingEventsList([]);
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
   }, []);
 
@@ -60,6 +66,17 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
     selectedCategory === "all"
       ? upcomingEventsList
       : upcomingEventsList.filter((e) => e.category === selectedCategory);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-teal-500 animate-spin mx-auto mb-4" />
+          <p className="text-neutral-600">{t("common.loading")}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -121,15 +138,19 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {specialEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onClick={() => onNavigate("event-detail", event.id)}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <EventCardSkeletonGrid count={4} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {specialEvents.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onClick={() => onNavigate("event-detail", event.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -143,15 +164,19 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {trendingEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onClick={() => onNavigate("event-detail", event.id)}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <EventCardSkeletonGrid count={3} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {trendingEvents.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onClick={() => onNavigate("event-detail", event.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -174,15 +199,19 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onClick={() => onNavigate("event-detail", event.id)}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <EventCardSkeletonGrid count={6} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredEvents.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onClick={() => onNavigate("event-detail", event.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </div>

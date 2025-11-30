@@ -11,6 +11,7 @@ import { authService } from "../services/authService";
 import { useTranslation } from 'react-i18next';
 import { toast } from "sonner";
 import { Badge } from "../components/ui/badge";
+import { Skeleton } from "../components/ui/skeleton";
 
 interface MyTicketsProps {
   orders: any[];
@@ -50,6 +51,7 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
 
   const loadTickets = async () => {
     try {
+      setIsLoading(true);
       // Check if user is authenticated
       if (!authService.isAuthenticated()) {
         onNavigate("login");
@@ -215,13 +217,28 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
     );
   };
 
-  // Show loading state
+  // Show loading state với skeleton
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
-          <p className="text-neutral-600">{t('booking.myTickets.loading')}</p>
+      <div className="min-h-screen bg-neutral-50 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-8">
+            <Skeleton className="h-8 w-48 mb-4" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="space-y-6">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="bg-white rounded-lg p-6 border border-neutral-200">
+                <Skeleton className="h-6 w-64 mb-4" />
+                <Skeleton className="h-4 w-48 mb-6" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-32 rounded-lg" />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

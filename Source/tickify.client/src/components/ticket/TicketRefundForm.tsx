@@ -57,7 +57,7 @@ export function TicketRefundForm({
   eventTitle,
   onRefundSubmitted,
 }: TicketRefundFormProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('translation');
   const [refundReason, setRefundReason] = useState('');
   const [additionalDetails, setAdditionalDetails] = useState('');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
@@ -70,50 +70,67 @@ export function TicketRefundForm({
   // Tính toán số ngày còn lại trước event
   useEffect(() => {
     if (eventDate) {
-      const eventDateTime = new Date(eventDate);
-      const now = new Date();
-      const diffTime = eventDateTime.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      setDaysUntilEvent(diffDays);
-
-      // Eligible nếu >= 3 ngày
-      setIsEligible(diffDays >= 3);
+      try {
+        // Parse event date - có thể là ISO string hoặc date string
+        const eventDateTime = new Date(eventDate);
+        const now = new Date();
+        
+        // Reset time về 00:00:00 để tính chính xác số ngày
+        const eventDateOnly = new Date(eventDateTime.getFullYear(), eventDateTime.getMonth(), eventDateTime.getDate());
+        const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        const diffTime = eventDateOnly.getTime() - todayOnly.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        setDaysUntilEvent(diffDays);
+        // Eligible nếu >= 3 ngày
+        setIsEligible(diffDays >= 3);
+      } catch (error) {
+        console.error('Error parsing event date:', error);
+        setDaysUntilEvent(0);
+        setIsEligible(false);
+      }
     }
   }, [eventDate]);
 
   // Tính toán refund amount theo policy
   const calculateRefundAmount = () => {
-    if (daysUntilEvent < 3) {
+    if (daysUntilEvent < 3 || ticketPrice <= 0) {
       return 0; // Không được refund
     }
 
-    const serviceFee = ticketPrice * 0.05; // 5% service fee không hoàn lại
     let refundPercentage = 0;
-
     if (daysUntilEvent >= 7) {
       refundPercentage = 1.0; // 100% refund
     } else if (daysUntilEvent >= 3) {
       refundPercentage = 0.5; // 50% refund
     }
 
+    // Tính service fee trên refundable amount (5% của số tiền gốc)
+    const serviceFee = ticketPrice * 0.05;
+    
+    // Refundable amount = ticketPrice * refundPercentage
     const refundableAmount = ticketPrice * refundPercentage;
+    
+    // Final refund = refundableAmount - serviceFee
     const refundAmount = refundableAmount - serviceFee;
 
-    return Math.max(0, refundAmount); // Đảm bảo không âm
+    return Math.max(0, Math.round(refundAmount)); // Đảm bảo không âm và làm tròn
   };
 
   const refundAmount = calculateRefundAmount();
   const serviceFee = ticketPrice * 0.05;
   const refundPercentage = daysUntilEvent >= 7 ? 100 : daysUntilEvent >= 3 ? 50 : 0;
+  const refundableAmount = refundPercentage > 0 ? ticketPrice * (refundPercentage / 100) : 0;
 
   const handleSubmit = () => {
     if (!refundReason || !agreeToTerms) {
-      toast.error(t('ticketRefund.fillRequiredFields'));
+      toast.error(t('pages.ticketRefund.fillRequiredFields'));
       return;
     }
 
     if (!isEligible || refundAmount <= 0) {
-      toast.error(t('ticketRefund.notEligible'));
+      toast.error(t('pages.ticketRefund.notEligible'));
       return;
     }
 
@@ -132,14 +149,14 @@ export function TicketRefundForm({
 
       setShowConfirmation(false);
       setShowSuccess(true);
-      toast.success(t('ticketRefund.requestSubmitted'));
+      toast.success(t('pages.ticketRefund.requestSubmitted'));
       
       if (onRefundSubmitted) {
         onRefundSubmitted();
       }
     } catch (error: any) {
       console.error('Error submitting refund request:', error);
-      const errorMessage = error.response?.data?.message || error.message || t('ticketRefund.submitError');
+      const errorMessage = error.response?.data?.message || error.message || t('pages.ticketRefund.submitError');
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -147,10 +164,15 @@ export function TicketRefundForm({
   };
 
   const formatPrice = (price: number) => {
+    if (!price || price <= 0) return '0 ₫';
+    
+    // Format số tiền theo chuẩn Việt Nam
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND',
-    }).format(price);
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Math.round(price));
   };
 
   return (
@@ -159,23 +181,26 @@ export function TicketRefundForm({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertCircle className="text-orange-500" size={20} />
-            {t('ticketRefund.requestRefund')}
+            {t('pages.ticketRefund.requestRefund')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Eligibility Status */}
-          {!isEligible ? (
+          {!isEligible || daysUntilEvent < 3 ? (
             <Alert className="bg-red-50 border-red-200">
               <AlertCircle className="text-red-600" size={16} />
               <AlertDescription className="text-red-800">
-                {t('ticketRefund.notEligibleMessage', { days: daysUntilEvent })}
+                {daysUntilEvent < 0 
+                  ? t('pages.ticketRefund.notEligibleMessage', { days: 0 })
+                  : t('pages.ticketRefund.notEligibleMessage', { days: daysUntilEvent })
+                }
               </AlertDescription>
             </Alert>
           ) : (
-            <Alert className="bg-blue-50 border-blue-200">
-              <Check className="text-blue-600" size={16} />
-              <AlertDescription className="text-blue-800">
-                {t('ticketRefund.eligibleMessage', { days: daysUntilEvent, percentage: refundPercentage })}
+            <Alert className="bg-green-50 border-green-200">
+              <Check className="text-green-600" size={16} />
+              <AlertDescription className="text-green-800">
+                {t('pages.ticketRefund.eligibleMessage', { days: daysUntilEvent, percentage: refundPercentage })}
               </AlertDescription>
             </Alert>
           )}
@@ -183,40 +208,42 @@ export function TicketRefundForm({
           {/* Refund Calculation */}
           <div className="p-4 bg-neutral-50 rounded-lg space-y-3">
             <div className="text-sm font-medium text-neutral-900 mb-3">
-              {t('ticketRefund.refundCalculation')}
+              {t('pages.ticketRefund.refundCalculation')}
             </div>
             
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-neutral-600">{t('ticketRefund.originalAmount')}:</span>
-                <span className="text-neutral-900">{formatPrice(ticketPrice)}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-neutral-600">{t('pages.ticketRefund.originalAmount')}:</span>
+                <span className="text-neutral-900 font-medium">{formatPrice(ticketPrice)}</span>
               </div>
               
               {refundPercentage > 0 && (
                 <>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600">{t('ticketRefund.refundPercentage')}:</span>
-                    <span className="text-neutral-900">{refundPercentage}%</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-neutral-600">{t('pages.ticketRefund.refundPercentage')}:</span>
+                    <span className="text-neutral-900 font-medium">{refundPercentage}%</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600">{t('ticketRefund.refundableAmount')}:</span>
-                    <span className="text-neutral-900">
-                      {formatPrice(ticketPrice * (refundPercentage / 100))}
+                  <div className="flex justify-between items-center">
+                    <span className="text-neutral-600">{t('pages.ticketRefund.refundableAmount')}:</span>
+                    <span className="text-neutral-900 font-medium">
+                      {formatPrice(refundableAmount)}
                     </span>
                   </div>
                 </>
               )}
               
-              <div className="flex justify-between">
-                <span className="text-neutral-600">{t('ticketRefund.serviceFee')} ({t('ticketRefund.nonRefundable')}):</span>
-                <span className="text-red-600">-{formatPrice(serviceFee)}</span>
-              </div>
+              {refundPercentage > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-600">{t('pages.ticketRefund.serviceFee')} ({t('pages.ticketRefund.nonRefundable')}):</span>
+                  <span className="text-red-600 font-medium">-{formatPrice(serviceFee)}</span>
+                </div>
+              )}
               
               <Separator />
               
-              <div className="flex justify-between items-center">
-                <span className="text-neutral-900 font-medium">{t('ticketRefund.estimatedRefund')}:</span>
-                <span className="text-2xl text-green-600 font-bold">
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-neutral-900 font-semibold">{t('pages.ticketRefund.estimatedRefund')}:</span>
+                <span className={`text-2xl font-bold ${refundAmount > 0 ? 'text-green-600' : 'text-neutral-400'}`}>
                   {formatPrice(refundAmount)}
                 </span>
               </div>
@@ -225,7 +252,7 @@ export function TicketRefundForm({
             <Alert className="bg-blue-50 border-blue-200 mt-4">
               <Clock className="text-blue-600" size={14} />
               <AlertDescription className="text-blue-800 text-xs">
-                {t('ticketRefund.processingTime')}
+                {t('pages.ticketRefund.processingTime')}
               </AlertDescription>
             </Alert>
           </div>
@@ -233,24 +260,24 @@ export function TicketRefundForm({
           {/* Refund Policy Summary */}
           <div className="p-4 bg-neutral-50 rounded-lg space-y-2 text-sm">
             <div className="font-medium text-neutral-900 mb-2">
-              {t('ticketRefund.refundPolicy')}
+              {t('pages.ticketRefund.refundPolicy')}
             </div>
             <div className="flex gap-2">
               <Check size={14} className="text-green-600 flex-shrink-0 mt-0.5" />
               <span className="text-neutral-700">
-                {t('ticketRefund.fullRefund')}: 7+ {t('ticketRefund.daysBeforeEvent')}
+                {t('pages.ticketRefund.fullRefund')}: 7+ {t('pages.ticketRefund.daysBeforeEvent')}
               </span>
             </div>
             <div className="flex gap-2">
               <Check size={14} className="text-yellow-600 flex-shrink-0 mt-0.5" />
               <span className="text-neutral-700">
-                {t('ticketRefund.halfRefund')}: 3-7 {t('ticketRefund.daysBeforeEvent')}
+                {t('pages.ticketRefund.halfRefund')}: 3-7 {t('pages.ticketRefund.daysBeforeEvent')}
               </span>
             </div>
             <div className="flex gap-2">
               <AlertCircle size={14} className="text-red-600 flex-shrink-0 mt-0.5" />
               <span className="text-neutral-700">
-                {t('ticketRefund.noRefund')}: {'<'}3 {t('ticketRefund.daysBeforeEvent')}
+                {t('pages.ticketRefund.noRefund')}: {'<'}3 {t('pages.ticketRefund.daysBeforeEvent')}
               </span>
             </div>
           </div>
@@ -258,21 +285,21 @@ export function TicketRefundForm({
           {/* Refund Reason */}
           <div className="space-y-2">
             <Label htmlFor="refundReason">
-              {t('ticketRefund.refundReason')} <span className="text-red-500">*</span>
+              {t('pages.ticketRefund.refundReason')} <span className="text-red-500">*</span>
             </Label>
             <Select value={refundReason} onValueChange={setRefundReason}>
               <SelectTrigger id="refundReason">
-                <SelectValue placeholder={t('ticketRefund.selectReason')} />
+                <SelectValue placeholder={t('pages.ticketRefund.selectReason')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cancelled">{t('ticketRefund.reasonCancelled')}</SelectItem>
-                <SelectItem value="schedule">{t('ticketRefund.reasonSchedule')}</SelectItem>
-                <SelectItem value="personal">{t('ticketRefund.reasonPersonal')}</SelectItem>
-                <SelectItem value="medical">{t('ticketRefund.reasonMedical')}</SelectItem>
-                <SelectItem value="not-described">{t('ticketRefund.reasonNotDescribed')}</SelectItem>
-                <SelectItem value="venue">{t('ticketRefund.reasonVenue')}</SelectItem>
-                <SelectItem value="accidental">{t('ticketRefund.reasonAccidental')}</SelectItem>
-                <SelectItem value="other">{t('ticketRefund.reasonOther')}</SelectItem>
+                <SelectItem value="cancelled">{t('pages.ticketRefund.reasonCancelled')}</SelectItem>
+                <SelectItem value="schedule">{t('pages.ticketRefund.reasonSchedule')}</SelectItem>
+                <SelectItem value="personal">{t('pages.ticketRefund.reasonPersonal')}</SelectItem>
+                <SelectItem value="medical">{t('pages.ticketRefund.reasonMedical')}</SelectItem>
+                <SelectItem value="not-described">{t('pages.ticketRefund.reasonNotDescribed')}</SelectItem>
+                <SelectItem value="venue">{t('pages.ticketRefund.reasonVenue')}</SelectItem>
+                <SelectItem value="accidental">{t('pages.ticketRefund.reasonAccidental')}</SelectItem>
+                <SelectItem value="other">{t('pages.ticketRefund.reasonOther')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -280,13 +307,13 @@ export function TicketRefundForm({
           {/* Additional Details */}
           <div className="space-y-2">
             <Label htmlFor="additionalDetails">
-              {t('ticketRefund.additionalDetails')} ({t('common.optional')})
+              {t('pages.ticketRefund.additionalDetails')} ({t('common.optional')})
             </Label>
             <Textarea
               id="additionalDetails"
               value={additionalDetails}
               onChange={(e) => setAdditionalDetails(e.target.value)}
-              placeholder={t('ticketRefund.additionalDetailsPlaceholder')}
+              placeholder={t('pages.ticketRefund.additionalDetailsPlaceholder')}
               rows={3}
               maxLength={500}
             />
@@ -303,9 +330,9 @@ export function TicketRefundForm({
               onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
             />
             <label htmlFor="terms" className="text-sm text-neutral-700 cursor-pointer">
-              {t('ticketRefund.agreeToTerms')}
+              {t('pages.ticketRefund.agreeToTerms')}
               <Button variant="link" className="p-0 h-auto ml-1" onClick={() => onRefundSubmitted?.()}>
-                {t('ticketRefund.viewTerms')}
+                {t('pages.ticketRefund.viewTerms')}
               </Button>
             </label>
           </div>
@@ -317,7 +344,7 @@ export function TicketRefundForm({
             className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
             size="lg"
           >
-            {t('ticketRefund.submitRequest')}
+            {t('pages.ticketRefund.submitRequest')}
           </Button>
         </CardContent>
       </Card>
@@ -332,29 +359,29 @@ export function TicketRefundForm({
               </div>
             </div>
             <DialogTitle className="text-center">
-              {t('ticketRefund.confirmTitle')}
+              {t('pages.ticketRefund.confirmTitle')}
             </DialogTitle>
             <DialogDescription className="text-center">
-              {t('ticketRefund.confirmDescription')}
+              {t('pages.ticketRefund.confirmDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 py-4">
             <div className="flex justify-between text-sm">
-              <span className="text-neutral-600">{t('ticketRefund.orderId')}:</span>
+              <span className="text-neutral-600">{t('pages.ticketRefund.orderId')}:</span>
               <span className="text-neutral-900">#{orderId}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-neutral-600">{t('ticketRefund.event')}:</span>
+              <span className="text-neutral-600">{t('pages.ticketRefund.event')}:</span>
               <span className="text-neutral-900">{eventTitle}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-neutral-600">{t('ticketRefund.refundAmount')}:</span>
+              <span className="text-neutral-600">{t('pages.ticketRefund.refundAmount')}:</span>
               <span className="text-green-600 font-medium">{formatPrice(refundAmount)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-neutral-600">{t('ticketRefund.processingTime')}:</span>
-              <span className="text-neutral-900">5-7 {t('ticketRefund.businessDays')}</span>
+              <span className="text-neutral-600">{t('pages.ticketRefund.processingTime')}:</span>
+              <span className="text-neutral-900">5-7 {t('pages.ticketRefund.businessDays')}</span>
             </div>
           </div>
 
@@ -367,10 +394,10 @@ export function TicketRefundForm({
               {isSubmitting ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  {t('ticketRefund.processing')}...
+                  {t('pages.ticketRefund.processing')}...
                 </>
               ) : (
-                t('ticketRefund.confirmRefund')
+                t('pages.ticketRefund.confirmRefund')
               )}
             </Button>
             <Button
@@ -394,29 +421,29 @@ export function TicketRefundForm({
               </div>
             </div>
             <DialogTitle className="text-center text-2xl">
-              {t('ticketRefund.successTitle')}
+              {t('pages.ticketRefund.successTitle')}
             </DialogTitle>
             <DialogDescription className="text-center">
-              {t('ticketRefund.successDescription')}
+              {t('pages.ticketRefund.successDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 text-sm">
             <div className="p-4 bg-neutral-50 rounded-lg space-y-2">
               <div className="flex justify-between">
-                <span className="text-neutral-600">{t('ticketRefund.expectedRefund')}:</span>
+                <span className="text-neutral-600">{t('pages.ticketRefund.expectedRefund')}:</span>
                 <span className="text-green-600 font-medium">{formatPrice(refundAmount)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-600">{t('ticketRefund.status')}:</span>
-                <Badge className="bg-yellow-100 text-yellow-700">{t('ticketRefund.underReview')}</Badge>
+                <span className="text-neutral-600">{t('pages.ticketRefund.status')}:</span>
+                <Badge className="bg-yellow-100 text-yellow-700">{t('pages.ticketRefund.underReview')}</Badge>
               </div>
             </div>
 
             <Alert className="bg-blue-50 border-blue-200">
               <AlertCircle className="text-blue-600" size={14} />
               <AlertDescription className="text-xs text-blue-800">
-                {t('ticketRefund.confirmationEmailSent')}
+                {t('pages.ticketRefund.confirmationEmailSent')}
               </AlertDescription>
             </Alert>
           </div>

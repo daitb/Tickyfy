@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useDebounce } from "../hooks/useDebounce";
 import {
   Search,
   TrendingUp,
@@ -58,7 +59,9 @@ export function InlineSearchBar({
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  
+  // Sử dụng useDebounce hook để debounce search query
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   // Notify parent when open state changes
   useEffect(() => {
@@ -94,34 +97,14 @@ export function InlineSearchBar({
     };
   }, [isOpen]);
 
-  // Debounced search
+  // Show loading khi search query đang được debounce
   useEffect(() => {
-    if (searchQuery.length < 2) {
-      return;
-    }
-
-    // Clear previous timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    // Set loading immediately
-    const loadingTimer = setTimeout(() => {
+    if (searchQuery.length >= 2 && searchQuery !== debouncedSearchQuery) {
       setIsLoading(true);
-    }, 0);
-
-    // Debounce 300ms
-    timeoutRef.current = setTimeout(() => {
+    } else {
       setIsLoading(false);
-    }, 300);
-
-    return () => {
-      clearTimeout(loadingTimer);
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [searchQuery]);
+    }
+  }, [searchQuery, debouncedSearchQuery]);
 
   const handleFocus = () => {
     setIsOpen(true);
@@ -162,21 +145,23 @@ export function InlineSearchBar({
     }
   };
 
-  // Filter events based on search query
-  const filteredEvents =
-    searchQuery.trim().length >= 2
-      ? mockEvents
-          .filter(
-            (event) =>
-              event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              event.category
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase()) ||
-              event.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              event.venue.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-          .slice(0, 4)
-      : mockEvents.slice(0, 4);
+  // Filter events based on debounced search query với memoization
+  const filteredEvents = useMemo(() => {
+    if (debouncedSearchQuery.trim().length < 2) {
+      return mockEvents.slice(0, 4);
+    }
+    
+    const query = debouncedSearchQuery.toLowerCase();
+    return mockEvents
+      .filter(
+        (event) =>
+          event.title.toLowerCase().includes(query) ||
+          event.category.toLowerCase().includes(query) ||
+          event.city.toLowerCase().includes(query) ||
+          event.venue.toLowerCase().includes(query)
+      )
+      .slice(0, 4);
+  }, [debouncedSearchQuery]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -194,7 +179,7 @@ export function InlineSearchBar({
     }).format(date);
   };
 
-  const showResults = searchQuery.trim().length >= 2;
+  const showResults = debouncedSearchQuery.trim().length >= 2;
 
   return (
     <>

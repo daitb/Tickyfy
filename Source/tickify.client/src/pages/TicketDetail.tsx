@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Calendar,
@@ -9,6 +10,7 @@ import {
   ChevronRight,
   AlertCircle,
   Send,
+  Loader2,
 } from "lucide-react";
 import { TicketRefundForm } from "../components/ticket/TicketRefundForm";
 import { Button } from "../components/ui/button";
@@ -21,18 +23,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "../components/ui/accordion";
-import type { Order, OrderTicket } from "../types";
-import { mockEvents, mockOrders } from "../mockData";
+import { ticketService, type TicketDto } from "../services/ticketService";
+import { eventService } from "../services/eventService";
+import { authService } from "../services/authService";
 
 interface TicketDetailProps {
   ticketId?: string;
-  orders?: Order[];
+  orders?: any[]; // Deprecated - không dùng nữa, fetch từ API
   onNavigate: (page: string, id?: string) => void;
-}
-
-// Extended ticket interface with bookingId
-interface TicketWithBooking extends OrderTicket {
-  bookingId?: number;
 }
 
 export function TicketDetail({
@@ -41,38 +39,69 @@ export function TicketDetail({
   onNavigate,
 }: TicketDetailProps) {
   const { t } = useTranslation();
-  // Find ticket from orders list if not provided
-  let currentTicket: any = null;
-  let currentOrder: any = null;
-  let currentEvent: any = null;
+  const [currentTicket, setCurrentTicket] = useState<TicketDto | null>(null);
+  const [currentEvent, setCurrentEvent] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (ticketId && orders) {
-    for (const order of orders) {
-      const foundTicket = order.tickets.find((t) => t.id === ticketId);
-      if (foundTicket) {
-        currentTicket = foundTicket;
-        currentOrder = order;
-        currentEvent = mockEvents.find((e) => e.id === order.eventId);
-        break;
+  // Fetch ticket và event data từ API
+  useEffect(() => {
+    const fetchTicketData = async () => {
+      if (!ticketId) {
+        setIsLoading(false);
+        return;
       }
-    }
-  }
 
-  // If not found, use first ticket from first order
-  if (!currentTicket && orders && orders.length > 0) {
-    currentOrder = orders[0];
-    currentTicket = currentOrder.tickets[0];
-    currentEvent = mockEvents.find((e) => e.id === currentOrder.eventId);
-  }
+      try {
+        setIsLoading(true);
+        setError(null);
 
-  if (!currentTicket) {
+        // Fetch ticket từ API
+        const ticket = await ticketService.getTicketById(ticketId);
+        setCurrentTicket(ticket);
+
+        // Fetch event details
+        if (ticket.eventId) {
+          try {
+            const event = await eventService.getEventByIdentifier(ticket.eventId.toString());
+            setCurrentEvent(event);
+          } catch (err) {
+            console.error('Error fetching event:', err);
+            // Event fetch fail không block ticket display
+          }
+        }
+      } catch (err: any) {
+        console.error('Error fetching ticket:', err);
+        setError(err.response?.data?.message || err.message || 'Không thể tải thông tin vé');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTicketData();
+  }, [ticketId]);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral-50 py-8">
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center py-16">
-            <h2 className="text-neutral-900 mb-4">Ticket not found</h2>
+            <Loader2 className="w-12 h-12 text-teal-500 animate-spin mx-auto mb-4" />
+            <p className="text-neutral-600">{t('common.loading')}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !currentTicket) {
+    return (
+      <div className="min-h-screen bg-neutral-50 py-8">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center py-16">
+            <h2 className="text-neutral-900 mb-4">{error || 'Ticket not found'}</h2>
             <Button onClick={() => onNavigate("my-tickets")}>
-              Back to My Tickets
+              {t('common.back')}
             </Button>
           </div>
         </div>
@@ -101,8 +130,19 @@ export function TicketDetail({
   };
 
   const formatPrice = (price: number) => {
-    return `${(price / 1000).toFixed(0)}K VND`;
+    if (!price || price <= 0) return '0 ₫';
+    // Price từ API đã là VND, không cần convert
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Math.round(price));
   };
+
+  // Lấy tên người dùng hiện tại
+  const user = authService.getCurrentUser();
+  const name = user?.fullName || user?.email || "Guest";
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -150,23 +190,24 @@ export function TicketDetail({
               {/* Event Info */}
               <div>
                 <h1 className="text-white mb-4">
-                  {currentEvent?.title || "Event Title"}
+                  {currentTicket.eventTitle || currentEvent?.title || "Event Title"}
                 </h1>
                 <div className="space-y-2 text-white/90">
                   <div className="flex items-center gap-2">
                     <Calendar size={18} />
                     <span>
-                      {formatDateTime(
-                        currentEvent?.date || "",
-                        currentEvent?.time
-                      )}
+                      {currentTicket.eventStartDate 
+                        ? formatDateTime(currentTicket.eventStartDate)
+                        : currentEvent?.date 
+                        ? formatDateTime(currentEvent.date, currentEvent.time)
+                        : "N/A"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin size={18} />
                     <span>
-                      {currentEvent?.venue || "Venue"},{" "}
-                      {currentEvent?.city || "City"}
+                      {currentTicket.eventVenue || currentEvent?.venue || "Venue"}
+                      {currentEvent?.city && `, ${currentEvent.city}`}
                     </span>
                   </div>
                 </div>
@@ -178,16 +219,16 @@ export function TicketDetail({
               <div className="space-y-3">
                 <div className="text-white/90">Ticket Holder</div>
                 <div className="text-white">
-                  {currentOrder?.userName || "Guest"}
+                  {name}
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
                   <Badge className="bg-white text-indigo-600 text-base px-4 py-1">
-                    {currentTicket.tierName}
+                    {currentTicket.ticketTypeName}
                   </Badge>
-                  {currentTicket.seatInfo && (
+                  {currentTicket.seatNumber && (
                     <span className="text-white/90">
-                      {currentTicket.seatInfo}
+                      Seat: {currentTicket.seatNumber}
                     </span>
                   )}
                 </div>
@@ -225,11 +266,14 @@ export function TicketDetail({
 
                   <div className="space-y-2">
                     <div className="text-neutral-900 font-mono tracking-wider">
-                      {currentTicket.qrCode}
+                      {currentTicket.qrCode || currentTicket.ticketNumber}
                     </div>
                     <div className="text-sm text-neutral-600">
-                      Valid until {formatDate(currentEvent?.date || "")} 11:59
-                      PM
+                      {currentTicket.eventEndDate 
+                        ? `Valid until ${formatDate(currentTicket.eventEndDate)} 11:59 PM`
+                        : currentEvent?.date 
+                        ? `Valid until ${formatDate(currentEvent.date)} 11:59 PM`
+                        : "Valid ticket"}
                     </div>
                     <div className="flex items-center justify-center gap-2 text-sm text-red-600 mt-4">
                       <AlertCircle size={16} />
@@ -249,16 +293,16 @@ export function TicketDetail({
               {/* Left Column */}
               <div className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">Order ID</span>
+                  <span className="text-neutral-600">{t('pages.ticketRefund.orderId')}</span>
                   <span className="text-neutral-900 font-medium">
-                    #{currentOrder?.id || "N/A"}
+                    #{currentTicket.bookingNumber || currentTicket.bookingId || "N/A"}
                   </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-neutral-600">Purchase Date</span>
                   <span className="text-neutral-900 font-medium">
-                    {currentOrder ? formatDate(currentOrder.createdAt) : "N/A"}
+                    {currentTicket.createdAt ? formatDate(currentTicket.createdAt) : "N/A"}
                   </span>
                 </div>
                 <Separator />
@@ -270,10 +314,10 @@ export function TicketDetail({
                 </div>
                 <Separator />
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">Payment</span>
-                  <span className="text-neutral-900 font-medium">
-                    {currentOrder?.paymentMethod || "N/A"}
-                  </span>
+                  <span className="text-neutral-600">Ticket Status</span>
+                  <Badge variant={currentTicket.isUsed ? "default" : "secondary"}>
+                    {currentTicket.isUsed ? "Used" : currentTicket.status || "Valid"}
+                  </Badge>
                 </div>
               </div>
 
@@ -288,11 +332,11 @@ export function TicketDetail({
                   <span className="text-neutral-600">Check-in Status</span>
                   <Badge
                     variant={
-                      currentTicket.checkInTime ? "default" : "secondary"
+                      currentTicket.isUsed ? "default" : "secondary"
                     }
                   >
-                    {currentTicket.checkInTime
-                      ? `Checked in at ${currentTicket.checkInTime}`
+                    {currentTicket.isUsed && currentTicket.usedAt
+                      ? `Checked in at ${formatDate(currentTicket.usedAt)}`
                       : "Not Checked In"}
                   </Badge>
                 </div>
@@ -310,6 +354,17 @@ export function TicketDetail({
                     {currentEvent?.category || "Event"}
                   </Badge>
                 </div>
+                {currentTicket.seatNumber && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600">Seat Number</span>
+                      <span className="text-neutral-900 font-medium">
+                        {currentTicket.seatNumber}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>
@@ -339,16 +394,16 @@ export function TicketDetail({
         </div>
 
         {/* Refund Section */}
-        {currentTicket && currentOrder && currentEvent && (
+        {currentTicket && (
           <TicketRefundForm
-            ticketId={currentTicket.id}
-            orderId={currentOrder.id}
-            bookingId={(currentTicket as TicketWithBooking).bookingId || parseInt(currentOrder.id, 10)}
-            ticketPrice={currentTicket.price * 1000} // Convert to VND (assuming price is in thousands)
-            eventDate={currentEvent.date}
-            eventTitle={currentEvent.title}
+            ticketId={currentTicket.ticketId.toString()}
+            orderId={currentTicket.bookingNumber || currentTicket.bookingId.toString()}
+            bookingId={currentTicket.bookingId}
+            ticketPrice={currentTicket.price} 
+            eventDate={currentTicket.eventStartDate || currentEvent?.date || ''}
+            eventTitle={currentTicket.eventTitle || currentEvent?.title || ''}
             onRefundSubmitted={() => {
-              // Refresh data or navigate
+              // Refresh data hoặc navigate
               onNavigate('my-tickets');
             }}
           />
