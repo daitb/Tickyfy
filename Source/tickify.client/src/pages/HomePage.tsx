@@ -116,14 +116,12 @@ export default function HomePage() {
             <div className="flex flex-wrap gap-3">
               <DateFilterDropdown
                 onApply={(dates) => {
-                  // Handle date filter
-                  console.log('Date filter applied:', dates);
+                  // TODO: Implement date filter functionality
                 }}
               />
               <CategoryFilterDropdown
                 onApply={(filters) => {
-                  // Handle category filter
-                  console.log('Category filter applied:', filters);
+                  // TODO: Implement category filter functionality
                 }}
               />
             </div>

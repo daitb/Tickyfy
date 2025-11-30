@@ -132,7 +132,6 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
   };
 
   const handleExport = (format: string) => {
-    console.log('Exporting as:', format);
     // TODO: Implement export functionality
   };
 

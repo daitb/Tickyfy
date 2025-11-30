@@ -280,12 +280,10 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
   };
 
   const handleVote = (reviewId: number, voteType: 'helpful' | 'not-helpful') => {
-    console.log('Vote:', reviewId, voteType);
     // TODO: Implement voting logic when backend API is available
   };
 
   const handleReport = () => {
-    console.log('Report:', reportReviewId, reportReason, reportDetails);
     // TODO: Implement report logic when backend API is available
     setReportReviewId(null);
     setReportReason('');

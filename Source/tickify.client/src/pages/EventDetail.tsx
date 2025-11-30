@@ -103,7 +103,13 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
         quantity: quantities[tier.id]
       }));
     
+    // Optimistic update: Add to cart ngay lập tức
     onAddToCart(items);
+    
+    // Show success feedback
+    toast.success(`Đã thêm ${totalItems} vé vào giỏ hàng`);
+    
+    // Navigate to cart
     onNavigate('cart');
   };
 
