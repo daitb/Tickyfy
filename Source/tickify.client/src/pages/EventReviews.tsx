@@ -38,22 +38,20 @@ import { Textarea } from '../components/ui/textarea';
 import { Progress } from '../components/ui/progress';
 import { mockEvents } from '../mockData';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { reviewService, type ReviewDto } from '../services/reviewService';
+import { eventService } from '../services/eventService';
+import { useEffect } from 'react';
 
 interface EventReviewsProps {
   eventId?: string;
   onNavigate: (page: string, eventId?: string) => void;
 }
 
-interface Review {
-  id: string;
-  authorName: string;
-  authorAvatar?: string;
-  isVerified: boolean;
-  rating: number;
-  reviewDate: string;
-  attendedDate: string;
-  title: string;
-  content: string;
+// Sử dụng ReviewDto từ service, nhưng extend thêm các field UI cần
+interface Review extends ReviewDto {
+  isVerified?: boolean;
+  attendedDate?: string;
+  title?: string;
   photos?: string[];
   categoryRatings?: {
     organization: number;
@@ -61,8 +59,8 @@ interface Review {
     value: number;
     entertainment: number;
   };
-  helpfulCount: number;
-  notHelpfulCount: number;
+  helpfulCount?: number;
+  notHelpfulCount?: number;
   userVote?: 'helpful' | 'not-helpful';
   organizerResponse?: {
     text: string;
@@ -71,73 +69,6 @@ interface Review {
   };
 }
 
-const mockReviews: Review[] = [
-  {
-    id: '1',
-    authorName: 'Sarah Johnson',
-    authorAvatar: '/api/placeholder/50/50',
-    isVerified: true,
-    rating: 5,
-    reviewDate: '3 days ago',
-    attendedDate: 'Jun 10, 2024',
-    title: 'Amazing experience! Highly recommend',
-    content: 'This was hands down one of the best concerts I\'ve ever attended. The sound quality was exceptional, the venue was well-organized, and the staff were incredibly friendly and helpful. Every aspect exceeded my expectations!',
-    photos: ['/api/placeholder/100/100', '/api/placeholder/100/100', '/api/placeholder/100/100'],
-    categoryRatings: {
-      organization: 5,
-      venue: 5,
-      value: 4,
-      entertainment: 5,
-    },
-    helpfulCount: 45,
-    notHelpfulCount: 2,
-    organizerResponse: {
-      text: 'Thank you so much for the wonderful feedback! We\'re thrilled you enjoyed the event.',
-      date: '2 days ago',
-      organizerName: 'Event Organizer',
-    },
-  },
-  {
-    id: '2',
-    authorName: 'Mike Chen',
-    isVerified: true,
-    rating: 4,
-    reviewDate: '1 week ago',
-    attendedDate: 'Jun 8, 2024',
-    title: 'Great event, minor sound issues',
-    content: 'Overall a fantastic experience. The lineup was incredible and the atmosphere was electric. Only issue was some sound feedback in the beginning, but it was resolved quickly.',
-    categoryRatings: {
-      organization: 4,
-      venue: 4,
-      value: 5,
-      entertainment: 5,
-    },
-    helpfulCount: 28,
-    notHelpfulCount: 1,
-  },
-  {
-    id: '3',
-    authorName: 'Emily Rodriguez',
-    authorAvatar: '/api/placeholder/50/50',
-    isVerified: true,
-    rating: 5,
-    reviewDate: '2 weeks ago',
-    attendedDate: 'Jun 5, 2024',
-    title: 'Worth every penny!',
-    content: 'Absolutely loved this event! The venue was beautiful, easy to get to, and the whole experience was seamless from start to finish. Will definitely attend again next year!',
-    photos: ['/api/placeholder/100/100', '/api/placeholder/100/100'],
-    helpfulCount: 32,
-    notHelpfulCount: 0,
-  },
-];
-
-const ratingDistribution = [
-  { stars: 5, count: 180, percentage: 73 },
-  { stars: 4, count: 45, percentage: 18 },
-  { stars: 3, count: 15, percentage: 6 },
-  { stars: 2, count: 5, percentage: 2 },
-  { stars: 1, count: 3, percentage: 1 },
-];
 
 export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
   const { t } = useTranslation();
@@ -151,20 +82,184 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
   const [reportReviewId, setReportReviewId] = useState<string | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
-
-  const event = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
   
-  const averageRating = 4.8;
-  const totalReviews = 248;
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [event, setEvent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [averageRating, setAverageRating] = useState<number>(0);
+  const [totalReviews, setTotalReviews] = useState<number>(0);
 
-  const toggleExpanded = (reviewId: string) => {
-    const newExpanded = new Set(expandedReviews);
-    if (newExpanded.has(reviewId)) {
-      newExpanded.delete(reviewId);
+  // Fetch event details
+  useEffect(() => {
+    let mounted = true;
+    if (eventId) {
+      eventService.getEventByIdentifier(eventId)
+        .then((ev) => {
+          if (mounted) setEvent(ev);
+        })
+        .catch(() => {
+          // Fallback to mock data if API fails
+          if (mounted) {
+            const mockEvent = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
+            setEvent(mockEvent);
+          }
+        });
     } else {
-      newExpanded.add(reviewId);
+      const mockEvent = mockEvents[0];
+      setEvent(mockEvent);
+    }
+    return () => { mounted = false; };
+  }, [eventId]);
+
+  // Fetch reviews
+  useEffect(() => {
+    let mounted = true;
+    const fetchReviews = async () => {
+      if (!eventId) return;
+      
+      try {
+        setLoading(true);
+        const eventReviews = await reviewService.getEventReviews(parseInt(eventId, 10));
+        
+        if (!mounted) return;
+
+        // Map ReviewDto to Review interface
+        const mappedReviews: Review[] = eventReviews.map((r) => ({
+          ...r,
+          isVerified: true, // TODO: Add verification logic from backend
+          attendedDate: r.createdAt, // Use createdAt as attended date for now
+          title: r.comment ? r.comment.substring(0, 50) : undefined,
+          content: r.comment || '',
+          helpfulCount: 0, // TODO: Add helpful count from backend
+          notHelpfulCount: 0, // TODO: Add not helpful count from backend
+        }));
+
+        setReviews(mappedReviews);
+
+        // Calculate average rating
+        if (eventReviews.length > 0) {
+          const avg = eventReviews.reduce((sum, r) => sum + r.rating, 0) / eventReviews.length;
+          setAverageRating(avg);
+          setTotalReviews(eventReviews.length);
+        }
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+        if (mounted) {
+          // Fallback to empty state
+          setReviews([]);
+          setAverageRating(0);
+          setTotalReviews(0);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchReviews();
+    return () => { mounted = false; };
+  }, [eventId]);
+
+  // Filter and sort reviews
+  const filteredReviews = reviews.filter((review) => {
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = 
+        review.comment?.toLowerCase().includes(query) ||
+        review.userName.toLowerCase().includes(query);
+      if (!matchesSearch) return false;
+    }
+
+    // Rating filter
+    if (filterRating !== 'all') {
+      if (filterRating === 'below3') {
+        if (review.rating >= 3) return false;
+      } else if (filterRating === 'threePlusStars') {
+        if (review.rating < 3) return false;
+      } else if (filterRating === 'fourFiveStars') {
+        if (review.rating < 4) return false;
+      } else if (filterRating === '5') {
+        if (review.rating !== 5) return false;
+      }
+    }
+
+    // Verified filter
+    if (showVerifiedOnly && !review.isVerified) return false;
+
+    // Photos filter
+    if (showPhotosOnly && (!review.photos || review.photos.length === 0)) return false;
+
+    return true;
+  }).sort((a, b) => {
+    if (sortBy === 'recent') {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    } else if (sortBy === 'highest') {
+      return b.rating - a.rating;
+    } else if (sortBy === 'lowest') {
+      return a.rating - b.rating;
+    } else if (sortBy === 'helpful') {
+      const aHelpful = (a.helpfulCount || 0) - (a.notHelpfulCount || 0);
+      const bHelpful = (b.helpfulCount || 0) - (b.notHelpfulCount || 0);
+      return bHelpful - aHelpful;
+    }
+    return 0;
+  });
+
+  // Calculate rating distribution
+  const ratingDistribution = [5, 4, 3, 2, 1].map((stars) => {
+    const count = reviews.filter((r) => r.rating === stars).length;
+    const percentage = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+    return { stars, count, percentage };
+  });
+
+  if (!event) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2>{t('events.eventNotFound')}</h2>
+          <Button onClick={() => onNavigate('home')} className="mt-4">
+            {t('common.back')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const toggleExpanded = (reviewId: number) => {
+    const idStr = reviewId.toString();
+    const newExpanded = new Set(expandedReviews);
+    if (newExpanded.has(idStr)) {
+      newExpanded.delete(idStr);
+    } else {
+      newExpanded.add(idStr);
     }
     setExpandedReviews(newExpanded);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return t('common.today');
+    if (diffDays === 1) return t('common.yesterday');
+    if (diffDays < 7) return `${diffDays} ${t('common.daysAgo')}`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `${weeks} ${t('common.weeksAgo')}`;
+    }
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return `${months} ${t('common.monthsAgo')}`;
+    }
+    return date.toLocaleDateString('vi-VN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
   };
 
   const renderStars = (rating: number, size: 'sm' | 'md' | 'lg' = 'md') => {
@@ -184,13 +279,14 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
     );
   };
 
-  const handleVote = (reviewId: string, voteType: 'helpful' | 'not-helpful') => {
+  const handleVote = (reviewId: number, voteType: 'helpful' | 'not-helpful') => {
     console.log('Vote:', reviewId, voteType);
-    // Implement voting logic
+    // TODO: Implement voting logic when backend API is available
   };
 
   const handleReport = () => {
     console.log('Report:', reportReviewId, reportReason, reportDetails);
+    // TODO: Implement report logic when backend API is available
     setReportReviewId(null);
     setReportReason('');
     setReportDetails('');
@@ -382,13 +478,44 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
           </div>
         </div>
 
-        {/* Reviews List */}
-        <div className="space-y-4">
-          <div className="text-sm text-neutral-600 mb-4">
-            {t('eventReviews.showing')} 1-{mockReviews.length} {t('eventReviews.of')} {totalReviews} {t('eventReviews.reviewsCount')}
-          </div>
+        {/* Loading State */}
+        {loading && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center text-neutral-500">{t('common.loading')}...</div>
+            </CardContent>
+          </Card>
+        )}
 
-          {mockReviews.map((review) => (
+        {/* No Reviews State */}
+        {!loading && filteredReviews.length === 0 && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center py-8">
+                <Star className="mx-auto text-gray-300 mb-4" size={48} />
+                <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                  {searchQuery || filterRating !== 'all' 
+                    ? t('common.noResults')
+                    : t('eventReviews.noReviewsYet')}
+                </h3>
+                <p className="text-sm text-neutral-600">
+                  {searchQuery || filterRating !== 'all'
+                    ? t('eventReviews.tryDifferentFilters')
+                    : t('eventReviews.beFirstToReview')}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Reviews List */}
+        {!loading && filteredReviews.length > 0 && (
+          <div className="space-y-4">
+            <div className="text-sm text-neutral-600 mb-4">
+              {t('eventReviews.showing')} 1-{filteredReviews.length} {t('eventReviews.of')} {totalReviews} {t('eventReviews.reviewsCount')}
+            </div>
+
+            {filteredReviews.map((review) => (
             <Card key={review.id}>
               <CardContent className="p-6">
                 {/* Review Header */}
@@ -413,8 +540,10 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                           </Badge>
                         )}
                       </div>
-                      <div className="text-sm text-neutral-500">{review.reviewDate}</div>
-                      <div className="text-xs text-neutral-500">{t('eventReviews.attendedOn')} {review.attendedDate}</div>
+                      <div className="text-sm text-neutral-500">{formatDate(review.createdAt)}</div>
+                      {review.attendedDate && (
+                        <div className="text-xs text-neutral-500">{t('eventReviews.attendedOn')} {formatDate(review.attendedDate)}</div>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -428,19 +557,21 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                 )}
 
                 {/* Review Content */}
-                <div className="text-neutral-700 mb-4">
-                  <p className={expandedReviews.has(review.id) ? '' : 'line-clamp-3'}>
-                    {review.content}
-                  </p>
-                  {review.content.length > 300 && (
-                    <button
-                      onClick={() => toggleExpanded(review.id)}
-                      className="text-purple-600 hover:text-purple-700 text-sm mt-1"
-                    >
-                      {expandedReviews.has(review.id) ? t('eventReviews.showLess') : t('eventReviews.readMore')}
-                    </button>
-                  )}
-                </div>
+                {review.comment && (
+                  <div className="text-neutral-700 mb-4">
+                    <p className={expandedReviews.has(review.id.toString()) ? '' : 'line-clamp-3'}>
+                      {review.comment}
+                    </p>
+                    {review.comment.length > 300 && (
+                      <button
+                        onClick={() => toggleExpanded(review.id)}
+                        className="text-purple-600 hover:text-purple-700 text-sm mt-1"
+                      >
+                        {expandedReviews.has(review.id.toString()) ? t('eventReviews.showLess') : t('eventReviews.readMore')}
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Category Ratings */}
                 {review.categoryRatings && (
@@ -500,7 +631,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                     className={review.userVote === 'helpful' ? 'bg-blue-50' : ''}
                   >
                     <ThumbsUp size={14} className="mr-1" />
-                    {review.helpfulCount}
+                    {review.helpfulCount || 0}
                   </Button>
                   <Button
                     variant="ghost"
@@ -509,12 +640,12 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                     className={review.userVote === 'not-helpful' ? 'bg-red-50' : ''}
                   >
                     <ThumbsDown size={14} className="mr-1" />
-                    {review.notHelpfulCount}
+                    {review.notHelpfulCount || 0}
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setReportReviewId(review.id)}
+                    onClick={() => setReportReviewId(review.id.toString())}
                     className="ml-auto"
                   >
                     <Flag size={14} className="mr-1" />
@@ -537,15 +668,9 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                 )}
               </CardContent>
             </Card>
-          ))}
-        </div>
-
-        {/* Load More */}
-        <div className="text-center mt-8">
-          <Button variant="outline" size="lg">
-            {t('eventReviews.loadMore')}
-          </Button>
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Photo Lightbox */}

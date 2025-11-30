@@ -14,6 +14,7 @@ import FAQSection from '../components/event-detail/FAQSection';
 import LocationMap from '../components/event-detail/LocationMap';
 import ShareButtons from '../components/event-detail/ShareButtons';
 import RelatedEvents from '../components/event-detail/RelatedEvents';
+import EventReviewsSummary from '../components/event-detail/EventReviewsSummary';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { eventService } from '../services/eventService';
 import { WishlistButton } from '../components/WishlistButton';
@@ -237,6 +238,14 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                 </div>
               </div>
             </div>
+
+            {/* Reviews Summary */}
+            <EventReviewsSummary
+              eventId={parseInt(eventId, 10)}
+              averageRating={event.averageRating}
+              totalReviews={event.totalReviews}
+              onViewAll={() => onNavigate('event-reviews', eventId)}
+            />
 
             {/* Event Highlights */}
             {event.highlights && <EventHighlights highlights={event.highlights} />}

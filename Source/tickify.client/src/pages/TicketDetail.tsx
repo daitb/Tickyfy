@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Send,
 } from "lucide-react";
+import { TicketRefundForm } from "../components/ticket/TicketRefundForm";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -27,6 +28,11 @@ interface TicketDetailProps {
   ticketId?: string;
   orders?: Order[];
   onNavigate: (page: string, id?: string) => void;
+}
+
+// Extended ticket interface with bookingId
+interface TicketWithBooking extends OrderTicket {
+  bookingId?: number;
 }
 
 export function TicketDetail({
@@ -331,6 +337,22 @@ export function TicketDetail({
             Print
           </Button>
         </div>
+
+        {/* Refund Section */}
+        {currentTicket && currentOrder && currentEvent && (
+          <TicketRefundForm
+            ticketId={currentTicket.id}
+            orderId={currentOrder.id}
+            bookingId={(currentTicket as TicketWithBooking).bookingId || parseInt(currentOrder.id, 10)}
+            ticketPrice={currentTicket.price * 1000} // Convert to VND (assuming price is in thousands)
+            eventDate={currentEvent.date}
+            eventTitle={currentEvent.title}
+            onRefundSubmitted={() => {
+              // Refresh data or navigate
+              onNavigate('my-tickets');
+            }}
+          />
+        )}
 
         {/* Accordions */}
         <Accordion type="single" collapsible className="space-y-4">
