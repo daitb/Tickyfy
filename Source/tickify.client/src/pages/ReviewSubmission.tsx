@@ -31,6 +31,10 @@ import {
 } from '../components/ui/dialog';
 import { mockEvents } from '../mockData';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { reviewService } from '../services/reviewService';
+import { eventService } from '../services/eventService';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface ReviewSubmissionProps {
   eventId?: string;
@@ -61,8 +65,30 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
   const [showGuidelines, setShowGuidelines] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [event, setEvent] = useState<any>(null);
+  const [submittedReviewId, setSubmittedReviewId] = useState<number | null>(null);
 
-  const event = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
+  // Fetch event data
+  useEffect(() => {
+    let mounted = true;
+    if (eventId) {
+      eventService.getEventByIdentifier(eventId)
+        .then((ev) => {
+          if (mounted) setEvent(ev);
+        })
+        .catch(() => {
+          // Fallback to mock data if API fails
+          if (mounted) {
+            const mockEvent = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
+            setEvent(mockEvent);
+          }
+        });
+    } else {
+      const mockEvent = mockEvents[0];
+      setEvent(mockEvent);
+    }
+    return () => { mounted = false; };
+  }, [eventId]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -79,15 +105,36 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
 
   const handleSubmit = async () => {
     if (!overallRating || !reviewTitle.trim() || !reviewContent.trim()) {
-      alert('Please fill in all required fields');
+      toast.error('Vui lòng điền đầy đủ các trường bắt buộc');
+      return;
+    }
+
+    if (!eventId || !event) {
+      toast.error('Không tìm thấy thông tin sự kiện');
       return;
     }
 
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsSubmitting(false);
-    setShowSuccess(true);
+
+    try {
+      // Tạo review với API thật
+      const reviewData = {
+        eventId: parseInt(eventId, 10),
+        rating: overallRating,
+        comment: `${reviewTitle}\n\n${reviewContent}`, // Kết hợp title và content
+      };
+
+      const createdReview = await reviewService.createReview(reviewData);
+      setSubmittedReviewId(createdReview.id);
+      setShowSuccess(true);
+      toast.success('Đánh giá của bạn đã được gửi thành công!');
+    } catch (error: any) {
+      console.error('Error submitting review:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi gửi đánh giá';
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isFormValid = overallRating > 0 && reviewTitle.trim() && reviewContent.trim();
@@ -381,10 +428,10 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                      Submitting...
+                      {t('reviewSubmission.submitting')}
                     </>
                   ) : (
-                    'Submit Review'
+                    t('reviewSubmission.submitReview')
                   )}
                 </Button>
 
@@ -416,25 +463,37 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
                 <Check className="text-green-600" size={32} />
               </div>
             </div>
-            <DialogTitle className="text-2xl">Thank you for your review!</DialogTitle>
+            <DialogTitle className="text-2xl">{t('reviewSubmission.submitSuccess')}</DialogTitle>
             <DialogDescription>
-              Your feedback has been submitted and will help others discover great events.
+              {t('reviewSubmission.feedbackHelpful')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 mt-6">
+            {eventId && (
+              <Button
+                onClick={() => {
+                  setShowSuccess(false);
+                  onNavigate('event-reviews', eventId);
+                }}
+                className="w-full bg-purple-600 hover:bg-purple-700"
+              >
+                {t('reviewSubmission.viewYourReview')}
+              </Button>
+            )}
             <Button
-              onClick={() => onNavigate('event-detail')}
-              className="w-full bg-purple-600 hover:bg-purple-700"
-            >
-              View Your Review
-            </Button>
-            <Button
-              onClick={() => onNavigate('my-tickets')}
+              onClick={() => {
+                setShowSuccess(false);
+                if (eventId) {
+                  onNavigate('event-detail', eventId);
+                } else {
+                  onNavigate('my-tickets');
+                }
+              }}
               variant="outline"
               className="w-full"
             >
-              Back to My Tickets
+              {eventId ? t('reviewSubmission.backToEvent') : t('reviewSubmission.backToTickets')}
             </Button>
           </div>
         </DialogContent>

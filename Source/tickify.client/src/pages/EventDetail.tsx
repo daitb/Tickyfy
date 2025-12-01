@@ -14,10 +14,12 @@ import FAQSection from '../components/event-detail/FAQSection';
 import LocationMap from '../components/event-detail/LocationMap';
 import ShareButtons from '../components/event-detail/ShareButtons';
 import RelatedEvents from '../components/event-detail/RelatedEvents';
+import EventReviewsSummary from '../components/event-detail/EventReviewsSummary';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { eventService } from '../services/eventService';
 import { WishlistButton } from '../components/WishlistButton';
 import { authService } from '../services/authService';
+import { toast } from 'sonner';
 import type { CartItem } from '../types';
 
 interface EventDetailProps {
@@ -102,7 +104,13 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
         quantity: quantities[tier.id]
       }));
     
+    // Optimistic update: Add to cart ngay lập tức
     onAddToCart(items);
+    
+    // Show success feedback
+    toast.success(`Đã thêm ${totalItems} vé vào giỏ hàng`);
+    
+    // Navigate to cart
     onNavigate('cart');
   };
 
@@ -167,7 +175,22 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-8 shadow-lg">
               <div className="flex items-start justify-between mb-4">
-                <Badge className="bg-teal-500 hover:bg-teal-600">{t(`editEvent.category${event.category}`)}</Badge>
+                <Badge className="bg-teal-500 hover:bg-teal-600">
+                  {(() => {
+                    const categoryMap: Record<string, string> = {
+                      'Music': t('editEvent.categoryMusic'),
+                      'Sports': t('editEvent.categorySports'),
+                      'Arts & Culture': t('editEvent.categoryArts'),
+                      'Arts': t('editEvent.categoryArts'),
+                      'Food & Drink': t('editEvent.categoryFood'),
+                      'Food': t('editEvent.categoryFood'),
+                      'Business': t('editEvent.categoryBusiness'),
+                      'Technology & Innovation': t('editEvent.categoryTechnology'),
+                      'Technology': t('editEvent.categoryTechnology'),
+                    };
+                    return categoryMap[event.category] || event.category || t('editEvent.category');
+                  })()}
+                </Badge>
                 {showTimer && <HoldTimer onExpire={() => setShowTimer(false)} />}
               </div>
 
@@ -222,6 +245,14 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                 </div>
               </div>
             </div>
+
+            {/* Reviews Summary */}
+            <EventReviewsSummary
+              eventId={parseInt(eventId, 10)}
+              averageRating={event.averageRating}
+              totalReviews={event.totalReviews}
+              onViewAll={() => onNavigate('event-reviews', eventId)}
+            />
 
             {/* Event Highlights */}
             {event.highlights && <EventHighlights highlights={event.highlights} />}

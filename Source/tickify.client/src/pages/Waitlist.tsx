@@ -103,7 +103,7 @@ export function Waitlist({ waitlistEntries, onNavigate }: WaitlistProps) {
   };
 
   const handleLeaveWaitlist = (entryId: string) => {
-    console.log('Leave waitlist:', entryId);
+    // TODO: Implement leave waitlist API call
   };
 
   const handleReserveNow = (eventId: string) => {

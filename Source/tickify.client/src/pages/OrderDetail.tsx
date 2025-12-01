@@ -26,6 +26,7 @@ import { ticketService } from "../services/ticketService";
 import { getPaymentsByBooking } from "../services/paymentService";
 import type { Event } from "../types";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { toast } from "sonner";
 
 interface OrderDetailProps {
   orderId?: string;
@@ -67,19 +68,17 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
         setError(null);
         
         // Get tickets for this booking/order
-        console.log("[OrderDetail] Loading tickets for booking:", orderId);
         const userTickets = await ticketService.getMyTickets();
-        console.log("[OrderDetail] All user tickets:", userTickets);
         
         const orderTickets = userTickets.filter((t: any) => 
           t.bookingId?.toString() === orderId || 
           t.bookingNumber === orderId
         );
         
-        console.log("[OrderDetail] Filtered tickets for this order:", orderTickets);
-        
         if (orderTickets.length === 0) {
-          setError(`No tickets found for booking ${orderId}. The booking may not be confirmed yet or tickets may not have been created.`);
+          const errorMsg = `Không tìm thấy vé cho đơn hàng ${orderId}. Đơn hàng có thể chưa được xác nhận hoặc vé chưa được tạo.`;
+          setError(errorMsg);
+          toast.error(errorMsg);
           setIsLoading(false);
           return;
         }
@@ -90,12 +89,9 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
         const firstTicket = orderTickets[0];
         if (firstTicket?.eventId) {
           try {
-            console.log("[OrderDetail] Loading event:", firstTicket.eventId);
             const eventData = await eventService.getEventById(Number(firstTicket.eventId));
-            console.log("[OrderDetail] Event loaded:", eventData);
             setEvent(eventData);
           } catch (err) {
-            console.error("[OrderDetail] Failed to load event:", err);
             // If event load fails, create a minimal event object from ticket data
             if (firstTicket.eventTitle) {
               setEvent({
@@ -141,12 +137,12 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
             setPayments([paymentData]);
           }
         } catch (err) {
-          console.error("Failed to load payment information:", err);
-          // Don't set error, payment info is optional
+          // Payment info is optional, don't show error to user
         }
       } catch (err: any) {
-        console.error("Failed to load order:", err);
-        setError(err.message || "Failed to load order");
+        const errorMsg = err.message || "Không thể tải thông tin đơn hàng. Vui lòng thử lại.";
+        setError(errorMsg);
+        toast.error(errorMsg);
       } finally {
         setIsLoading(false);
       }

@@ -6,6 +6,7 @@ import { Label } from '../components/ui/label';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { authService } from '../services/authService';
+import { toast } from 'sonner';
 
 interface ForgotPasswordProps {
   onNavigate: (page: string) => void;
@@ -27,13 +28,13 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
       await authService.forgotPassword(email);
       setIsEmailSent(true);
     } catch (err: any) {
-      console.error('Forgot password error:', err);
       const errorMessage = err.response?.data?.message || 
                           err.response?.data?.errors?.[0] || 
                           err.message || 
                           t('auth.forgotPasswordError') || 
-                          'Failed to send reset link. Please try again.';
+                          'Không thể gửi link đặt lại mật khẩu. Vui lòng thử lại.';
       setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

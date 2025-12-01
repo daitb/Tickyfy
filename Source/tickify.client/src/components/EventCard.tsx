@@ -1,5 +1,5 @@
 import { Calendar, MapPin } from 'lucide-react';
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Event } from '../types';
 import { Badge } from './ui/badge';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -11,18 +11,13 @@ interface EventCardProps {
   onClick: () => void;
 }
 
-export function EventCard({ event, onClick }: EventCardProps) {
+/**
+ * EventCard component với memoization để tránh re-render không cần thiết
+ * Chỉ re-render khi event data hoặc onClick handler thay đổi
+ */
+export const EventCard = React.memo(function EventCard({ event, onClick }: EventCardProps) {
   const isAuthenticated = authService.isAuthenticated();
-  const eventId = parseInt(event.id, 10);
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
+  const eventId = useMemo(() => parseInt(event.id, 10), [event.id]);
 
   const formatCompactPrice = (price: number) => {
     if (price <= 0) return "0k";
@@ -32,6 +27,15 @@ export function EventCard({ event, onClick }: EventCardProps) {
       : compactValue.toFixed(1);
     return `${formatted.replace(/\.0$/, "")}k`;
   };
+
+  const formattedDate = useMemo(() => {
+    const date = new Date(event.date);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }, [event.date]);
 
   const formatPriceRange = (min: number, max: number) => {
     if (min <= 0 && max <= 0) return "TBD";
@@ -50,16 +54,20 @@ export function EventCard({ event, onClick }: EventCardProps) {
     return maxText ? `${maxText} VND` : "TBD";
   };
 
-  // Get lowest and highest price from available tickets
-  const availableTickets = event.ticketTiers.filter(t => t.available > 0);
-  const ticketsToUse = availableTickets.length > 0 ? availableTickets : event.ticketTiers;
-  
-  const lowestPrice = ticketsToUse.length > 0
-    ? Math.min(...ticketsToUse.map(t => t.price))
-    : 0;
-  const highestPrice = ticketsToUse.length > 0
-    ? Math.max(...ticketsToUse.map(t => t.price))
-    : 0;
+  // Memoize expensive calculations - Get lowest and highest price from available tickets
+  const { lowestPrice, highestPrice } = useMemo(() => {
+    const availableTickets = event.ticketTiers.filter(t => t.available > 0);
+    const ticketsToUse = availableTickets.length > 0 ? availableTickets : event.ticketTiers;
+    
+    const lowest = ticketsToUse.length > 0
+      ? Math.min(...ticketsToUse.map(t => t.price))
+      : 0;
+    const highest = ticketsToUse.length > 0
+      ? Math.max(...ticketsToUse.map(t => t.price))
+      : 0;
+    
+    return { lowestPrice: lowest, highestPrice: highest };
+  }, [event.ticketTiers]);
 
   // Debug: Log prices to console
   console.log('Event:', event.title, 'TicketTiers:', event.ticketTiers, 'Min:', lowestPrice, 'Max:', highestPrice);
@@ -96,7 +104,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
         <div className="space-y-2 text-neutral-600">
           <div className="flex items-center gap-2">
             <Calendar size={16} />
-            <span className="text-sm">{formatDate(event.date)}</span>
+            <span className="text-sm">{formattedDate}</span>
           </div>
           <div className="flex items-center gap-2">
             <MapPin size={16} />
@@ -110,4 +118,17 @@ export function EventCard({ event, onClick }: EventCardProps) {
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison function để optimize re-renders
+  // Chỉ re-render nếu event data hoặc onClick thay đổi
+  return (
+    prevProps.event.id === nextProps.event.id &&
+    prevProps.event.title === nextProps.event.title &&
+    prevProps.event.image === nextProps.event.image &&
+    prevProps.event.date === nextProps.event.date &&
+    prevProps.event.category === nextProps.event.category &&
+    prevProps.event.city === nextProps.event.city &&
+    JSON.stringify(prevProps.event.ticketTiers) === JSON.stringify(nextProps.event.ticketTiers) &&
+    prevProps.onClick === nextProps.onClick
+  );
+});

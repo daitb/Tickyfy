@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '../components/ui/dialog';
 import { authService } from '../services/authService';
+import { toast } from 'sonner';
 
 interface EmailVerificationProps {
   token?: string;
@@ -54,7 +55,6 @@ export function EmailVerification({ token, onNavigate }: EmailVerificationProps)
         await authService.verifyEmail(urlToken, email);
         setStatus('success');
       } catch (err: any) {
-        console.error('Email verification error:', err);
         const errorResponse = err.response?.data;
         
         if (errorResponse?.message?.includes('expired')) {
@@ -96,12 +96,12 @@ export function EmailVerification({ token, onNavigate }: EmailVerificationProps)
 
   const handleResendEmail = async () => {
     if (resendCount >= 3) {
-      alert(t('auth.maxResendReached') || 'Maximum resend limit reached. Please try again in 1 hour.');
+      toast.error(t('auth.maxResendReached') || 'Đã đạt giới hạn gửi lại. Vui lòng thử lại sau 1 giờ.');
       return;
     }
     
     if (!email) {
-      alert('Email is required');
+      toast.error('Email là bắt buộc');
       return;
     }
 
@@ -111,10 +111,10 @@ export function EmailVerification({ token, onNavigate }: EmailVerificationProps)
     try {
       // Resend verification by calling forgot password endpoint
       // This will send a new verification email
-      console.log('Resending verification email to:', email);
       // You might want to add a dedicated resend endpoint in the future
-    } catch (err) {
-      console.error('Resend email error:', err);
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Không thể gửi lại email xác thực. Vui lòng thử lại.';
+      toast.error(errorMsg);
     }
   };
 

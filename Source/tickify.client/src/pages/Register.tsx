@@ -8,6 +8,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Separator } from '../components/ui/separator';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { authService } from '../services/authService';
+import { toast } from 'sonner';
 
 // Declare Google types
 declare global {
@@ -175,12 +176,12 @@ export function Register({ onNavigate }: RegisterProps) {
       // Do NOT auto-redirect - let user see the verification message
       // User will click "Go to Login" after they verify their email
     } catch (err: any) {
-      console.error('Registration error:', err);
       const errorMessage = err.response?.data?.message || 
                           err.response?.data?.errors?.[0] || 
                           err.message || 
                           'Đăng ký thất bại. Vui lòng thử lại.';
       setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -191,12 +192,8 @@ export function Register({ onNavigate }: RegisterProps) {
       setIsLoading(true);
       setError("");
 
-      console.log("Google Sign-Up response received");
-
       // Send credential to backend
       const loginResponse = await authService.googleLogin(response.credential);
-      
-      console.log("Google signup successful:", loginResponse);
 
       // Redirect based on role
       const userRole = loginResponse.roles[0];
@@ -211,22 +208,20 @@ export function Register({ onNavigate }: RegisterProps) {
         onNavigate("home");
       }
     } catch (err: any) {
-      console.error("Google signup error:", err);
-      
       const errorMessage =
         err.response?.data?.message ||
         err.response?.data?.errors?.[0] ||
         err.message ||
-        "Google sign-up failed. Please try again.";
+        "Đăng ký Google thất bại. Vui lòng thử lại.";
 
       setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSocialSignup = (provider: string) => {
-    console.log(`Sign up with ${provider}`);
     // Simulate social signup
     setTimeout(() => {
       onNavigate('home');

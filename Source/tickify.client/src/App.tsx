@@ -1,55 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense, lazy } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { EventReviews } from "./pages/EventReviews";
-import { RefundRequest } from "./pages/RefundRequest";
-import { NotificationPreferences } from "./pages/NotificationPreferences";
-import { SeatMapBuilder } from "./pages/SeatMapBuilder";
-import { AdminDashboard } from "./pages/AdminDashboard";
-import { Home } from "./pages/Home";
-import { EventListing } from "./pages/EventListing";
-import { EventDetail } from "./pages/EventDetail";
-import { Cart } from "./pages/Cart";
-import { Checkout } from "./pages/Checkout";
-import { Success } from "./pages/Success";
-import { MyTickets } from "./pages/MyTickets";
-import { OrderDetail } from "./pages/OrderDetail";
-import { TicketDetail } from "./pages/TicketDetail";
-import { TransferTicket } from "./pages/TransferTicket";
-import { Wishlist } from "./pages/Wishlist";
-import { Waitlist } from "./pages/Waitlist";
-import { OrganizerWizard } from "./pages/OrganizerWizard";
-import { CreateEvent } from "./pages/CreateEvent";
-import { OrganizerDashboard } from "./pages/OrganizerDashboard";
-import { EventManagement } from "./pages/EventManagement";
-import { EventAnalytics } from "./pages/EventAnalytics";
-import { EditEvent } from "./pages/EditEvent";
-import { ScanHistory } from "./pages/ScanHistory";
-import { PromoCodeManagement } from "./pages/PromoCodeManagement";
-import { OrganizerPayouts } from "./pages/OrganizerPayouts";
-import { NotificationsPage } from "./pages/NotificationsPage";
-import { ResetPassword } from "./pages/ResetPassword";
-import { UserProfile } from "./pages/UserProfile";
-import { SeatSelection } from "./pages/SeatSelection";
-import { ReviewSubmission } from "./pages/ReviewSubmission";
-import { QRScanner } from "./pages/QRScanner";
-import { EmailVerification } from "./pages/EmailVerification";
-import { PasswordChange } from "./pages/PasswordChange";
-import { Login } from "./pages/Login";
-import { Register } from "./pages/Register";
-import { ForgotPassword } from "./pages/ForgotPassword";
-import { ChatPage } from "./pages/ChatPage";
-import { StaffChatPage } from "./pages/StaffChatPage";
-import { BecomeOrganizer } from "./pages/BecomeOrganizer";
-import PaymentReturn from "./pages/PaymentReturn";
-import { About } from "./pages/About";
-import { Privacy } from "./pages/Privacy";
-import { Terms } from "./pages/Terms";
-import { FAQ } from "./pages/FAQ";
-import { Contact } from "./pages/Contact";
-import { RefundPolicy } from "./pages/RefundPolicy";
-import { ForOrganizers } from "./pages/ForOrganizers";
-import { HelpCenter } from "./pages/HelpCenter";
-import { Error } from "./pages/Error";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { LoadingFallback } from "./components/LoadingFallback";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -57,6 +9,60 @@ import type { CartItem, Order } from "./types";
 import { mockOrders } from "./mockData";
 import { authService } from "./services/authService";
 import { Toaster } from "./components/ui/sonner";
+
+// Lazy load các pages lớn để giảm initial bundle size
+const EventReviews = lazy(() => import("./pages/EventReviews").then(m => ({ default: m.EventReviews })));
+const RefundRequest = lazy(() => import("./pages/RefundRequest").then(m => ({ default: m.RefundRequest })));
+const NotificationPreferences = lazy(() => import("./pages/NotificationPreferences").then(m => ({ default: m.NotificationPreferences })));
+const SeatMapBuilder = lazy(() => import("./pages/SeatMapBuilder").then(m => ({ default: m.SeatMapBuilder })));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const EventListing = lazy(() => import("./pages/EventListing").then(m => ({ default: m.EventListing })));
+const EventDetail = lazy(() => import("./pages/EventDetail").then(m => ({ default: m.EventDetail })));
+const Cart = lazy(() => import("./pages/Cart").then(m => ({ default: m.Cart })));
+const Checkout = lazy(() => import("./pages/Checkout").then(m => ({ default: m.Checkout })));
+const Success = lazy(() => import("./pages/Success").then(m => ({ default: m.Success })));
+const MyTickets = lazy(() => import("./pages/MyTickets").then(m => ({ default: m.MyTickets })));
+const OrderDetail = lazy(() => import("./pages/OrderDetail").then(m => ({ default: m.OrderDetail })));
+const TicketDetail = lazy(() => import("./pages/TicketDetail").then(m => ({ default: m.TicketDetail })));
+const TransferTicket = lazy(() => import("./pages/TransferTicket").then(m => ({ default: m.TransferTicket })));
+const Wishlist = lazy(() => import("./pages/Wishlist").then(m => ({ default: m.Wishlist })));
+const Waitlist = lazy(() => import("./pages/Waitlist").then(m => ({ default: m.Waitlist })));
+const OrganizerWizard = lazy(() => import("./pages/OrganizerWizard").then(m => ({ default: m.OrganizerWizard })));
+const CreateEvent = lazy(() => import("./pages/CreateEvent").then(m => ({ default: m.CreateEvent })));
+const OrganizerDashboard = lazy(() => import("./pages/OrganizerDashboard").then(m => ({ default: m.OrganizerDashboard })));
+const EventManagement = lazy(() => import("./pages/EventManagement").then(m => ({ default: m.EventManagement })));
+const EventAnalytics = lazy(() => import("./pages/EventAnalytics").then(m => ({ default: m.EventAnalytics })));
+const EditEvent = lazy(() => import("./pages/EditEvent").then(m => ({ default: m.EditEvent })));
+const ScanHistory = lazy(() => import("./pages/ScanHistory").then(m => ({ default: m.ScanHistory })));
+const PromoCodeManagement = lazy(() => import("./pages/PromoCodeManagement").then(m => ({ default: m.PromoCodeManagement })));
+const OrganizerPayouts = lazy(() => import("./pages/OrganizerPayouts").then(m => ({ default: m.OrganizerPayouts })));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
+const ResetPassword = lazy(() => import("./pages/ResetPassword").then(m => ({ default: m.ResetPassword })));
+const UserProfile = lazy(() => import("./pages/UserProfile").then(m => ({ default: m.UserProfile })));
+const SeatSelection = lazy(() => import("./pages/SeatSelection").then(m => ({ default: m.SeatSelection })));
+const ReviewSubmission = lazy(() => import("./pages/ReviewSubmission").then(m => ({ default: m.ReviewSubmission })));
+const QRScanner = lazy(() => import("./pages/QRScanner").then(m => ({ default: m.QRScanner })));
+const EmailVerification = lazy(() => import("./pages/EmailVerification").then(m => ({ default: m.EmailVerification })));
+const PasswordChange = lazy(() => import("./pages/PasswordChange").then(m => ({ default: m.PasswordChange })));
+const ChatPage = lazy(() => import("./pages/ChatPage").then(m => ({ default: m.ChatPage })));
+const StaffChatPage = lazy(() => import("./pages/StaffChatPage").then(m => ({ default: m.StaffChatPage })));
+const BecomeOrganizer = lazy(() => import("./pages/BecomeOrganizer").then(m => ({ default: m.BecomeOrganizer })));
+const PaymentReturn = lazy(() => import("./pages/PaymentReturn"));
+const About = lazy(() => import("./pages/About").then(m => ({ default: m.About })));
+const Privacy = lazy(() => import("./pages/Privacy").then(m => ({ default: m.Privacy })));
+const Terms = lazy(() => import("./pages/Terms").then(m => ({ default: m.Terms })));
+const FAQ = lazy(() => import("./pages/FAQ").then(m => ({ default: m.FAQ })));
+const Contact = lazy(() => import("./pages/Contact").then(m => ({ default: m.Contact })));
+const RefundPolicy = lazy(() => import("./pages/RefundPolicy").then(m => ({ default: m.RefundPolicy })));
+const ForOrganizers = lazy(() => import("./pages/ForOrganizers").then(m => ({ default: m.ForOrganizers })));
+const HelpCenter = lazy(() => import("./pages/HelpCenter").then(m => ({ default: m.HelpCenter })));
+const Error = lazy(() => import("./pages/Error").then(m => ({ default: m.Error })));
+
+// Keep frequently used pages non-lazy for faster initial load
+import { Home } from "./pages/Home";
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
+import { ForgotPassword } from "./pages/ForgotPassword";
 
 type Page =
   | "home"
@@ -474,7 +480,7 @@ export default function App() {
         return <SeatMapBuilder onNavigate={handleNavigate} />;
 
       case "review-submission":
-        return <ReviewSubmission onNavigate={handleNavigate} />;
+        return <ReviewSubmission eventId={selectedEventId || undefined} onNavigate={handleNavigate} />;
 
       case "qr-scanner":
         return <QRScanner onNavigate={handleNavigate} />;
@@ -555,21 +561,27 @@ export default function App() {
     currentPage === "payment-return";
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen flex flex-col">
-        {!isStandalonePage && (
-          <Header
-            onNavigate={handleNavigate}
-            currentPage={currentPage}
-            isAuthenticated={isAuthenticated}
-            userRole={userRole}
-            onSearchOpenChange={setIsSearchOpen}
-          />
-        )}
-        <main className="flex-1">{renderPage()}</main>
-        {!isStandalonePage && <Footer />}
-        <Toaster position="top-center" richColors closeButton={false} />
-      </div>
-    </ProtectedRoute>
+    <ErrorBoundary>
+      <ProtectedRoute>
+        <div className="min-h-screen flex flex-col">
+          {!isStandalonePage && (
+            <Header
+              onNavigate={handleNavigate}
+              currentPage={currentPage}
+              isAuthenticated={isAuthenticated}
+              userRole={userRole}
+              onSearchOpenChange={setIsSearchOpen}
+            />
+          )}
+          <main className="flex-1">
+            <Suspense fallback={<LoadingFallback />}>
+              {renderPage()}
+            </Suspense>
+          </main>
+          {!isStandalonePage && <Footer />}
+          <Toaster />
+        </div>
+      </ProtectedRoute>
+    </ErrorBoundary>
   );
 }

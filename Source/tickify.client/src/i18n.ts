@@ -5,14 +5,28 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import enTranslation from './locales/en/translation.json';
 import viTranslation from './locales/vi/translation.json';
 
+// Đảm bảo JSON được parse đúng và là object
+const enTrans = typeof enTranslation === 'object' ? enTranslation : JSON.parse(JSON.stringify(enTranslation));
+const viTrans = typeof viTranslation === 'object' ? viTranslation : JSON.parse(JSON.stringify(viTranslation));
+
 const resources = {
   en: {
-    translation: enTranslation,
+    translation: enTrans,
   },
   vi: {
-    translation: viTranslation,
+    translation: viTrans,
   },
 };
+
+// Debug: Kiểm tra xem ticketRefund có trong resources không
+if (process.env.NODE_ENV === 'development') {
+  console.log('i18n resources check:', {
+    hasEnTicketRefund: !!enTrans?.ticketRefund,
+    hasViTicketRefund: !!viTrans?.ticketRefund,
+    enTicketRefundKeys: enTrans?.ticketRefund ? Object.keys(enTrans.ticketRefund).slice(0, 5) : [],
+    viTicketRefundKeys: viTrans?.ticketRefund ? Object.keys(viTrans.ticketRefund).slice(0, 5) : [],
+  });
+}
 
 i18n
   .use(LanguageDetector)
@@ -20,7 +34,9 @@ i18n
   .init({
     resources,
     fallbackLng: 'en',
-    debug: false,
+    defaultNS: 'translation',
+    ns: ['translation'],
+    debug: process.env.NODE_ENV === 'development',
     interpolation: {
       escapeValue: false,
     },
@@ -28,6 +44,15 @@ i18n
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
     },
+    react: {
+      useSuspense: false,
+    },
+    returnNull: false,
+    returnEmptyString: false,
+    returnObjects: true,
+    // Đảm bảo load đúng namespace
+    load: 'languageOnly',
+    cleanCode: true,
   });
 
 export default i18n;

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import type { ReactNode } from "react";
 import { wishlistService } from "../services/wishlistService";
 import { authService } from "../services/authService";
 

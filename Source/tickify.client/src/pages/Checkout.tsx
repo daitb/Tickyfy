@@ -16,6 +16,7 @@ import type { CartItem, Order } from "../types";
 import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
 import { createPaymentIntent } from "../services/paymentService";
+import { toast } from "sonner";
 import {
   validateEmail,
   validatePhone,
@@ -290,8 +291,6 @@ export function Checkout({
         quantity: totalQuantity,
       });
 
-      console.log("Booking created:", response);
-
       // Now create payment intent for the booking
       const paymentProviderMap: { [key in PaymentMethod]: "momo" | "vnpay" } = {
         momo: "momo",
@@ -307,8 +306,6 @@ export function Checkout({
           provider: provider,
         });
 
-        console.log("Payment intent created:", paymentIntent);
-
         // Redirect to payment provider
         if (paymentIntent.redirectUrl) {
           window.location.href = paymentIntent.redirectUrl;
@@ -316,18 +313,14 @@ export function Checkout({
           setError("No payment redirect URL received from provider");
         }
       } catch (paymentErr: any) {
-        console.error("Payment intent creation error:", paymentErr);
-        setError(
-          paymentErr.response?.data?.message ||
-            t('booking.checkout.paymentInitFailed')
-        );
+        const errorMsg = paymentErr.response?.data?.message || t('booking.checkout.paymentInitFailed');
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err: any) {
-      console.error("Booking creation error:", err);
-      setError(
-        err.response?.data?.message ||
-          t('booking.checkout.bookingCreateFailed')
-      );
+      const errorMsg = err.response?.data?.message || t('booking.checkout.bookingCreateFailed');
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsProcessing(false);
     }

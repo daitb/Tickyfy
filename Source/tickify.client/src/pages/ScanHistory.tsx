@@ -140,7 +140,7 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
   };
 
   const handleExport = (format: string) => {
-    console.log("Exporting as:", format);
+    // TODO: Implement export functionality
   };
 
   const filteredScans = mockScans.filter((scan) => {

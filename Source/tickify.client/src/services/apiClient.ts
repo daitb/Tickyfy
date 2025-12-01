@@ -3,6 +3,7 @@ import axios, {
   type AxiosResponse,
   AxiosError,
 } from "axios";
+import { toast } from "sonner";
 
 // Base API URL
 const API_BASE_URL = "http://localhost:5179/api";
@@ -59,15 +60,14 @@ apiClient.interceptors.response.use(
       localStorage.removeItem("authToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
+      toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
       window.location.href = "/login";
     } else if (error.response?.status === 403) {
-      console.error(
-        "Forbidden: You do not have permission to access this resource"
-      );
+      toast.error("Bạn không có quyền truy cập tài nguyên này.");
     } else if (error.response?.status === 404) {
-      console.error("Not Found: The requested resource does not exist");
+      // 404 errors are usually handled by pages, don't show toast here
     } else if (error.response?.status && error.response.status >= 500) {
-      console.error("Server Error: Please try again later");
+      toast.error("Lỗi máy chủ. Vui lòng thử lại sau.");
     }
     return Promise.reject(error);
   }

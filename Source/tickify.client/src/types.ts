@@ -22,6 +22,9 @@ export interface Event {
   faqs?: EventFAQ[];
   venueDetails?: VenueDetails;
   fullDescription?: string;
+  // Reviews
+  averageRating?: number;
+  totalReviews?: number;
 }
 
 export interface EventHighlight {
