@@ -31,7 +31,80 @@ public class OrganizerService : IOrganizerService
     }
 
     /// <summary>
-    /// Register new organizer (User becomes Organizer)
+    /// Create organizer request (User submits request to become organizer)
+    /// </summary>
+    public async Task<OrganizerRequest> CreateOrganizerRequestAsync(int userId, CreateOrganizerDto dto)
+    {
+        _logger.LogInformation("Creating organizer request for user {UserId}", userId);
+
+        // Check if user exists
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            throw new NotFoundException($"User with ID {userId} not found");
+        }
+
+        // Check if user already has a pending request
+        var existingRequest = await _context.OrganizerRequests
+            .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == "Pending");
+
+        if (existingRequest != null)
+        {
+            throw new ConflictException("You already have a pending organizer request");
+        }
+
+        // Check if user is already an organizer
+        var existingOrganizer = await _context.Organizers
+            .FirstOrDefaultAsync(o => o.UserId == userId);
+
+        if (existingOrganizer != null)
+        {
+            throw new ConflictException("User is already registered as an organizer");
+        }
+
+        // Create organizer request
+        var request = new OrganizerRequest
+        {
+            UserId = userId,
+            OrganizationName = dto.CompanyName,
+            BusinessRegistration = dto.BusinessRegistrationNumber ?? string.Empty,
+            PhoneNumber = dto.CompanyPhone ?? user.PhoneNumber ?? string.Empty,
+            Address = dto.CompanyAddress ?? string.Empty,
+            Description = dto.Description,
+            Status = "Pending",
+            RequestedAt = DateTime.UtcNow
+        };
+
+        _context.OrganizerRequests.Add(request);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Organizer request created with ID: {RequestId}", request.RequestId);
+
+        return request;
+    }
+
+    /// <summary>
+    /// Get pending organizer request for a user
+    /// </summary>
+    public async Task<OrganizerRequest?> GetPendingOrganizerRequestAsync(int userId)
+    {
+        return await _context.OrganizerRequests
+            .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == "Pending");
+    }
+
+    /// <summary>
+    /// Get organizer by user ID
+    /// </summary>
+    public async Task<Organizer?> GetOrganizerByUserIdAsync(int userId)
+    {
+        return await _context.Organizers
+            .Include(o => o.User)
+            .FirstOrDefaultAsync(o => o.UserId == userId);
+    }
+
+    /// <summary>
+    /// Register new organizer (User becomes Organizer) - DEPRECATED
+    /// This method is kept for backward compatibility but should use CreateOrganizerRequestAsync instead
     /// </summary>
     public async Task<OrganizerDto> RegisterOrganizerAsync(int userId, CreateOrganizerDto dto)
     {
