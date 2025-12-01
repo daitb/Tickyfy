@@ -339,7 +339,7 @@ public class EventController : ControllerBase
         int id,
         [FromBody] RejectEventDto dto)
     {
-        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(dto.Reason))
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(dto.RejectionReason))
         {
             return BadRequest(ApiResponse<EventDetailDto>.FailureResponse(
                 "Rejection reason is required",
@@ -350,9 +350,9 @@ public class EventController : ControllerBase
         var adminId = GetUserIdFromClaims();
 
         _logger.LogInformation("Admin {AdminId} rejecting event {EventId} with reason: {Reason}",
-            adminId, id, dto.Reason);
+            adminId, id, dto.RejectionReason);
 
-        var rejectedEvent = await _eventService.RejectEventAsync(id, adminId, dto.Reason);
+        var rejectedEvent = await _eventService.RejectEventAsync(id, adminId, dto.RejectionReason);
 
         return Ok(ApiResponse<EventDetailDto>.SuccessResponse(
             rejectedEvent,
@@ -451,30 +451,62 @@ public class EventController : ControllerBase
 
             if (organizer == null)
             {
-                // Auto-create Organizer profile if user has Organizer role but no profile
-                _logger.LogInformation("Auto-creating Organizer profile for user {UserId}", userId);
+                // First, check if user actually has Organizer role in database
+                // This is a safety check - user should not have Organizer role in token without having it in database
+                var user = await _context.Users
+                    .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
                 
-                var user = await _context.Users.FindAsync(userId);
                 if (user == null)
                 {
                     throw new UnauthorizedAccessException($"User {userId} not found.");
                 }
 
+                var hasOrganizerRole = user.UserRoles?.Any(ur => ur.Role.Name == "Organizer") ?? false;
+                
+                if (!hasOrganizerRole)
+                {
+                    // User does not have Organizer role in database - this should not happen
+                    // User should not have Organizer role in token without having it in database
+                    _logger.LogWarning("User {UserId} has Organizer role in token but not in database. This may indicate a token issue.", userId);
+                    throw new UnauthorizedAccessException("You do not have organizer permissions. Please contact admin if you believe this is an error.");
+                }
+
+                // Check if user has an approved organizer request
+                // Only auto-create if there's an approved request, not just a pending one
+                var approvedRequest = await _context.OrganizerRequests
+                    .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == "Approved");
+                
+                if (approvedRequest == null)
+                {
+                    // User has Organizer role in database but no approved request
+                    // This should not happen - user should not have Organizer role without approval
+                    _logger.LogWarning("User {UserId} has Organizer role in database but no approved organizer request. This may indicate a data inconsistency.", userId);
+                    throw new UnauthorizedAccessException("You do not have a valid organizer profile. Please contact admin if you believe this is an error.");
+                }
+
+                // Auto-create Organizer profile from approved request
+                _logger.LogInformation("Auto-creating Organizer profile for user {UserId} from approved request {RequestId}", userId, approvedRequest.RequestId);
+
                 organizer = new Tickify.Models.Organizer
                 {
                     UserId = userId,
-                    CompanyName = user.FullName ?? user.Email.Split('@')[0],
-                    CompanyEmail = user.Email,
-                    CompanyPhone = user.PhoneNumber ?? "",
-                    Description = "New organizer profile - please update your information",
-                    IsVerified = false,
+                    CompanyName = approvedRequest.OrganizationName,
+                    BusinessRegistrationNumber = approvedRequest.BusinessRegistration,
+                    CompanyAddress = approvedRequest.Address,
+                    CompanyPhone = approvedRequest.PhoneNumber,
+                    Description = approvedRequest.Description ?? "New organizer profile - please update your information",
+                    IsVerified = true,
+                    VerifiedAt = approvedRequest.ReviewedAt ?? DateTime.UtcNow,
+                    VerifiedByStaffId = approvedRequest.ReviewedByAdminId,
                     CreatedAt = DateTime.UtcNow
                 };
 
                 _context.Organizers.Add(organizer);
                 await _context.SaveChangesAsync();
                 
-                _logger.LogInformation("Created organizer {OrganizerId} for user {UserId}", organizer.Id, userId);
+                _logger.LogInformation("Created organizer {OrganizerId} for user {UserId} from approved request", organizer.Id, userId);
             }
             else
             {

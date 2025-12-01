@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Upload, Plus, Trash2, ArrowLeft, Loader2, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, Plus, Trash2, ArrowLeft, Loader2, X, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -13,6 +13,7 @@ import { eventService, type CreateEventDto } from '../services/eventService';
 import { categoryService, type CategoryDto } from '../services/categoryService';
 import { authService } from '../services/authService';
 import { imageService } from '../services/imageService';
+import { toast } from 'sonner';
 import type { Category, Event, TicketTier } from "../types";
 
 interface OrganizerWizardProps {
@@ -221,21 +222,37 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
       // Validate required fields
       if (!eventData.title || !eventData.description || !eventData.venue || !eventData.date || !eventData.time) {
-        alert('Please fill in all required fields');
+        toast.error('Missing required fields', {
+          description: 'Please fill in all required fields',
+          duration: 2000,
+          closeButton: false,
+        });
         return;
       }
 
       // Validate field lengths
       if (eventData.title.length < 5) {
-        alert('Event title must be at least 5 characters long');
+        toast.error('Invalid event title', {
+          description: 'Event title must be at least 5 characters long',
+          duration: 2000,
+          closeButton: false,
+        });
         return;
       }
       if (eventData.description.length < 50) {
-        alert('Event description must be at least 50 characters long');
+        toast.error('Invalid description', {
+          description: 'Event description must be at least 50 characters long',
+          duration: 2000,
+          closeButton: false,
+        });
         return;
       }
       if (eventData.venue.length < 5) {
-        alert('Venue must be at least 5 characters long');
+        toast.error('Invalid venue', {
+          description: 'Venue must be at least 5 characters long',
+          duration: 2000,
+          closeButton: false,
+        });
         return;
       }
 
@@ -253,7 +270,11 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       eventDateOnly.setHours(0, 0, 0, 0);
 
       if (eventDateOnly < today) {
-        alert("Event date cannot be in the past. Please select a future date.");
+        toast.error('Invalid event date', {
+          description: 'Event date cannot be in the past. Please select a future date.',
+          duration: 3000,
+          closeButton: false,
+        });
         return;
       }
 
@@ -262,9 +283,11 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       minDateTime.setHours(minDateTime.getHours() + 24);
 
       if (selectedDateTime < minDateTime) {
-        alert(
-          "Event must be scheduled at least 24 hours in advance.\n\nPlease select a date and time that is at least 1 day from now."
-        );
+        toast.error('Event too soon', {
+          description: 'Event must be scheduled at least 24 hours in advance. Please select a date and time that is at least 1 day from now.',
+          duration: 3000,
+          closeButton: false,
+        });
         return;
       }
 
@@ -272,16 +295,22 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       if (eventDateOnly.getTime() === today.getTime()) {
         const currentTime = getCurrentTime();
         if (eventData.time <= currentTime) {
-          alert(
-            `Event time cannot be in the past.\n\nCurrent time: ${currentTime}\nSelected time: ${eventData.time}\n\nPlease select a future time or a future date.`
-          );
+          toast.error('Invalid event time', {
+            description: `Event time cannot be in the past. Current time: ${currentTime}, Selected time: ${eventData.time}`,
+            duration: 3000,
+            closeButton: false,
+          });
           return;
         }
       }
 
       // Validate that event has at least one ticket tier
       if (ticketTiers.length === 0 || !ticketTiers[0].name) {
-        alert("Please add at least one ticket tier before publishing.");
+        toast.error('Missing ticket tiers', {
+          description: 'Please add at least one ticket tier before publishing.',
+          duration: 2000,
+          closeButton: false,
+        });
         return;
       }
 
@@ -320,20 +349,26 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       // POST /api/events - Create event
       const createdEvent = await eventService.createEvent(createEventDto);
 
-      alert(`Event "${createdEvent.title}" created successfully! It will be reviewed by admin.`);
+      toast.success(`Event "${createdEvent.title}" created successfully!`, {
+        description: 'It will be reviewed by admin.',
+        duration: 2000,
+        closeButton: false,
+      });
       onNavigate('organizer-dashboard');
     } catch (error: any) {
       console.error('Error creating event:', error);
       console.error('Error response data:', error.response?.data);
       
       // Extract detailed error messages from backend validation
-      let errorMessage = 'Failed to create event. Please check your inputs.';
+      let errorMessage = 'Please check your inputs.';
+      let errorTitle = 'Failed to create event';
       
       if (error.response?.data) {
         const data = error.response.data;
         // If backend returns validation errors array
         if (data.errors && Array.isArray(data.errors)) {
-          errorMessage = 'Validation errors:\n' + data.errors.join('\n');
+          errorMessage = data.errors.join('\n');
+          errorTitle = 'Validation errors';
         } else if (data.message) {
           errorMessage = data.message;
         }
@@ -341,7 +376,11 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         errorMessage = error.message;
       }
       
-      alert(errorMessage);
+      toast.error(errorTitle, {
+        description: errorMessage,
+        duration: 4000,
+        closeButton: false,
+      });
     } finally {
       setIsPublishing(false);
     }
@@ -507,10 +546,10 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                         <button
                           type="button"
                           onClick={handleRemoveImage}
-                          className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-all shadow-lg hover:scale-110 z-10 border-2 border-white"
                           title="Remove image"
                         >
-                          <X size={16} />
+                          <X size={25} />
                         </button>
                       )}
                     </div>
@@ -526,34 +565,14 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                     )}
                     
                     {uploadedImageUrl && !isUploadingImage && (
-                      <div className="mt-4 space-y-3">
-                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                          <p className="text-sm text-green-700 flex items-center gap-2">
-                            <CheckCircle size={16} className="flex-shrink-0" />
-                            <span className="font-medium">Uploaded to Azure Storage</span>
-                          </p>
-                          <p className="text-xs text-green-600 mt-1 break-all">
-                            {uploadedImageUrl}
-                          </p>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <label
-                            htmlFor="image-upload"
-                            className="flex-1 px-4 py-2 border-2 border-orange-500 text-orange-600 rounded-lg hover:bg-orange-50 cursor-pointer flex items-center justify-center transition-colors font-medium"
-                          >
-                            <Upload size={16} className="mr-2" />
-                            Change Image
-                          </label>
-                          <button
-                            type="button"
-                            onClick={handleRemoveImage}
-                            className="px-4 py-2 border-2 border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium"
-                          >
-                            <X size={16} className="inline mr-1" />
-                            Remove
-                          </button>
-                        </div>
+                      <div className="mt-4">
+                        <label
+                          htmlFor="image-upload"
+                          className="w-full px-4 py-2 border-2 border-orange-500 text-orange-600 rounded-lg hover:bg-orange-50 cursor-pointer flex items-center justify-center transition-colors font-medium"
+                        >
+                          <Upload size={16} className="mr-2" />
+                          Change Image
+                        </label>
                       </div>
                     )}
                   </div>
@@ -585,15 +604,18 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
                 <div>
                   <Label htmlFor="time">Start Time *</Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    value={eventData.time || ''}
-                    onChange={(e) => handleInputChange('time', e.target.value)}
-                    className="mt-1"
-                  />
+                  <div className="relative mt-1">
+                    <Input
+                      id="time"
+                      type="time"
+                      value={eventData.time || ''}
+                      onChange={(e) => handleInputChange('time', e.target.value)}
+                      className="pr-10"
+                    />
+                    <Clock className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" size={16} />
+                  </div>
                   <p className="text-xs text-neutral-500 mt-1">
-                    Time must be in the future if event is today
+                    Event must be at least 24 hours from now
                   </p>
                 </div>
               </div>
@@ -732,9 +754,11 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
                 {eventData.policies?.refundable && (
                   <div className="ml-4">
-                    <Label>Refund Deadline</Label>
+                    <Label>Refund Deadline *</Label>
                     <Input
                       type="date"
+                      min={eventData.date || new Date().toISOString().split('T')[0]}
+                      max={eventData.date}
                       value={eventData.policies?.refundDeadline || ''}
                       onChange={(e) => 
                         handleInputChange('policies', { 
@@ -744,6 +768,9 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                       }
                       className="mt-1"
                     />
+                    <p className="text-xs text-neutral-500 mt-1">
+                      Must be on or before the event date
+                    </p>
                   </div>
                 )}
 

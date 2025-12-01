@@ -13,7 +13,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { 
   Shield, Users, Calendar, DollarSign, TrendingUp, TrendingDown, 
   Eye, AlertCircle, CheckCircle, XCircle, Search, Filter, Download, Settings,
-  Clock
+  Clock, Loader2
 } from 'lucide-react';
 import { mockEvents, mockOrders } from '../mockData';
 import { payoutService, type PayoutDto, type ApprovePayoutDto, type RejectPayoutDto } from '../services/payoutService';
@@ -27,6 +27,8 @@ import {
 } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
+import apiClient from '../services/apiClient';
+import { toast } from 'sonner';
 
 interface AdminDashboardProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -37,6 +39,17 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [organizerRequests, setOrganizerRequests] = useState<any[]>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [pendingEvents, setPendingEvents] = useState<any[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [isApprovingEvent, setIsApprovingEvent] = useState<number | null>(null);
+  const [isRejectingEvent, setIsRejectingEvent] = useState<number | null>(null);
+  const [isApprovingRequest, setIsApprovingRequest] = useState<number | null>(null);
 
   // Calculate platform statistics
   const totalRevenue = mockOrders.reduce((sum, order) => sum + order.total, 0);
@@ -90,6 +103,236 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }).format(price);
   };
 
+  // Load organizer requests
+  useEffect(() => {
+    if (activeTab === 'requests') {
+      loadOrganizerRequests();
+    } else if (activeTab === 'event-approvals') {
+      loadPendingEvents();
+    }
+  }, [activeTab]);
+
+  const loadOrganizerRequests = async () => {
+    setIsLoadingRequests(true);
+    try {
+      const response = await apiClient.get('/admin/organizer-requests');
+      let requests = [];
+      
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          requests = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          requests = response.data.data;
+        }
+      }
+      
+      setOrganizerRequests(requests);
+    } catch (error: any) {
+      console.error('Failed to load organizer requests:', error);
+      toast.error('Không thể tải danh sách yêu cầu', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+      setOrganizerRequests([]);
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  };
+
+  const handleApproveRequest = async (requestId: number) => {
+    try {
+      setIsApprovingRequest(requestId);
+      await apiClient.post(`/admin/organizer-requests/${requestId}/approve`);
+      toast.success('Đã phê duyệt yêu cầu thành công!', {
+        duration: 2000,
+        closeButton: false,
+      });
+      await loadOrganizerRequests();
+    } catch (error: any) {
+      console.error('Failed to approve request:', error);
+      toast.error('Không thể phê duyệt yêu cầu', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+    } finally {
+      setIsApprovingRequest(null);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (!selectedRequest) return;
+    
+    try {
+      await apiClient.post(`/admin/organizer-requests/${selectedRequest.requestId}/reject`, {
+        reviewNotes: rejectReason,
+      });
+      toast.success('Đã từ chối yêu cầu', {
+        duration: 2000,
+        closeButton: false,
+      });
+      setShowRejectDialog(false);
+      setSelectedRequest(null);
+      setRejectReason('');
+      await loadOrganizerRequests();
+    } catch (error: any) {
+      console.error('Failed to reject request:', error);
+      toast.error('Không thể từ chối yêu cầu', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+    }
+  };
+
+  const getRequestStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return (
+          <Badge className="bg-yellow-100 text-yellow-700">
+            <Clock size={12} className="mr-1" />
+            Pending
+          </Badge>
+        );
+      case 'approved':
+        return (
+          <Badge className="bg-green-100 text-green-700">
+            <CheckCircle size={12} className="mr-1" />
+            Approved
+          </Badge>
+        );
+      case 'rejected':
+        return (
+          <Badge className="bg-red-100 text-red-700">
+            <XCircle size={12} className="mr-1" />
+            Rejected
+          </Badge>
+        );
+      default:
+        return <Badge>{status}</Badge>;
+    }
+  };
+
+  const loadPendingEvents = async () => {
+    setIsLoadingEvents(true);
+    try {
+      const response = await apiClient.get('/admin/events/pending');
+      let events = [];
+      
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          events = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          events = response.data.data;
+        }
+      }
+      
+      setPendingEvents(events);
+    } catch (error: any) {
+      console.error('Failed to load pending events:', error);
+      toast.error('Không thể tải danh sách sự kiện chờ duyệt', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+      setPendingEvents([]);
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  };
+
+  const handleApproveEvent = async (eventId: number) => {
+    try {
+      setIsApprovingEvent(eventId);
+      await apiClient.post(`/admin/events/${eventId}/approve`);
+      toast.success('Đã phê duyệt sự kiện thành công!', {
+        duration: 2000,
+        closeButton: false,
+      });
+      await loadPendingEvents();
+    } catch (error: any) {
+      console.error('Failed to approve event:', error);
+      toast.error('Không thể phê duyệt sự kiện', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+    } finally {
+      setIsApprovingEvent(null);
+    }
+  };
+
+  const handleRejectEvent = async (eventId: number) => {
+    try {
+      setIsRejectingEvent(eventId);
+      await apiClient.post(`/admin/events/${eventId}/reject`);
+      toast.success('Đã từ chối sự kiện', {
+        duration: 2000,
+        closeButton: false,
+      });
+      await loadPendingEvents();
+    } catch (error: any) {
+      console.error('Failed to reject event:', error);
+      toast.error('Không thể từ chối sự kiện', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+    } finally {
+      setIsRejectingEvent(null);
+    }
+  };
+
+  const getEventStatusBadge = (status: number) => {
+    // EventStatus enum: 0=Pending, 1=Approved, 2=Rejected, 3=Published, 4=Cancelled, 5=Completed
+    switch (status) {
+      case 0:
+        return (
+          <Badge className="bg-yellow-100 text-yellow-700">
+            <Clock size={12} className="mr-1" />
+            Pending
+          </Badge>
+        );
+      case 1:
+        return (
+          <Badge className="bg-blue-100 text-blue-700">
+            <CheckCircle size={12} className="mr-1" />
+            Approved
+          </Badge>
+        );
+      case 2:
+        return (
+          <Badge className="bg-red-100 text-red-700">
+            <XCircle size={12} className="mr-1" />
+            Rejected
+          </Badge>
+        );
+      case 3:
+        return (
+          <Badge className="bg-green-100 text-green-700">
+            <CheckCircle size={12} className="mr-1" />
+            Published
+          </Badge>
+        );
+      case 4:
+        return (
+          <Badge className="bg-gray-100 text-gray-700">
+            <XCircle size={12} className="mr-1" />
+            Cancelled
+          </Badge>
+        );
+      case 5:
+        return (
+          <Badge className="bg-purple-100 text-purple-700">
+            Completed
+          </Badge>
+        );
+      default:
+        return <Badge>Unknown</Badge>;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -118,7 +361,9 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <TabsList className="mb-8">
             <TabsTrigger value="overview">{t('admin.overview')}</TabsTrigger>
             <TabsTrigger value="events">{t('header.events')}</TabsTrigger>
+            <TabsTrigger value="event-approvals">{t('admin.eventApprovals', 'Event Approvals')}</TabsTrigger>
             <TabsTrigger value="organizers">{t('admin.organizer')}</TabsTrigger>
+            <TabsTrigger value="requests">{t('admin.organizerRequests', 'Organizer Requests')}</TabsTrigger>
             <TabsTrigger value="users">{t('admin.users')}</TabsTrigger>
             <TabsTrigger value="payouts">{t('admin.payouts')}</TabsTrigger>
             <TabsTrigger value="analytics">{t('organizer.analytics')}</TabsTrigger>
@@ -358,6 +603,113 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             </Card>
           </TabsContent>
 
+          {/* Event Approvals Tab */}
+          <TabsContent value="event-approvals">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('admin.eventApprovals', 'Event Approvals')}</CardTitle>
+                <CardDescription>
+                  {t('admin.reviewPendingEvents', 'Review and approve pending events from organizers')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingEvents ? (
+                  <div className="text-center py-8">
+                    <p className="text-neutral-600">Loading pending events...</p>
+                  </div>
+                ) : pendingEvents.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-neutral-600">No pending events found</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-4">
+                      <p className="text-sm text-neutral-600">
+                        Total: {pendingEvents.length} pending events
+                      </p>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>{t('admin.event', 'Event')}</TableHead>
+                          <TableHead>{t('admin.organizer')}</TableHead>
+                          <TableHead>{t('events.date')}</TableHead>
+                          <TableHead>{t('events.category')}</TableHead>
+                          <TableHead>{t('admin.status')}</TableHead>
+                          <TableHead className="text-right">{t('admin.actions')}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingEvents.map((event: any) => (
+                          <TableRow key={event.id}>
+                            <TableCell className="font-medium">#{event.id}</TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium text-neutral-900">{event.title}</div>
+                                <div className="text-sm text-neutral-500">{event.location}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {event.organizer?.companyName || 'N/A'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(event.startDate).toLocaleDateString('vi-VN')}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{event.category?.name || 'N/A'}</Badge>
+                            </TableCell>
+                            <TableCell>{getEventStatusBadge(event.status)}</TableCell>
+                            <TableCell className="text-right">
+                              {event.status === 0 && ( // Pending status
+                                <div className="flex gap-2 justify-end">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-600 border-green-600 hover:bg-green-50"
+                                    onClick={() => handleApproveEvent(event.id)}
+                                    disabled={isApprovingEvent === event.id || isRejectingEvent === event.id}
+                                  >
+                                    {isApprovingEvent === event.id ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        {t('admin.approving', 'Đang duyệt...')}
+                                      </>
+                                    ) : (
+                                      t('admin.approve')
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600 border-red-600 hover:bg-red-50"
+                                    onClick={() => handleRejectEvent(event.id)}
+                                    disabled={isApprovingEvent === event.id || isRejectingEvent === event.id}
+                                  >
+                                    {isRejectingEvent === event.id ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        {t('admin.rejecting', 'Đang từ chối...')}
+                                      </>
+                                    ) : (
+                                      t('admin.reject')
+                                    )}
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Organizers Tab */}
           <TabsContent value="organizers">
             <Card>
@@ -415,12 +767,134 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             </Card>
           </TabsContent>
 
+          {/* Organizer Requests Tab */}
+          <TabsContent value="requests">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('admin.organizerRequests', 'Organizer Requests')}</CardTitle>
+                <CardDescription>
+                  {t('admin.reviewOrganizerRequests', 'Review and approve organizer registration requests')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingRequests ? (
+                  <div className="text-center py-8">
+                    <p className="text-neutral-600">Loading requests...</p>
+                  </div>
+                ) : organizerRequests.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-neutral-600">No organizer requests found</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-4 flex items-center justify-between">
+                      <p className="text-sm text-neutral-600">
+                        Total: {organizerRequests.length} requests
+                        {' | '}
+                        Pending: {organizerRequests.filter(r => r.status.toLowerCase() === 'pending').length}
+                      </p>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>{t('admin.applicant', 'Applicant')}</TableHead>
+                          <TableHead>{t('admin.organizationName', 'Organization')}</TableHead>
+                          <TableHead>{t('admin.contactInfo', 'Contact')}</TableHead>
+                          <TableHead>{t('admin.requestDate', 'Request Date')}</TableHead>
+                          <TableHead>{t('admin.status')}</TableHead>
+                          <TableHead className="text-right">{t('admin.actions')}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {organizerRequests.map((request) => (
+                          <TableRow key={request.requestId}>
+                            <TableCell className="font-medium">#{request.requestId}</TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium text-neutral-900">{request.user?.fullName}</div>
+                                <div className="text-sm text-neutral-500">{request.user?.email}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{request.organizationName}</div>
+                                {request.businessRegistration && (
+                                  <div className="text-sm text-neutral-500">
+                                    Reg: {request.businessRegistration}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <div>{request.phoneNumber}</div>
+                                {request.address && (
+                                  <div className="text-neutral-500 truncate max-w-[200px]">
+                                    {request.address}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(request.requestedAt).toLocaleDateString('vi-VN')}
+                            </TableCell>
+                            <TableCell>{getRequestStatusBadge(request.status)}</TableCell>
+                            <TableCell className="text-right">
+                              {request.status.toLowerCase() === 'pending' && (
+                                <div className="flex gap-2 justify-end">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-600 border-green-600 hover:bg-green-50"
+                                    onClick={() => handleApproveRequest(request.requestId)}
+                                    disabled={isApprovingRequest === request.requestId}
+                                  >
+                                    {isApprovingRequest === request.requestId ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        {t('admin.approving', 'Đang duyệt...')}
+                                      </>
+                                    ) : (
+                                      t('admin.approve')
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600 border-red-600 hover:bg-red-50"
+                                    onClick={() => {
+                                      setSelectedRequest(request);
+                                      setShowRejectDialog(true);
+                                    }}
+                                    disabled={isApprovingRequest === request.requestId}
+                                  >
+                                    {t('admin.reject')}
+                                  </Button>
+                                </div>
+                              )}
+                              {request.status.toLowerCase() !== 'pending' && request.reviewNotes && (
+                                <div className="text-xs text-neutral-500">
+                                  {request.reviewNotes}
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Users Tab */}
           <TabsContent value="users">
             <Card>
               <CardHeader>
                 <CardTitle>{t('admin.platformUsers')}</CardTitle>
-                <CardDescription>{t('admin.userManagementActivity')}</CardDescription>
+                <CardDescription>{t('admin.platformUsersDesc', 'Manage platform users and activity')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-4">
@@ -535,6 +1009,44 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Reject Request Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('admin.rejectRequest', 'Reject Organizer Request')}</DialogTitle>
+            <DialogDescription>
+              {t('admin.rejectRequestDesc', 'Please provide a reason for rejecting this request')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="rejectReason">{t('admin.reason', 'Reason')} *</Label>
+              <Textarea
+                id="rejectReason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder={t('admin.rejectReasonPlaceholder', 'Enter reason for rejection...')}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={handleRejectRequest}
+              className="bg-red-500 hover:bg-red-600"
+              disabled={!rejectReason.trim()}
+            >
+              {t('admin.reject')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
     </div>
   );
 }

@@ -56,25 +56,30 @@ export interface OrganizerEarningsDto {
   netEarnings: number;
   pendingPayouts: number;
   completedPayouts: number;
+  availableBalance: number;
+  totalTicketsSold: number;
   monthlyRevenue: Array<{
     month: string;
     revenue: number;
+    ticketsSold: number;
   }>;
   topEvents: Array<{
     eventId: number;
     title: string;
     revenue: number;
+    ticketsSold: number;
   }>;
 }
 
 // ===== ORGANIZER SERVICE =====
 class OrganizerService {
   /**
-   * POST /api/organizers/register - Register as organizer
+   * POST /api/organizers/register - Register as organizer (creates request)
    */
-  async registerOrganizer(dto: CreateOrganizerDto): Promise<OrganizerDto> {
-    const response = await apiClient.post<OrganizerDto>('/organizers/register', dto);
-    return response.data;
+  async registerOrganizer(dto: CreateOrganizerDto): Promise<any> {
+    const response = await apiClient.post<any>('/organizers/register', dto);
+    // Backend returns ApiResponse<object> with data nested in response.data.data
+    return response.data?.data || response.data;
   }
 
   /**
@@ -123,6 +128,22 @@ class OrganizerService {
   async verifyOrganizer(id: number): Promise<OrganizerDto> {
     const response = await apiClient.post<OrganizerDto>(`/organizers/${id}/verify`);
     return response.data;
+  }
+
+  /**
+   * GET /api/organizers/my-request - Get current user's pending organizer request
+   */
+  async getMyOrganizerRequest(): Promise<any | null> {
+    try {
+      const response = await apiClient.get<any>('/organizers/my-request');
+      return response.data?.data || null;
+    } catch (error: any) {
+      // If no request found, return null instead of throwing
+      if (error.response?.status === 404 || error.response?.status === 200) {
+        return null;
+      }
+      throw error;
+    }
   }
 }
 

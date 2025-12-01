@@ -149,9 +149,12 @@ public class EventService : IEventService
                 MaxCapacity = dto.TotalSeats,
                 CategoryId = dto.CategoryId,
                 OrganizerId = organizerId,
-                Status = EventStatus.Pending,
+                Status = EventStatus.Pending, // Always Pending - requires admin approval
                 CreatedAt = DateTime.UtcNow
             };
+            
+            _logger.LogInformation("Event status set to: {Status} (Value: {StatusValue})", 
+                eventEntity.Status, (int)eventEntity.Status);
 
             // Add event to database
             _logger.LogInformation("Adding event to database");
@@ -802,6 +805,9 @@ public class EventService : IEventService
             AvailableSeats = eventEntity.TicketTypes?.Sum(tt => tt.AvailableQuantity) ?? 0,
             MinPrice = eventEntity.TicketTypes?.Any() == true
                 ? eventEntity.TicketTypes.Min(tt => tt.Price)
+                : 0,
+            MaxPrice = eventEntity.TicketTypes?.Any() == true
+                ? eventEntity.TicketTypes.Max(tt => tt.Price)
                 : 0,
             IsFeatured = false, // TODO: Add to Event model
             Status = eventEntity.Status.ToString()

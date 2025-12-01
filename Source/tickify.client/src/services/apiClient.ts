@@ -33,15 +33,6 @@ apiClient.interceptors.request.use(
 // Response interceptor to handle common errors and extract data from ApiResponse wrapper
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log(
-      "ApiClient Response Interceptor - Original response:",
-      response
-    );
-    console.log(
-      "ApiClient Response Interceptor - Response data:",
-      response.data
-    );
-
     // Backend wraps responses in ApiResponse<T> with { success, message, data }
     // Extract the data field if it exists
     if (
@@ -49,25 +40,15 @@ apiClient.interceptors.response.use(
       typeof response.data === "object" &&
       "data" in response.data
     ) {
-      console.log("ApiClient Response Interceptor - Extracting data field");
       response.data = response.data.data;
-      console.log(
-        "ApiClient Response Interceptor - After extraction:",
-        response.data
-      );
     }
     return response;
   },
   (error: AxiosError) => {
-    console.error("ApiClient Error Interceptor - Error:", error);
-    console.error(
-      "ApiClient Error Interceptor - Error response:",
-      error.response
-    );
-    console.error(
-      "ApiClient Error Interceptor - Error response data:",
-      error.response?.data
-    );
+    // Only log errors, not all requests
+    if (error.response?.status && error.response.status >= 400) {
+      console.error(`API Error [${error.response.status}]:`, error.config?.url, error.response?.data || error.message);
+    }
 
     // Don't redirect on login failure (401), let the login page handle it
     if (
