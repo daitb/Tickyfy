@@ -181,41 +181,41 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm text-neutral-600">Tickets Sold</CardTitle>
+                  <CardTitle className="text-sm text-neutral-600">{t('organizer.dashboard.ticketsSold', 'Tickets Sold')}</CardTitle>
                   <Ticket className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl">{totalSold}</div>
                   <p className="text-xs text-green-600 mt-1">
                     <TrendingUp size={12} className="inline mr-1" />
-                    +8.2% from last month
+                    {t('organizer.dashboard.increaseLastMonth', '+8.2% from last month')}
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm text-neutral-600">Active Events</CardTitle>
+                  <CardTitle className="text-sm text-neutral-600">{t('organizer.dashboard.activeEvents', 'Active Events')}</CardTitle>
                   <Calendar className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl">{activeEvents}</div>
                   <p className="text-xs text-neutral-500 mt-1">
-                    {pendingEvents} pending approval
+                    {pendingEvents} {t('organizer.dashboard.pendingApproval', 'pending approval')}
                   </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm text-neutral-600">Total Views</CardTitle>
+                  <CardTitle className="text-sm text-neutral-600">{t('organizer.dashboard.totalViews', 'Total Views')}</CardTitle>
                   <Eye className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl">12.4K</div>
                   <p className="text-xs text-green-600 mt-1">
                     <TrendingUp size={12} className="inline mr-1" />
-                    +18.3% from last month
+                    {t('organizer.dashboard.viewsIncrease', '+18.3% from last month')}
                   </p>
                 </CardContent>
               </Card>
@@ -224,8 +224,8 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
             {/* Sales Chart */}
             <Card>
               <CardHeader>
-                <CardTitle>Sales Trend</CardTitle>
-                <CardDescription>Monthly revenue performance</CardDescription>
+                <CardTitle>{t('organizer.dashboard.salesTrend', 'Sales Trend')}</CardTitle>
+                <CardDescription>{t('organizer.dashboard.monthlyRevenue', 'Monthly revenue performance')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -242,7 +242,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                       dataKey="revenue" 
                       stroke="#f97316" 
                       strokeWidth={2}
-                      name="Revenue"
+                      name={t('organizer.dashboard.revenue', 'Revenue')}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -252,8 +252,8 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
             {/* Top Events */}
             <Card>
               <CardHeader>
-                <CardTitle>Top Performing Events</CardTitle>
-                <CardDescription>Your best selling events</CardDescription>
+                <CardTitle>{t('organizer.dashboard.topEvents', 'Top Performing Events')}</CardTitle>
+                <CardDescription>{t('organizer.dashboard.bestSelling', 'Your best selling events')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -263,18 +263,18 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                         <div className="flex-1">
                           <div className="text-neutral-900 mb-1">{event.title}</div>
                           <div className="text-sm text-neutral-500">
-                            {event.ticketsSold} tickets sold
+                            {event.ticketsSold} {t('organizer.dashboard.ticketsSoldLabel', 'tickets sold')}
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="text-neutral-900">{formatPrice(event.revenue)}</div>
-                          <div className="text-sm text-green-600">Revenue</div>
+                          <div className="text-sm text-green-600">{t('organizer.dashboard.revenue', 'Revenue')}</div>
                         </div>
                       </div>
                     ))
                   ) : (
                     <div className="text-center py-8 text-neutral-500">
-                      No event data available
+                      {t('organizer.dashboard.noEventData', 'No event data available')}
                     </div>
                   )}
                 </div>
@@ -288,20 +288,20 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
               <CardHeader>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
-                    <CardTitle>Your Events</CardTitle>
-                    <CardDescription>Manage and track all your events</CardDescription>
+                    <CardTitle>{t('organizer.dashboard.yourEvents', 'Your Events')}</CardTitle>
+                    <CardDescription>{t('organizer.dashboard.manageEvents', 'Manage and track all your events')}</CardDescription>
                   </div>
                   <div className="flex gap-2">
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Filter by status" />
+                        <SelectValue placeholder={t('organizer.dashboard.filterByStatus', 'Filter by status')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Events</SelectItem>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="all">{t('organizer.dashboard.allEvents', 'All Events')}</SelectItem>
+                        <SelectItem value="draft">{t('organizer.dashboard.draft', 'Draft')}</SelectItem>
+                        <SelectItem value="pending">{t('organizer.dashboard.pending', 'Pending')}</SelectItem>
+                        <SelectItem value="approved">{t('organizer.dashboard.approved', 'Approved')}</SelectItem>
+                        <SelectItem value="rejected">{t('organizer.dashboard.rejected', 'Rejected')}</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -309,7 +309,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                       className="bg-orange-500 hover:bg-orange-600"
                     >
                       <Plus size={16} className="mr-2" />
-                      New Event
+                      {t('organizer.dashboard.newEvent', 'New Event')}
                     </Button>
                   </div>
                 </div>
@@ -320,13 +320,13 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                     <Calendar className="mx-auto text-neutral-300 mb-4" size={64} />
                     <h3 className="text-lg text-neutral-600 mb-2">
                       {statusFilter === 'all' 
-                        ? 'No events yet' 
-                        : `No ${statusFilter} events`}
+                        ? t('organizer.dashboard.noEvents', 'No events yet')
+                        : t('organizer.dashboard.noStatusEvents', `No ${statusFilter} events`, { status: statusFilter })}
                     </h3>
                     <p className="text-sm text-neutral-500 mb-4">
                       {statusFilter === 'all'
-                        ? 'Create your first event to get started'
-                        : `You don't have any ${statusFilter} events at the moment`}
+                        ? t('organizer.dashboard.createFirstEvent', 'Create your first event to get started')
+                        : t('organizer.dashboard.noStatusEventsDesc', `You don't have any ${statusFilter} events at the moment`, { status: statusFilter })}
                     </p>
                     {statusFilter === 'all' && (
                       <Button
@@ -334,7 +334,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                         className="bg-orange-500 hover:bg-orange-600"
                       >
                         <Plus size={16} className="mr-2" />
-                        Create Your First Event
+                        {t('organizer.dashboard.createYourFirstEvent', 'Create Your First Event')}
                       </Button>
                     )}
                   </div>
@@ -342,11 +342,11 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Event</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Sold</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead className="w-[22%] text-center">{t('organizer.dashboard.event', 'Event')}</TableHead>
+                        <TableHead className="w-[16%] text-center">{t('organizer.dashboard.date', 'Date')}</TableHead>
+                        <TableHead className="w-[14%] text-center">{t('organizer.dashboard.status', 'Status')}</TableHead>
+                        <TableHead className="w-[22%] text-center">{t('organizer.dashboard.sold', 'Sold')}</TableHead>
+                        <TableHead className="w-[26%] text-center">{t('organizer.dashboard.actions', 'Actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -357,75 +357,70 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                       
                       return (
                         <TableRow key={event.eventId}>
-                          <TableCell>
-                            <div>
-                              <div className="text-neutral-900 font-medium">{event.title}</div>
+                          <TableCell className="w-[22%]">
+                            <div className="flex flex-col items-center">
+                              <div className="text-neutral-900 font-medium truncate max-w-full">{event.title}</div>
                               <div className="text-sm text-neutral-500">ID: #{event.eventId}</div>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
+                          <TableCell className="w-[16%] text-center">
+                            <div className="text-sm whitespace-nowrap">
                               {new Date(event.startDate).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
                                 year: 'numeric'
                               })}
                             </div>
-                            <div className="text-xs text-neutral-500">
+                            <div className="text-xs text-neutral-500 whitespace-nowrap">
                               {new Date(event.startDate).toLocaleTimeString('en-US', {
                                 hour: '2-digit',
                                 minute: '2-digit'
                               })}
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <Badge className={
-                              event.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                              event.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                              event.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                              'bg-neutral-100 text-neutral-700'
-                            }>
-                              {event.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">{event.soldSeats} / {event.totalSeats}</span>
-                              <span className="text-xs text-neutral-500">({salesRate}%)</span>
-                            </div>
-                            <div className="w-24 bg-neutral-200 rounded-full h-1.5 mt-1">
-                              <div
-                                className="bg-orange-500 h-1.5 rounded-full"
-                                style={{ width: `${salesRate}%` }}
-                              />
+                          <TableCell className="w-[14%] text-center">
+                            <div className="flex justify-center">
+                              <Badge className={
+                                event.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                                event.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                                event.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                'bg-neutral-100 text-neutral-700'
+                              }>
+                                {event.status}
+                              </Badge>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex gap-2 justify-end">
-                              {(event.status === 'Draft' || event.status === 'Rejected') && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => onNavigate('edit-event', String(event.eventId))}
-                                  className="text-blue-600 hover:bg-blue-50"
-                                >
-                                  Edit
-                                </Button>
-                              )}
+                          <TableCell className="w-[22%]">
+                            <div className="flex flex-col items-center">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium whitespace-nowrap">{event.soldSeats} / {event.totalSeats}</span>
+                                <span className="text-xs text-neutral-500">({salesRate}%)</span>
+                              </div>
+                              <div className="w-full max-w-[120px] bg-neutral-200 rounded-full h-1.5">
+                                <div
+                                  className="bg-orange-500 h-1.5 rounded-full"
+                                  style={{ width: `${salesRate}%` }}
+                                />
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[26%]">
+                            <div className="flex gap-2 justify-center">
                               <Button 
                                 variant="ghost" 
                                 size="sm"
                                 onClick={() => onNavigate('event-analytics', String(event.eventId))}
-                                className="text-teal-600 hover:bg-teal-50"
+                                className="text-teal-600 hover:bg-teal-50 px-4 h-8"
                               >
-                                Analytics
+                                {t('organizer.dashboard.analytics', 'Analytics')}
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="sm"
                                 onClick={() => onNavigate('event-detail', String(event.eventId))}
+                                className="px-4 h-8"
                               >
-                                View
+                                {t('organizer.dashboard.view', 'View')}
                               </Button>
                             </div>
                           </TableCell>
@@ -443,19 +438,19 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
           <TabsContent value="orders">
             <Card>
               <CardHeader>
-                <CardTitle>Recent Orders</CardTitle>
-                <CardDescription>Track customer purchases</CardDescription>
+                <CardTitle>{t('organizer.dashboard.recentOrders', 'Recent Orders')}</CardTitle>
+                <CardDescription>{t('organizer.dashboard.trackPurchases', 'Track customer purchases')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Event</TableHead>
-                      <TableHead>Tickets</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>{t('organizer.dashboard.orderId', 'Order ID')}</TableHead>
+                      <TableHead>{t('organizer.dashboard.customer', 'Customer')}</TableHead>
+                      <TableHead>{t('organizer.dashboard.event', 'Event')}</TableHead>
+                      <TableHead>{t('organizer.dashboard.tickets', 'Tickets')}</TableHead>
+                      <TableHead>{t('organizer.dashboard.amount', 'Amount')}</TableHead>
+                      <TableHead>{t('organizer.dashboard.status', 'Status')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -470,7 +465,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                               <div className="text-sm text-neutral-500">{order.userEmail}</div>
                             </div>
                           </TableCell>
-                          <TableCell>{event?.title || 'Unknown Event'}</TableCell>
+                          <TableCell>{event?.title || t('organizer.dashboard.unknownEvent', 'Unknown Event')}</TableCell>
                           <TableCell>{order.tickets.length}</TableCell>
                           <TableCell>{formatPrice(order.total)}</TableCell>
                           <TableCell>
@@ -492,8 +487,8 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Revenue by Event</CardTitle>
-                  <CardDescription>Comparison of event performance</CardDescription>
+                  <CardTitle>{t('organizer.dashboard.revenueByEvent', 'Revenue by Event')}</CardTitle>
+                  <CardDescription>{t('organizer.dashboard.eventComparison', 'Comparison of event performance')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -510,8 +505,8 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Ticket Sales Rate</CardTitle>
-                  <CardDescription>Percentage of tickets sold</CardDescription>
+                  <CardTitle>{t('organizer.dashboard.salesRate', 'Ticket Sales Rate')}</CardTitle>
+                  <CardDescription>{t('organizer.dashboard.percentageSold', 'Percentage of tickets sold')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
