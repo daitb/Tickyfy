@@ -1,19 +1,36 @@
-import { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Upload, Plus, Trash2, ArrowLeft, Loader2, X, CheckCircle, AlertCircle, Clock } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Switch } from '../components/ui/switch';
-import { ProgressSteps } from '../components/ProgressSteps';
-import { cities } from '../mockData';
-import { eventService, type CreateEventDto } from '../services/eventService';
-import { categoryService, type CategoryDto } from '../services/categoryService';
-import { authService } from '../services/authService';
-import { imageService } from '../services/imageService';
-import { toast } from 'sonner';
+import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Upload,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  Loader2,
+  X,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
+import { ProgressSteps } from "../components/ProgressSteps";
+import { cities } from "../mockData";
+import { eventService, type CreateEventDto } from "../services/eventService";
+import { categoryService, type CategoryDto } from "../services/categoryService";
+import { seatMapService, type SeatMapDto } from "../services/seatMapService";
+import { authService } from "../services/authService";
+import { imageService } from "../services/imageService";
+import { toast } from "sonner";
 import type { Category, Event, TicketTier } from "../types";
 
 interface OrganizerWizardProps {
@@ -26,18 +43,25 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   const [isPublishing, setIsPublishing] = useState(false);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [eventData, setEventData] = useState<Partial<Event>>({
-    category: 'Music',
+    category: "Music",
     city: cities[0],
     ticketTiers: [],
     policies: {
       refundable: true,
-      transferable: true
-    }
+      transferable: true,
+    },
   });
 
   const [ticketTiers, setTicketTiers] = useState<Partial<TicketTier>[]>([
-    { name: '', price: 0, total: 100, description: '' }
+    { name: "", price: 0, total: 100, description: "" },
   ]);
+
+  // Seat map states
+  const [seatMapTemplates, setSeatMapTemplates] = useState<SeatMapDto[]>([]);
+  const [selectedSeatMapId, setSelectedSeatMapId] = useState<number | null>(
+    null
+  );
+  const [loadingSeatMaps, setLoadingSeatMaps] = useState(false);
 
   // Image upload states
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -69,7 +93,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     return now.toTimeString().slice(0, 5);
   };
 
-  // Load categories on mount
+  // Load categories and seat map templates on mount
   useEffect(() => {
     const loadCategories = async () => {
       try {
@@ -77,21 +101,38 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         setCategories(cats);
         // Set first category as default if available
         if (cats.length > 0 && !eventData.category) {
-          setEventData(prev => ({ ...prev, category: cats[0].categoryName as any }));
+          setEventData((prev) => ({
+            ...prev,
+            category: cats[0].categoryName as any,
+          }));
         }
       } catch (error) {
-        console.error('Error loading categories:', error);
+        console.error("Error loading categories:", error);
       }
     };
+
+    const loadSeatMapTemplates = async () => {
+      try {
+        setLoadingSeatMaps(true);
+        const templates = await seatMapService.getSeatMapTemplates();
+        setSeatMapTemplates(templates);
+      } catch (error) {
+        console.error("Error loading seat map templates:", error);
+      } finally {
+        setLoadingSeatMaps(false);
+      }
+    };
+
     loadCategories();
+    loadSeatMapTemplates();
   }, []);
 
   const steps = [
-    { number: 1, label: 'Basics' },
-    { number: 2, label: 'Schedule & Venue' },
-    { number: 3, label: 'Ticketing' },
-    { number: 4, label: 'Policies' },
-    { number: 5, label: 'Review' }
+    { number: 1, label: "Basics" },
+    { number: 2, label: "Schedule & Venue" },
+    { number: 3, label: "Ticketing" },
+    { number: 4, label: "Policies" },
+    { number: 5, label: "Review" },
   ];
 
   const handleInputChange = (field: string, value: any) => {
@@ -99,7 +140,10 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   };
 
   const handleAddTier = () => {
-    setTicketTiers([...ticketTiers, { name: '', price: 0, total: 100, description: '' }]);
+    setTicketTiers([
+      ...ticketTiers,
+      { name: "", price: 0, total: 100, description: "" },
+    ]);
   };
 
   const handleRemoveTier = (index: number) => {
@@ -113,7 +157,9 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   };
 
   // Handle image file selection and auto-upload
-  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -126,13 +172,13 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       toast.error(validationError);
       // Reset file input
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
       return;
     }
 
     setSelectedImage(file);
-    
+
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -147,7 +193,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   // Upload image to Azure Storage
   const handleImageUpload = async (fileToUpload?: File) => {
     const imageToUpload = fileToUpload || selectedImage;
-    
+
     if (!imageToUpload) {
       return;
     }
@@ -155,23 +201,26 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     try {
       setIsUploadingImage(true);
       setUploadError(null);
-      
+
       const response = await imageService.uploadImage(imageToUpload);
-      
+
       setUploadedImageUrl(response.imageUrl);
-      handleInputChange('image', response.imageUrl);
+      handleInputChange("image", response.imageUrl);
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || error.message || 'Failed to upload image';
-      console.error('[OrganizerWizard] Upload error:', errorMsg);
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to upload image";
+      console.error("[OrganizerWizard] Upload error:", errorMsg);
       setUploadError(errorMsg);
-      
+
       // Reset on error
       setSelectedImage(null);
       setImagePreview(null);
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
-      
+
       toast.error(`Tải ảnh thất bại: ${errorMsg}`);
     } finally {
       setIsUploadingImage(false);
@@ -184,9 +233,9 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     setImagePreview(null);
     setUploadedImageUrl(null);
     setUploadError(null);
-    handleInputChange('image', undefined);
+    handleInputChange("image", undefined);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -207,9 +256,15 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       setIsPublishing(true);
 
       // Validate required fields
-      if (!eventData.title || !eventData.description || !eventData.venue || !eventData.date || !eventData.time) {
-        toast.error('Missing required fields', {
-          description: 'Please fill in all required fields',
+      if (
+        !eventData.title ||
+        !eventData.description ||
+        !eventData.venue ||
+        !eventData.date ||
+        !eventData.time
+      ) {
+        toast.error("Missing required fields", {
+          description: "Please fill in all required fields",
           duration: 2000,
           closeButton: false,
         });
@@ -218,24 +273,24 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
       // Validate field lengths
       if (eventData.title.length < 5) {
-        toast.error('Invalid event title', {
-          description: 'Event title must be at least 5 characters long',
+        toast.error("Invalid event title", {
+          description: "Event title must be at least 5 characters long",
           duration: 2000,
           closeButton: false,
         });
         return;
       }
       if (eventData.description.length < 50) {
-        toast.error('Invalid description', {
-          description: 'Event description must be at least 50 characters long',
+        toast.error("Invalid description", {
+          description: "Event description must be at least 50 characters long",
           duration: 2000,
           closeButton: false,
         });
         return;
       }
       if (eventData.venue.length < 5) {
-        toast.error('Invalid venue', {
-          description: 'Venue must be at least 5 characters long',
+        toast.error("Invalid venue", {
+          description: "Venue must be at least 5 characters long",
           duration: 2000,
           closeButton: false,
         });
@@ -256,8 +311,9 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       eventDateOnly.setHours(0, 0, 0, 0);
 
       if (eventDateOnly < today) {
-        toast.error('Invalid event date', {
-          description: 'Event date cannot be in the past. Please select a future date.',
+        toast.error("Invalid event date", {
+          description:
+            "Event date cannot be in the past. Please select a future date.",
           duration: 3000,
           closeButton: false,
         });
@@ -269,8 +325,9 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       minDateTime.setHours(minDateTime.getHours() + 24);
 
       if (selectedDateTime < minDateTime) {
-        toast.error('Event too soon', {
-          description: 'Event must be scheduled at least 24 hours in advance. Please select a date and time that is at least 1 day from now.',
+        toast.error("Event too soon", {
+          description:
+            "Event must be scheduled at least 24 hours in advance. Please select a date and time that is at least 1 day from now.",
           duration: 3000,
           closeButton: false,
         });
@@ -281,7 +338,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       if (eventDateOnly.getTime() === today.getTime()) {
         const currentTime = getCurrentTime();
         if (eventData.time <= currentTime) {
-          toast.error('Invalid event time', {
+          toast.error("Invalid event time", {
             description: `Event time cannot be in the past. Current time: ${currentTime}, Selected time: ${eventData.time}`,
             duration: 3000,
             closeButton: false,
@@ -292,8 +349,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
       // Validate that event has at least one ticket tier
       if (ticketTiers.length === 0 || !ticketTiers[0].name) {
-        toast.error('Missing ticket tiers', {
-          description: 'Please add at least one ticket tier before publishing.',
+        toast.error("Missing ticket tiers", {
+          description: "Please add at least one ticket tier before publishing.",
           duration: 2000,
           closeButton: false,
         });
@@ -301,13 +358,15 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       }
 
       // Combine date and time
-      const eventDate = eventData.date || '';
-      const eventTime = eventData.time || '00:00';
+      const eventDate = eventData.date || "";
+      const eventTime = eventData.time || "00:00";
       const startDateTime = `${eventDate}T${eventTime}:00`;
       const endDateTime = `${eventDate}T23:59:00`; // Default end time
 
       // Map category name to categoryId
-      const selectedCategory = categories.find(c => c.categoryName === eventData.category);
+      const selectedCategory = categories.find(
+        (c) => c.categoryName === eventData.category
+      );
       const categoryId = selectedCategory?.categoryId || 1; // Fallback to 1 if not found
 
       // Prepare event data
@@ -320,43 +379,47 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         imageUrl: eventData.image,
         startDate: startDateTime,
         endDate: endDateTime,
-        totalSeats: ticketTiers.reduce((sum, tier) => sum + (tier.total || 0), 0),
+        totalSeats: ticketTiers.reduce(
+          (sum, tier) => sum + (tier.total || 0),
+          0
+        ),
         isFeatured: false,
-        ticketTypes: ticketTiers.map(tier => ({
-          typeName: tier.name || 'General',
+        seatMapId: selectedSeatMapId ?? undefined,
+        ticketTypes: ticketTiers.map((tier) => ({
+          typeName: tier.name || "General",
           price: tier.price || 0,
           quantity: tier.total || 0,
-          description: tier.description
-        }))
+          description: tier.description,
+        })),
       };
 
       // POST /api/events - Create event
       const createdEvent = await eventService.createEvent(createEventDto);
 
       toast.success(`Event "${createdEvent.title}" created successfully!`, {
-        description: 'It will be reviewed by admin.',
+        description: "It will be reviewed by admin.",
         duration: 2000,
         closeButton: false,
       });
-      onNavigate('organizer-dashboard');
+      onNavigate("organizer-dashboard");
     } catch (error: any) {
       // Extract detailed error messages from backend validation
-      let errorMessage = 'Please check your inputs.';
-      let errorTitle = 'Failed to create event';
-      
+      let errorMessage = "Please check your inputs.";
+      let errorTitle = "Failed to create event";
+
       if (error.response?.data) {
         const data = error.response.data;
         // If backend returns validation errors array
         if (data.errors && Array.isArray(data.errors)) {
-          errorMessage = data.errors.join('\n');
-          errorTitle = 'Validation errors';
+          errorMessage = data.errors.join("\n");
+          errorTitle = "Validation errors";
         } else if (data.message) {
           errorMessage = data.message;
         }
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast.error(errorTitle, {
         description: errorMessage,
         duration: 4000,
@@ -406,7 +469,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => onNavigate('home')}
+            onClick={() => onNavigate("home")}
             className="mb-4"
           >
             <ArrowLeft size={16} className="mr-2" />
@@ -428,8 +491,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                 <Input
                   id="title"
                   placeholder="e.g., Summer Music Festival 2025"
-                  value={eventData.title || ''}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  value={eventData.title || ""}
+                  onChange={(e) => handleInputChange("title", e.target.value)}
                   className="mt-1"
                 />
               </div>
@@ -439,12 +502,12 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                 <Input
                   id="slug"
                   placeholder="summer-music-festival-2025"
-                  value={eventData.slug || ''}
-                  onChange={(e) => handleInputChange('slug', e.target.value)}
+                  value={eventData.slug || ""}
+                  onChange={(e) => handleInputChange("slug", e.target.value)}
                   className="mt-1"
                 />
                 <p className="text-xs text-neutral-500 mt-1">
-                  tickify.vn/events/{eventData.slug || 'your-event'}
+                  tickify.vn/events/{eventData.slug || "your-event"}
                 </p>
               </div>
 
@@ -452,13 +515,15 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                 <Label htmlFor="category">Category *</Label>
                 <Select
                   value={eventData.category}
-                  onValueChange={(value) => handleInputChange('category', value as Category)}
+                  onValueChange={(value) =>
+                    handleInputChange("category", value as Category)
+                  }
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map(cat => (
+                    {categories.map((cat) => (
                       <SelectItem key={cat.categoryId} value={cat.categoryName}>
                         {cat.categoryName}
                       </SelectItem>
@@ -468,12 +533,16 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
               </div>
 
               <div>
-                <Label htmlFor="description">Description * (minimum 50 characters)</Label>
+                <Label htmlFor="description">
+                  Description * (minimum 50 characters)
+                </Label>
                 <Textarea
                   id="description"
                   placeholder="Describe your event in detail... (minimum 50 characters required)"
-                  value={eventData.description || ''}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  value={eventData.description || ""}
+                  onChange={(e) =>
+                    handleInputChange("description", e.target.value)
+                  }
                   className="mt-1 min-h-[120px]"
                 />
                 <p className="text-xs text-neutral-500 mt-1">
@@ -491,13 +560,16 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                   className="hidden"
                   id="image-upload"
                 />
-                
+
                 {!imagePreview ? (
                   <label
                     htmlFor="image-upload"
                     className="mt-1 border-2 border-dashed border-neutral-300 rounded-xl p-8 text-center hover:border-orange-500 transition-colors cursor-pointer flex flex-col items-center block"
                   >
-                    <Upload className="mx-auto text-neutral-400 mb-2" size={32} />
+                    <Upload
+                      className="mx-auto text-neutral-400 mb-2"
+                      size={32}
+                    />
                     <p className="text-sm text-neutral-600">
                       Click to upload image
                     </p>
@@ -511,16 +583,21 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                     {isUploadingImage && (
                       <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center z-10">
                         <div className="text-center">
-                          <Loader2 className="animate-spin mx-auto text-orange-500 mb-2" size={40} />
-                          <p className="text-sm text-neutral-700 font-medium">Uploading to Azure Storage...</p>
+                          <Loader2
+                            className="animate-spin mx-auto text-orange-500 mb-2"
+                            size={40}
+                          />
+                          <p className="text-sm text-neutral-700 font-medium">
+                            Uploading to Azure Storage...
+                          </p>
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="relative">
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
                         className="w-full h-64 object-cover rounded-lg"
                       />
                       {!isUploadingImage && (
@@ -534,17 +611,24 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                         </button>
                       )}
                     </div>
-                    
+
                     {uploadError && (
                       <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                        <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={16} />
+                        <AlertCircle
+                          className="text-red-500 flex-shrink-0 mt-0.5"
+                          size={16}
+                        />
                         <div className="flex-1">
-                          <p className="text-sm text-red-700 font-medium">Upload Failed</p>
-                          <p className="text-xs text-red-600 mt-1">{uploadError}</p>
+                          <p className="text-sm text-red-700 font-medium">
+                            Upload Failed
+                          </p>
+                          <p className="text-xs text-red-600 mt-1">
+                            {uploadError}
+                          </p>
                         </div>
                       </div>
                     )}
-                    
+
                     {uploadedImageUrl && !isUploadingImage && (
                       <div className="mt-4">
                         <label
@@ -589,11 +673,16 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                     <Input
                       id="time"
                       type="time"
-                      value={eventData.time || ''}
-                      onChange={(e) => handleInputChange('time', e.target.value)}
+                      value={eventData.time || ""}
+                      onChange={(e) =>
+                        handleInputChange("time", e.target.value)
+                      }
                       className="pr-10"
                     />
-                    <Clock className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" size={16} />
+                    <Clock
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                      size={16}
+                    />
                   </div>
                   <p className="text-xs text-neutral-500 mt-1">
                     Event must be at least 24 hours from now
@@ -606,8 +695,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                 <Input
                   id="venue"
                   placeholder="e.g., Phu Tho Stadium"
-                  value={eventData.venue || ''}
-                  onChange={(e) => handleInputChange('venue', e.target.value)}
+                  value={eventData.venue || ""}
+                  onChange={(e) => handleInputChange("venue", e.target.value)}
                   className="mt-1"
                 />
               </div>
@@ -616,14 +705,16 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                 <Label htmlFor="city">City *</Label>
                 <Select
                   value={eventData.city}
-                  onValueChange={(value) => handleInputChange('city', value)}
+                  onValueChange={(value) => handleInputChange("city", value)}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {cities.map(city => (
-                      <SelectItem key={city} value={city}>{city}</SelectItem>
+                    {cities.map((city) => (
+                      <SelectItem key={city} value={city}>
+                        {city}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -636,11 +727,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h3>Ticket Tiers</h3>
-                <Button
-                  onClick={handleAddTier}
-                  variant="outline"
-                  size="sm"
-                >
+                <Button onClick={handleAddTier} variant="outline" size="sm">
                   <Plus size={16} className="mr-2" />
                   Add Tier
                 </Button>
@@ -648,7 +735,10 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
               <div className="space-y-4">
                 {ticketTiers.map((tier, index) => (
-                  <div key={index} className="border border-neutral-200 rounded-xl p-4">
+                  <div
+                    key={index}
+                    className="border border-neutral-200 rounded-xl p-4"
+                  >
                     <div className="flex items-start justify-between mb-4">
                       <h4>Tier {index + 1}</h4>
                       {ticketTiers.length > 1 && (
@@ -668,8 +758,10 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                         <Label>Tier Name *</Label>
                         <Input
                           placeholder="e.g., General Admission"
-                          value={tier.name || ''}
-                          onChange={(e) => handleTierChange(index, 'name', e.target.value)}
+                          value={tier.name || ""}
+                          onChange={(e) =>
+                            handleTierChange(index, "name", e.target.value)
+                          }
                           className="mt-1"
                         />
                       </div>
@@ -679,8 +771,14 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                         <Input
                           type="number"
                           placeholder="500000"
-                          value={tier.price || ''}
-                          onChange={(e) => handleTierChange(index, 'price', parseInt(e.target.value))}
+                          value={tier.price || ""}
+                          onChange={(e) =>
+                            handleTierChange(
+                              index,
+                              "price",
+                              parseInt(e.target.value)
+                            )
+                          }
                           className="mt-1"
                         />
                       </div>
@@ -690,8 +788,14 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                         <Input
                           type="number"
                           placeholder="100"
-                          value={tier.total || ''}
-                          onChange={(e) => handleTierChange(index, 'total', parseInt(e.target.value))}
+                          value={tier.total || ""}
+                          onChange={(e) =>
+                            handleTierChange(
+                              index,
+                              "total",
+                              parseInt(e.target.value)
+                            )
+                          }
                           className="mt-1"
                         />
                       </div>
@@ -700,14 +804,88 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                         <Label>Description</Label>
                         <Input
                           placeholder="Brief description"
-                          value={tier.description || ''}
-                          onChange={(e) => handleTierChange(index, 'description', e.target.value)}
+                          value={tier.description || ""}
+                          onChange={(e) =>
+                            handleTierChange(
+                              index,
+                              "description",
+                              e.target.value
+                            )
+                          }
                           className="mt-1"
                         />
                       </div>
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Seat Map Selection */}
+              <div className="mt-8 border-t pt-6">
+                <h4 className="mb-4 text-lg font-semibold">
+                  Seat Map (Optional)
+                </h4>
+                <p className="text-sm text-neutral-600 mb-4">
+                  Select a seat map template for customers to choose specific
+                  seats when booking.
+                </p>
+
+                {loadingSeatMaps ? (
+                  <div className="flex items-center gap-2 text-sm text-neutral-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading seat map templates...
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        id="no-seatmap"
+                        name="seatmap"
+                        checked={selectedSeatMapId === null}
+                        onChange={() => setSelectedSeatMapId(null)}
+                        className="w-4 h-4"
+                      />
+                      <Label htmlFor="no-seatmap" className="cursor-pointer">
+                        No seat map (quantity-based booking)
+                      </Label>
+                    </div>
+
+                    {seatMapTemplates.map((template) => (
+                      <div
+                        key={template.seatMapId}
+                        className="flex items-center gap-2"
+                      >
+                        <input
+                          type="radio"
+                          id={`seatmap-${template.seatMapId}`}
+                          name="seatmap"
+                          checked={
+                            selectedSeatMapId === parseInt(template.seatMapId)
+                          }
+                          onChange={() =>
+                            setSelectedSeatMapId(parseInt(template.seatMapId))
+                          }
+                          className="w-4 h-4"
+                        />
+                        <Label
+                          htmlFor={`seatmap-${template.seatMapId}`}
+                          className="cursor-pointer"
+                        >
+                          {template.name} ({template.totalRows} ×{" "}
+                          {template.totalColumns})
+                        </Label>
+                      </div>
+                    ))}
+
+                    {seatMapTemplates.length === 0 && (
+                      <p className="text-sm text-neutral-500 italic">
+                        No seat map templates available. You can create one
+                        after creating the event.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -727,8 +905,11 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                   </div>
                   <Switch
                     checked={eventData.policies?.refundable || false}
-                    onCheckedChange={(checked) => 
-                      handleInputChange('policies', { ...eventData.policies, refundable: checked })
+                    onCheckedChange={(checked) =>
+                      handleInputChange("policies", {
+                        ...eventData.policies,
+                        refundable: checked,
+                      })
                     }
                   />
                 </div>
@@ -738,13 +919,15 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                     <Label>Refund Deadline *</Label>
                     <Input
                       type="date"
-                      min={eventData.date || new Date().toISOString().split('T')[0]}
+                      min={
+                        eventData.date || new Date().toISOString().split("T")[0]
+                      }
                       max={eventData.date}
-                      value={eventData.policies?.refundDeadline || ''}
-                      onChange={(e) => 
-                        handleInputChange('policies', { 
-                          ...eventData.policies, 
-                          refundDeadline: e.target.value 
+                      value={eventData.policies?.refundDeadline || ""}
+                      onChange={(e) =>
+                        handleInputChange("policies", {
+                          ...eventData.policies,
+                          refundDeadline: e.target.value,
                         })
                       }
                       className="mt-1"
@@ -764,8 +947,11 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                   </div>
                   <Switch
                     checked={eventData.policies?.transferable || false}
-                    onCheckedChange={(checked) => 
-                      handleInputChange('policies', { ...eventData.policies, transferable: checked })
+                    onCheckedChange={(checked) =>
+                      handleInputChange("policies", {
+                        ...eventData.policies,
+                        transferable: checked,
+                      })
                     }
                   />
                 </div>
@@ -792,11 +978,15 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                     </div>
                     <div className="flex justify-between">
                       <dt className="text-neutral-500">Date:</dt>
-                      <dd className="text-neutral-900">{eventData.date} at {eventData.time}</dd>
+                      <dd className="text-neutral-900">
+                        {eventData.date} at {eventData.time}
+                      </dd>
                     </div>
                     <div className="flex justify-between">
                       <dt className="text-neutral-500">Venue:</dt>
-                      <dd className="text-neutral-900">{eventData.venue}, {eventData.city}</dd>
+                      <dd className="text-neutral-900">
+                        {eventData.venue}, {eventData.city}
+                      </dd>
                     </div>
                   </dl>
                 </div>
@@ -808,7 +998,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                       <div key={index} className="text-sm flex justify-between">
                         <span className="text-neutral-900">{tier.name}</span>
                         <span className="text-neutral-600">
-                          {(tier.price || 0).toLocaleString()} VND × {tier.total}
+                          {(tier.price || 0).toLocaleString()} VND ×{" "}
+                          {tier.total}
                         </span>
                       </div>
                     ))}
@@ -819,15 +1010,31 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                   <h4 className="mb-3">Policies</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${eventData.policies?.refundable ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          eventData.policies?.refundable
+                            ? "bg-green-500"
+                            : "bg-red-500"
+                        }`}
+                      />
                       <span className="text-neutral-900">
-                        {eventData.policies?.refundable ? 'Refundable' : 'Non-refundable'}
+                        {eventData.policies?.refundable
+                          ? "Refundable"
+                          : "Non-refundable"}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${eventData.policies?.transferable ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          eventData.policies?.transferable
+                            ? "bg-green-500"
+                            : "bg-red-500"
+                        }`}
+                      />
                       <span className="text-neutral-900">
-                        {eventData.policies?.transferable ? 'Transferable' : 'Non-transferable'}
+                        {eventData.policies?.transferable
+                          ? "Transferable"
+                          : "Non-transferable"}
                       </span>
                     </div>
                   </div>
@@ -839,11 +1046,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
           {/* Navigation */}
           <div className="flex gap-3 mt-8">
             {currentStep > 1 && (
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                className="flex-1"
-              >
+              <Button variant="outline" onClick={handleBack} className="flex-1">
                 Back
               </Button>
             )}
@@ -866,7 +1069,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                     Publishing...
                   </>
                 ) : (
-                  'Publish Event'
+                  "Publish Event"
                 )}
               </Button>
             )}

@@ -10,6 +10,8 @@ namespace Tickify.Services
     {
         Task<SeatMapResponseDto?> GetSeatMapByIdAsync(int id);
         Task<SeatMapResponseDto?> GetSeatMapByEventIdAsync(int eventId);
+        Task<List<SeatMapResponseDto>> GetTemplatesAsync(); // Lấy seat map templates
+        Task<List<SeatResponseDto>> GetEventSeatsAsync(int eventId); // Lấy danh sách seats cho event
         Task<SeatMapResponseDto> CreateSeatMapAsync(CreateSeatMapDto dto);
         Task<SeatMapResponseDto> UpdateSeatMapAsync(int id, UpdateSeatMapDto dto);
         Task<bool> DeleteSeatMapAsync(int id);
@@ -43,6 +45,21 @@ namespace Tickify.Services
         {
             var seatMap = await _seatMapRepository.GetByEventIdAsync(eventId);
             return seatMap != null ? _mapper.Map<SeatMapResponseDto>(seatMap) : null;
+        }
+
+        public async Task<List<SeatMapResponseDto>> GetTemplatesAsync()
+        {
+            var templates = await _seatMapRepository.GetTemplatesAsync();
+            return _mapper.Map<List<SeatMapResponseDto>>(templates);
+        }
+
+        public async Task<List<SeatResponseDto>> GetEventSeatsAsync(int eventId)
+        {
+            // Lấy tất cả seats của event thông qua ticket types
+            var seats = await _seatRepository.GetByEventIdAsync(eventId);
+            var seatDtos = _mapper.Map<List<SeatResponseDto>>(seats);
+            
+            return seatDtos;
         }
 
         public async Task<SeatMapResponseDto> CreateSeatMapAsync(CreateSeatMapDto dto)

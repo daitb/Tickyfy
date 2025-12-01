@@ -83,6 +83,24 @@ class SeatMapService {
   }
 
   /**
+   * Get event seats for customer booking
+   */
+  async getEventSeats(eventId: string): Promise<SeatDto[]> {
+    const response = await apiClient.get<SeatDto[]>(
+      `/seatmaps/event/${eventId}/seats`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get seat map templates (not assigned to any event)
+   */
+  async getSeatMapTemplates(): Promise<SeatMapDto[]> {
+    const response = await apiClient.get<SeatMapDto[]>("/seatmaps/templates");
+    return response.data;
+  }
+
+  /**
    * Create a new seat map (Organizer/Admin only)
    */
   async createSeatMap(data: CreateSeatMapDto): Promise<SeatMapDto> {

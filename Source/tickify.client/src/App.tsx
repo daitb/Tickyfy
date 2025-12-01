@@ -1,4 +1,11 @@
-import { useState, useEffect, useMemo, useCallback, Suspense, lazy } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  Suspense,
+  lazy,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { LoadingFallback } from "./components/LoadingFallback";
@@ -11,52 +18,165 @@ import { authService } from "./services/authService";
 import { Toaster } from "./components/ui/sonner";
 
 // Lazy load các pages lớn để giảm initial bundle size
-const EventReviews = lazy(() => import("./pages/EventReviews").then(m => ({ default: m.EventReviews })));
-const RefundRequest = lazy(() => import("./pages/RefundRequest").then(m => ({ default: m.RefundRequest })));
-const NotificationPreferences = lazy(() => import("./pages/NotificationPreferences").then(m => ({ default: m.NotificationPreferences })));
-const SeatMapBuilder = lazy(() => import("./pages/SeatMapBuilder").then(m => ({ default: m.SeatMapBuilder })));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
-const EventListing = lazy(() => import("./pages/EventListing").then(m => ({ default: m.EventListing })));
-const EventDetail = lazy(() => import("./pages/EventDetail").then(m => ({ default: m.EventDetail })));
-const Cart = lazy(() => import("./pages/Cart").then(m => ({ default: m.Cart })));
-const Checkout = lazy(() => import("./pages/Checkout").then(m => ({ default: m.Checkout })));
-const Success = lazy(() => import("./pages/Success").then(m => ({ default: m.Success })));
-const MyTickets = lazy(() => import("./pages/MyTickets").then(m => ({ default: m.MyTickets })));
-const OrderDetail = lazy(() => import("./pages/OrderDetail").then(m => ({ default: m.OrderDetail })));
-const TicketDetail = lazy(() => import("./pages/TicketDetail").then(m => ({ default: m.TicketDetail })));
-const TransferTicket = lazy(() => import("./pages/TransferTicket").then(m => ({ default: m.TransferTicket })));
-const Wishlist = lazy(() => import("./pages/Wishlist").then(m => ({ default: m.Wishlist })));
-const Waitlist = lazy(() => import("./pages/Waitlist").then(m => ({ default: m.Waitlist })));
-const OrganizerWizard = lazy(() => import("./pages/OrganizerWizard").then(m => ({ default: m.OrganizerWizard })));
-const CreateEvent = lazy(() => import("./pages/CreateEvent").then(m => ({ default: m.CreateEvent })));
-const OrganizerDashboard = lazy(() => import("./pages/OrganizerDashboard").then(m => ({ default: m.OrganizerDashboard })));
-const EventManagement = lazy(() => import("./pages/EventManagement").then(m => ({ default: m.EventManagement })));
-const EventAnalytics = lazy(() => import("./pages/EventAnalytics").then(m => ({ default: m.EventAnalytics })));
-const EditEvent = lazy(() => import("./pages/EditEvent").then(m => ({ default: m.EditEvent })));
-const ScanHistory = lazy(() => import("./pages/ScanHistory").then(m => ({ default: m.ScanHistory })));
-const PromoCodeManagement = lazy(() => import("./pages/PromoCodeManagement").then(m => ({ default: m.PromoCodeManagement })));
-const OrganizerPayouts = lazy(() => import("./pages/OrganizerPayouts").then(m => ({ default: m.OrganizerPayouts })));
-const NotificationsPage = lazy(() => import("./pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
-const ResetPassword = lazy(() => import("./pages/ResetPassword").then(m => ({ default: m.ResetPassword })));
-const UserProfile = lazy(() => import("./pages/UserProfile").then(m => ({ default: m.UserProfile })));
-const SeatSelection = lazy(() => import("./pages/SeatSelection").then(m => ({ default: m.SeatSelection })));
-const ReviewSubmission = lazy(() => import("./pages/ReviewSubmission").then(m => ({ default: m.ReviewSubmission })));
-const QRScanner = lazy(() => import("./pages/QRScanner").then(m => ({ default: m.QRScanner })));
-const EmailVerification = lazy(() => import("./pages/EmailVerification").then(m => ({ default: m.EmailVerification })));
-const PasswordChange = lazy(() => import("./pages/PasswordChange").then(m => ({ default: m.PasswordChange })));
-const ChatPage = lazy(() => import("./pages/ChatPage").then(m => ({ default: m.ChatPage })));
-const StaffChatPage = lazy(() => import("./pages/StaffChatPage").then(m => ({ default: m.StaffChatPage })));
-const BecomeOrganizer = lazy(() => import("./pages/BecomeOrganizer").then(m => ({ default: m.BecomeOrganizer })));
+const EventReviews = lazy(() =>
+  import("./pages/EventReviews").then((m) => ({ default: m.EventReviews }))
+);
+const RefundRequest = lazy(() =>
+  import("./pages/RefundRequest").then((m) => ({ default: m.RefundRequest }))
+);
+const NotificationPreferences = lazy(() =>
+  import("./pages/NotificationPreferences").then((m) => ({
+    default: m.NotificationPreferences,
+  }))
+);
+const SeatMapBuilder = lazy(() =>
+  import("./pages/SeatMapBuilder").then((m) => ({ default: m.SeatMapBuilder }))
+);
+const AdminDashboard = lazy(() =>
+  import("./pages/AdminDashboard").then((m) => ({ default: m.AdminDashboard }))
+);
+const EventListing = lazy(() =>
+  import("./pages/EventListing").then((m) => ({ default: m.EventListing }))
+);
+const EventDetail = lazy(() =>
+  import("./pages/EventDetail").then((m) => ({ default: m.EventDetail }))
+);
+const Cart = lazy(() =>
+  import("./pages/Cart").then((m) => ({ default: m.Cart }))
+);
+const Checkout = lazy(() =>
+  import("./pages/Checkout").then((m) => ({ default: m.Checkout }))
+);
+const Success = lazy(() =>
+  import("./pages/Success").then((m) => ({ default: m.Success }))
+);
+const MyTickets = lazy(() =>
+  import("./pages/MyTickets").then((m) => ({ default: m.MyTickets }))
+);
+const OrderDetail = lazy(() =>
+  import("./pages/OrderDetail").then((m) => ({ default: m.OrderDetail }))
+);
+const TicketDetail = lazy(() =>
+  import("./pages/TicketDetail").then((m) => ({ default: m.TicketDetail }))
+);
+const TransferTicket = lazy(() =>
+  import("./pages/TransferTicket").then((m) => ({ default: m.TransferTicket }))
+);
+const Wishlist = lazy(() =>
+  import("./pages/Wishlist").then((m) => ({ default: m.Wishlist }))
+);
+const Waitlist = lazy(() =>
+  import("./pages/Waitlist").then((m) => ({ default: m.Waitlist }))
+);
+const OrganizerWizard = lazy(() =>
+  import("./pages/OrganizerWizard").then((m) => ({
+    default: m.OrganizerWizard,
+  }))
+);
+const CreateEvent = lazy(() =>
+  import("./pages/CreateEvent").then((m) => ({ default: m.CreateEvent }))
+);
+const OrganizerDashboard = lazy(() =>
+  import("./pages/OrganizerDashboard").then((m) => ({
+    default: m.OrganizerDashboard,
+  }))
+);
+const EventManagement = lazy(() =>
+  import("./pages/EventManagement").then((m) => ({
+    default: m.EventManagement,
+  }))
+);
+const EventAnalytics = lazy(() =>
+  import("./pages/EventAnalytics").then((m) => ({ default: m.EventAnalytics }))
+);
+const EditEvent = lazy(() =>
+  import("./pages/EditEvent").then((m) => ({ default: m.EditEvent }))
+);
+const EditSeatMap = lazy(() =>
+  import("./pages/EditSeatMap").then((m) => ({ default: m.EditSeatMap }))
+);
+const ScanHistory = lazy(() =>
+  import("./pages/ScanHistory").then((m) => ({ default: m.ScanHistory }))
+);
+const PromoCodeManagement = lazy(() =>
+  import("./pages/PromoCodeManagement").then((m) => ({
+    default: m.PromoCodeManagement,
+  }))
+);
+const OrganizerPayouts = lazy(() =>
+  import("./pages/OrganizerPayouts").then((m) => ({
+    default: m.OrganizerPayouts,
+  }))
+);
+const NotificationsPage = lazy(() =>
+  import("./pages/NotificationsPage").then((m) => ({
+    default: m.NotificationsPage,
+  }))
+);
+const ResetPassword = lazy(() =>
+  import("./pages/ResetPassword").then((m) => ({ default: m.ResetPassword }))
+);
+const UserProfile = lazy(() =>
+  import("./pages/UserProfile").then((m) => ({ default: m.UserProfile }))
+);
+const SeatSelectionReal = lazy(() =>
+  import("./pages/SeatSelectionReal").then((m) => ({
+    default: m.SeatSelectionReal,
+  }))
+);
+const ReviewSubmission = lazy(() =>
+  import("./pages/ReviewSubmission").then((m) => ({
+    default: m.ReviewSubmission,
+  }))
+);
+const QRScanner = lazy(() =>
+  import("./pages/QRScanner").then((m) => ({ default: m.QRScanner }))
+);
+const EmailVerification = lazy(() =>
+  import("./pages/EmailVerification").then((m) => ({
+    default: m.EmailVerification,
+  }))
+);
+const PasswordChange = lazy(() =>
+  import("./pages/PasswordChange").then((m) => ({ default: m.PasswordChange }))
+);
+const ChatPage = lazy(() =>
+  import("./pages/ChatPage").then((m) => ({ default: m.ChatPage }))
+);
+const StaffChatPage = lazy(() =>
+  import("./pages/StaffChatPage").then((m) => ({ default: m.StaffChatPage }))
+);
+const BecomeOrganizer = lazy(() =>
+  import("./pages/BecomeOrganizer").then((m) => ({
+    default: m.BecomeOrganizer,
+  }))
+);
 const PaymentReturn = lazy(() => import("./pages/PaymentReturn"));
-const About = lazy(() => import("./pages/About").then(m => ({ default: m.About })));
-const Privacy = lazy(() => import("./pages/Privacy").then(m => ({ default: m.Privacy })));
-const Terms = lazy(() => import("./pages/Terms").then(m => ({ default: m.Terms })));
-const FAQ = lazy(() => import("./pages/FAQ").then(m => ({ default: m.FAQ })));
-const Contact = lazy(() => import("./pages/Contact").then(m => ({ default: m.Contact })));
-const RefundPolicy = lazy(() => import("./pages/RefundPolicy").then(m => ({ default: m.RefundPolicy })));
-const ForOrganizers = lazy(() => import("./pages/ForOrganizers").then(m => ({ default: m.ForOrganizers })));
-const HelpCenter = lazy(() => import("./pages/HelpCenter").then(m => ({ default: m.HelpCenter })));
-const Error = lazy(() => import("./pages/Error").then(m => ({ default: m.Error })));
+const About = lazy(() =>
+  import("./pages/About").then((m) => ({ default: m.About }))
+);
+const Privacy = lazy(() =>
+  import("./pages/Privacy").then((m) => ({ default: m.Privacy }))
+);
+const Terms = lazy(() =>
+  import("./pages/Terms").then((m) => ({ default: m.Terms }))
+);
+const FAQ = lazy(() => import("./pages/FAQ").then((m) => ({ default: m.FAQ })));
+const Contact = lazy(() =>
+  import("./pages/Contact").then((m) => ({ default: m.Contact }))
+);
+const RefundPolicy = lazy(() =>
+  import("./pages/RefundPolicy").then((m) => ({ default: m.RefundPolicy }))
+);
+const ForOrganizers = lazy(() =>
+  import("./pages/ForOrganizers").then((m) => ({ default: m.ForOrganizers }))
+);
+const HelpCenter = lazy(() =>
+  import("./pages/HelpCenter").then((m) => ({ default: m.HelpCenter }))
+);
+const Error = lazy(() =>
+  import("./pages/Error").then((m) => ({ default: m.Error }))
+);
 
 // Keep frequently used pages non-lazy for faster initial load
 import { Home } from "./pages/Home";
@@ -83,6 +203,7 @@ type Page =
   | "event-management"
   | "event-analytics"
   | "edit-event"
+  | "edit-seat-map"
   | "scan-history"
   | "promo-codes"
   | "organizer-payouts"
@@ -142,6 +263,7 @@ export default function App() {
     if (path === "/event-management") return "event-management";
     if (path.startsWith("/event-analytics/")) return "event-analytics";
     if (path === "/edit-event") return "edit-event";
+    if (path.startsWith("/edit-seat-map/")) return "edit-seat-map";
     if (path === "/scan-history") return "scan-history";
     if (path === "/promo-codes") return "promo-codes";
     if (path === "/organizer-payouts") return "organizer-payouts";
@@ -149,7 +271,7 @@ export default function App() {
     if (path === "/notification-preferences") return "notification-preferences";
     if (path === "/reset-password") return "reset-password";
     if (path === "/user-profile") return "user-profile";
-    if (path === "/seat-selection") return "seat-selection";
+    if (path.startsWith("/seat-selection/")) return "seat-selection";
     if (path === "/seat-map-builder") return "seat-map-builder";
     if (path === "/review-submission") return "review-submission";
     if (path === "/qr-scanner") return "qr-scanner";
@@ -207,7 +329,10 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Derive page from URL - no need for effect
-  const currentPageFromUrl = useMemo(() => getPageFromPath(), [getPageFromPath]);
+  const currentPageFromUrl = useMemo(
+    () => getPageFromPath(),
+    [getPageFromPath]
+  );
 
   // Update currentPage when URL changes
   useEffect(() => {
@@ -245,6 +370,12 @@ export default function App() {
     // Extract eventId from event-analytics URL
     if (path.startsWith("/event-analytics/")) {
       const eventId = path.split("/event-analytics/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
+
+    // Extract eventId from seat-selection URL
+    if (path.startsWith("/seat-selection/")) {
+      const eventId = path.split("/seat-selection/")[1]?.split("/")[0];
       if (eventId) setSelectedEventId(eventId);
     }
   }, [location.pathname]);
@@ -306,6 +437,8 @@ export default function App() {
         path = `/transfer-ticket/${id}`;
       } else if (page === "event-analytics") {
         path = `/event-analytics/${id}`;
+      } else if (page === "seat-selection") {
+        path = `/seat-selection/${id}`;
       } else if (page === "event-reviews") {
         setSelectedEventId(id);
         path = `/event-reviews/${id}`;
@@ -457,6 +590,9 @@ export default function App() {
       case "edit-event":
         return <EditEvent onNavigate={handleNavigate} />;
 
+      case "edit-seat-map":
+        return <EditSeatMap onNavigate={handleNavigate} />;
+
       case "scan-history":
         return <ScanHistory onNavigate={handleNavigate} />;
 
@@ -479,13 +615,18 @@ export default function App() {
         return <UserProfile onNavigate={handleNavigate} />;
 
       case "seat-selection":
-        return <SeatSelection onNavigate={handleNavigate} />;
+        return <SeatSelectionReal onNavigate={handleNavigate} />;
 
       case "seat-map-builder":
         return <SeatMapBuilder onNavigate={handleNavigate} />;
 
       case "review-submission":
-        return <ReviewSubmission eventId={selectedEventId || undefined} onNavigate={handleNavigate} />;
+        return (
+          <ReviewSubmission
+            eventId={selectedEventId || undefined}
+            onNavigate={handleNavigate}
+          />
+        );
 
       case "qr-scanner":
         return <QRScanner onNavigate={handleNavigate} />;
@@ -501,8 +642,13 @@ export default function App() {
         const eventIdFromUrl = location.pathname.startsWith("/event-reviews/")
           ? location.pathname.split("/event-reviews/")[1]?.split("/")[0]
           : selectedEventId;
-        
-        return <EventReviews eventId={eventIdFromUrl || undefined} onNavigate={handleNavigate} />;
+
+        return (
+          <EventReviews
+            eventId={eventIdFromUrl || undefined}
+            onNavigate={handleNavigate}
+          />
+        );
       }
 
       case "refund-request":
@@ -585,9 +731,7 @@ export default function App() {
             />
           )}
           <main className="flex-1">
-            <Suspense fallback={<LoadingFallback />}>
-              {renderPage()}
-            </Suspense>
+            <Suspense fallback={<LoadingFallback />}>{renderPage()}</Suspense>
           </main>
           {!isStandalonePage && <Footer />}
           <Toaster />
