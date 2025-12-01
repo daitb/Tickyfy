@@ -3,7 +3,7 @@ import { Bell, Check, Trash2, Filter, Calendar, Ticket, CreditCard, AlertCircle,
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import notificationService, { type Notification } from '../services/notificationService';
 
 interface NotificationsPageProps {
@@ -15,18 +15,37 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
   const [activeType, setActiveType] = useState<'all' | Notification['type']>('all');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
+  // Fetch notifications khi component mount
   const fetchNotifications = async () => {
     setIsLoading(true);
     try {
-      const data = await notificationService.getNotifications();
-      setNotifications(data.items);
+      const result = await notificationService.getNotifications(
+        page,
+        pageSize,
+        activeType !== 'all' ? activeType : undefined,
+        activeFilter === 'unread' ? false : undefined
+      );
+      setNotifications(result.items);
+      setTotalCount(result.totalCount);
+      setTotalCount(result.totalCount);
+      setTotalPages(result.totalPages);
     } catch (error) {
       console.error('[NotificationsPage] Error fetching notifications:', error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Fetch notifications khi component mount hoặc khi filters thay đổi
+  useEffect(() => {
+    fetchNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, activeFilter, activeType]);
 
   const getIcon = (type: Notification['type']) => {
     switch (type) {
@@ -228,7 +247,7 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as any)}>
+            <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as 'all' | 'unread')}>
               <TabsList className="w-full">
                 <TabsTrigger value="all" className="flex-1">
                   All ({notifications.length})
@@ -333,6 +352,59 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {!isLoading && filteredNotifications.length > 0 && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <div className="text-sm text-gray-600">
+              Hiển thị {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalCount)} trong tổng số {totalCount} thông báo
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                disabled={page === 1}
+              >
+                Trước
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={page === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                      className="min-w-[40px]"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={page === totalPages}
+              >
+                Sau
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

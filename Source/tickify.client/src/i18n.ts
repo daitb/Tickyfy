@@ -19,7 +19,7 @@ const resources = {
 };
 
 // Debug: Kiểm tra xem ticketRefund có trong resources không
-if (process.env.NODE_ENV === 'development') {
+if (import.meta.env.DEV) {
   console.log('i18n resources check:', {
     hasEnTicketRefund: !!enTrans?.ticketRefund,
     hasViTicketRefund: !!viTrans?.ticketRefund,
@@ -36,7 +36,7 @@ i18n
     fallbackLng: 'en',
     defaultNS: 'translation',
     ns: ['translation'],
-    debug: process.env.NODE_ENV === 'development',
+    debug: import.meta.env.DEV,
     interpolation: {
       escapeValue: false,
     },

@@ -39,12 +39,7 @@ class NotificationSignalRService {
         accessTokenFactory: () => token,
         transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
       })
-      .withAutomaticReconnect({
-        nextRetryDelayInMilliseconds: (retryCount: number) => {
-          // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
-          return Math.min(1000 * Math.pow(2, retryCount), 30000);
-        },
-      })
+      .withAutomaticReconnect([0, 1000, 2000, 4000, 8000, 30000])
       .build();
 
     // Setup event handlers

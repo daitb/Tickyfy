@@ -13,6 +13,8 @@ import {
   Italic,
   Underline,
   List,
+  AlertCircle,
+  Edit,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -39,7 +41,7 @@ import { toast } from 'sonner';
 interface ReviewSubmissionProps {
   eventId?: string;
   orderId?: string;
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, id?: string) => void;
 }
 
 const ratingLabels = ['Terrible', 'Poor', 'Average', 'Good', 'Excellent'];
@@ -67,26 +69,56 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
   const [showSuccess, setShowSuccess] = useState(false);
   const [event, setEvent] = useState<any>(null);
   const [submittedReviewId, setSubmittedReviewId] = useState<number | null>(null);
+  const [existingReview, setExistingReview] = useState<any>(null);
+  const [isCheckingReview, setIsCheckingReview] = useState(false);
 
-  // Fetch event data
+  // Fetch event data and check for existing review
   useEffect(() => {
     let mounted = true;
-    if (eventId) {
-      eventService.getEventByIdentifier(eventId)
-        .then((ev) => {
-          if (mounted) setEvent(ev);
-        })
-        .catch(() => {
-          // Fallback to mock data if API fails
-          if (mounted) {
-            const mockEvent = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
-            setEvent(mockEvent);
+    setIsCheckingReview(true);
+    
+    const fetchEventAndCheckReview = async () => {
+      try {
+        let ev = null;
+        if (eventId) {
+          ev = await eventService.getEventByIdentifier(eventId);
+        } else {
+          // Fallback to mock data
+          ev = mockEvents[0];
+        }
+        
+        if (mounted && ev) {
+          setEvent(ev);
+          
+          // Check if user has already reviewed this event
+          try {
+            const parsedEventId = parseInt(ev.id, 10);
+            if (!isNaN(parsedEventId) && parsedEventId > 0) {
+              const myReviews = await reviewService.getMyReviews();
+              const existing = myReviews.find(r => r.eventId === parsedEventId);
+              if (mounted && existing) {
+                setExistingReview(existing);
+              }
+            }
+          } catch (error) {
+            // Silently fail - user might not be logged in or review check failed
+            console.log('[ReviewSubmission] Could not check existing review:', error);
           }
-        });
-    } else {
-      const mockEvent = mockEvents[0];
-      setEvent(mockEvent);
-    }
+        }
+      } catch (error) {
+        // Fallback to mock data if API fails
+        if (mounted) {
+          const mockEvent = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
+          setEvent(mockEvent);
+        }
+      } finally {
+        if (mounted) {
+          setIsCheckingReview(false);
+        }
+      }
+    };
+    
+    fetchEventAndCheckReview();
     return () => { mounted = false; };
   }, [eventId]);
 
@@ -109,7 +141,7 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
       return;
     }
 
-    if (!eventId || !event) {
+    if (!event) {
       toast.error('Không tìm thấy thông tin sự kiện');
       return;
     }
@@ -117,20 +149,84 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
     setIsSubmitting(true);
 
     try {
+      // Lấy eventId từ event.id (string) hoặc eventId prop
+      const eventIdToParse = event.id || eventId;
+      if (!eventIdToParse) {
+        toast.error('Event ID không hợp lệ');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Parse eventId từ string sang number
+      const parsedEventId = parseInt(eventIdToParse, 10);
+      if (isNaN(parsedEventId) || parsedEventId <= 0) {
+        toast.error('Event ID không hợp lệ');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validate rating
+      if (overallRating < 1 || overallRating > 5) {
+        toast.error('Rating phải từ 1 đến 5');
+        return;
+      }
+
+      // Validate comment length (max 1000 chars)
+      const combinedComment = `${reviewTitle}\n\n${reviewContent}`;
+      if (combinedComment.length > 1000) {
+        toast.error('Nội dung đánh giá quá dài (tối đa 1000 ký tự)');
+        return;
+      }
+
       // Tạo review với API thật
       const reviewData = {
-        eventId: parseInt(eventId, 10),
+        eventId: parsedEventId,
         rating: overallRating,
-        comment: `${reviewTitle}\n\n${reviewContent}`, // Kết hợp title và content
+        comment: combinedComment,
       };
+
+      console.log('[ReviewSubmission] Submitting review:', reviewData);
 
       const createdReview = await reviewService.createReview(reviewData);
       setSubmittedReviewId(createdReview.id);
       setShowSuccess(true);
       toast.success('Đánh giá của bạn đã được gửi thành công!');
     } catch (error: any) {
-      console.error('Error submitting review:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi gửi đánh giá';
+      console.error('[ReviewSubmission] Error submitting review:', error);
+      console.error('[ReviewSubmission] Error response:', error.response?.data);
+      
+      // Extract error message từ response
+      let errorMessage = 'Có lỗi xảy ra khi gửi đánh giá';
+      
+      if (error.response?.data) {
+        const responseData = error.response.data;
+        
+        // Check if it's a string
+        if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        }
+        // Check for message field (ApiResponse format)
+        else if (responseData.message) {
+          errorMessage = responseData.message;
+          
+          // Translate common error messages
+          if (errorMessage.includes('already reviewed')) {
+            errorMessage = 'Bạn đã đánh giá sự kiện này rồi. Vui lòng cập nhật đánh giá hiện có thay vì tạo mới.';
+          } else if (errorMessage.includes('must have tickets')) {
+            errorMessage = 'Bạn cần có vé cho sự kiện này để đánh giá.';
+          } else if (errorMessage.includes('must have attended')) {
+            errorMessage = 'Bạn cần tham dự sự kiện (vé đã được quét) để đánh giá.';
+          }
+        }
+        // Check for FluentValidation errors
+        else if (responseData.errors) {
+          const errors = responseData.errors;
+          errorMessage = Object.values(errors).flat().join(', ');
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -138,6 +234,24 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
   };
 
   const isFormValid = overallRating > 0 && reviewTitle.trim() && reviewContent.trim();
+
+  // Hiển thị loading nếu chưa có event data
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-neutral-50 py-8">
+        <div className="max-w-[700px] mx-auto px-4">
+          <Card className="shadow-lg">
+            <CardContent className="p-8">
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4" />
+                <p className="text-neutral-600">Đang tải thông tin sự kiện...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
@@ -148,24 +262,54 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
             <div className="flex gap-4 mb-6 pb-6 border-b">
               <div className="w-24 h-24 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
                 <ImageWithFallback
-                  src={event.image}
-                  alt={event.title}
+                  src={event?.image || ''}
+                  alt={event?.title || 'Event'}
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="flex-1">
-                <h2 className="text-neutral-900 mb-2">{event.title}</h2>
+                <h2 className="text-neutral-900 mb-2">{event?.title || 'Event'}</h2>
                 <div className="space-y-1 text-sm text-neutral-600">
                   <div className="flex items-center gap-2">
                     <Check size={14} className="text-green-500" />
-                    <span>Attended on {event.date}</span>
+                    <span>Attended on {event?.date || 'N/A'}</span>
                   </div>
-                  <div>{event.venue}</div>
-                  <div>{event.city}</div>
+                  <div>{event?.venue || ''}</div>
+                  <div>{event?.city || ''}</div>
                 </div>
                 <Badge className="bg-green-100 text-green-700 mt-2">Verified Attendee</Badge>
               </div>
             </div>
+
+            {/* Existing Review Warning */}
+            {existingReview && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-amber-900 mb-1">
+                      Bạn đã đánh giá sự kiện này rồi
+                    </h4>
+                    <p className="text-sm text-amber-800 mb-3">
+                      Bạn đã gửi đánh giá cho sự kiện này vào {new Date(existingReview.createdAt).toLocaleDateString('vi-VN')}. 
+                      Vui lòng cập nhật đánh giá hiện có thay vì tạo mới.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Navigate to edit review page or show edit dialog
+                        toast.info('Tính năng chỉnh sửa đánh giá đang được phát triển');
+                      }}
+                      className="text-amber-700 border-amber-300 hover:bg-amber-100"
+                    >
+                      <Edit size={14} className="mr-2" />
+                      Xem/Chỉnh sửa đánh giá hiện có
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Rating Section */}
             <div className="mb-8">

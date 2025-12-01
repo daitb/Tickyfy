@@ -49,6 +49,10 @@ apiClient.interceptors.response.use(
     // Only log errors, not all requests
     if (error.response?.status && error.response.status >= 400) {
       console.error(`API Error [${error.response.status}]:`, error.config?.url, error.response?.data || error.message);
+      // Log full error details for debugging
+      if (error.response?.data) {
+        console.error('Error details:', JSON.stringify(error.response.data, null, 2));
+      }
     }
 
     // Don't redirect on login failure (401), let the login page handle it

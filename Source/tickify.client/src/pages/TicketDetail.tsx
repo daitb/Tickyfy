@@ -374,7 +374,7 @@ export function TicketDetail({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Button
             className="w-full bg-teal-500 hover:bg-teal-600"
-            onClick={() => onNavigate("transfer-ticket", currentTicket?.id)}
+            onClick={() => onNavigate("transfer-ticket", currentTicket?.ticketId?.toString())}
           >
             <Send size={16} className="mr-2" />
             Transfer

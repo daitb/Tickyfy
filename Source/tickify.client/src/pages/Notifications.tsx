@@ -43,7 +43,7 @@ import {
 import notificationService, { type Notification } from '../services/notificationService';
 
 interface NotificationsProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, id?: string) => void;
 }
 
 export function Notifications({ onNavigate }: NotificationsProps) {

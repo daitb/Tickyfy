@@ -8,11 +8,8 @@ import {
   Flag,
   ChevronDown,
   Camera,
-  X,
   Search,
-  Filter,
   CheckCircle,
-  TrendingUp,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -40,6 +37,7 @@ import { mockEvents } from '../mockData';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { reviewService, type ReviewDto } from '../services/reviewService';
 import { eventService } from '../services/eventService';
+import { authService } from '../services/authService';
 import { useEffect } from 'react';
 
 interface EventReviewsProps {
@@ -84,10 +82,19 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
   const [reportDetails, setReportDetails] = useState('');
   
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [event, setEvent] = useState<any>(null);
+  const [event, setEvent] = useState<{ id: string; title: string; image?: string; date?: string; venue?: string; city?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [averageRating, setAverageRating] = useState<number>(0);
   const [totalReviews, setTotalReviews] = useState<number>(0);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+  // Get current user ID
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    if (user && user.userId) {
+      setCurrentUserId(parseInt(user.userId, 10));
+    }
+  }, []);
 
   // Fetch event details
   useEffect(() => {
@@ -279,7 +286,8 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
     );
   };
 
-  const handleVote = (reviewId: number, voteType: 'helpful' | 'not-helpful') => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleVote = (_reviewId: number, _voteType: 'helpful' | 'not-helpful') => {
     // TODO: Implement voting logic when backend API is available
   };
 
@@ -513,31 +521,42 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
               {t('eventReviews.showing')} 1-{filteredReviews.length} {t('eventReviews.of')} {totalReviews} {t('eventReviews.reviewsCount')}
             </div>
 
-            {filteredReviews.map((review) => (
-            <Card key={review.id}>
-              <CardContent className="p-6">
-                {/* Review Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex gap-3">
-                    <Avatar className="w-12 h-12">
-                      {review.authorAvatar ? (
-                        <AvatarImage src={review.authorAvatar} />
-                      ) : (
-                        <AvatarFallback className="bg-purple-100 text-purple-600">
-                          {review.authorName.charAt(0)}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-neutral-900">{review.authorName}</span>
-                        {review.isVerified && (
-                          <Badge className="bg-green-100 text-green-700 text-xs">
-                            <CheckCircle size={12} className="mr-1" />
-                            {t('eventReviews.verified')}
-                          </Badge>
+            {filteredReviews.map((review) => {
+              const isMyReview = currentUserId !== null && review.userId === currentUserId;
+              
+              return (
+              <Card 
+                key={review.id}
+                className={isMyReview ? 'border-2 border-purple-500 bg-purple-50/30' : ''}
+              >
+                <CardContent className="p-6">
+                  {/* Review Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex gap-3">
+                      <Avatar className="w-12 h-12">
+                        {review.userAvatar ? (
+                          <AvatarImage src={review.userAvatar} />
+                        ) : (
+                          <AvatarFallback className="bg-purple-100 text-purple-600">
+                            {review.userName?.charAt(0) || 'U'}
+                          </AvatarFallback>
                         )}
-                      </div>
+                      </Avatar>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-neutral-900">{review.userName}</span>
+                          {isMyReview && (
+                            <Badge className="bg-purple-600 text-white text-xs">
+                              {t('eventReviews.yourReview') || 'Your Review'}
+                            </Badge>
+                          )}
+                          {review.isVerified && (
+                            <Badge className="bg-green-100 text-green-700 text-xs">
+                              <CheckCircle size={12} className="mr-1" />
+                              {t('eventReviews.verified')}
+                            </Badge>
+                          )}
+                        </div>
                       <div className="text-sm text-neutral-500">{formatDate(review.createdAt)}</div>
                       {review.attendedDate && (
                         <div className="text-xs text-neutral-500">{t('eventReviews.attendedOn')} {formatDate(review.attendedDate)}</div>
@@ -666,7 +685,8 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                 )}
               </CardContent>
             </Card>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

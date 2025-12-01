@@ -155,7 +155,9 @@ export default function App() {
     if (path === "/qr-scanner") return "qr-scanner";
     if (path === "/email-verification") return "email-verification";
     if (path === "/password-change") return "password-change";
-    if (path === "/event-reviews") return "event-reviews";
+    if (path.startsWith("/event-reviews")) {
+      return "event-reviews";
+    }
     if (path === "/refund-request") return "refund-request";
     if (path === "/admin-dashboard") return "admin-dashboard";
     if (path === "/chat") return "chat";
@@ -304,6 +306,9 @@ export default function App() {
         path = `/transfer-ticket/${id}`;
       } else if (page === "event-analytics") {
         path = `/event-analytics/${id}`;
+      } else if (page === "event-reviews") {
+        setSelectedEventId(id);
+        path = `/event-reviews/${id}`;
       } else {
         setSelectedEventId(id);
       }
@@ -491,8 +496,14 @@ export default function App() {
       case "password-change":
         return <PasswordChange onNavigate={handleNavigate} />;
 
-      case "event-reviews":
-        return <EventReviews onNavigate={handleNavigate} />;
+      case "event-reviews": {
+        // Extract eventId from URL directly
+        const eventIdFromUrl = location.pathname.startsWith("/event-reviews/")
+          ? location.pathname.split("/event-reviews/")[1]?.split("/")[0]
+          : selectedEventId;
+        
+        return <EventReviews eventId={eventIdFromUrl || undefined} onNavigate={handleNavigate} />;
+      }
 
       case "refund-request":
         return <RefundRequest onNavigate={handleNavigate} />;
