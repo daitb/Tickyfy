@@ -40,7 +40,6 @@ import { ForgotPassword } from "./pages/ForgotPassword";
 import { ChatPage } from "./pages/ChatPage";
 import { StaffChatPage } from "./pages/StaffChatPage";
 import { BecomeOrganizer } from "./pages/BecomeOrganizer";
-import { UserManagement } from "./pages/UserManagement";
 import PaymentReturn from "./pages/PaymentReturn";
 import { About } from "./pages/About";
 import { Privacy } from "./pages/Privacy";
@@ -57,6 +56,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import type { CartItem, Order } from "./types";
 import { mockOrders } from "./mockData";
 import { authService } from "./services/authService";
+import { Toaster } from "./components/ui/sonner";
 
 type Page =
   | "home"
@@ -95,7 +95,6 @@ type Page =
   | "admin-dashboard"
   | "chat"
   | "staff-chat"
-  | "user-management"
   | "become-organizer"
   | "login"
   | "register"
@@ -155,7 +154,6 @@ export default function App() {
     if (path === "/admin-dashboard") return "admin-dashboard";
     if (path === "/chat") return "chat";
     if (path === "/staff-chat") return "staff-chat";
-    if (path === "/user-management") return "user-management";
     if (path === "/become-organizer") return "become-organizer";
     if (path === "/login") return "login";
     if (path === "/register") return "register";
@@ -501,8 +499,6 @@ export default function App() {
 
       case "staff-chat":
         return <StaffChatPage />;
-      case "user-management":
-        return <UserManagement onNavigate={handleNavigate} />;
 
       case "become-organizer":
         return <BecomeOrganizer onNavigate={handleNavigate} />;
@@ -572,6 +568,7 @@ export default function App() {
         )}
         <main className="flex-1">{renderPage()}</main>
         {!isStandalonePage && <Footer />}
+        <Toaster position="top-center" richColors closeButton={false} />
       </div>
     </ProtectedRoute>
   );
