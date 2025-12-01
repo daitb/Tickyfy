@@ -116,6 +116,9 @@ namespace Tickify
             builder.Services.AddScoped<IChatRepository, EfChatRepository>();
             builder.Services.AddScoped<IChatService, ChatService>();
 
+            // Notification Services
+            builder.Services.AddScoped<INotificationService, Tickify.Services.Notifications.NotificationService>();
+
             // ============================================
             // 4. JWT AUTHENTICATION CONFIGURATION
             // Cấu hình xác thực JWT token
@@ -320,8 +323,9 @@ namespace Tickify
 
             app.MapControllers();
 
-            // Map SignalR hub
+            // Map SignalR hubs
             app.MapHub<Tickify.Hubs.ChatHub>("/hubs/chat");
+            app.MapHub<Tickify.Hubs.NotificationHub>("/hubs/notifications");
 
             app.Run();
         }

@@ -30,6 +30,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -140,8 +141,9 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
         setAvatarPreview(profile.avatarUrl);
       }
     } catch (err: any) {
-      console.error('Load profile error:', err);
-      setError(err.response?.data?.message || 'Không thể tải thông tin profile');
+      const errorMsg = err.response?.data?.message || 'Không thể tải thông tin profile';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -183,8 +185,9 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
         setAvatarPreview(avatarUrl);
         setSuccess(t('pages.userProfile.avatarUpdateSuccess'));
       } catch (err: any) {
-        console.error('Upload avatar error:', err);
-        setError(err.response?.data?.message || t('pages.userProfile.uploadAvatarError'));
+        const errorMsg = err.response?.data?.message || t('pages.userProfile.uploadAvatarError');
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     }
   };
@@ -205,8 +208,9 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
       setIsEditing(false);
       setSuccess(t('pages.userProfile.profileUpdateSuccess'));
     } catch (err: any) {
-      console.error('Save profile error:', err);
-      setError(err.response?.data?.message || t('pages.userProfile.profileUpdateError'));
+      const errorMsg = err.response?.data?.message || t('pages.userProfile.profileUpdateError');
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsSaving(false);
     }
@@ -243,8 +247,9 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setPasswordStrength(0);
     } catch (err: any) {
-      console.error('Change password error:', err);
-      setError(err.response?.data?.message || t('pages.userProfile.passwordChangeError'));
+      const errorMsg = err.response?.data?.message || t('pages.userProfile.passwordChangeError');
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsChangingPassword(false);
     }

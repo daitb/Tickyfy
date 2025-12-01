@@ -117,15 +117,13 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log('[OrganizerWizard] Image selected:', file.name);
     setUploadError(null);
 
     // Validate file
     const validationError = imageService.validateImageFile(file);
     if (validationError) {
-      console.error('[OrganizerWizard] Validation failed:', validationError);
       setUploadError(validationError);
-      alert(validationError);
+      toast.error(validationError);
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -139,7 +137,6 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
-      console.log('[OrganizerWizard] Preview created');
     };
     reader.readAsDataURL(file);
 
@@ -152,27 +149,17 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     const imageToUpload = fileToUpload || selectedImage;
     
     if (!imageToUpload) {
-      console.warn('[OrganizerWizard] No image to upload');
       return;
     }
 
     try {
       setIsUploadingImage(true);
       setUploadError(null);
-      console.log('[OrganizerWizard] Auto-uploading to Azure Storage...');
       
       const response = await imageService.uploadImage(imageToUpload);
       
       setUploadedImageUrl(response.imageUrl);
       handleInputChange('image', response.imageUrl);
-      
-      console.log('[OrganizerWizard] Upload successful!', {
-        imageUrl: response.imageUrl,
-        blobName: response.blobName
-      });
-      
-      // Success notification (subtle, không dùng alert để không làm gián đoạn UX)
-      console.log('Image uploaded successfully to Azure Storage!');
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || error.message || 'Failed to upload image';
       console.error('[OrganizerWizard] Upload error:', errorMsg);
@@ -185,7 +172,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         fileInputRef.current.value = '';
       }
       
-      alert(`Upload failed: ${errorMsg}`);
+      toast.error(`Tải ảnh thất bại: ${errorMsg}`);
     } finally {
       setIsUploadingImage(false);
     }
@@ -193,7 +180,6 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
   // Remove selected image
   const handleRemoveImage = () => {
-    console.log('[OrganizerWizard] Removing image');
     setSelectedImage(null);
     setImagePreview(null);
     setUploadedImageUrl(null);
@@ -344,8 +330,6 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         }))
       };
 
-      console.log('Creating event with data:', createEventDto);
-
       // POST /api/events - Create event
       const createdEvent = await eventService.createEvent(createEventDto);
 
@@ -356,9 +340,6 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       });
       onNavigate('organizer-dashboard');
     } catch (error: any) {
-      console.error('Error creating event:', error);
-      console.error('Error response data:', error.response?.data);
-      
       // Extract detailed error messages from backend validation
       let errorMessage = 'Please check your inputs.';
       let errorTitle = 'Failed to create event';

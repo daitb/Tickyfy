@@ -8,6 +8,7 @@ import { Checkbox } from "../components/ui/checkbox";
 import { Separator } from "../components/ui/separator";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { authService } from "../services/authService";
+import { toast } from "sonner";
 
 // Declare Google types
 declare global {
@@ -73,12 +74,8 @@ export function Login({ onNavigate }: LoginProps) {
       setIsLoading(true);
       setError("");
 
-      console.log("Google Sign-In response received");
-
       // Send credential to backend
       const loginResponse = await authService.googleLogin(response.credential);
-      
-      console.log("Google login successful:", loginResponse);
 
       // Redirect based on role
       const userRole = loginResponse.roles[0];
@@ -93,8 +90,6 @@ export function Login({ onNavigate }: LoginProps) {
         onNavigate("home");
       }
     } catch (err: any) {
-      console.error("Google login error:", err);
-      
       const errorMessage =
         err.response?.data?.message ||
         err.response?.data?.errors?.[0] ||
@@ -102,6 +97,7 @@ export function Login({ onNavigate }: LoginProps) {
         "Đăng nhập Google thất bại. Vui lòng thử lại.";
 
       setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -115,13 +111,10 @@ export function Login({ onNavigate }: LoginProps) {
 
     try {
       // Call backend API
-      console.log("Attempting login with:", { email, password: "***" });
       const response = await authService.login({ email, password });
-      console.log("Login response:", response);
 
       // Redirect based on role (backend returns roles array)
       const userRole = response.roles[0];
-      console.log("User role:", userRole);
 
       if (userRole === "User") {
         onNavigate("home");
@@ -133,18 +126,15 @@ export function Login({ onNavigate }: LoginProps) {
         onNavigate("home");
       }
     } catch (err: any) {
-      console.error("Login error full:", err);
-      console.error("Error response:", err.response);
-      console.error("Error response data:", err.response?.data);
-
       // Get error message from different possible locations
       const errorMessage =
         err.response?.data?.message ||
         err.response?.data?.errors?.[0] ||
         err.message ||
-        "Invalid email or password";
+        "Email hoặc mật khẩu không đúng";
 
       setError(errorMessage);
+      toast.error(errorMessage);
       
       // Check if error is about email verification
       if (errorMessage.toLowerCase().includes("xác thực email") || 
@@ -161,7 +151,6 @@ export function Login({ onNavigate }: LoginProps) {
     // Facebook login can be implemented later
     if (provider === "google") {
       // Google Sign-In is handled by the button component
-      console.log("Use Google button below");
     } else if (provider === "facebook") {
       setError("Facebook login is coming soon!");
     }

@@ -68,13 +68,15 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
       for (const refund of data) {
         try {
           // Try to get booking details if available
-          const booking = await bookingService.getBookingById(refund.bookingId.toString());
+          const booking = await bookingService.getBookingById(refund.bookingId);
           bookingMap.set(refund.bookingId, booking);
           
           if (booking.eventId) {
             try {
-              const event = await eventService.getEventById(parseInt(booking.eventId));
-              eventMap.set(booking.eventId, event);
+              const eventId = typeof booking.eventId === 'string' ? parseInt(booking.eventId, 10) : booking.eventId;
+              const event = await eventService.getEventById(eventId);
+              const eventIdKey = typeof booking.eventId === 'string' ? booking.eventId : booking.eventId.toString();
+              eventMap.set(eventIdKey, event);
             } catch (err) {
               console.error('Failed to load event:', err);
             }
@@ -167,7 +169,8 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
   const getEventTitle = (refund: RefundRequest) => {
     const booking = bookings.get(refund.bookingId);
     if (!booking || !booking.eventId) return 'Unknown Event';
-    const event = events.get(booking.eventId);
+    const eventIdKey = typeof booking.eventId === 'string' ? booking.eventId : booking.eventId.toString();
+    const event = events.get(eventIdKey);
     return event?.title || 'Unknown Event';
   };
 

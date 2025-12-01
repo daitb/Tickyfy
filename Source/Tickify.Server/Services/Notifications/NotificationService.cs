@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AutoMapper;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Tickify.Common;
 using Tickify.Data;
 using Tickify.DTOs.Notification;
 using Tickify.Hubs;
@@ -76,6 +77,58 @@ public class NotificationService : INotificationService
             .ToListAsync();
 
         return _mapper.Map<IEnumerable<NotificationDto>>(notifications);
+    }
+
+    public async Task<PagedResult<NotificationDto>> GetUserNotificationsPagedAsync(
+        ClaimsPrincipal user, 
+        int page = 1, 
+        int pageSize = 20, 
+        string? type = null, 
+        bool? isRead = null)
+    {
+        var userId = GetUserId(user);
+
+        // Validate pagination parameters
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 100) pageSize = 100; // Max page size
+
+        var query = _context.Notifications
+            .Where(n => n.UserId == userId);
+
+        // Apply filters
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            query = query.Where(n => n.Type == type);
+        }
+
+        if (isRead.HasValue)
+        {
+            query = query.Where(n => n.IsRead == isRead.Value);
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply pagination
+        var notifications = await query
+            .OrderByDescending(n => n.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var notificationDtos = _mapper.Map<List<NotificationDto>>(notifications);
+
+        return new PagedResult<NotificationDto>(notificationDtos, totalCount, page, pageSize);
+    }
+
+    public async Task<int> GetUnreadCountAsync(ClaimsPrincipal user)
+    {
+        var userId = GetUserId(user);
+
+        return await _context.Notifications
+            .Where(n => n.UserId == userId && !n.IsRead)
+            .CountAsync();
     }
 
     public async Task<bool> MarkAsReadAsync(int notificationId, ClaimsPrincipal user)
@@ -264,6 +317,24 @@ public class NotificationService : INotificationService
             Title = "Tickets Available",
             Message = $"Good news! Tickets are now available for '{eventName}'. Book now before they're gone!",
             Type = "WaitlistAvailable",
+            RelatedUrl = $"/events/{eventId}"
+        };
+
+        await CreateNotificationAsync(dto);
+    }
+
+    public async Task NotifyEventReminderAsync(int userId, int eventId, string eventName, DateTime eventStartDate)
+    {
+        var timeUntilEvent = eventStartDate - DateTime.UtcNow;
+        var hoursUntilEvent = (int)timeUntilEvent.TotalHours;
+        var timeText = hoursUntilEvent < 24 ? $"{hoursUntilEvent} hours" : "24 hours";
+
+        var dto = new CreateNotificationDto
+        {
+            UserId = userId,
+            Title = "Event Reminder",
+            Message = $"'{eventName}' starts in {timeText}. Don't forget to bring your tickets!",
+            Type = "EventReminder",
             RelatedUrl = $"/events/{eventId}"
         };
 

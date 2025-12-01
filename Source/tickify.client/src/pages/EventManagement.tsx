@@ -154,7 +154,7 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
         onNavigate('event-analytics', eventId);
         break;
       case 'duplicate':
-        console.log('Duplicate event:', eventId);
+        // TODO: Implement duplicate event functionality
         break;
       case 'cancel':
         setEventToCancel(eventId);
@@ -166,12 +166,12 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
   };
 
   const confirmCancelEvent = () => {
-    console.log('Cancelling event:', eventToCancel);
+    // TODO: Implement cancel event API call
     setEventToCancel(null);
   };
 
   const confirmDeleteEvent = () => {
-    console.log('Deleting event:', eventToDelete);
+    // TODO: Implement delete event API call
     setEventToDelete(null);
   };
 

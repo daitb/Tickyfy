@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Bell, Check, Trash2, X, Ticket, Calendar, CreditCard, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Bell, Check, Trash2, X, Ticket, Calendar, CreditCard, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import {
@@ -8,67 +8,110 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { ScrollArea } from './ui/scroll-area';
-
-interface Notification {
-  id: string;
-  type: 'booking' | 'event' | 'payment' | 'system';
-  title: string;
-  message: string;
-  timestamp: string;
-  isRead: boolean;
-  actionUrl?: string;
-}
+import notificationService, { type Notification } from '../services/notificationService';
+import notificationSignalRService from '../services/notificationSignalRService';
+import { authService } from '../services/authService';
 
 interface NotificationDropdownProps {
   onNavigate?: (page: string, id?: string) => void;
 }
 
 export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'booking',
-      title: 'Booking Confirmed',
-      message: 'Your booking for "Summer Music Festival 2025" has been confirmed.',
-      timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(), // 2 minutes ago
-      isRead: false,
-    },
-    {
-      id: '2',
-      type: 'event',
-      title: 'Event Reminder',
-      message: 'Concert XYZ starts in 2 hours. Don\'t forget to bring your tickets!',
-      timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(), // 45 minutes ago
-      isRead: false,
-    },
-    {
-      id: '3',
-      type: 'payment',
-      title: 'Payment Successful',
-      message: 'Payment of $150.00 has been processed successfully.',
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
-      isRead: false,
-    },
-    {
-      id: '4',
-      type: 'system',
-      title: 'Profile Update',
-      message: 'Your profile information has been updated successfully.',
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-      isRead: true,
-    },
-    {
-      id: '5',
-      type: 'event',
-      title: 'New Event',
-      message: 'A new event "Tech Conference 2025" matching your interests is now available.',
-      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-      isRead: true,
-    },
-  ]);
-
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const [isLoading, setIsLoading] = useState(false);
+  const isAuthenticated = authService.isAuthenticated();
+
+  // Fetch notifications khi component mount và khi dropdown mở
+  useEffect(() => {
+    if (isOpen && isAuthenticated) {
+      fetchNotifications();
+    }
+  }, [isOpen, isAuthenticated]);
+
+  // Setup SignalR connection và fetch unread count khi component mount
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Fetch unread count ngay lập tức
+    fetchUnreadCount();
+
+    // Setup SignalR connection
+    const setupSignalR = async () => {
+      try {
+        await notificationSignalRService.startConnection();
+
+        // Đăng ký handler để nhận notifications mới
+        const unsubscribe = notificationSignalRService.onNotificationReceived((notification) => {
+          // Thêm notification mới vào đầu danh sách
+          setNotifications(prev => {
+            // Kiểm tra xem đã có notification này chưa (tránh duplicate)
+            if (prev.some(n => n.id === notification.id)) {
+              return prev;
+            }
+            return [notification, ...prev];
+          });
+
+          // Cập nhật unread count
+          if (!notification.isRead) {
+            setUnreadCount(prev => prev + 1);
+          }
+
+          // Hiển thị toast notification (optional)
+          // toast.info(notification.title, { description: notification.message });
+        });
+
+        return unsubscribe;
+      } catch (error) {
+        console.error('[NotificationDropdown] Error setting up SignalR:', error);
+      }
+    };
+
+    let unsubscribe: (() => void) | undefined;
+    setupSignalR().then(unsub => {
+      unsubscribe = unsub;
+    });
+
+    // Cleanup khi component unmount
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+      notificationSignalRService.stopConnection().catch(console.error);
+    };
+  }, [isAuthenticated]);
+
+  // Fetch unread count định kỳ (mỗi 30 giây) để đảm bảo sync
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  const fetchNotifications = async () => {
+    setIsLoading(true);
+    try {
+      // Lấy 20 notifications đầu tiên cho dropdown
+      const result = await notificationService.getNotifications(1, 20);
+      setNotifications(result.items);
+    } catch (error) {
+      console.error('[NotificationDropdown] Error fetching notifications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const count = await notificationService.getUnreadCount();
+      setUnreadCount(count);
+    } catch (error) {
+      console.error('[NotificationDropdown] Error fetching unread count:', error);
+    }
+  };
 
   const getIcon = (type: Notification['type']) => {
     switch (type) {
@@ -85,47 +128,60 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
     }
   };
 
-  const getTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const time = new Date(timestamp);
-    const diff = now.getTime() - time.getTime();
-    
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
+  const markAsRead = async (id: string) => {
+    const success = await notificationService.markAsRead(id);
+    if (success) {
+      setNotifications(prev =>
+        prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+      );
+      // Cập nhật unread count
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  const markAllAsRead = async () => {
+    const success = await notificationService.markAllAsRead();
+    if (success) {
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-  };
-
-  const deleteNotification = (id: string, e: React.MouseEvent) => {
+  const deleteNotification = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    const success = await notificationService.deleteNotification(id);
+    if (success) {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }
   };
 
-  const handleNotificationClick = (notification: Notification) => {
-    markAsRead(notification.id);
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.isRead) {
+      await markAsRead(notification.id);
+    }
     setIsOpen(false);
     
-    // Navigate based on notification type
-    if (notification.type === 'booking') {
-      onNavigate?.('my-tickets');
-    } else if (notification.type === 'event') {
-      onNavigate?.('home');
-    } else if (notification.type === 'payment') {
-      onNavigate?.('my-tickets');
+    // Navigate based on notification type or actionUrl
+    if (notification.actionUrl) {
+      // Extract route from actionUrl (e.g., "/orders/123" -> "orders")
+      const route = notification.actionUrl.split('/')[1];
+      const id = notification.actionUrl.split('/')[2];
+      if (route === 'orders' || route === 'bookings') {
+        onNavigate?.('my-tickets', id);
+      } else if (route === 'events') {
+        onNavigate?.('event-detail', id);
+      } else {
+        onNavigate?.(route, id);
+      }
+    } else {
+      // Fallback navigation
+      if (notification.type === 'booking') {
+        onNavigate?.('my-tickets');
+      } else if (notification.type === 'event') {
+        onNavigate?.('home');
+      } else if (notification.type === 'payment') {
+        onNavigate?.('my-tickets');
+      }
     }
   };
 
@@ -164,7 +220,12 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
         </div>
 
         {/* Notifications List */}
-        {notifications.length > 0 ? (
+        {isLoading ? (
+          <div className="p-8 text-center text-gray-500">
+            <Loader2 size={24} className="mx-auto mb-3 animate-spin" />
+            <p className="text-sm">Đang tải thông báo...</p>
+          </div>
+        ) : notifications.length > 0 ? (
           <ScrollArea className="h-[400px]">
             <div className="divide-y">
               {notifications.map((notification) => (
@@ -193,7 +254,7 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
                       </p>
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-xs text-gray-500">
-                          {getTimeAgo(notification.timestamp)}
+                          {notification.timestamp}
                         </span>
                         <button
                           onClick={(e) => deleteNotification(notification.id, e)}
@@ -211,8 +272,8 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
         ) : (
           <div className="p-8 text-center text-gray-500">
             <Bell size={48} className="mx-auto mb-3 opacity-20" />
-            <p className="text-sm">No notifications yet</p>
-            <p className="text-xs mt-1">We'll notify you when something important happens</p>
+            <p className="text-sm">Chưa có thông báo</p>
+            <p className="text-xs mt-1">Bạn sẽ nhận được thông báo khi có sự kiện quan trọng</p>
           </div>
         )}
 

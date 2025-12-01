@@ -1,4 +1,5 @@
 import apiClient from "./apiClient";
+import { toast } from "sonner";
 import type { Event, TicketTier } from "../types";
 
 // Backend DTOs
@@ -168,8 +169,9 @@ class EventService {
     try {
       const resp = await apiClient.get<EventDetailDto>(`/events/${id}`);
       return mapEventDetailToEvent(resp.data);
-    } catch (error) {
-      console.error(`Error fetching event ${id}:`, error);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || `Không thể tải thông tin sự kiện. Vui lòng thử lại.`;
+      toast.error(errorMsg);
       throw error;
     }
   }
@@ -232,8 +234,8 @@ class EventService {
           .map(mapEventListToEvent);
       }
       return [];
-    } catch (error) {
-      console.error('Error fetching events:', error);
+    } catch (error: any) {
+      // Silent fail for events list, return empty array
       return [];
     }
   }
@@ -251,8 +253,8 @@ class EventService {
           .map(mapEventListToEvent);
       }
       return [];
-    } catch (error) {
-      console.error('Error fetching featured events:', error);
+    } catch (error: any) {
+      // Silent fail for featured events, return empty array
       return [];
     }
   }
@@ -270,8 +272,8 @@ class EventService {
           .map(mapEventListToEvent);
       }
       return [];
-    } catch (error) {
-      console.error('Error fetching upcoming events:', error);
+    } catch (error: any) {
+      // Silent fail for upcoming events, return empty array
       return [];
     }
   }
