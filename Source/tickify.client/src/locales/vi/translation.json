@@ -1171,7 +1171,59 @@
       "ticketsSold": "Vé đã bán",
       "revenue": "Doanh thu",
       "status": "Trạng thái",
-      "actions": "Thao tác",
+      "actions": "Thao tác"
+    },
+    "user": {
+      "title": "Quản lý người dùng",
+      "subtitle": "Quản lý users và xét duyệt yêu cầu organizer",
+      "usersTab": "Danh sách Users",
+      "requestsTab": "Yêu cầu Organizer",
+      "usersList": "Danh sách người dùng",
+      "searchPlaceholder": "Tìm kiếm theo tên hoặc email...",
+      "name": "Tên",
+      "email": "Email",
+      "role": "Vai trò",
+      "status": "Trạng thái",
+      "createdDate": "Ngày tạo",
+      "action": "Thao tác",
+      "verified": "Đã xác thực",
+      "notVerified": "Chưa xác thực",
+      "loading": "Đang tải...",
+      "noRequests": "Không có yêu cầu nào đang chờ xử lý",
+      "organizationName": "Tên tổ chức",
+      "requester": "Người yêu cầu",
+      "taxCode": "Mã số thuế",
+      "phone": "Số điện thoại",
+      "address": "Địa chỉ",
+      "description": "Mô tả",
+      "requestDate": "Ngày gửi",
+      "approve": "Phê duyệt",
+      "reject": "Từ chối",
+      "deleteConfirm": "Bạn có chắc chắn muốn xóa người dùng này?",
+      "approveConfirm": "Bạn có chắc chắn muốn phê duyệt yêu cầu này?",
+      "rejectReason": "Lý do từ chối (tùy chọn):",
+      "noPendingRequests": "Không có yêu cầu đang chờ phê duyệt",
+      "approving": "Đang phê duyệt...",
+      "rejecting": "Đang từ chối...",
+      "errorLoading": "Lỗi khi tải dữ liệu",
+      "retryButton": "Thử lại",
+      "noDataAvailable": "Không có dữ liệu",
+      "toast": {
+        "roleUpdated": "Cập nhật vai trò thành công!",
+        "roleUpdateError": "Không thể cập nhật vai trò",
+        "statusChanged": "Đã thay đổi trạng thái người dùng!",
+        "statusChangeError": "Không thể thay đổi trạng thái",
+        "userDeleted": "Đã xóa người dùng!",
+        "userDeleteError": "Không thể xóa người dùng",
+        "requestApproved": "Đã phê duyệt yêu cầu!",
+        "requestApprovedDesc": "Người dùng đã được nâng cấp thành Organizer và nhận được email thông báo.",
+        "requestRejected": "Đã từ chối yêu cầu",
+        "requestRejectedDesc": "Người dùng sẽ nhận được email thông báo về quyết định này.",
+        "approveError": "Lỗi phê duyệt",
+        "rejectError": "Lỗi từ chối",
+        "error": "Lỗi"
+      }
+    },
     "stats": {
       "totalCodes": "Tổng số mã",
       "activeCodes": "Mã đang hoạt động",
@@ -1505,36 +1557,10 @@
         "publish": "Xuất bản sự kiện",
         "saveDraft": "Lưu nháp"
       }
-    },
-    "management": {
-      "event": {
-        "title": "Quản lý sự kiện",
-        "subtitle": "Quản lý các sự kiện của bạn",
-        "createEvent": "Tạo sự kiện",
-        "all": "Tất cả",
-        "upcoming": "Sắp diễn ra",
-        "past": "Đã qua",
-        "draft": "Nháp",
-        "published": "Đã xuất bản",
-        "cancelled": "Đã hủy",
-        "searchEvents": "Tìm sự kiện...",
-        "filters": "Bộ lọc",
-        "sortBy": "Sắp xếp theo",
-        "eventName": "Tên sự kiện",
-        "date": "Ngày",
-        "ticketsSold": "Vé đã bán",
-        "revenue": "Doanh thu",
-        "status": "Trạng thái",
-        "actions": "Thao tác",
-        "edit": "Sửa",
-        "duplicate": "Nhân bản",
-        "cancel": "Hủy",
-        "delete": "Xóa",
-        "viewAnalytics": "Xem phân tích"
-      }
-    },
-    "policy": {
-      "policy": "Chính sách vé",
+    }
+  },
+  "policy": {
+    "policy": "Chính sách vé",
       "please": "Vui lòng xem xét trước khi mua",
       "Refundable": "Hoàn tiền",
       "Non-refundable": "Không hoàn tiền",
@@ -1545,5 +1571,4 @@
       "text2": "vé không thể được chuyển nhượng cho người khác"
     }
   }
-}
 }

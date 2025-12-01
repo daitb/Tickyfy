@@ -149,9 +149,12 @@ public class EventService : IEventService
                 MaxCapacity = dto.TotalSeats,
                 CategoryId = dto.CategoryId,
                 OrganizerId = organizerId,
-                Status = EventStatus.Pending,
+                Status = EventStatus.Pending, // Always Pending - requires admin approval
                 CreatedAt = DateTime.UtcNow
             };
+            
+            _logger.LogInformation("Event status set to: {Status} (Value: {StatusValue})", 
+                eventEntity.Status, (int)eventEntity.Status);
 
             // Add event to database
             _logger.LogInformation("Adding event to database");
