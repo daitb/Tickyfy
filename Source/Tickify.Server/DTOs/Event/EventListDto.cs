@@ -12,6 +12,7 @@ public class EventListDto
     public string OrganizerName { get; set; } = string.Empty;
     public int AvailableSeats { get; set; }
     public decimal MinPrice { get; set; }
+    public decimal MaxPrice { get; set; }
     public bool IsFeatured { get; set; }
     public string Status { get; set; } = string.Empty;
 }

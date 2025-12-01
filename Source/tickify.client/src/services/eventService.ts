@@ -14,6 +14,7 @@ export interface EventListDto {
   organizerName: string;
   availableSeats: number;
   minPrice: number;
+  maxPrice: number;
   isFeatured: boolean;
   status: string;
 }
@@ -69,6 +70,31 @@ function mapEventListToEvent(dto: EventListDto): Event {
   const startDate = dto.startDate ? new Date(dto.startDate) : new Date();
   const title = dto.title || 'Untitled Event';
   
+  // Debug: Log backend prices
+  console.log('Backend data for', title, '- minPrice:', dto.minPrice, 'maxPrice:', dto.maxPrice);
+  
+  // Create placeholder ticket tiers from minPrice and maxPrice for list view
+  const ticketTiers: TicketTier[] = [];
+  if (dto.minPrice > 0) {
+    ticketTiers.push({
+      id: 'min',
+      name: 'Starting from',
+      price: dto.minPrice,
+      available: dto.availableSeats || 0,
+      total: dto.availableSeats || 0,
+    });
+  }
+  // Only add max price if it exists and is different from min
+  if (dto.maxPrice && dto.maxPrice > 0 && dto.maxPrice !== dto.minPrice) {
+    ticketTiers.push({
+      id: 'max',
+      name: 'Up to',
+      price: dto.maxPrice,
+      available: 0,
+      total: 0,
+    });
+  }
+  
   return {
     id: String(dto.eventId),
     title: title,
@@ -82,7 +108,7 @@ function mapEventListToEvent(dto: EventListDto): Event {
     description: title,
     organizerId: '',
     organizerName: dto.organizerName || '',
-    ticketTiers: [], // Will be populated from detail
+    ticketTiers,
     policies: {
       refundable: true,
       transferable: true,
@@ -189,10 +215,12 @@ class EventService {
 
   /**
    * Get all events (returns list format)
+   * Only returns Published events for public view
    */
   async getEvents(): Promise<Event[]> {
     try {
-      const resp = await apiClient.get<PagedResult<EventListDto>>(`/events`);
+      // Filter to only show Published events on public pages
+      const resp = await apiClient.get<PagedResult<EventListDto>>(`/events?Status=Published`);
       // Handle both PagedResult and direct array response
       if (resp.data && 'items' in resp.data && Array.isArray(resp.data.items)) {
         return resp.data.items

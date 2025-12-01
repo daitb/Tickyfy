@@ -302,9 +302,18 @@ namespace Tickify.Data
                 {
                     Console.WriteLine("Seeding Sample Events...");
 
-                    var musicCategory = await context.Categories.FirstAsync(c => c.Name == "Music & Concerts");
-                    var techCategory = await context.Categories.FirstAsync(c => c.Name == "Technology & Innovation");
-                    var sportsCategory = await context.Categories.FirstAsync(c => c.Name == "Sports & Fitness");
+                    var musicCategory = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Music & Concerts");
+                    var techCategory = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Technology & Innovation");
+                    var sportsCategory = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Sports & Fitness");
+
+                    if (musicCategory == null || techCategory == null || sportsCategory == null)
+                    {
+                        Console.WriteLine("⚠️ Required categories not found. Skipping event seeding.");
+                        Console.WriteLine($"   Music Category: {(musicCategory != null ? "✓" : "✗")}");
+                        Console.WriteLine($"   Tech Category: {(techCategory != null ? "✓" : "✗")}");
+                        Console.WriteLine($"   Sports Category: {(sportsCategory != null ? "✓" : "✗")}");
+                        return;
+                    }
 
                     var events = new[]
                     {
@@ -477,6 +486,8 @@ namespace Tickify.Data
                     // Seed PromoCodes
                     if (!await context.PromoCodes.AnyAsync())
                     {
+                        var adminUserId = adminUser?.Id ?? 1; // Default to 1 if adminUser is null
+                        
                         var promo1 = new PromoCode
                         {
                             Code = "EARLYBIRD",
@@ -486,7 +497,7 @@ namespace Tickify.Data
                             ValidTo = DateTime.UtcNow.AddMonths(3),
                             IsActive = true,
                             CreatedAt = DateTime.UtcNow,
-                            CreatedByUserId = adminUser?.Id ?? 0
+                            CreatedByUserId = adminUserId
                         };
 
                         var promo2 = new PromoCode
@@ -499,7 +510,7 @@ namespace Tickify.Data
                             ValidTo = DateTime.UtcNow.AddMonths(2),
                             IsActive = true,
                             CreatedAt = DateTime.UtcNow,
-                            CreatedByUserId = adminUser?.Id ?? 0
+                            CreatedByUserId = adminUserId
                         };
 
                         await context.PromoCodes.AddRangeAsync(promo1, promo2);

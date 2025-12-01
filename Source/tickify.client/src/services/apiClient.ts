@@ -46,6 +46,11 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
+    // Only log errors, not all requests
+    if (error.response?.status && error.response.status >= 400) {
+      console.error(`API Error [${error.response.status}]:`, error.config?.url, error.response?.data || error.message);
+    }
+
     // Don't redirect on login failure (401), let the login page handle it
     if (
       error.response?.status === 401 &&

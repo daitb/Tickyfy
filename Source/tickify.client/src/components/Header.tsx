@@ -26,10 +26,12 @@ import {
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { authService } from "../services/authService";
+import { organizerService } from "../services/organizerService";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { useWishlistToggle } from "../hooks/useWishlistToggle";
+import { useEffect, useState } from "react";
 
 interface HeaderProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -48,6 +50,26 @@ export function Header({
 }: HeaderProps) {
   const { t } = useTranslation();
   const { wishlistCount } = useWishlistToggle();
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
+  
+  // Check if user has pending organizer request
+  useEffect(() => {
+    const checkPendingRequest = async () => {
+      if (isAuthenticated && userRole === "user") {
+        try {
+          const request = await organizerService.getMyOrganizerRequest();
+          setHasPendingRequest(!!request);
+        } catch (error) {
+          console.error("Error checking pending request:", error);
+          setHasPendingRequest(false);
+        }
+      } else {
+        setHasPendingRequest(false);
+      }
+    };
+
+    checkPendingRequest();
+  }, [isAuthenticated, userRole]);
   
   const handleEventClick = (eventId: string) => {
     onNavigate("event-detail", eventId);
@@ -129,7 +151,6 @@ export function Header({
                 className="bg-white text-teal-600 hover:bg-neutral-100 gap-2 hidden lg:flex"
               >
                 <Plus size={18} />
-                {t("header.becomeOrganizer")}
                 {t("header.createEvent")}
               </Button>
             )}
@@ -175,21 +196,17 @@ export function Header({
                     {t("header.myTickets")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onNavigate("wishlist")}>
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center">
-                        <Heart size={16} className="mr-2" />
-                        Wishlist
-                      </div>
-                      {wishlistCount > 0 && (
-                        <Badge variant="secondary" className="ml-2 h-5 min-w-[20px] flex items-center justify-center px-1.5">
-                          {wishlistCount}
-                        </Badge>
-                      )}
-                    </div>
+                    <Heart size={16} className="mr-2" />
+                    {t("header.wishlist")}
+                    {wishlistCount > 0 && (
+                      <Badge variant="secondary" className="ml-auto h-5 min-w-[20px] flex items-center justify-center px-1.5">
+                        {wishlistCount}
+                      </Badge>
+                    )}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onNavigate("waitlist")}>
                     <Clock size={16} className="mr-2" />
-                    Waitlist
+                    {t("header.waitlist")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {(userRole === "organizer" || userRole === "admin") && (
@@ -198,19 +215,19 @@ export function Header({
                         onClick={() => onNavigate("organizer-dashboard")}
                       >
                         <LayoutDashboard size={16} className="mr-2" />
-                        Organizer Dashboard
+                        {t("header.organizerDashboard")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onNavigate("event-management")}
                       >
                         <Calendar size={16} className="mr-2" />
-                        Manage Events
+                        {t("header.manageEvents")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onNavigate("create-event")}
                       >
                         <Plus size={16} className="mr-2" />
-                        Create Event
+                        {t("header.createEvent")}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -223,13 +240,13 @@ export function Header({
                         onClick={() => onNavigate("qr-scanner")}
                       >
                         <QrCode size={16} className="mr-2" />
-                        QR Scanner
+                        {t("header.qrScanner")}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onNavigate("scan-history")}
                       >
                         <History size={16} className="mr-2" />
-                        Scan History
+                        {t("header.scanHistory")}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -242,15 +259,9 @@ export function Header({
                         <Shield size={16} className="mr-2" />
                         {t("header.adminPanel")}
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onNavigate("user-management")}
-                      >
-                        <UserCog size={16} className="mr-2" />
-                        {t("header.userManagement")}
-                      </DropdownMenuItem>
                     </>
                   )}
-                  {userRole === "user" && (
+                  {userRole === "user" && !hasPendingRequest && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -258,6 +269,15 @@ export function Header({
                       >
                         <Plus size={16} className="mr-2" />
                         {t("header.becomeOrganizer")}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {userRole === "user" && hasPendingRequest && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem disabled className="text-neutral-500">
+                        <Plus size={16} className="mr-2" />
+                        {t("header.becomeOrganizer")} - {t("header.pendingApproval", "Pending Approval")}
                       </DropdownMenuItem>
                     </>
                   )}

@@ -26,13 +26,13 @@ public class OrganizerController : ControllerBase
 
     #region Public/User Endpoints
 
-    /// POST /api/organizers/register - Register as organizer (Authenticated users)
+    /// POST /api/organizers/register - Register as organizer (Authenticated users) - Now creates a request
     [HttpPost("register")]
     [Authorize]
-    [ProducesResponseType(typeof(ApiResponse<OrganizerDto>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiResponse<OrganizerDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<ApiResponse<OrganizerDto>>> RegisterOrganizer(
+    public async Task<ActionResult<ApiResponse<object>>> RegisterOrganizer(
         [FromBody] CreateOrganizerDto dto)
     {
         if (!ModelState.IsValid)
@@ -42,7 +42,7 @@ public class OrganizerController : ControllerBase
                 .Select(e => e.ErrorMessage)
                 .ToList();
 
-            return BadRequest(ApiResponse<OrganizerDto>.FailureResponse(
+            return BadRequest(ApiResponse<object>.FailureResponse(
                 "Validation failed",
                 errors
             ));
@@ -50,18 +50,45 @@ public class OrganizerController : ControllerBase
 
         var userId = GetUserIdFromClaims();
 
-        _logger.LogInformation("User {UserId} registering as organizer", userId);
+        _logger.LogInformation("User {UserId} submitting organizer request", userId);
 
-        var organizer = await _organizerService.RegisterOrganizerAsync(userId, dto);
+        try
+        {
+            // Check if user already has a pending request
+            var existingRequest = await _organizerService.GetPendingOrganizerRequestAsync(userId);
+            if (existingRequest != null)
+            {
+                return BadRequest(ApiResponse<object>.FailureResponse(
+                    "You already have a pending organizer request. Please wait for admin approval."
+                ));
+            }
 
-        return CreatedAtAction(
-            nameof(GetOrganizerProfile),
-            new { id = organizer.OrganizerId },
-            ApiResponse<OrganizerDto>.SuccessResponse(
-                organizer,
-                "Organizer registration successful. Your profile is pending verification."
-            )
-        );
+            // Check if user is already an organizer
+            var existingOrganizer = await _organizerService.GetOrganizerByUserIdAsync(userId);
+            if (existingOrganizer != null)
+            {
+                return BadRequest(ApiResponse<object>.FailureResponse(
+                    "You are already registered as an organizer."
+                ));
+            }
+
+            // Create organizer request instead of directly creating organizer
+            var request = await _organizerService.CreateOrganizerRequestAsync(userId, dto);
+
+            return CreatedAtAction(
+                nameof(GetOrganizerProfile),
+                new { id = 0 },
+                ApiResponse<object>.SuccessResponse(
+                    request,
+                    "Your organizer application has been submitted successfully. Please wait for admin approval."
+                )
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating organizer request for user {UserId}", userId);
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
     }
 
     /// GET /api/organizers/{id} - Get organizer profile by ID (Public)
@@ -124,6 +151,33 @@ public class OrganizerController : ControllerBase
         ));
     }
 
+    /// GET /api/organizers/my-request - Get current user's pending organizer request
+    [HttpGet("my-request")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<object>>> GetMyOrganizerRequest()
+    {
+        var userId = GetUserIdFromClaims();
+
+        _logger.LogInformation("User {UserId} checking for pending organizer request", userId);
+
+        var request = await _organizerService.GetPendingOrganizerRequestAsync(userId);
+
+        if (request == null)
+        {
+            return Ok(ApiResponse<object>.SuccessResponse(
+                null!,
+                "No pending organizer request found"
+            ));
+        }
+
+        return Ok(ApiResponse<object>.SuccessResponse(
+            request,
+            "Pending organizer request found"
+        ));
+    }
+
     #endregion
 
     #region Organizer Dashboard Endpoints
@@ -131,11 +185,11 @@ public class OrganizerController : ControllerBase
     /// GET /api/organizers/{id}/events - Get organizer's events (Organizer only)
     [HttpGet("{id}/events")]
     [Authorize(Roles = "Organizer,Admin")]
-    [ProducesResponseType(typeof(ApiResponse<List<object>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<OrganizerEventDashboardDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<List<object>>>> GetOrganizerEvents(int id)
+    public async Task<ActionResult<ApiResponse<List<OrganizerEventDashboardDto>>>> GetOrganizerEvents(int id)
     {
         var userId = GetUserIdFromClaims();
         var isAdmin = User.IsInRole("Admin");
@@ -147,7 +201,7 @@ public class OrganizerController : ControllerBase
             ? await _organizerService.GetOrganizerEventsAsync(id, 0) // Admin bypass userId check
             : await _organizerService.GetOrganizerEventsAsync(id, userId);
 
-        return Ok(ApiResponse<List<object>>.SuccessResponse(
+        return Ok(ApiResponse<List<OrganizerEventDashboardDto>>.SuccessResponse(
             events,
             $"Retrieved {events.Count} events"
         ));
@@ -156,11 +210,11 @@ public class OrganizerController : ControllerBase
     /// GET /api/organizers/{id}/earnings - Get organizer earnings dashboard (Organizer only)
     [HttpGet("{id}/earnings")]
     [Authorize(Roles = "Organizer,Admin")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<OrganizerEarningsDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<object>>> GetOrganizerEarnings(int id)
+    public async Task<ActionResult<ApiResponse<OrganizerEarningsDto>>> GetOrganizerEarnings(int id)
     {
         var userId = GetUserIdFromClaims();
         var isAdmin = User.IsInRole("Admin");
@@ -172,7 +226,7 @@ public class OrganizerController : ControllerBase
             ? await _organizerService.GetOrganizerEarningsAsync(id, 0)
             : await _organizerService.GetOrganizerEarningsAsync(id, userId);
 
-        return Ok(ApiResponse<object>.SuccessResponse(
+        return Ok(ApiResponse<OrganizerEarningsDto>.SuccessResponse(
             earnings,
             "Organizer earnings retrieved successfully"
         ));

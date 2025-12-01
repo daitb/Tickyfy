@@ -1,14 +1,64 @@
 import { useState, useEffect, useMemo, useCallback, Suspense, lazy } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Toaster } from "./components/ui/sonner";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { LoadingFallback } from "./components/LoadingFallback";
+import { EventReviews } from "./pages/EventReviews";
+import { RefundRequest } from "./pages/RefundRequest";
+import { NotificationPreferences } from "./pages/NotificationPreferences";
+import { SeatMapBuilder } from "./pages/SeatMapBuilder";
+import { AdminDashboard } from "./pages/AdminDashboard";
+import { Home } from "./pages/Home";
+import { EventListing } from "./pages/EventListing";
+import { EventDetail } from "./pages/EventDetail";
+import { Cart } from "./pages/Cart";
+import { Checkout } from "./pages/Checkout";
+import { Success } from "./pages/Success";
+import { MyTickets } from "./pages/MyTickets";
+import { OrderDetail } from "./pages/OrderDetail";
+import { TicketDetail } from "./pages/TicketDetail";
+import { TransferTicket } from "./pages/TransferTicket";
+import { Wishlist } from "./pages/Wishlist";
+import { Waitlist } from "./pages/Waitlist";
+import { OrganizerWizard } from "./pages/OrganizerWizard";
+import { CreateEvent } from "./pages/CreateEvent";
+import { OrganizerDashboard } from "./pages/OrganizerDashboard";
+import { EventManagement } from "./pages/EventManagement";
+import { EventAnalytics } from "./pages/EventAnalytics";
+import { EditEvent } from "./pages/EditEvent";
+import { ScanHistory } from "./pages/ScanHistory";
+import { PromoCodeManagement } from "./pages/PromoCodeManagement";
+import { OrganizerPayouts } from "./pages/OrganizerPayouts";
+import { NotificationsPage } from "./pages/NotificationsPage";
+import { ResetPassword } from "./pages/ResetPassword";
+import { UserProfile } from "./pages/UserProfile";
+import { SeatSelection } from "./pages/SeatSelection";
+import { ReviewSubmission } from "./pages/ReviewSubmission";
+import { QRScanner } from "./pages/QRScanner";
+import { EmailVerification } from "./pages/EmailVerification";
+import { PasswordChange } from "./pages/PasswordChange";
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
+import { ForgotPassword } from "./pages/ForgotPassword";
+import { ChatPage } from "./pages/ChatPage";
+import { StaffChatPage } from "./pages/StaffChatPage";
+import { BecomeOrganizer } from "./pages/BecomeOrganizer";
+import PaymentReturn from "./pages/PaymentReturn";
+import { About } from "./pages/About";
+import { Privacy } from "./pages/Privacy";
+import { Terms } from "./pages/Terms";
+import { FAQ } from "./pages/FAQ";
+import { Contact } from "./pages/Contact";
+import { RefundPolicy } from "./pages/RefundPolicy";
+import { ForOrganizers } from "./pages/ForOrganizers";
+import { HelpCenter } from "./pages/HelpCenter";
+import { Error } from "./pages/Error";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import type { CartItem, Order } from "./types";
 import { mockOrders } from "./mockData";
 import { authService } from "./services/authService";
+import { Toaster } from "./components/ui/sonner";
 
 // Lazy load các pages lớn để giảm initial bundle size
 const EventReviews = lazy(() => import("./pages/EventReviews").then(m => ({ default: m.EventReviews })));
@@ -102,7 +152,6 @@ type Page =
   | "admin-dashboard"
   | "chat"
   | "staff-chat"
-  | "user-management"
   | "become-organizer"
   | "login"
   | "register"
@@ -162,7 +211,6 @@ export default function App() {
     if (path === "/admin-dashboard") return "admin-dashboard";
     if (path === "/chat") return "chat";
     if (path === "/staff-chat") return "staff-chat";
-    if (path === "/user-management") return "user-management";
     if (path === "/become-organizer") return "become-organizer";
     if (path === "/login") return "login";
     if (path === "/register") return "register";
@@ -508,8 +556,6 @@ export default function App() {
 
       case "staff-chat":
         return <StaffChatPage />;
-      case "user-management":
-        return <UserManagement onNavigate={handleNavigate} />;
 
       case "become-organizer":
         return <BecomeOrganizer onNavigate={handleNavigate} />;
