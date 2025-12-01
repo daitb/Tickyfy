@@ -7,6 +7,7 @@ using Tickify.Data;
 using Tickify.DTOs.Payment;
 using Tickify.Extensions;
 using Tickify.Interfaces.Repositories;
+using Tickify.Interfaces.Services;
 using Tickify.Models;
 using Tickify.Models.Momo;
 using Tickify.Repositories;
@@ -23,6 +24,8 @@ public sealed class MoMoProvider : IPaymentProvider
     private readonly IBookingRepository _bookings;
     private readonly ITicketRepository _tickets;
     private readonly ApplicationDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly ILogger<MoMoProvider> _logger;
 
     public MoMoProvider(
         IOptions<MomoOptionModel> options,
@@ -30,7 +33,9 @@ public sealed class MoMoProvider : IPaymentProvider
         IPaymentRepository payments,
         IBookingRepository bookings,
         ITicketRepository tickets,
-        ApplicationDbContext context)
+        ApplicationDbContext context,
+        INotificationService notificationService,
+        ILogger<MoMoProvider> logger)
     {
         _opt = options.Value;
         _http = hf.CreateClient();
@@ -38,6 +43,8 @@ public sealed class MoMoProvider : IPaymentProvider
         _bookings = bookings;
         _tickets = tickets;
         _context = context;
+        _notificationService = notificationService;
+        _logger = logger;
     }
 
     public async Task<bool> VerifyAsync(int paymentId, CancellationToken ct)
@@ -164,6 +171,19 @@ public sealed class MoMoProvider : IPaymentProvider
                     
                     // Create tickets for the confirmed booking
                     await CreateTicketsForBookingAsync(booking.Id, ct);
+
+                    // Gửi notification sau khi booking được confirm (không block flow)
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await SendPaymentSuccessNotificationsAsync(booking, payment, ct);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"[MoMo] Failed to send notifications for payment {extractedPaymentId}");
+                        }
+                    }, ct);
                 }
                 
                 Console.WriteLine($"[MoMo VerifyFromReturnUrl] Payment {extractedPaymentId} completed successfully from return URL");
@@ -425,6 +445,19 @@ public sealed class MoMoProvider : IPaymentProvider
 
                 // Create tickets for the confirmed booking
                 await CreateTicketsForBookingAsync(booking.Id, ct);
+
+                // Gửi notification sau khi booking được confirm (không block flow)
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await SendPaymentSuccessNotificationsAsync(booking, payment, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"[MoMo] Failed to send notifications for payment {paymentId}");
+                    }
+                }, ct);
             }
             return true;
         }
@@ -533,5 +566,46 @@ public sealed class MoMoProvider : IPaymentProvider
         return BitConverter.ToString(h.ComputeHash(Encoding.UTF8.GetBytes(data)))
                           .Replace("-", "")
                           .ToLowerInvariant();
+    }
+
+    /// Gửi notifications khi payment thành công và booking được confirm
+    private async Task SendPaymentSuccessNotificationsAsync(Booking? booking, Payment payment, CancellationToken ct)
+    {
+        if (booking == null) return;
+
+        try
+        {
+            // Load booking với Event để lấy event name
+            var fullBooking = await _context.Bookings
+                .Include(b => b.Event)
+                .FirstOrDefaultAsync(b => b.Id == booking.Id, ct);
+
+            if (fullBooking?.Event == null)
+            {
+                _logger.LogWarning($"[MoMo] Booking {booking.Id} or Event not found for notification");
+                return;
+            }
+
+            // Gửi notification payment thành công
+            await _notificationService.NotifyPaymentSuccessAsync(
+                booking.UserId,
+                booking.Id,
+                payment.Amount
+            );
+
+            // Gửi notification booking confirmed
+            await _notificationService.NotifyBookingConfirmedAsync(
+                booking.UserId,
+                booking.Id,
+                fullBooking.Event.Title
+            );
+
+            _logger.LogInformation($"[MoMo] Sent notifications for payment {payment.Id} and booking {booking.Id}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"[MoMo] Error sending notifications for booking {booking.Id}");
+            // Không throw để không ảnh hưởng đến transaction
+        }
     }
 }

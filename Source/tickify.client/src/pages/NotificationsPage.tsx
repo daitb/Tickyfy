@@ -1,19 +1,10 @@
-import { useState } from 'react';
-import { Bell, Check, Trash2, Filter, Calendar, Ticket, CreditCard, AlertCircle, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, Check, Trash2, Filter, Calendar, Ticket, CreditCard, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-
-interface Notification {
-  id: string;
-  type: 'booking' | 'event' | 'payment' | 'system';
-  title: string;
-  message: string;
-  timestamp: string;
-  isRead: boolean;
-  actionUrl?: string;
-}
+import notificationService, { type Notification } from '../services/notificationService';
 
 interface NotificationsPageProps {
   onNavigate: (page: string, id?: string) => void;
@@ -22,8 +13,8 @@ interface NotificationsPageProps {
 export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread'>('all');
   const [activeType, setActiveType] = useState<'all' | Notification['type']>('all');
-  
-  const [notifications, setNotifications] = useState<Notification[]>([
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
     {
       id: '1',
       type: 'booking',
@@ -103,8 +94,22 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
       message: 'New login detected from Windows PC in Ho Chi Minh City. If this wasn\'t you, please secure your account immediately.',
       timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       isRead: true,
-    },
-  ]);
+  // Fetch notifications khi component mount
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    setIsLoading(true);
+    try {
+      const data = await notificationService.getNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error('[NotificationsPage] Error fetching notifications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getIcon = (type: Notification['type']) => {
     switch (type) {
@@ -119,50 +124,62 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
     }
   };
 
-  const getTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const time = new Date(timestamp);
-    const diff = now.getTime() - time.getTime();
-    
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days} days ago`;
-    return time.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const markAsRead = async (id: string) => {
+    const success = await notificationService.markAsRead(id);
+    if (success) {
+      setNotifications(prev =>
+        prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+      );
+    }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  const markAllAsRead = async () => {
+    const success = await notificationService.markAllAsRead();
+    if (success) {
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  const deleteNotification = async (id: string) => {
+    const success = await notificationService.deleteNotification(id);
+    if (success) {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const deleteAllRead = () => {
+  const deleteAllRead = async () => {
+    const readNotifications = notifications.filter(n => n.isRead);
+    for (const notification of readNotifications) {
+      await notificationService.deleteNotification(notification.id);
+    }
     setNotifications(prev => prev.filter(n => !n.isRead));
   };
 
-  const handleNotificationClick = (notification: Notification) => {
-    markAsRead(notification.id);
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.isRead) {
+      await markAsRead(notification.id);
+    }
     
-    if (notification.type === 'booking') {
-      onNavigate('my-tickets');
-    } else if (notification.type === 'event') {
-      onNavigate('home');
-    } else if (notification.type === 'payment') {
-      onNavigate('my-tickets');
+    // Navigate based on notification type or actionUrl
+    if (notification.actionUrl) {
+      const route = notification.actionUrl.split('/')[1];
+      const id = notification.actionUrl.split('/')[2];
+      if (route === 'orders' || route === 'bookings') {
+        onNavigate('my-tickets', id);
+      } else if (route === 'events') {
+        onNavigate('event-detail', id);
+      } else {
+        onNavigate(route, id);
+      }
+    } else {
+      // Fallback navigation
+      if (notification.type === 'booking') {
+        onNavigate('my-tickets');
+      } else if (notification.type === 'event') {
+        onNavigate('home');
+      } else if (notification.type === 'payment') {
+        onNavigate('my-tickets');
+      }
     }
   };
 
@@ -310,7 +327,12 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
         {/* Notifications List */}
         <Card>
           <CardContent className="p-0">
-            {filteredNotifications.length > 0 ? (
+            {isLoading ? (
+              <div className="p-12 text-center text-gray-500">
+                <Loader2 size={32} className="mx-auto mb-4 animate-spin text-purple-600" />
+                <p className="text-sm">Đang tải thông báo...</p>
+              </div>
+            ) : filteredNotifications.length > 0 ? (
               <div className="divide-y">
                 {filteredNotifications.map((notification) => (
                   <div
@@ -344,7 +366,7 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-500 whitespace-nowrap">
-                              {getTimeAgo(notification.timestamp)}
+                              {notification.timestamp}
                             </span>
                             <button
                               onClick={(e) => {

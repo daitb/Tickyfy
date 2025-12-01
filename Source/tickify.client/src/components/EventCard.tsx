@@ -28,13 +28,6 @@ export const EventCard = React.memo(function EventCard({ event, onClick }: Event
     return `${formatted.replace(/\.0$/, "")}k`;
   };
 
-  // Memoize expensive calculations
-  const lowestPrice = useMemo(() => {
-    const availableTiers = event.ticketTiers.filter(t => t.available > 0);
-    if (availableTiers.length === 0) return 0;
-    return Math.min(...availableTiers.map(t => t.price));
-  }, [event.ticketTiers]);
-
   const formattedDate = useMemo(() => {
     const date = new Date(event.date);
     return date.toLocaleDateString('en-US', { 
@@ -43,6 +36,7 @@ export const EventCard = React.memo(function EventCard({ event, onClick }: Event
       year: 'numeric'
     });
   }, [event.date]);
+
   const formatPriceRange = (min: number, max: number) => {
     if (min <= 0 && max <= 0) return "TBD";
 
@@ -60,16 +54,20 @@ export const EventCard = React.memo(function EventCard({ event, onClick }: Event
     return maxText ? `${maxText} VND` : "TBD";
   };
 
-  // Get lowest and highest price from available tickets
-  const availableTickets = event.ticketTiers.filter(t => t.available > 0);
-  const ticketsToUse = availableTickets.length > 0 ? availableTickets : event.ticketTiers;
-  
-  const lowestPrice = ticketsToUse.length > 0
-    ? Math.min(...ticketsToUse.map(t => t.price))
-    : 0;
-  const highestPrice = ticketsToUse.length > 0
-    ? Math.max(...ticketsToUse.map(t => t.price))
-    : 0;
+  // Memoize expensive calculations - Get lowest and highest price from available tickets
+  const { lowestPrice, highestPrice } = useMemo(() => {
+    const availableTickets = event.ticketTiers.filter(t => t.available > 0);
+    const ticketsToUse = availableTickets.length > 0 ? availableTickets : event.ticketTiers;
+    
+    const lowest = ticketsToUse.length > 0
+      ? Math.min(...ticketsToUse.map(t => t.price))
+      : 0;
+    const highest = ticketsToUse.length > 0
+      ? Math.max(...ticketsToUse.map(t => t.price))
+      : 0;
+    
+    return { lowestPrice: lowest, highestPrice: highest };
+  }, [event.ticketTiers]);
 
   // Debug: Log prices to console
   console.log('Event:', event.title, 'TicketTiers:', event.ticketTiers, 'Min:', lowestPrice, 'Max:', highestPrice);

@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popove
 import { eventService } from '../services/eventService';
 import { WishlistButton } from '../components/WishlistButton';
 import { authService } from '../services/authService';
+import { toast } from 'sonner';
 import type { CartItem } from '../types';
 
 interface EventDetailProps {

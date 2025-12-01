@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Tickify.Data;
+using Tickify.Interfaces.Services;
 using Tickify.Models;
 using Tickify.Services.Email;
 
 namespace Tickify.Jobs;
 
 /// <summary>
-/// Background job to send event reminder emails
+/// Background job to send event reminder emails and notifications
 /// Schedule: Daily at 8 AM
 /// Sends reminders 24 hours before event starts
 /// </summary>
@@ -14,15 +15,18 @@ public class EmailReminderJob
 {
     private readonly ApplicationDbContext _context;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<EmailReminderJob> _logger;
 
     public EmailReminderJob(
         ApplicationDbContext context,
         IEmailService emailService,
+        INotificationService notificationService,
         ILogger<EmailReminderJob> logger)
     {
         _context = context;
         _emailService = emailService;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -48,6 +52,7 @@ public class EmailReminderJob
             _logger.LogInformation("[EmailReminderJob] Found {Count} upcoming events", upcomingEvents.Count);
 
             var totalEmailsSent = 0;
+            var totalNotificationsSent = 0;
 
             foreach (var evt in upcomingEvents)
             {
@@ -62,8 +67,18 @@ public class EmailReminderJob
                 {
                     try
                     {
+                        // Gửi email reminder
                         await SendReminderEmail(booking.User!, evt);
                         totalEmailsSent++;
+
+                        // Gửi notification reminder
+                        await _notificationService.NotifyEventReminderAsync(
+                            booking.UserId,
+                            evt.Id,
+                            evt.Title,
+                            evt.StartDate
+                        );
+                        totalNotificationsSent++;
                     }
                     catch (Exception ex)
                     {
@@ -73,7 +88,8 @@ public class EmailReminderJob
                 }
             }
 
-            _logger.LogInformation("[EmailReminderJob] Successfully sent {Count} reminder emails", totalEmailsSent);
+            _logger.LogInformation("[EmailReminderJob] Successfully sent {EmailCount} reminder emails and {NotificationCount} notifications", 
+                totalEmailsSent, totalNotificationsSent);
         }
         catch (Exception ex)
         {
