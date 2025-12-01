@@ -15,95 +15,12 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
   const [activeType, setActiveType] = useState<'all' | Notification['type']>('all');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-    {
-      id: '1',
-      type: 'booking',
-      title: 'Booking Confirmed',
-      message: 'Your booking for "Summer Music Festival 2025" has been confirmed. Booking ID: #BK-2025-001234',
-      timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-      isRead: false,
-    },
-    {
-      id: '2',
-      type: 'event',
-      title: 'Event Reminder',
-      message: 'Concert XYZ starts in 2 hours at National Stadium. Don\'t forget to bring your tickets and arrive 30 minutes early for check-in.',
-      timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-      isRead: false,
-    },
-    {
-      id: '3',
-      type: 'payment',
-      title: 'Payment Successful',
-      message: 'Payment of $150.00 has been processed successfully for 2 tickets to "Tech Conference 2025".',
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-      isRead: false,
-    },
-    {
-      id: '4',
-      type: 'event',
-      title: 'Event Cancelled',
-      message: 'Unfortunately, "Jazz Night Concert" scheduled for Dec 15 has been cancelled. Full refund will be processed within 5-7 business days.',
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-      isRead: false,
-    },
-    {
-      id: '5',
-      type: 'booking',
-      title: 'Ticket Transfer Received',
-      message: 'John Smith has transferred 1 ticket for "Rock Festival 2025" to you. View your tickets to see details.',
-      timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-    },
-    {
-      id: '6',
-      type: 'system',
-      title: 'Profile Update',
-      message: 'Your profile information has been updated successfully.',
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-    },
-    {
-      id: '7',
-      type: 'event',
-      title: 'New Event Available',
-      message: 'A new event "Tech Conference 2025" matching your interests is now available. Early bird tickets end in 3 days.',
-      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-    },
-    {
-      id: '8',
-      type: 'payment',
-      title: 'Refund Processed',
-      message: 'Refund of $75.00 for cancelled event "Comedy Show" has been processed. It will appear in your account within 3-5 business days.',
-      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-    },
-    {
-      id: '9',
-      type: 'booking',
-      title: 'Waitlist Spot Available',
-      message: 'A spot is now available for "Sold Out Festival"! You have 24 hours to complete your purchase before the spot is released.',
-      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-    },
-    {
-      id: '10',
-      type: 'system',
-      title: 'Security Alert',
-      message: 'New login detected from Windows PC in Ho Chi Minh City. If this wasn\'t you, please secure your account immediately.',
-      timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-  // Fetch notifications khi component mount
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
 
   const fetchNotifications = async () => {
     setIsLoading(true);
     try {
       const data = await notificationService.getNotifications();
-      setNotifications(data);
+      setNotifications(data.items);
     } catch (error) {
       console.error('[NotificationsPage] Error fetching notifications:', error);
     } finally {
@@ -159,7 +76,7 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
     if (!notification.isRead) {
       await markAsRead(notification.id);
     }
-    
+
     // Navigate based on notification type or actionUrl
     if (notification.actionUrl) {
       const route = notification.actionUrl.split('/')[1];
@@ -338,22 +255,20 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                   <div
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${
-                      !notification.isRead ? 'bg-purple-50/30 border-l-4 border-l-purple-500' : ''
-                    }`}
+                    className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${!notification.isRead ? 'bg-purple-50/30 border-l-4 border-l-purple-500' : ''
+                      }`}
                   >
                     <div className="flex gap-4">
                       <div className="flex-shrink-0 mt-1">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                          notification.type === 'booking' ? 'bg-purple-100' :
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${notification.type === 'booking' ? 'bg-purple-100' :
                           notification.type === 'event' ? 'bg-blue-100' :
-                          notification.type === 'payment' ? 'bg-green-100' :
-                          'bg-orange-100'
-                        }`}>
+                            notification.type === 'payment' ? 'bg-green-100' :
+                              'bg-orange-100'
+                          }`}>
                           {getIcon(notification.type)}
                         </div>
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4 mb-2">
                           <div className="flex items-center gap-2">
@@ -379,7 +294,7 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                             </button>
                           </div>
                         </div>
-                        
+
                         <p className="text-gray-600 text-sm leading-relaxed">
                           {notification.message}
                         </p>
@@ -408,11 +323,11 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                 <Bell size={64} className="mx-auto mb-4 opacity-20" />
                 <h3 className="text-lg font-medium text-gray-700 mb-2">No notifications found</h3>
                 <p className="text-sm">
-                  {activeFilter === 'unread' 
+                  {activeFilter === 'unread'
                     ? 'You have no unread notifications'
                     : activeType !== 'all'
-                    ? `No ${activeType} notifications`
-                    : 'You have no notifications at this time'}
+                      ? `No ${activeType} notifications`
+                      : 'You have no notifications at this time'}
                 </p>
               </div>
             )}
