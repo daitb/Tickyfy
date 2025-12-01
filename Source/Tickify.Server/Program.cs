@@ -256,36 +256,36 @@ namespace Tickify
             // 7.5. DATABASE INITIALIZATION
             // Apply migrations và seed dữ liệu ban đầu
             // ============================================
-            using (var scope = app.Services.CreateScope())
-            {
-                var services = scope.ServiceProvider;
-                var logger = services.GetRequiredService<ILogger<Program>>();
-                var context = services.GetRequiredService<ApplicationDbContext>();
+            // using (var scope = app.Services.CreateScope())
+            // {
+            //     var services = scope.ServiceProvider;
+            //     var logger = services.GetRequiredService<ILogger<Program>>();
+            //     var context = services.GetRequiredService<ApplicationDbContext>();
 
-                try
-                {
-                    logger.LogInformation("Đang kiểm tra và apply database migrations...");
+            //     try
+            //     {
+            //         logger.LogInformation("Đang kiểm tra và apply database migrations...");
                     
-                    // Apply pending migrations
-                    await context.Database.MigrateAsync();
-                    logger.LogInformation("✅ Database migrations đã được apply thành công");
+            //         // Apply pending migrations
+            //         await context.Database.MigrateAsync();
+            //         logger.LogInformation("✅ Database migrations đã được apply thành công");
 
-                    // Seed dữ liệu ban đầu (Roles, Categories, Admin user)
-                    logger.LogInformation("Đang seed dữ liệu ban đầu...");
-                    await DbInitializer.SeedAsync(context);
-                    logger.LogInformation("✅ Database seeding hoàn tất");
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "❌ Lỗi khi khởi tạo database: {Message}", ex.Message);
-                    // Không throw để app vẫn có thể start, nhưng log lỗi rõ ràng
-                    // Trong production có thể muốn throw để fail fast
-                    if (app.Environment.IsDevelopment())
-                    {
-                        throw; // Trong dev, throw để dễ debug
-                    }
-                }
-            }
+            //         // Seed dữ liệu ban đầu (Roles, Categories, Admin user)
+            //         logger.LogInformation("Đang seed dữ liệu ban đầu...");
+            //         await DbInitializer.SeedAsync(context);
+            //         logger.LogInformation("✅ Database seeding hoàn tất");
+            //     }
+            //     catch (Exception ex)
+            //     {
+            //         logger.LogError(ex, "❌ Lỗi khi khởi tạo database: {Message}", ex.Message);
+            //         // Không throw để app vẫn có thể start, nhưng log lỗi rõ ràng
+            //         // Trong production có thể muốn throw để fail fast
+            //         if (app.Environment.IsDevelopment())
+            //         {
+            //             throw; // Trong dev, throw để dễ debug
+            //         }
+            //     }
+            // }
 
             // ============================================
             // 8. MIDDLEWARE PIPELINE
