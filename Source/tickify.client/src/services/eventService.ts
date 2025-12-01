@@ -213,10 +213,12 @@ class EventService {
 
   /**
    * Get all events (returns list format)
+   * Only returns Published events for public view
    */
   async getEvents(): Promise<Event[]> {
     try {
-      const resp = await apiClient.get<PagedResult<EventListDto>>(`/events`);
+      // Filter to only show Published events on public pages
+      const resp = await apiClient.get<PagedResult<EventListDto>>(`/events?Status=Published`);
       // Handle both PagedResult and direct array response
       if (resp.data && 'items' in resp.data && Array.isArray(resp.data.items)) {
         return resp.data.items
