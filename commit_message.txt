@@ -1,0 +1,45 @@
+feat: Improve notification system, review submission, and event reviews
+
+Backend Changes:
+- Fix nullable warning in ApiResponse.SuccessResponse to accept nullable data
+
+Frontend Routing & Navigation:
+- Fix event-reviews routing to support /event-reviews/{id} URL pattern
+- Extract eventId from URL in App.tsx for event-reviews page
+- Fix TicketDetail navigation to use ticketId instead of id
+
+Review System Improvements:
+- Fix EventReviews: Add eventId support in URL routing
+- Highlight user's own reviews with purple border and badge
+- Fix syntax error in EventReviews map function closure
+- Add currentUserId detection to identify user reviews
+- Improve ReviewSubmission: Fix eventId validation logic
+- Add existing review check before submission
+- Improve error handling with Vietnamese translations
+- Add warning banner when user already reviewed event
+- Fix eventId extraction from event object instead of prop
+
+Notification System:
+- Add pagination and filtering support in NotificationsPage
+- Improve notification service with paged results
+- Fix SignalR retry policy configuration
+
+Error Handling & Compatibility:
+- Fix ErrorBoundary: Use import type for type-only imports
+- Fix i18n.ts: Replace process.env with import.meta.env for Vite
+- Improve apiClient error logging for debugging
+- Clean up unused imports and fix linter warnings
+
+Files Changed:
+- Source/Tickify.Server/Common/ApiResponse.cs
+- Source/tickify.client/src/App.tsx
+- Source/tickify.client/src/components/ErrorBoundary.tsx
+- Source/tickify.client/src/i18n.ts
+- Source/tickify.client/src/pages/EventReviews.tsx
+- Source/tickify.client/src/pages/Notifications.tsx
+- Source/tickify.client/src/pages/NotificationsPage.tsx
+- Source/tickify.client/src/pages/ReviewSubmission.tsx
+- Source/tickify.client/src/pages/TicketDetail.tsx
+- Source/tickify.client/src/services/apiClient.ts
+- Source/tickify.client/src/services/notificationSignalRService.ts
+

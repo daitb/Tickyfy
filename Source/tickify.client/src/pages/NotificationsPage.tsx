@@ -3,7 +3,7 @@ import { Bell, Check, Trash2, Filter, Calendar, Ticket, CreditCard, AlertCircle,
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import notificationService, { type Notification } from '../services/notificationService';
 
 interface NotificationsPageProps {
@@ -15,101 +15,37 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
   const [activeType, setActiveType] = useState<'all' | Notification['type']>('all');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-    {
-      id: '1',
-      type: 'booking',
-      title: 'Booking Confirmed',
-      message: 'Your booking for "Summer Music Festival 2025" has been confirmed. Booking ID: #BK-2025-001234',
-      timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-      isRead: false,
-    },
-    {
-      id: '2',
-      type: 'event',
-      title: 'Event Reminder',
-      message: 'Concert XYZ starts in 2 hours at National Stadium. Don\'t forget to bring your tickets and arrive 30 minutes early for check-in.',
-      timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-      isRead: false,
-    },
-    {
-      id: '3',
-      type: 'payment',
-      title: 'Payment Successful',
-      message: 'Payment of $150.00 has been processed successfully for 2 tickets to "Tech Conference 2025".',
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-      isRead: false,
-    },
-    {
-      id: '4',
-      type: 'event',
-      title: 'Event Cancelled',
-      message: 'Unfortunately, "Jazz Night Concert" scheduled for Dec 15 has been cancelled. Full refund will be processed within 5-7 business days.',
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-      isRead: false,
-    },
-    {
-      id: '5',
-      type: 'booking',
-      title: 'Ticket Transfer Received',
-      message: 'John Smith has transferred 1 ticket for "Rock Festival 2025" to you. View your tickets to see details.',
-      timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-    },
-    {
-      id: '6',
-      type: 'system',
-      title: 'Profile Update',
-      message: 'Your profile information has been updated successfully.',
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-    },
-    {
-      id: '7',
-      type: 'event',
-      title: 'New Event Available',
-      message: 'A new event "Tech Conference 2025" matching your interests is now available. Early bird tickets end in 3 days.',
-      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-    },
-    {
-      id: '8',
-      type: 'payment',
-      title: 'Refund Processed',
-      message: 'Refund of $75.00 for cancelled event "Comedy Show" has been processed. It will appear in your account within 3-5 business days.',
-      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-    },
-    {
-      id: '9',
-      type: 'booking',
-      title: 'Waitlist Spot Available',
-      message: 'A spot is now available for "Sold Out Festival"! You have 24 hours to complete your purchase before the spot is released.',
-      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-    },
-    {
-      id: '10',
-      type: 'system',
-      title: 'Security Alert',
-      message: 'New login detected from Windows PC in Ho Chi Minh City. If this wasn\'t you, please secure your account immediately.',
-      timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      isRead: true,
-  // Fetch notifications khi component mount
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
+  // Fetch notifications khi component mount
   const fetchNotifications = async () => {
     setIsLoading(true);
     try {
-      const data = await notificationService.getNotifications();
-      setNotifications(data);
+      const result = await notificationService.getNotifications(
+        page,
+        pageSize,
+        activeType !== 'all' ? activeType : undefined,
+        activeFilter === 'unread' ? false : undefined
+      );
+      setNotifications(result.items);
+      setTotalCount(result.totalCount);
+      setTotalCount(result.totalCount);
+      setTotalPages(result.totalPages);
     } catch (error) {
       console.error('[NotificationsPage] Error fetching notifications:', error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Fetch notifications khi component mount hoặc khi filters thay đổi
+  useEffect(() => {
+    fetchNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, activeFilter, activeType]);
 
   const getIcon = (type: Notification['type']) => {
     switch (type) {
@@ -311,7 +247,7 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as any)}>
+            <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as 'all' | 'unread')}>
               <TabsList className="w-full">
                 <TabsTrigger value="all" className="flex-1">
                   All ({notifications.length})
@@ -418,6 +354,59 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {!isLoading && filteredNotifications.length > 0 && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <div className="text-sm text-gray-600">
+              Hiển thị {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalCount)} trong tổng số {totalCount} thông báo
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                disabled={page === 1}
+              >
+                Trước
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={page === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                      className="min-w-[40px]"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={page === totalPages}
+              >
+                Sau
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
