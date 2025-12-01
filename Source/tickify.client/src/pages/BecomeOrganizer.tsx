@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Building2, Mail, Phone, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { Building2, Mail, Phone, FileText, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { organizerService } from "../services/organizerService";
 import { authService } from "../services/authService";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 interface BecomeOrganizerProps {
   onNavigate: (page: string) => void;
@@ -28,6 +29,8 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [pendingRequest, setPendingRequest] = useState<any | null>(null);
+  const [isCheckingRequest, setIsCheckingRequest] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,8 +39,8 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
     setErrorMessage("");
 
     try {
-      // POST /api/organizers/register - Register as organizer
-      const organizer = await organizerService.registerOrganizer({
+      // POST /api/organizers/register - Now creates OrganizerRequest instead of Organizer
+      const response = await organizerService.registerOrganizer({
         companyName: formData.companyName,
         businessRegistrationNumber: formData.businessRegistrationNumber || undefined,
         taxCode: formData.taxCode || undefined,
@@ -48,19 +51,30 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
         description: formData.description || undefined,
       });
       
+      // Update pending request state
+      setPendingRequest(response);
       setSubmitStatus("success");
+      toast.success("Yêu cầu đã được gửi!", {
+        description: "Admin sẽ xem xét và phê duyệt yêu cầu của bạn trong thời gian sớm nhất. Bạn sẽ nhận được email thông báo khi được phê duyệt.",
+        duration: 3000,
+      });
       
-      // Store organizer ID and redirect to dashboard after 2 seconds
+      // Redirect to home after 3 seconds
       setTimeout(() => {
-        onNavigate("organizer-dashboard");
-      }, 2000);
+        onNavigate("home");
+      }, 3000);
     } catch (error: any) {
       setSubmitStatus("error");
-      setErrorMessage(
+      const errorMsg = 
         error.response?.data?.message || 
         error.message ||
-        "Đã xảy ra lỗi khi đăng ký organizer. Vui lòng thử lại."
-      );
+        "Đã xảy ra lỗi khi gửi yêu cầu. Vui lòng thử lại.";
+      
+      setErrorMessage(errorMsg);
+      toast.error("Không thể gửi yêu cầu", {
+        description: errorMsg,
+        duration: 3000,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -75,9 +89,41 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
     });
   };
 
+  // Check if user has pending request
+  useEffect(() => {
+    const checkPendingRequest = async () => {
+      setIsCheckingRequest(true);
+      try {
+        const request = await organizerService.getMyOrganizerRequest();
+        setPendingRequest(request);
+      } catch (error) {
+        console.error("Error checking pending request:", error);
+        setPendingRequest(null);
+      } finally {
+        setIsCheckingRequest(false);
+      }
+    };
+
+    checkPendingRequest();
+  }, []);
+
   // Check if user is already authenticated
   const user = authService.getCurrentUser();
   const isOrganizer = user?.role?.toLowerCase() === "organizer";
+
+  if (isCheckingRequest) {
+    return (
+      <div className="min-h-screen bg-neutral-50 py-12 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-neutral-600">Đang kiểm tra...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (isOrganizer) {
     return (
@@ -104,6 +150,54 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
     );
   }
 
+  // Show pending request status
+  if (pendingRequest) {
+    return (
+      <div className="min-h-screen bg-neutral-50 py-12 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="text-orange-600" />
+                {t('organizer.pendingRequest', 'Yêu cầu đang chờ phê duyệt')}
+              </CardTitle>
+              <CardDescription>
+                {t('organizer.pendingRequestDesc', 'Yêu cầu trở thành organizer của bạn đang được admin xem xét. Bạn sẽ nhận được email thông báo khi có kết quả.')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-neutral-700 mb-2">
+                    {t('organizer.organizationName')}:
+                  </p>
+                  <p className="text-sm text-neutral-600">{pendingRequest.organizationName}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-neutral-700 mb-2">
+                    {t('organizer.requestDate', 'Ngày gửi yêu cầu')}:
+                  </p>
+                  <p className="text-sm text-neutral-600">
+                    {new Date(pendingRequest.requestedAt).toLocaleString("vi-VN")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-neutral-700 mb-2">
+                    {t('organizer.status', 'Trạng thái')}:
+                  </p>
+                  <p className="text-sm text-orange-600 font-semibold">{pendingRequest.status}</p>
+                </div>
+                <Button onClick={() => onNavigate("home")} variant="outline" className="w-full">
+                  {t('common.backToHome', 'Về trang chủ')}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   if (submitStatus === "success") {
     return (
       <div className="min-h-screen bg-neutral-50 py-12 px-4">
@@ -115,13 +209,18 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                 {t('organizer.successMessage')}
               </CardTitle>
               <CardDescription>
-                {t('organizer.successDescription', 'Yêu cầu của bạn đã được gửi. Admin sẽ xem xét và phê duyệt trong thời gian sớm nhất. Bạn sẽ nhận được thông báo qua email khi được phê duyệt.')}
+                {t('organizer.successDescription', 'Yêu cầu của bạn đã được gửi thành công! Admin sẽ xem xét và phê duyệt trong thời gian sớm nhất. Bạn sẽ nhận được thông báo qua email khi được phê duyệt.')}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm text-neutral-600 mb-4">
                 {t('organizer.redirecting', 'Đang chuyển hướng về trang chủ...')}
               </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>📧 Lưu ý:</strong> Hãy kiểm tra email của bạn để nhận thông báo khi yêu cầu được xử lý.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -26,10 +26,12 @@ import {
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { authService } from "../services/authService";
+import { organizerService } from "../services/organizerService";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { useWishlistToggle } from "../hooks/useWishlistToggle";
+import { useEffect, useState } from "react";
 
 interface HeaderProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -48,6 +50,26 @@ export function Header({
 }: HeaderProps) {
   const { t } = useTranslation();
   const { wishlistCount } = useWishlistToggle();
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
+  
+  // Check if user has pending organizer request
+  useEffect(() => {
+    const checkPendingRequest = async () => {
+      if (isAuthenticated && userRole === "user") {
+        try {
+          const request = await organizerService.getMyOrganizerRequest();
+          setHasPendingRequest(!!request);
+        } catch (error) {
+          console.error("Error checking pending request:", error);
+          setHasPendingRequest(false);
+        }
+      } else {
+        setHasPendingRequest(false);
+      }
+    };
+
+    checkPendingRequest();
+  }, [isAuthenticated, userRole]);
   
   const handleEventClick = (eventId: string) => {
     onNavigate("event-detail", eventId);
@@ -237,15 +259,9 @@ export function Header({
                         <Shield size={16} className="mr-2" />
                         {t("header.adminPanel")}
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onNavigate("user-management")}
-                      >
-                        <UserCog size={16} className="mr-2" />
-                        {t("header.userManagement")}
-                      </DropdownMenuItem>
                     </>
                   )}
-                  {userRole === "user" && (
+                  {userRole === "user" && !hasPendingRequest && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -253,6 +269,15 @@ export function Header({
                       >
                         <Plus size={16} className="mr-2" />
                         {t("header.becomeOrganizer")}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {userRole === "user" && hasPendingRequest && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem disabled className="text-neutral-500">
+                        <Plus size={16} className="mr-2" />
+                        {t("header.becomeOrganizer")} - {t("header.pendingApproval", "Pending Approval")}
                       </DropdownMenuItem>
                     </>
                   )}
