@@ -17,6 +17,7 @@ public class AdminService : IAdminService
     private readonly IRoleRepository _roleRepository;
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<AdminService> _logger;
 
     public AdminService(
@@ -25,6 +26,7 @@ public class AdminService : IAdminService
         IRoleRepository roleRepository,
         IUserRoleRepository userRoleRepository,
         IEmailService emailService,
+        INotificationService notificationService,
         ILogger<AdminService> logger)
     {
         _context = context;
@@ -32,6 +34,7 @@ public class AdminService : IAdminService
         _roleRepository = roleRepository;
         _userRoleRepository = userRoleRepository;
         _emailService = emailService;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -215,6 +218,20 @@ public class AdminService : IAdminService
             _logger.LogError(ex, "Failed to send event approval email for event {EventId}", eventId);
         }
 
+        // Send in-app notification to organizer
+        try
+        {
+            await _notificationService.NotifyEventApprovedAsync(
+                eventEntity.OrganizerId,
+                eventEntity.Id,
+                eventEntity.Title
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send event approval notification for event {EventId}", eventId);
+        }
+
         _logger.LogInformation("Event {EventId} approved by admin {AdminId}", eventId, adminId);
 
         return eventEntity;
@@ -259,6 +276,21 @@ public class AdminService : IAdminService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send event rejection email for event {EventId}", eventId);
+        }
+
+        // Send in-app notification to organizer
+        try
+        {
+            await _notificationService.NotifyEventRejectedAsync(
+                eventEntity.OrganizerId,
+                eventEntity.Id,
+                eventEntity.Title,
+                eventEntity.RejectionReason ?? "Rejected by admin"
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send event rejection notification for event {EventId}", eventId);
         }
 
         _logger.LogInformation("Event {EventId} rejected by admin {AdminId}", eventId, adminId);

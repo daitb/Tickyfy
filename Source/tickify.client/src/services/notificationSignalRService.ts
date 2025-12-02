@@ -73,7 +73,7 @@ class NotificationSignalRService {
         message: notificationDto.message,
         timestamp: this.formatTimestamp(notificationDto.createdAt),
         isRead: notificationDto.isRead,
-        actionUrl: notificationDto.relatedUrl,
+        actionUrl: notificationDto.actionUrl,
       };
 
       // Gọi tất cả handlers đã đăng ký
