@@ -6,12 +6,9 @@ export interface UserListDto {
   fullName: string;
   email: string;
   phoneNumber?: string;
-  avatarUrl?: string;
   role: string;
-  roles: string[];
   isActive: boolean;
   isEmailVerified: boolean;
-  emailVerified: boolean;
   createdAt: string;
 }
 
@@ -21,7 +18,6 @@ export interface UserDetailDto {
   email: string;
   phoneNumber?: string;
   profilePictureUrl?: string;
-  avatarUrl?: string;
   bio?: string;
   dateOfBirth?: string;
   gender?: string;
@@ -29,12 +25,9 @@ export interface UserDetailDto {
   city?: string;
   country?: string;
   role: string;
-  roles: string[];
   isActive: boolean;
   isEmailVerified: boolean;
-  emailVerified: boolean;
   createdAt: string;
-  updatedAt?: string;
 }
 
 export interface UserProfileDto {
