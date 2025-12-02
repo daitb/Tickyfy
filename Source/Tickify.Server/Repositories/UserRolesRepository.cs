@@ -24,22 +24,9 @@ public class UserRoleRepository : IUserRoleRepository
             .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
     }
 
-    public async Task<List<UserRole>> GetUserRolesByUserIdAsync(int userId)
-    {
-        return await _context.UserRoles
-            .Where(ur => ur.UserId == userId)
-            .ToListAsync();
-    }
-
     public async Task RemoveUserRoleAsync(UserRole userRole)
     {
         _context.UserRoles.Remove(userRole);
-        await Task.CompletedTask;
-    }
-
-    public async Task RemoveUserRolesAsync(IEnumerable<UserRole> userRoles)
-    {
-        _context.UserRoles.RemoveRange(userRoles);
         await Task.CompletedTask;
     }
 

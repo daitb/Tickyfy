@@ -84,6 +84,19 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    try {
+      await apiClient.delete(`/users/${selectedUser.userId}`);
+      setSuccess('User deleted successfully');
+      setShowDeleteDialog(false);
+      setSelectedUser(null);
+      await loadUsers();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete user');
+    }
+  };
+
   const filteredUsers = users.filter(
     (user) =>
       user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -188,6 +201,7 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -256,6 +270,29 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete User</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete user "{selectedUser?.fullName}"? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeleteUser}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
