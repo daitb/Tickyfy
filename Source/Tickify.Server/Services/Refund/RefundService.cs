@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Tickify.Data;
 using Tickify.DTOs.Refund;
 using Tickify.Interfaces.Repositories;
+using Tickify.Interfaces.Services;
 using Tickify.Models;
 using Tickify.Services.Email;
 using Tickify.Services.Payments;
@@ -27,6 +28,7 @@ public sealed class RefundService : IRefundService
     private readonly IPaymentRepository _payments;
     private readonly IPaymentService _paymentService;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly ApplicationDbContext _context;
     private readonly ILogger<RefundService> _logger;
 
@@ -36,6 +38,7 @@ public sealed class RefundService : IRefundService
         IPaymentRepository payments,
         IPaymentService paymentService,
         IEmailService emailService,
+        INotificationService notificationService,
         ApplicationDbContext context,
         ILogger<RefundService> logger)
     {
@@ -44,6 +47,7 @@ public sealed class RefundService : IRefundService
         _payments = payments;
         _paymentService = paymentService;
         _emailService = emailService;
+        _notificationService = notificationService;
         _context = context;
         _logger = logger;
     }
@@ -205,6 +209,16 @@ public sealed class RefundService : IRefundService
             _logger.LogWarning(ex, "[RefundService] Failed to send email notification for approved refund {RefundId}", id);
         }
 
+        // Send in-app notification
+        try
+        {
+            await _notificationService.NotifyRefundApprovedAsync(req.UserId, id, req.RefundAmount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[RefundService] Failed to send in-app notification for approved refund {RefundId}", id);
+        }
+
         return updated;
     }
 
@@ -251,6 +265,16 @@ public sealed class RefundService : IRefundService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "[RefundService] Failed to send email notification for rejected refund {RefundId}", id);
+        }
+
+        // Send in-app notification
+        try
+        {
+            await _notificationService.NotifyRefundRejectedAsync(req.UserId, id, dto.Reason);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[RefundService] Failed to send in-app notification for rejected refund {RefundId}", id);
         }
 
         return updated;

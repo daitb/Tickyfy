@@ -199,7 +199,8 @@ public class MappingProfile : Profile
         CreateMap<SupportMessage, SupportMessageDto>();
 
         // Notification mappings
-        CreateMap<Notification, NotificationDto>();
+        CreateMap<Notification, NotificationDto>()
+            .ForMember(dest => dest.NotificationId, opt => opt.MapFrom(src => src.Id));
         CreateMap<CreateNotificationDto, Notification>();
 
         // ============================================
