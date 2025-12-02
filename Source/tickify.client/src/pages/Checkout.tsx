@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import { Lock, CheckCircle, ShoppingBag, AlertCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -66,10 +66,12 @@ export function Checkout({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const [eventsMap, setEventsMap] = useState<Record<number, any>>({});
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [seatBookingMode, setSeatBookingMode] = useState(false);
   const steps = [
-    { number: 1, label: t('booking.checkout.step1') },
-    { number: 2, label: t('booking.checkout.step2') },
-    { number: 3, label: t('booking.checkout.step3') },
+    { number: 1, label: t("booking.checkout.step1") },
+    { number: 2, label: t("booking.checkout.step2") },
+    { number: 3, label: t("booking.checkout.step3") },
   ];
 
   // Utility: extract trailing numeric ID from strings like 'evt-1' or return number as-is
@@ -80,6 +82,22 @@ export function Checkout({
     const m = s.match(/(\d+)$/);
     return m ? parseInt(m[1], 10) : NaN;
   };
+
+  // Check if this is seat-based booking
+  useEffect(() => {
+    const seatsJson = sessionStorage.getItem("selectedSeats");
+    if (seatsJson) {
+      try {
+        const seats = JSON.parse(seatsJson);
+        if (Array.isArray(seats) && seats.length > 0) {
+          setSelectedSeats(seats);
+          setSeatBookingMode(true);
+        }
+      } catch (e) {
+        console.error("Failed to parse selected seats:", e);
+      }
+    }
+  }, []);
 
   // When cart items change, fetch event metadata from backend for display
   useEffect(() => {
@@ -108,15 +126,15 @@ export function Checkout({
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <ShoppingBag className="mx-auto mb-4 text-neutral-400" size={48} />
-          <h2 className="mb-2">{t('booking.checkout.cartEmpty')}</h2>
+          <h2 className="mb-2">{t("booking.checkout.cartEmpty")}</h2>
           <p className="text-neutral-600 mb-6">
-            {t('booking.checkout.cartEmptyMessage')}
+            {t("booking.checkout.cartEmptyMessage")}
           </p>
           <Button
             onClick={() => onNavigate("home")}
             className="bg-teal-500 hover:bg-teal-600"
           >
-            {t('booking.cart.browseEvents')}
+            {t("booking.cart.browseEvents")}
           </Button>
         </div>
       </div>
@@ -132,7 +150,7 @@ export function Checkout({
 
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
-    
+
     // Validate on change if field has been touched
     if (touchedFields[field as keyof typeof touchedFields]) {
       validateField(field, value);
@@ -145,7 +163,9 @@ export function Checkout({
   };
 
   const validateField = (field: string, value: string) => {
-    let validationResult: { isValid: boolean; error?: string } = { isValid: true };
+    let validationResult: { isValid: boolean; error?: string } = {
+      isValid: true,
+    };
 
     switch (field) {
       case "email":
@@ -181,7 +201,11 @@ export function Checkout({
     setFormErrors(errors);
     setTouchedFields({ email: true, name: true, phone: true });
 
-    return emailValidation.isValid && nameValidation.isValid && phoneValidation.isValid;
+    return (
+      emailValidation.isValid &&
+      nameValidation.isValid &&
+      phoneValidation.isValid
+    );
   };
 
   const handlePaymentMethodChange = (method: PaymentMethod, details?: any) => {
@@ -196,7 +220,7 @@ export function Checkout({
         return;
       }
     }
-    
+
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -226,15 +250,23 @@ export function Checkout({
       if (paymentMethod === "momo") {
         const momoValidation = validateMomoPhone(paymentDetails?.phone || "");
         if (!momoValidation.isValid) {
-          setError(`Thông tin thanh toán không hợp lệ: ${momoValidation.error}`);
+          setError(
+            `Thông tin thanh toán không hợp lệ: ${momoValidation.error}`
+          );
           setCurrentStep(2);
           setIsProcessing(false);
           return;
         }
       } else if (paymentMethod === "credit-card") {
-        const cardNumberValidation = validateCardNumber(paymentDetails?.number || "");
-        const cardNameValidation = validateCardholderName(paymentDetails?.name || "");
-        const cardExpiryValidation = validateCardExpiry(paymentDetails?.expiry || "");
+        const cardNumberValidation = validateCardNumber(
+          paymentDetails?.number || ""
+        );
+        const cardNameValidation = validateCardholderName(
+          paymentDetails?.name || ""
+        );
+        const cardExpiryValidation = validateCardExpiry(
+          paymentDetails?.expiry || ""
+        );
         const cardCvvValidation = validateCVV(paymentDetails?.cvv || "");
 
         if (!cardNumberValidation.isValid) {
@@ -265,7 +297,7 @@ export function Checkout({
 
       // Check if user is authenticated
       if (!authService.isAuthenticated()) {
-        setError(t('booking.checkout.loginRequired'));
+        setError(t("booking.checkout.loginRequired"));
         onNavigate("login");
         setIsProcessing(false);
         return;
@@ -278,18 +310,25 @@ export function Checkout({
       const ticketTypeId = extractTrailingNumber(firstItem.tierId);
 
       if (isNaN(eventId) || isNaN(ticketTypeId)) {
-        setError(t('booking.checkout.invalidEventOrTicket'));
+        setError(t("booking.checkout.invalidEventOrTicket"));
         return;
       }
 
       const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
       // Create booking via API with numeric IDs
-      const response = await bookingService.createBooking({
+      const bookingData: any = {
         eventId: eventId,
         ticketTypeId: ticketTypeId,
         quantity: totalQuantity,
-      });
+      };
+
+      // If seat-based booking, add seat IDs
+      if (seatBookingMode && selectedSeats.length > 0) {
+        bookingData.seatIds = selectedSeats.map((seatId) => parseInt(seatId));
+      }
+
+      const response = await bookingService.createBooking(bookingData);
 
       // Now create payment intent for the booking
       const paymentProviderMap: { [key in PaymentMethod]: "momo" | "vnpay" } = {
@@ -299,7 +338,7 @@ export function Checkout({
       };
 
       const provider = paymentProviderMap[paymentMethod];
-      
+
       try {
         const paymentIntent = await createPaymentIntent({
           bookingId: response.bookingId,
@@ -313,12 +352,16 @@ export function Checkout({
           setError("No payment redirect URL received from provider");
         }
       } catch (paymentErr: any) {
-        const errorMsg = paymentErr.response?.data?.message || t('booking.checkout.paymentInitFailed');
+        const errorMsg =
+          paymentErr.response?.data?.message ||
+          t("booking.checkout.paymentInitFailed");
         setError(errorMsg);
         toast.error(errorMsg);
       }
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || t('booking.checkout.bookingCreateFailed');
+      const errorMsg =
+        err.response?.data?.message ||
+        t("booking.checkout.bookingCreateFailed");
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -350,7 +393,12 @@ export function Checkout({
         return true; // VNPay doesn't require additional details
       }
       if (paymentMethod === "credit-card") {
-        if (!paymentDetails?.number || !paymentDetails?.name || !paymentDetails?.expiry || !paymentDetails?.cvv) {
+        if (
+          !paymentDetails?.number ||
+          !paymentDetails?.name ||
+          !paymentDetails?.expiry ||
+          !paymentDetails?.cvv
+        ) {
           return false;
         }
         return (
@@ -365,11 +413,11 @@ export function Checkout({
   };
 
   const getPaymentMethodDisplay = () => {
-    if (paymentMethod === "momo") return t('booking.checkout.momoWallet');
-    if (paymentMethod === "vnpay") return t('booking.checkout.vnpayGateway');
+    if (paymentMethod === "momo") return t("booking.checkout.momoWallet");
+    if (paymentMethod === "vnpay") return t("booking.checkout.vnpayGateway");
     if (paymentMethod === "credit-card")
       return `Card ending in ${paymentDetails?.number?.slice(-4) || "****"}`;
-    return t('booking.checkout.notSelected');
+    return t("booking.checkout.notSelected");
   };
 
   return (
@@ -377,10 +425,8 @@ export function Checkout({
       <div className="max-w-5xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="mb-2">{t('booking.checkout.title')}</h1>
-          <p className="text-neutral-600">
-            {t('booking.checkout.subtitle')}
-          </p>
+          <h1 className="mb-2">{t("booking.checkout.title")}</h1>
+          <p className="text-neutral-600">{t("booking.checkout.subtitle")}</p>
         </div>
 
         <ProgressSteps steps={steps} currentStep={currentStep} />
@@ -400,18 +446,22 @@ export function Checkout({
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="mb-6">{t('booking.checkout.contactInformation')}</h3>
+                    <h3 className="mb-6">
+                      {t("booking.checkout.contactInformation")}
+                    </h3>
                     <p className="text-neutral-600 mb-6">
-                      {t('booking.checkout.contactMessage')}
+                      {t("booking.checkout.contactMessage")}
                     </p>
 
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="email">{t('booking.checkout.emailAddress')} *</Label>
+                        <Label htmlFor="email">
+                          {t("booking.checkout.emailAddress")} *
+                        </Label>
                         <Input
                           id="email"
                           type="email"
-                          placeholder={t('booking.checkout.emailPlaceholder')}
+                          placeholder={t("booking.checkout.emailPlaceholder")}
                           value={formData.email}
                           onChange={(e) =>
                             handleInputChange("email", e.target.value)
@@ -431,25 +481,31 @@ export function Checkout({
                             <span>{formErrors.email}</span>
                           </div>
                         )}
-                        {touchedFields.email && !formErrors.email && formData.email && (
-                          <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
-                            <CheckCircle size={14} />
-                            <span>Email hợp lệ</span>
-                          </div>
-                        )}
+                        {touchedFields.email &&
+                          !formErrors.email &&
+                          formData.email && (
+                            <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                              <CheckCircle size={14} />
+                              <span>Email hợp lệ</span>
+                            </div>
+                          )}
                         {!touchedFields.email && (
                           <p className="text-xs text-neutral-500 mt-2">
-                            {t('booking.checkout.emailNote')}
+                            {t("booking.checkout.emailNote")}
                           </p>
                         )}
                       </div>
 
                       <div>
-                        <Label htmlFor="name">{t('booking.checkout.fullName')} *</Label>
+                        <Label htmlFor="name">
+                          {t("booking.checkout.fullName")} *
+                        </Label>
                         <Input
                           id="name"
                           type="text"
-                          placeholder={t('booking.checkout.fullNamePlaceholder')}
+                          placeholder={t(
+                            "booking.checkout.fullNamePlaceholder"
+                          )}
                           value={formData.name}
                           onChange={(e) =>
                             handleInputChange("name", e.target.value)
@@ -469,25 +525,29 @@ export function Checkout({
                             <span>{formErrors.name}</span>
                           </div>
                         )}
-                        {touchedFields.name && !formErrors.name && formData.name && (
-                          <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
-                            <CheckCircle size={14} />
-                            <span>Họ tên hợp lệ</span>
-                          </div>
-                        )}
+                        {touchedFields.name &&
+                          !formErrors.name &&
+                          formData.name && (
+                            <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                              <CheckCircle size={14} />
+                              <span>Họ tên hợp lệ</span>
+                            </div>
+                          )}
                         {!touchedFields.name && (
                           <p className="text-xs text-neutral-500 mt-2">
-                            {t('booking.checkout.fullNameNote')}
+                            {t("booking.checkout.fullNameNote")}
                           </p>
                         )}
                       </div>
 
                       <div>
-                        <Label htmlFor="phone">{t('booking.checkout.phoneNumber')} *</Label>
+                        <Label htmlFor="phone">
+                          {t("booking.checkout.phoneNumber")} *
+                        </Label>
                         <Input
                           id="phone"
                           type="tel"
-                          placeholder={t('booking.checkout.phonePlaceholder')}
+                          placeholder={t("booking.checkout.phonePlaceholder")}
                           value={formData.phone}
                           onChange={(e) => {
                             const formatted = formatPhoneNumber(e.target.value);
@@ -508,15 +568,17 @@ export function Checkout({
                             <span>{formErrors.phone}</span>
                           </div>
                         )}
-                        {touchedFields.phone && !formErrors.phone && formData.phone && (
-                          <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
-                            <CheckCircle size={14} />
-                            <span>Số điện thoại hợp lệ</span>
-                          </div>
-                        )}
+                        {touchedFields.phone &&
+                          !formErrors.phone &&
+                          formData.phone && (
+                            <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                              <CheckCircle size={14} />
+                              <span>Số điện thoại hợp lệ</span>
+                            </div>
+                          )}
                         {!touchedFields.phone && (
                           <p className="text-xs text-neutral-500 mt-2">
-                            {t('booking.checkout.phoneNote')}
+                            {t("booking.checkout.phoneNote")}
                           </p>
                         )}
                       </div>
@@ -530,9 +592,11 @@ export function Checkout({
                         size={18}
                       />
                       <div className="text-sm text-teal-700">
-                        <p className="mb-1">{t('booking.checkout.secureInfo')}</p>
+                        <p className="mb-1">
+                          {t("booking.checkout.secureInfo")}
+                        </p>
                         <p className="text-xs">
-                          {t('booking.checkout.secureInfoNote')}
+                          {t("booking.checkout.secureInfoNote")}
                         </p>
                       </div>
                     </div>
@@ -555,9 +619,11 @@ export function Checkout({
                         size={18}
                       />
                       <div className="text-sm text-teal-700">
-                        <p className="mb-1">{t('booking.checkout.securePayment')}</p>
+                        <p className="mb-1">
+                          {t("booking.checkout.securePayment")}
+                        </p>
                         <p className="text-xs">
-                          {t('booking.checkout.securePaymentNote')}
+                          {t("booking.checkout.securePaymentNote")}
                         </p>
                       </div>
                     </div>
@@ -569,23 +635,25 @@ export function Checkout({
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="mb-6">{t('booking.checkout.reviewOrder')}</h3>
+                    <h3 className="mb-6">
+                      {t("booking.checkout.reviewOrder")}
+                    </h3>
                     <p className="text-neutral-600 mb-6">
-                      {t('booking.checkout.reviewMessage')}
+                      {t("booking.checkout.reviewMessage")}
                     </p>
 
                     <div className="space-y-4">
                       {/* Contact Info */}
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <div className="flex items-start justify-between mb-3">
-                          <h4>{t('booking.checkout.contactInformation')}</h4>
+                          <h4>{t("booking.checkout.contactInformation")}</h4>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setCurrentStep(1)}
                             className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
                           >
-                            {t('booking.checkout.edit')}
+                            {t("booking.checkout.edit")}
                           </Button>
                         </div>
                         <div className="text-sm text-neutral-600 space-y-1">
@@ -597,11 +665,15 @@ export function Checkout({
 
                       {/* Items */}
                       <div className="bg-neutral-50 rounded-xl p-5">
-                        <h4 className="mb-4">{t('booking.checkout.ticketSummary')}</h4>
+                        <h4 className="mb-4">
+                          {t("booking.checkout.ticketSummary")}
+                        </h4>
                         <div className="space-y-3">
                           {items.map((item, index) => {
-                                                  const numericEventId = extractTrailingNumber(item.eventId);
-                                                  const event = eventsMap[numericEventId];
+                            const numericEventId = extractTrailingNumber(
+                              item.eventId
+                            );
+                            const event = eventsMap[numericEventId];
                             return (
                               <div key={index}>
                                 <div className="flex justify-between items-start">
@@ -621,7 +693,7 @@ export function Checkout({
                                       {formatPrice(item.price * item.quantity)}
                                     </div>
                                     <div className="text-sm text-neutral-500 mt-1">
-                                      {t('booking.quantity')}: {item.quantity}
+                                      {t("booking.quantity")}: {item.quantity}
                                     </div>
                                   </div>
                                 </div>
@@ -637,14 +709,14 @@ export function Checkout({
                       {/* Payment Method */}
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <div className="flex items-start justify-between mb-3">
-                          <h4>{t('booking.checkout.paymentMethod')}</h4>
+                          <h4>{t("booking.checkout.paymentMethod")}</h4>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setCurrentStep(2)}
                             className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
                           >
-                            {t('booking.checkout.edit')}
+                            {t("booking.checkout.edit")}
                           </Button>
                         </div>
                         <div className="text-sm text-neutral-600">
@@ -655,7 +727,8 @@ export function Checkout({
                       {/* Terms */}
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                         <p className="text-sm text-amber-800">
-                          <strong>{t('booking.checkout.importantNote')}</strong> {t('booking.checkout.termsNote')}
+                          <strong>{t("booking.checkout.importantNote")}</strong>{" "}
+                          {t("booking.checkout.termsNote")}
                         </p>
                       </div>
                     </div>
@@ -671,7 +744,7 @@ export function Checkout({
                     onClick={handleBack}
                     className="flex-1"
                   >
-                    {t('booking.checkout.back')}
+                    {t("booking.checkout.back")}
                   </Button>
                 )}
                 {currentStep < 3 ? (
@@ -680,7 +753,8 @@ export function Checkout({
                     disabled={!isStepValid()}
                     className="flex-1 bg-teal-500 hover:bg-teal-600"
                   >
-                    {t('booking.checkout.continueTo')} {steps[currentStep].label}
+                    {t("booking.checkout.continueTo")}{" "}
+                    {steps[currentStep].label}
                   </Button>
                 ) : (
                   <Button
@@ -690,8 +764,10 @@ export function Checkout({
                   >
                     <Lock size={16} className="mr-2" />
                     {isProcessing
-                      ? t('booking.checkout.processing')
-                      : `${t('booking.checkout.completePayment')} - ${formatPrice(total)}`}
+                      ? t("booking.checkout.processing")
+                      : `${t(
+                          "booking.checkout.completePayment"
+                        )} - ${formatPrice(total)}`}
                   </Button>
                 )}
               </div>
@@ -705,7 +781,7 @@ export function Checkout({
 
               {/* Order Items Preview */}
               <div className="mt-4 bg-white rounded-xl p-5 shadow-sm">
-                <h4 className="mb-4">{t('booking.checkout.orderItems')}</h4>
+                <h4 className="mb-4">{t("booking.checkout.orderItems")}</h4>
                 <div className="space-y-3">
                   {items.map((item, index) => (
                     <div key={index} className="text-sm">

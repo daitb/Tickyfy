@@ -43,6 +43,34 @@ namespace Tickify.Controllers
         }
 
         /// <summary>
+        /// Get seats with availability for an event (for customer booking)
+        /// </summary>
+        [HttpGet("event/{eventId}/seats")]
+        public async Task<ActionResult<List<SeatResponseDto>>> GetEventSeats(int eventId)
+        {
+            try
+            {
+                var seats = await _seatMapService.GetEventSeatsAsync(eventId);
+                return Ok(seats);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get all seat map templates (not assigned to any event) for organizers to choose from
+        /// </summary>
+        [HttpGet("templates")]
+        [Authorize(Roles = "Organizer,Admin")]
+        public async Task<ActionResult<List<SeatMapResponseDto>>> GetTemplates()
+        {
+            var templates = await _seatMapService.GetTemplatesAsync();
+            return Ok(templates);
+        }
+
+        /// <summary>
         /// Create a new seat map for an event (Organizer only)
         /// </summary>
         [HttpPost]

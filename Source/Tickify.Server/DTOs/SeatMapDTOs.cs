@@ -96,6 +96,9 @@ namespace Tickify.DTOs.SeatMap
         public string? BlockedReason { get; set; }
         public bool IsReserved { get; set; }
         public DateTime? ReservedUntil { get; set; }
+        public decimal Price { get; set; } // Giá của seat dựa trên ticket type
+        public string? ZoneName { get; set; } // Tên zone (nếu có)
+        public string? ZoneColor { get; set; } // Màu zone (nếu có)
     }
 
     public class ReserveSeatDto
