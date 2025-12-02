@@ -1,5 +1,7 @@
-import { useState, useRef } from "react";
-import { useTranslation } from 'react-i18next';
+import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { seatMapService } from "../services/seatMapService";
+import { eventService } from "../services/eventService";
 import {
   Undo2,
   Redo2,
@@ -56,6 +58,7 @@ import { toast } from "sonner";
 
 interface SeatMapBuilderProps {
   onNavigate: (page: string) => void;
+  eventId?: string | null;
 }
 
 interface Zone {
@@ -122,9 +125,22 @@ const defaultZones: Zone[] = [
   { id: "zone3", name: "Balcony", color: "#7C3AED", price: 50, capacity: 0 },
 ];
 
-export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
+export function SeatMapBuilder({
+  onNavigate,
+  eventId: eventIdProp,
+}: SeatMapBuilderProps) {
   const { t } = useTranslation();
+  // Extract numeric ID from eventId (could be "evt-1" or "1")
+  const eventId = eventIdProp
+    ? eventIdProp.includes("-")
+      ? eventIdProp.split("-")[1]
+      : eventIdProp
+    : null;
+
   const [zones, setZones] = useState<Zone[]>(defaultZones);
+  const [seatMapId, setSeatMapId] = useState<number | null>(null);
+  const [eventTitle, setEventTitle] = useState("");
+  const [loading, setLoading] = useState(true);
   const [seats, setSeats] = useState<GridSeat[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>("seat");
   const [selectedZone, setSelectedZone] = useState<string | null>(
@@ -148,6 +164,85 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     color: "#00C16A",
     price: 0,
   });
+
+  // Load existing seat map data on mount
+  useEffect(() => {
+    if (eventId) {
+      loadSeatMapData();
+    } else {
+      setLoading(false);
+    }
+  }, [eventId]);
+
+  const loadSeatMapData = async () => {
+    if (!eventId) return;
+
+    try {
+      setLoading(true);
+      console.log("[SeatMapBuilder] Loading data for event:", eventId);
+
+      // Load event info
+      const event = await eventService.getEventById(parseInt(eventId));
+      setEventTitle(event.title);
+
+      // Try to load existing seat map
+      try {
+        const seatMapData = await seatMapService.getSeatMapByEvent(eventId);
+        console.log("[SeatMapBuilder] Loaded existing seat map:", seatMapData);
+
+        setSeatMapId(parseInt(seatMapData.id.toString()));
+        setGridSize({
+          rows: seatMapData.totalRows,
+          cols: seatMapData.totalColumns,
+        });
+
+        // Load zones from seat map
+        if (seatMapData.zones && seatMapData.zones.length > 0) {
+          console.log(
+            "[SeatMapBuilder] Raw zones from API:",
+            seatMapData.zones
+          );
+          const loadedZones: Zone[] = seatMapData.zones.map((z) => ({
+            id: z.id.toString(),
+            name: z.name,
+            color: z.color || "#00C16A",
+            price: z.zonePrice,
+            capacity: z.capacity,
+          }));
+          console.log("[SeatMapBuilder] Mapped zones:", loadedZones);
+          setZones(loadedZones);
+          setSelectedZone(loadedZones[0]?.id || null);
+        }
+
+        // Load seats
+        const seatsData = await seatMapService.getEventSeats(eventId);
+        console.log("[SeatMapBuilder] Loaded seats:", seatsData.length);
+
+        const loadedSeats: GridSeat[] = seatsData.map((s) => ({
+          id: s.id.toString(),
+          row: s.gridRow || 0,
+          col: s.gridColumn || 0,
+          zoneId: s.seatZoneId?.toString() || null,
+          isBlocked: s.isBlocked,
+          isWheelchair: s.blockedReason === "wheelchair" || false, // Use blockedReason as temporary wheelchair indicator
+          label: s.fullSeatCode,
+        }));
+
+        setSeats(loadedSeats);
+        addToHistory(loadedSeats);
+
+        toast.success("Seat map loaded successfully");
+      } catch (err) {
+        console.log("[SeatMapBuilder] No existing seat map, starting fresh");
+        // No existing seat map, start fresh
+      }
+    } catch (error) {
+      console.error("Error loading seat map data:", error);
+      toast.error("Failed to load event data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const addToHistory = (newSeats: GridSeat[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -231,17 +326,36 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
       return;
     }
 
-    const zone: Zone = {
-      id: `zone${zones.length + 1}`,
-      ...newZone,
-      capacity: 0,
-    };
+    if (editingZone) {
+      // Update existing zone
+      setZones(
+        zones.map((z) =>
+          z.id === editingZone.id
+            ? {
+                ...z,
+                name: newZone.name,
+                color: newZone.color,
+                price: newZone.price,
+              }
+            : z
+        )
+      );
+      toast.success("Zone updated successfully");
+    } else {
+      // Create new zone
+      const zone: Zone = {
+        id: `zone${Date.now()}`,
+        ...newZone,
+        capacity: 0,
+      };
+      setZones([...zones, zone]);
+      setSelectedZone(zone.id);
+      toast.success("Zone created successfully");
+    }
 
-    setZones([...zones, zone]);
-    setSelectedZone(zone.id);
     setNewZone({ name: "", color: "#00C16A", price: 0 });
+    setEditingZone(null);
     setShowZoneModal(false);
-    toast.success("Zone created successfully");
   };
 
   const handleDeleteZone = (zoneId: string) => {
@@ -323,6 +437,21 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     return zone?.color || "#E0E0E0";
   };
 
+  // Calculate contrasting text color based on background
+  const getTextColor = (bgColor: string) => {
+    // Convert hex to RGB
+    const hex = bgColor.replace("#", "");
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    // Return black for light backgrounds, white for dark backgrounds
+    return luminance > 0.5 ? "#000000" : "#FFFFFF";
+  };
+
   const getTotalCapacity = () => {
     return seats.filter((s) => !s.isBlocked).length;
   };
@@ -331,15 +460,59 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     return seats.filter((s) => s.zoneId === zoneId && !s.isBlocked).length;
   };
 
-  const handleSave = () => {
-    toast.success("Seat map saved as draft");
+  const handleSave = async () => {
+    if (!eventId) {
+      toast.error("Event ID is missing");
+      return;
+    }
+
+    try {
+      // Include all seat properties including wheelchair status
+      const layoutData = {
+        zones,
+        seats: seats.map((s) => ({
+          ...s,
+          isWheelchair: s.isWheelchair || false,
+          isBlocked: s.isBlocked || false,
+        })),
+      };
+      console.log("[SeatMapBuilder] Saving layout:", layoutData);
+
+      const payload = {
+        eventId: eventId,
+        name: `${eventTitle || "Event"} Seat Map`,
+        description: "Seat map created with builder",
+        totalRows: gridSize.rows,
+        totalColumns: gridSize.cols,
+        layoutConfig: JSON.stringify(layoutData),
+      };
+
+      if (seatMapId) {
+        // Update existing
+        await seatMapService.updateSeatMap(seatMapId.toString(), {
+          ...payload,
+          isActive: true,
+        });
+        toast.success("Seat map updated successfully");
+      } else {
+        // Create new
+        const created = await seatMapService.createSeatMap(payload);
+        setSeatMapId(created.id);
+        toast.success("Seat map saved successfully");
+      }
+    } catch (error) {
+      console.error("Error saving seat map:", error);
+      toast.error("Failed to save seat map");
+    }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (seats.length === 0) {
       toast.error("Please add seats before publishing");
       return;
     }
+
+    await handleSave();
     toast.success("Seat map published successfully!");
   };
 
@@ -586,7 +759,10 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                         ? "border-teal-500 bg-teal-50"
                         : "border-neutral-200 hover:border-neutral-300"
                     }`}
-                    onClick={() => setSelectedZone(zone.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedZone(zone.id);
+                    }}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -603,6 +779,11 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingZone(zone);
+                            setNewZone({
+                              name: zone.name,
+                              color: zone.color,
+                              price: zone.price,
+                            });
                             setShowZoneModal(true);
                           }}
                           className="text-neutral-400 hover:text-neutral-600"
@@ -710,7 +891,9 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                           backgroundColor: seat
                             ? getSeatColor(seat)
                             : undefined,
-                          color: seat ? "#fff" : "#999",
+                          color: seat
+                            ? getTextColor(getSeatColor(seat))
+                            : "#999",
                         }}
                       >
                         {seat && (
@@ -718,7 +901,9 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                             {seat.isWheelchair ? (
                               <span className="text-xs">♿</span>
                             ) : seat.label ? (
-                              <span className="text-[8px]">{seat.label}</span>
+                              <span className="text-[8px] font-semibold">
+                                {seat.label}
+                              </span>
                             ) : (
                               <Armchair size={16} />
                             )}

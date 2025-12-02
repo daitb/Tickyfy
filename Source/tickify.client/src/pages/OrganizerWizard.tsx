@@ -853,23 +853,19 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
                     {seatMapTemplates.map((template) => (
                       <div
-                        key={template.seatMapId}
+                        key={template.id}
                         className="flex items-center gap-2"
                       >
                         <input
                           type="radio"
-                          id={`seatmap-${template.seatMapId}`}
+                          id={`seatmap-${template.id}`}
                           name="seatmap"
-                          checked={
-                            selectedSeatMapId === parseInt(template.seatMapId)
-                          }
-                          onChange={() =>
-                            setSelectedSeatMapId(parseInt(template.seatMapId))
-                          }
+                          checked={selectedSeatMapId === template.id}
+                          onChange={() => setSelectedSeatMapId(template.id)}
                           className="w-4 h-4"
                         />
                         <Label
-                          htmlFor={`seatmap-${template.seatMapId}`}
+                          htmlFor={`seatmap-${template.id}`}
                           className="cursor-pointer"
                         >
                           {template.name} ({template.totalRows} ×{" "}

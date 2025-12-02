@@ -2,42 +2,52 @@ import apiClient from "./apiClient";
 
 // ===== INTERFACES =====
 export interface SeatDto {
-  seatId: string;
-  row: number;
-  seatNumber: number;
-  gridRow: number;
-  gridColumn: number;
-  status: "Available" | "Reserved" | "Sold";
+  id: number;
+  ticketTypeId: number;
+  seatZoneId: number | null;
+  row: string;
+  seatNumber: string;
+  fullSeatCode: string;
+  gridRow: number | null;
+  gridColumn: number | null;
+  status: string;
+  isBlocked: boolean;
+  blockedReason?: string;
+  isReserved: boolean;
+  reservedUntil?: string;
   price: number;
-  seatZoneId: string;
+  zoneName?: string;
+  zoneColor?: string;
 }
 
 export interface SeatZoneDto {
-  seatZoneId: string;
+  id: number;
+  seatMapId: number;
+  ticketTypeId: number;
   name: string;
-  color: string;
+  color: string | null;
   description?: string;
-  rowStart: number;
-  rowEnd: number;
-  columnStart: number;
-  columnEnd: number;
+  startRow: number;
+  endRow: number;
+  startColumn: number;
+  endColumn: number;
   zonePrice: number;
   capacity: number;
   availableSeats: number;
-  seats: SeatDto[];
+  isActive: boolean;
 }
 
 export interface SeatMapDto {
-  seatMapId: string;
-  eventId: string;
+  id: number;
+  eventId: number;
   name: string;
-  layoutConfig?: string;
+  description?: string;
+  layoutConfig: string;
   totalRows: number;
   totalColumns: number;
   isActive: boolean;
   createdAt: string;
   zones: SeatZoneDto[];
-  seats: SeatDto[];
 }
 
 export interface CreateSeatMapDto {

@@ -33,7 +33,7 @@ export function SeatSelectionReal({ onNavigate }: SeatSelectionRealProps) {
     totalColumns: number;
   } | null>(null);
   const [event, setEvent] = useState<Event | null>(null);
-  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [error, setError] = useState<string>("");
   const [timeRemaining, setTimeRemaining] = useState(600); // 10 minutes
 
@@ -100,8 +100,8 @@ export function SeatSelectionReal({ onNavigate }: SeatSelectionRealProps) {
     }
   };
 
-  const toggleSeat = (seatId: string) => {
-    const seat = seats.find((s) => s.seatId === seatId);
+  const toggleSeat = (seatId: number) => {
+    const seat = seats.find((s) => s.id === seatId);
     if (!seat || seat.status !== "Available") return;
 
     setSelectedSeats((prev) =>
@@ -112,7 +112,7 @@ export function SeatSelectionReal({ onNavigate }: SeatSelectionRealProps) {
   };
 
   const getSeatStatus = (seat: SeatDto) => {
-    if (selectedSeats.includes(seat.seatId)) return "selected";
+    if (selectedSeats.includes(seat.id)) return "selected";
     return seat.status.toLowerCase();
   };
 
@@ -125,7 +125,7 @@ export function SeatSelectionReal({ onNavigate }: SeatSelectionRealProps) {
 
   const getTotalPrice = () => {
     return selectedSeats.reduce((total, seatId) => {
-      const seat = seats.find((s) => s.seatId === seatId);
+      const seat = seats.find((s) => s.id === seatId);
       return total + (seat?.price || 0);
     }, 0);
   };
@@ -155,6 +155,8 @@ export function SeatSelectionReal({ onNavigate }: SeatSelectionRealProps) {
     // Place seats in grid
     seats.forEach((seat) => {
       if (
+        seat.gridRow !== null &&
+        seat.gridColumn !== null &&
         seat.gridRow !== undefined &&
         seat.gridColumn !== undefined &&
         seat.gridRow < seatMap.totalRows &&
@@ -162,12 +164,11 @@ export function SeatSelectionReal({ onNavigate }: SeatSelectionRealProps) {
       ) {
         grid[seat.gridRow][seat.gridColumn] = (
           <button
-            key={seat.seatId}
-            onClick={() => toggleSeat(seat.seatId)}
+            key={seat.id}
+            onClick={() => toggleSeat(seat.id)}
             disabled={seat.status !== "Available"}
             className={`w-10 h-10 rounded text-xs font-medium transition-all border ${
-              seat.status !== "Available" &&
-              !selectedSeats.includes(seat.seatId)
+              seat.status !== "Available" && !selectedSeats.includes(seat.id)
                 ? "cursor-not-allowed opacity-50"
                 : "hover:scale-110 cursor-pointer"
             }`}
@@ -347,7 +348,7 @@ export function SeatSelectionReal({ onNavigate }: SeatSelectionRealProps) {
                   ) : (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                       {selectedSeats.map((seatId) => {
-                        const seat = seats.find((s) => s.seatId === seatId);
+                        const seat = seats.find((s) => s.id === seatId);
                         if (!seat) return null;
                         return (
                           <div
