@@ -26,7 +26,7 @@ public sealed class RefundService : IRefundService
     private readonly IRefundRequestRepository _repo;
     private readonly IBookingRepository _bookings;
     private readonly IPaymentRepository _payments;
-    private readonly IPaymentService _paymentService;
+    private readonly Payments.IPaymentService _paymentService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
     private readonly ApplicationDbContext _context;
@@ -36,7 +36,7 @@ public sealed class RefundService : IRefundService
         IRefundRequestRepository repo,
         IBookingRepository bookings,
         IPaymentRepository payments,
-        IPaymentService paymentService,
+        Payments.IPaymentService paymentService,
         IEmailService emailService,
         INotificationService notificationService,
         ApplicationDbContext context,
