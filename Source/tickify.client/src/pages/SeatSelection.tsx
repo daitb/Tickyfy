@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ZoomIn, ZoomOut, Maximize2, Search, Info, Star, Clock, Check, X, ChevronDown, MapPin, Users } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -107,6 +108,7 @@ const generateSeats = (): Seat[] => {
 };
 
 export function SeatSelection({ onNavigate }: SeatSelectionProps) {
+  const { t } = useTranslation();
   const [seats, setSeats] = useState<Seat[]>(generateSeats());
   const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [hoveredSeat, setHoveredSeat] = useState<Seat | null>(null);

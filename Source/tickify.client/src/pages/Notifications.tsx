@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Bell,
   Ticket,
@@ -17,6 +18,7 @@ import {
   Settings,
   CheckCheck,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -38,103 +40,63 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
+import notificationService, { type Notification } from '../services/notificationService';
 
 interface NotificationsProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, id?: string) => void;
 }
-
-interface Notification {
-  id: string;
-  type: 'ticket' | 'event' | 'promo' | 'system' | 'payment';
-  title: string;
-  message: string;
-  timestamp: string;
-  isRead: boolean;
-  actionLink?: string;
-  actionText?: string;
-}
-
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'ticket',
-    title: 'Ticket purchased successfully',
-    message: 'Your ticket for Summer Music Festival has been confirmed',
-    timestamp: '2 hours ago',
-    isRead: false,
-    actionLink: 'my-tickets',
-    actionText: 'View Ticket',
-  },
-  {
-    id: '2',
-    type: 'event',
-    title: 'Event reminder',
-    message: 'Summer Music Festival starts in 24 hours',
-    timestamp: '3 hours ago',
-    isRead: false,
-    actionLink: 'event-detail',
-    actionText: 'View Event',
-  },
-  {
-    id: '3',
-    type: 'payment',
-    title: 'Payment received',
-    message: 'You received 500,000 VND from ticket sales',
-    timestamp: '5 hours ago',
-    isRead: true,
-  },
-  {
-    id: '4',
-    type: 'promo',
-    title: 'New promo code available',
-    message: 'SUMMER50 - Get 50% off on selected events',
-    timestamp: '1 day ago',
-    isRead: true,
-    actionLink: 'listing',
-    actionText: 'Browse Events',
-  },
-  {
-    id: '5',
-    type: 'ticket',
-    title: 'Ticket transfer accepted',
-    message: 'John Doe has accepted your ticket transfer',
-    timestamp: '2 days ago',
-    isRead: true,
-  },
-  {
-    id: '6',
-    type: 'system',
-    title: 'Password changed',
-    message: 'Your password was successfully updated',
-    timestamp: '3 days ago',
-    isRead: true,
-  },
-  {
-    id: '7',
-    type: 'event',
-    title: 'Event cancelled',
-    message: 'Concert Night has been cancelled. Refund processed.',
-    timestamp: '4 days ago',
-    isRead: true,
-  },
-];
 
 export function Notifications({ onNavigate }: NotificationsProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('all');
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const getIcon = (type: string) => {
+  // Fetch notifications khi component mount
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  const fetchNotifications = async () => {
+    setIsLoading(true);
+    try {
+      const result = await notificationService.getNotifications(
+        page,
+        pageSize,
+        activeTab !== 'all' && activeTab !== 'unread' ? activeTab : undefined,
+        activeTab === 'unread' ? false : undefined
+      );
+      setNotifications(result.items);
+      setTotalCount(result.totalCount);
+      setTotalPages(result.totalPages);
+    } catch (error) {
+      console.error('[Notifications] Error fetching notifications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch lại khi page hoặc activeTab thay đổi
+  useEffect(() => {
+    fetchNotifications();
+  }, [page, activeTab]);
+
+  const getIcon = (type: Notification['type']) => {
     const iconClass = 'w-5 h-5';
     switch (type) {
+      case 'booking':
       case 'ticket':
         return <Ticket className={iconClass} />;
       case 'event':
         return <Calendar className={iconClass} />;
-      case 'promo':
-        return <Tag className={iconClass} />;
       case 'payment':
         return <DollarSign className={iconClass} />;
       case 'system':
@@ -144,14 +106,13 @@ export function Notifications({ onNavigate }: NotificationsProps) {
     }
   };
 
-  const getIconColor = (type: string) => {
+  const getIconColor = (type: Notification['type']) => {
     switch (type) {
+      case 'booking':
       case 'ticket':
         return 'bg-teal-100 text-teal-600';
       case 'event':
         return 'bg-green-100 text-green-600';
-      case 'promo':
-        return 'bg-purple-100 text-purple-600';
       case 'payment':
         return 'bg-blue-100 text-blue-600';
       case 'system':
@@ -161,24 +122,42 @@ export function Notifications({ onNavigate }: NotificationsProps) {
     }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  const markAsRead = async (id: string) => {
+    const success = await notificationService.markAsRead(id);
+    if (success) {
+      setNotifications(prev =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
+  const markAllAsRead = async () => {
+    const success = await notificationService.markAllAsRead();
+    if (success) {
+      setNotifications(prev => prev.map((n) => ({ ...n, isRead: true })));
+    }
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter((n) => n.id !== id));
+  const deleteNotification = async (id: string) => {
+    const success = await notificationService.deleteNotification(id);
+    if (success) {
+      setNotifications(prev => prev.filter((n) => n.id !== id));
+    }
   };
 
   const filterNotifications = (type?: string) => {
     if (!type || type === 'all') return notifications;
     if (type === 'unread') return notifications.filter((n) => !n.isRead);
-    return notifications.filter((n) => n.type === type);
+    // Map frontend types to match filter tabs
+    const typeMap: Record<string, Notification['type']> = {
+      'ticket': 'ticket',
+      'event': 'event',
+      'promo': 'event', // Promo notifications map to event type
+      'payment': 'payment',
+      'system': 'system',
+    };
+    const mappedType = typeMap[type] || type as Notification['type'];
+    return notifications.filter((n) => n.type === mappedType);
   };
 
   const filteredNotifications = filterNotifications(activeTab);
@@ -186,12 +165,19 @@ export function Notifications({ onNavigate }: NotificationsProps) {
   // Group notifications by date
   const groupedNotifications = filteredNotifications.reduce(
     (groups, notification) => {
-      const time = notification.timestamp;
-      let group = 'Older';
+      const time = notification.timestamp.toLowerCase();
+      let group = 'Cũ hơn';
       
-      if (time.includes('hour')) group = 'Today';
-      else if (time === '1 day ago') group = 'Yesterday';
-      else if (time.includes('day') && parseInt(time) <= 7) group = 'This Week';
+      if (time.includes('vừa xong') || time.includes('phút') || time.includes('giờ')) {
+        group = 'Hôm nay';
+      } else if (time.includes('hôm qua') || time.includes('ngày') && time.includes('1')) {
+        group = 'Hôm qua';
+      } else if (time.includes('ngày') || time.includes('tuần')) {
+        const dayMatch = time.match(/(\d+)/);
+        if (dayMatch && parseInt(dayMatch[1]) <= 7) {
+          group = 'Tuần này';
+        }
+      }
 
       if (!groups[group]) groups[group] = [];
       groups[group].push(notification);
@@ -242,12 +228,19 @@ export function Notifications({ onNavigate }: NotificationsProps) {
         </Tabs>
 
         {/* Notifications List */}
-        {filteredNotifications.length === 0 ? (
+        {isLoading ? (
+          <Card className="p-16">
+            <div className="text-center">
+              <Loader2 className="mx-auto text-teal-500 mb-4 animate-spin" size={48} />
+              <h3 className="text-neutral-900 mb-2">Đang tải thông báo...</h3>
+            </div>
+          </Card>
+        ) : filteredNotifications.length === 0 ? (
           <Card className="p-16">
             <div className="text-center">
               <CheckCircle className="mx-auto text-green-500 mb-4" size={64} />
-              <h3 className="text-neutral-900 mb-2">You're all caught up!</h3>
-              <p className="text-neutral-600">No new notifications</p>
+              <h3 className="text-neutral-900 mb-2">Bạn đã xem hết!</h3>
+              <p className="text-neutral-600">Không có thông báo mới</p>
             </div>
           </Card>
         ) : (
@@ -262,10 +255,20 @@ export function Notifications({ onNavigate }: NotificationsProps) {
                       className={`relative cursor-pointer transition-all hover:shadow-md ${
                         !notification.isRead ? 'bg-teal-50 border-teal-200' : ''
                       }`}
-                      onClick={() => {
-                        markAsRead(notification.id);
-                        if (notification.actionLink) {
-                          onNavigate(notification.actionLink);
+                      onClick={async () => {
+                        if (!notification.isRead) {
+                          await markAsRead(notification.id);
+                        }
+                        if (notification.actionUrl) {
+                          const route = notification.actionUrl.split('/')[1];
+                          const id = notification.actionUrl.split('/')[2];
+                          if (route === 'orders' || route === 'bookings') {
+                            onNavigate('my-tickets');
+                          } else if (route === 'events') {
+                            onNavigate('event-detail', id);
+                          } else {
+                            onNavigate(route, id);
+                          }
                         }
                       }}
                     >
@@ -293,20 +296,28 @@ export function Notifications({ onNavigate }: NotificationsProps) {
                             <p className="text-sm text-neutral-600 mb-2">
                               {notification.message}
                             </p>
-                            {notification.actionText && (
+                            {notification.actionUrl && (
                               <Button
                                 variant="link"
                                 size="sm"
                                 className="text-teal-600 p-0 h-auto"
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.stopPropagation();
-                                  markAsRead(notification.id);
-                                  if (notification.actionLink) {
-                                    onNavigate(notification.actionLink);
+                                  if (!notification.isRead) {
+                                    await markAsRead(notification.id);
+                                  }
+                                  const route = notification.actionUrl?.split('/')[1];
+                                  const id = notification.actionUrl?.split('/')[2];
+                                  if (route === 'orders' || route === 'bookings') {
+                                    onNavigate('my-tickets');
+                                  } else if (route === 'events') {
+                                    onNavigate('event-detail', id);
+                                  } else if (route) {
+                                    onNavigate(route, id);
                                   }
                                 }}
                               >
-                                {notification.actionText} →
+                                Xem chi tiết →
                               </Button>
                             )}
                           </div>
@@ -349,10 +360,57 @@ export function Notifications({ onNavigate }: NotificationsProps) {
           </div>
         )}
 
-        {/* Load More */}
-        {filteredNotifications.length > 0 && (
-          <div className="text-center mt-6">
-            <Button variant="outline">Load More</Button>
+        {/* Pagination */}
+        {filteredNotifications.length > 0 && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <div className="text-sm text-neutral-600">
+              Hiển thị {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalCount)} trong tổng số {totalCount} thông báo
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                disabled={page === 1 || isLoading}
+              >
+                Trước
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={page === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                      disabled={isLoading}
+                      className="min-w-[40px]"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={page === totalPages || isLoading}
+              >
+                Sau
+              </Button>
+            </div>
           </div>
         )}
       </div>

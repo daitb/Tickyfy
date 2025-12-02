@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Check,
@@ -44,6 +45,7 @@ interface RefundRequestProps {
 }
 
 export function RefundRequest({ orderId, onNavigate }: RefundRequestProps) {
+  const { t } = useTranslation();
   const [selectedOrderId, setSelectedOrderId] = useState(orderId || '');
   const [refundReason, setRefundReason] = useState('');
   const [additionalDetails, setAdditionalDetails] = useState('');

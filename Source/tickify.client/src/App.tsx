@@ -1,45 +1,188 @@
-import { useState, useEffect } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  Suspense,
+  lazy,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { EventReviews } from "./pages/EventReviews";
-import { RefundRequest } from "./pages/RefundRequest";
-import { NotificationPreferences } from "./pages/NotificationPreferences";
-import { SeatMapBuilder } from "./pages/SeatMapBuilder";
-import { AdminDashboard } from "./pages/AdminDashboard";
-import { Home } from "./pages/Home";
-import { EventListing } from "./pages/EventListing";
-import { EventDetail } from "./pages/EventDetail";
-import { Cart } from "./pages/Cart";
-import { Checkout } from "./pages/Checkout";
-import { Success } from "./pages/Success";
-import { MyTickets } from "./pages/MyTickets";
-import { OrderDetail } from "./pages/OrderDetail";
-import { TicketDetail } from "./pages/TicketDetail";
-import { TransferTicket } from "./pages/TransferTicket";
-import { Wishlist } from "./pages/Wishlist";
-import { Waitlist } from "./pages/Waitlist";
-import { OrganizerWizard } from "./pages/OrganizerWizard";
-import { OrganizerDashboard } from "./pages/OrganizerDashboard";
-import { EventManagement } from "./pages/EventManagement";
-import { EventAnalytics } from "./pages/EventAnalytics";
-import { EditEvent } from "./pages/EditEvent";
-import { ScanHistory } from "./pages/ScanHistory";
-import { PromoCodeManagement } from "./pages/PromoCodeManagement";
-import { Notifications } from "./pages/Notifications";
-import { ResetPassword } from "./pages/ResetPassword";
-import { UserProfile } from "./pages/UserProfile";
-import { SeatSelection } from "./pages/SeatSelection";
-import { ReviewSubmission } from "./pages/ReviewSubmission";
-import { QRScanner } from "./pages/QRScanner";
-import { EmailVerification } from "./pages/EmailVerification";
-import { PasswordChange } from "./pages/PasswordChange";
-import { Login } from "./pages/Login";
-import { Register } from "./pages/Register";
-import { ForgotPassword } from "./pages/ForgotPassword";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { LoadingFallback } from "./components/LoadingFallback";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import type { CartItem, Order } from "./types";
 import { mockOrders } from "./mockData";
 import { authService } from "./services/authService";
+import { Toaster } from "./components/ui/sonner";
+
+// Lazy load các pages lớn để giảm initial bundle size
+const EventReviews = lazy(() =>
+  import("./pages/EventReviews").then((m) => ({ default: m.EventReviews }))
+);
+const RefundRequest = lazy(() =>
+  import("./pages/RefundRequest").then((m) => ({ default: m.RefundRequest }))
+);
+const NotificationPreferences = lazy(() =>
+  import("./pages/NotificationPreferences").then((m) => ({
+    default: m.NotificationPreferences,
+  }))
+);
+const SeatMapBuilder = lazy(() =>
+  import("./pages/SeatMapBuilder").then((m) => ({ default: m.SeatMapBuilder }))
+);
+const AdminDashboard = lazy(() =>
+  import("./pages/AdminDashboard").then((m) => ({ default: m.AdminDashboard }))
+);
+const EventListing = lazy(() =>
+  import("./pages/EventListing").then((m) => ({ default: m.EventListing }))
+);
+const EventDetail = lazy(() =>
+  import("./pages/EventDetail").then((m) => ({ default: m.EventDetail }))
+);
+const Cart = lazy(() =>
+  import("./pages/Cart").then((m) => ({ default: m.Cart }))
+);
+const Checkout = lazy(() =>
+  import("./pages/Checkout").then((m) => ({ default: m.Checkout }))
+);
+const Success = lazy(() =>
+  import("./pages/Success").then((m) => ({ default: m.Success }))
+);
+const MyTickets = lazy(() =>
+  import("./pages/MyTickets").then((m) => ({ default: m.MyTickets }))
+);
+const OrderDetail = lazy(() =>
+  import("./pages/OrderDetail").then((m) => ({ default: m.OrderDetail }))
+);
+const TicketDetail = lazy(() =>
+  import("./pages/TicketDetail").then((m) => ({ default: m.TicketDetail }))
+);
+const TransferTicket = lazy(() =>
+  import("./pages/TransferTicket").then((m) => ({ default: m.TransferTicket }))
+);
+const Wishlist = lazy(() =>
+  import("./pages/Wishlist").then((m) => ({ default: m.Wishlist }))
+);
+const Waitlist = lazy(() =>
+  import("./pages/Waitlist").then((m) => ({ default: m.Waitlist }))
+);
+const OrganizerWizard = lazy(() =>
+  import("./pages/OrganizerWizard").then((m) => ({
+    default: m.OrganizerWizard,
+  }))
+);
+const CreateEvent = lazy(() =>
+  import("./pages/CreateEvent").then((m) => ({ default: m.CreateEvent }))
+);
+const OrganizerDashboard = lazy(() =>
+  import("./pages/OrganizerDashboard").then((m) => ({
+    default: m.OrganizerDashboard,
+  }))
+);
+const EventManagement = lazy(() =>
+  import("./pages/EventManagement").then((m) => ({
+    default: m.EventManagement,
+  }))
+);
+const EventAnalytics = lazy(() =>
+  import("./pages/EventAnalytics").then((m) => ({ default: m.EventAnalytics }))
+);
+const EditEvent = lazy(() =>
+  import("./pages/EditEvent").then((m) => ({ default: m.EditEvent }))
+);
+const EditSeatMap = lazy(() =>
+  import("./pages/EditSeatMap").then((m) => ({ default: m.EditSeatMap }))
+);
+const ScanHistory = lazy(() =>
+  import("./pages/ScanHistory").then((m) => ({ default: m.ScanHistory }))
+);
+const PromoCodeManagement = lazy(() =>
+  import("./pages/PromoCodeManagement").then((m) => ({
+    default: m.PromoCodeManagement,
+  }))
+);
+const OrganizerPayouts = lazy(() =>
+  import("./pages/OrganizerPayouts").then((m) => ({
+    default: m.OrganizerPayouts,
+  }))
+);
+const NotificationsPage = lazy(() =>
+  import("./pages/NotificationsPage").then((m) => ({
+    default: m.NotificationsPage,
+  }))
+);
+const ResetPassword = lazy(() =>
+  import("./pages/ResetPassword").then((m) => ({ default: m.ResetPassword }))
+);
+const UserProfile = lazy(() =>
+  import("./pages/UserProfile").then((m) => ({ default: m.UserProfile }))
+);
+const SeatSelectionReal = lazy(() =>
+  import("./pages/SeatSelectionReal").then((m) => ({
+    default: m.SeatSelectionReal,
+  }))
+);
+const ReviewSubmission = lazy(() =>
+  import("./pages/ReviewSubmission").then((m) => ({
+    default: m.ReviewSubmission,
+  }))
+);
+const QRScanner = lazy(() =>
+  import("./pages/QRScanner").then((m) => ({ default: m.QRScanner }))
+);
+const EmailVerification = lazy(() =>
+  import("./pages/EmailVerification").then((m) => ({
+    default: m.EmailVerification,
+  }))
+);
+const PasswordChange = lazy(() =>
+  import("./pages/PasswordChange").then((m) => ({ default: m.PasswordChange }))
+);
+const ChatPage = lazy(() =>
+  import("./pages/ChatPage").then((m) => ({ default: m.ChatPage }))
+);
+const StaffChatPage = lazy(() =>
+  import("./pages/StaffChatPage").then((m) => ({ default: m.StaffChatPage }))
+);
+const BecomeOrganizer = lazy(() =>
+  import("./pages/BecomeOrganizer").then((m) => ({
+    default: m.BecomeOrganizer,
+  }))
+);
+const PaymentReturn = lazy(() => import("./pages/PaymentReturn"));
+const About = lazy(() =>
+  import("./pages/About").then((m) => ({ default: m.About }))
+);
+const Privacy = lazy(() =>
+  import("./pages/Privacy").then((m) => ({ default: m.Privacy }))
+);
+const Terms = lazy(() =>
+  import("./pages/Terms").then((m) => ({ default: m.Terms }))
+);
+const FAQ = lazy(() => import("./pages/FAQ").then((m) => ({ default: m.FAQ })));
+const Contact = lazy(() =>
+  import("./pages/Contact").then((m) => ({ default: m.Contact }))
+);
+const RefundPolicy = lazy(() =>
+  import("./pages/RefundPolicy").then((m) => ({ default: m.RefundPolicy }))
+);
+const ForOrganizers = lazy(() =>
+  import("./pages/ForOrganizers").then((m) => ({ default: m.ForOrganizers }))
+);
+const HelpCenter = lazy(() =>
+  import("./pages/HelpCenter").then((m) => ({ default: m.HelpCenter }))
+);
+const Error = lazy(() =>
+  import("./pages/Error").then((m) => ({ default: m.Error }))
+);
+
+// Keep frequently used pages non-lazy for faster initial load
+import { Home } from "./pages/Home";
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
+import { ForgotPassword } from "./pages/ForgotPassword";
 
 type Page =
   | "home"
@@ -54,13 +197,16 @@ type Page =
   | "transfer-ticket"
   | "wishlist"
   | "waitlist"
+  | "create-event"
   | "organizer-wizard"
   | "organizer-dashboard"
   | "event-management"
   | "event-analytics"
   | "edit-event"
+  | "edit-seat-map"
   | "scan-history"
   | "promo-codes"
+  | "organizer-payouts"
   | "notifications"
   | "notification-preferences"
   | "reset-password"
@@ -74,20 +220,29 @@ type Page =
   | "event-reviews"
   | "refund-request"
   | "admin-dashboard"
+  | "chat"
+  | "staff-chat"
+  | "become-organizer"
   | "login"
   | "register"
-  | "forgot-password";
+  | "forgot-password"
+  | "payment-return"
+  | "about"
+  | "privacy"
+  | "terms"
+  | "faq"
+  | "contact"
+  | "refund-policy"
+  | "for-organizers"
+  | "help-center"
+  | "error";
 
-interface AppProps {
-  initialPage?: string;
-}
-
-export default function App({ initialPage }: AppProps) {
+export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
   // Determine initial page from URL or prop
-  const getPageFromPath = () => {
+  const getPageFromPath = useCallback(() => {
     const path = location.pathname;
 
     if (path === "/" || path === "/home") return "home";
@@ -102,36 +257,52 @@ export default function App({ initialPage }: AppProps) {
     if (path.startsWith("/transfer-ticket/")) return "transfer-ticket";
     if (path === "/wishlist") return "wishlist";
     if (path === "/waitlist") return "waitlist";
+    if (path === "/create-event") return "create-event";
     if (path === "/organizer-wizard") return "organizer-wizard";
     if (path === "/organizer-dashboard") return "organizer-dashboard";
     if (path === "/event-management") return "event-management";
     if (path.startsWith("/event-analytics/")) return "event-analytics";
     if (path === "/edit-event") return "edit-event";
+    if (path.startsWith("/edit-seat-map/")) return "edit-seat-map";
     if (path === "/scan-history") return "scan-history";
     if (path === "/promo-codes") return "promo-codes";
+    if (path === "/organizer-payouts") return "organizer-payouts";
     if (path === "/notifications") return "notifications";
     if (path === "/notification-preferences") return "notification-preferences";
     if (path === "/reset-password") return "reset-password";
     if (path === "/user-profile") return "user-profile";
-    if (path === "/seat-selection") return "seat-selection";
+    if (path.startsWith("/seat-selection/")) return "seat-selection";
     if (path === "/seat-map-builder") return "seat-map-builder";
     if (path === "/review-submission") return "review-submission";
     if (path === "/qr-scanner") return "qr-scanner";
     if (path === "/email-verification") return "email-verification";
     if (path === "/password-change") return "password-change";
-    if (path === "/event-reviews") return "event-reviews";
+    if (path.startsWith("/event-reviews")) {
+      return "event-reviews";
+    }
     if (path === "/refund-request") return "refund-request";
     if (path === "/admin-dashboard") return "admin-dashboard";
+    if (path === "/chat") return "chat";
+    if (path === "/staff-chat") return "staff-chat";
+    if (path === "/become-organizer") return "become-organizer";
     if (path === "/login") return "login";
     if (path === "/register") return "register";
     if (path === "/forgot-password") return "forgot-password";
+    if (path.startsWith("/payment/return")) return "payment-return";
+    if (path === "/about") return "about";
+    if (path === "/privacy") return "privacy";
+    if (path === "/terms") return "terms";
+    if (path === "/faq") return "faq";
+    if (path === "/contact") return "contact";
+    if (path === "/refund-policy") return "refund-policy";
+    if (path === "/for-organizers") return "for-organizers";
+    if (path === "/help-center") return "help-center";
+    if (path === "/error") return "error";
 
     return "home";
-  };
+  }, [location.pathname]);
 
-  const [currentPage, setCurrentPage] = useState<Page>(() => {
-    return (initialPage as Page) || getPageFromPath();
-  });
+  const [currentPage, setCurrentPage] = useState<Page>(getPageFromPath);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -141,15 +312,73 @@ export default function App({ initialPage }: AppProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(
     authService.isAuthenticated()
   );
-  const [userRole, setUserRole] = useState<"user" | "organizer" | "admin">(
-    () => {
-      const user = authService.getCurrentUser();
-      return (
-        (user?.role?.toLowerCase() as "user" | "organizer" | "admin") || "user"
-      );
-    }
-  );
+  const [userRole, setUserRole] = useState<
+    "guest" | "user" | "organizer" | "staff" | "admin"
+  >(() => {
+    const user = authService.getCurrentUser();
+    if (!user) return "guest";
+    return (
+      (user?.role?.toLowerCase() as
+        | "guest"
+        | "user"
+        | "organizer"
+        | "staff"
+        | "admin") || "user"
+    );
+  });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Derive page from URL - no need for effect
+  const currentPageFromUrl = useMemo(
+    () => getPageFromPath(),
+    [getPageFromPath]
+  );
+
+  // Update currentPage when URL changes
+  useEffect(() => {
+    setCurrentPage(currentPageFromUrl);
+  }, [currentPageFromUrl]);
+
+  // Extract IDs from URL params
+  useEffect(() => {
+    const path = location.pathname;
+
+    // Extract eventId from URL
+    if (path.startsWith("/event/")) {
+      const eventId = path.split("/event/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
+
+    // Extract orderId from URL
+    if (path.startsWith("/order/")) {
+      const orderId = path.split("/order/")[1]?.split("/")[0];
+      if (orderId) setSelectedOrderId(orderId);
+    }
+
+    // Extract ticketId from URL
+    if (path.startsWith("/ticket/")) {
+      const ticketId = path.split("/ticket/")[1]?.split("/")[0];
+      if (ticketId) setSelectedTicketId(ticketId);
+    }
+
+    // Extract ticketId from transfer-ticket URL
+    if (path.startsWith("/transfer-ticket/")) {
+      const ticketId = path.split("/transfer-ticket/")[1]?.split("/")[0];
+      if (ticketId) setSelectedTicketId(ticketId);
+    }
+
+    // Extract eventId from event-analytics URL
+    if (path.startsWith("/event-analytics/")) {
+      const eventId = path.split("/event-analytics/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
+
+    // Extract eventId from seat-selection URL
+    if (path.startsWith("/seat-selection/")) {
+      const eventId = path.split("/seat-selection/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
+  }, [location.pathname]);
 
   // Check authentication on mount and when localStorage changes
   useEffect(() => {
@@ -161,12 +390,16 @@ export default function App({ initialPage }: AppProps) {
         const user = authService.getCurrentUser();
         if (user) {
           setUserRole(
-            (user.role?.toLowerCase() as "user" | "organizer" | "admin") ||
-              "user"
+            (user.role?.toLowerCase() as
+              | "guest"
+              | "user"
+              | "organizer"
+              | "staff"
+              | "admin") || "user"
           );
         }
       } else {
-        setUserRole("user");
+        setUserRole("guest");
       }
     };
 
@@ -204,6 +437,11 @@ export default function App({ initialPage }: AppProps) {
         path = `/transfer-ticket/${id}`;
       } else if (page === "event-analytics") {
         path = `/event-analytics/${id}`;
+      } else if (page === "seat-selection") {
+        path = `/seat-selection/${id}`;
+      } else if (page === "event-reviews") {
+        setSelectedEventId(id);
+        path = `/event-reviews/${id}`;
       } else {
         setSelectedEventId(id);
       }
@@ -231,18 +469,24 @@ export default function App({ initialPage }: AppProps) {
       case "listing":
         return <EventListing onNavigate={handleNavigate} />;
 
-      case "event-detail":
-        if (!selectedEventId) {
-          setCurrentPage("home");
+      case "event-detail": {
+        // Extract eventId from URL directly to avoid race condition
+        const eventIdFromUrl = location.pathname.startsWith("/event/")
+          ? location.pathname.split("/event/")[1]?.split("/")[0]
+          : selectedEventId;
+
+        if (!eventIdFromUrl) {
+          navigate("/");
           return null;
         }
         return (
           <EventDetail
-            eventId={selectedEventId}
+            eventId={eventIdFromUrl}
             onNavigate={handleNavigate}
             onAddToCart={handleAddToCart}
           />
         );
+      }
 
       case "cart":
         return (
@@ -270,38 +514,61 @@ export default function App({ initialPage }: AppProps) {
           <MyTickets orders={completedOrders} onNavigate={handleNavigate} />
         );
 
-      case "order-detail":
+      case "order-detail": {
+        // Extract orderId from URL directly
+        const orderIdFromUrl = location.pathname.startsWith("/order/")
+          ? location.pathname.split("/order/")[1]?.split("/")[0]
+          : selectedOrderId;
+
         return (
           <OrderDetail
-            orderId={selectedOrderId || undefined}
+            orderId={orderIdFromUrl || undefined}
             orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
+      }
 
-      case "ticket-detail":
+      case "ticket-detail": {
+        // Extract ticketId from URL directly
+        const ticketIdFromUrl = location.pathname.startsWith("/ticket/")
+          ? location.pathname.split("/ticket/")[1]?.split("/")[0]
+          : selectedTicketId;
+
         return (
           <TicketDetail
-            ticketId={selectedTicketId || undefined}
+            ticketId={ticketIdFromUrl || undefined}
             orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
+      }
 
-      case "transfer-ticket":
+      case "transfer-ticket": {
+        // Extract ticketId from URL directly
+        const transferTicketIdFromUrl = location.pathname.startsWith(
+          "/transfer-ticket/"
+        )
+          ? location.pathname.split("/transfer-ticket/")[1]?.split("/")[0]
+          : selectedTicketId;
+
         return (
           <TransferTicket
-            ticketId={selectedTicketId || undefined}
+            ticketId={transferTicketIdFromUrl || undefined}
             orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
+      }
 
       case "wishlist":
         return <Wishlist onNavigate={handleNavigate} />;
 
       case "waitlist":
         return <Waitlist onNavigate={handleNavigate} />;
+
+      case "create-event":
+        return <CreateEvent onNavigate={handleNavigate} />;
 
       case "organizer-wizard":
         return <OrganizerWizard onNavigate={handleNavigate} />;
@@ -323,14 +590,20 @@ export default function App({ initialPage }: AppProps) {
       case "edit-event":
         return <EditEvent onNavigate={handleNavigate} />;
 
+      case "edit-seat-map":
+        return <EditSeatMap onNavigate={handleNavigate} />;
+
       case "scan-history":
         return <ScanHistory onNavigate={handleNavigate} />;
 
       case "promo-codes":
-        return <PromoCodeManagement onNavigate={handleNavigate} />;
+        return <PromoCodeManagement />;
+
+      case "organizer-payouts":
+        return <OrganizerPayouts onNavigate={handleNavigate} />;
 
       case "notifications":
-        return <Notifications onNavigate={handleNavigate} />;
+        return <NotificationsPage onNavigate={handleNavigate} />;
 
       case "notification-preferences":
         return <NotificationPreferences onNavigate={handleNavigate} />;
@@ -342,13 +615,18 @@ export default function App({ initialPage }: AppProps) {
         return <UserProfile onNavigate={handleNavigate} />;
 
       case "seat-selection":
-        return <SeatSelection onNavigate={handleNavigate} />;
+        return <SeatSelectionReal onNavigate={handleNavigate} />;
 
       case "seat-map-builder":
         return <SeatMapBuilder onNavigate={handleNavigate} />;
 
       case "review-submission":
-        return <ReviewSubmission onNavigate={handleNavigate} />;
+        return (
+          <ReviewSubmission
+            eventId={selectedEventId || undefined}
+            onNavigate={handleNavigate}
+          />
+        );
 
       case "qr-scanner":
         return <QRScanner onNavigate={handleNavigate} />;
@@ -359,14 +637,34 @@ export default function App({ initialPage }: AppProps) {
       case "password-change":
         return <PasswordChange onNavigate={handleNavigate} />;
 
-      case "event-reviews":
-        return <EventReviews onNavigate={handleNavigate} />;
+      case "event-reviews": {
+        // Extract eventId from URL directly
+        const eventIdFromUrl = location.pathname.startsWith("/event-reviews/")
+          ? location.pathname.split("/event-reviews/")[1]?.split("/")[0]
+          : selectedEventId;
+
+        return (
+          <EventReviews
+            eventId={eventIdFromUrl || undefined}
+            onNavigate={handleNavigate}
+          />
+        );
+      }
 
       case "refund-request":
         return <RefundRequest onNavigate={handleNavigate} />;
 
       case "admin-dashboard":
         return <AdminDashboard onNavigate={handleNavigate} />;
+
+      case "chat":
+        return <ChatPage />;
+
+      case "staff-chat":
+        return <StaffChatPage />;
+
+      case "become-organizer":
+        return <BecomeOrganizer onNavigate={handleNavigate} />;
 
       case "login":
         return <Login onNavigate={handleNavigate} />;
@@ -377,6 +675,36 @@ export default function App({ initialPage }: AppProps) {
       case "forgot-password":
         return <ForgotPassword onNavigate={handleNavigate} />;
 
+      case "payment-return":
+        return <PaymentReturn />;
+
+      case "about":
+        return <About />;
+
+      case "privacy":
+        return <Privacy />;
+
+      case "terms":
+        return <Terms />;
+
+      case "faq":
+        return <FAQ />;
+
+      case "contact":
+        return <Contact />;
+
+      case "refund-policy":
+        return <RefundPolicy />;
+
+      case "for-organizers":
+        return <ForOrganizers onNavigate={handleNavigate} />;
+
+      case "help-center":
+        return <HelpCenter />;
+
+      case "error":
+        return <Error />;
+
       default:
         return <Home onNavigate={handleNavigate} />;
     }
@@ -386,21 +714,29 @@ export default function App({ initialPage }: AppProps) {
   const isStandalonePage =
     currentPage === "login" ||
     currentPage === "register" ||
-    currentPage === "forgot-password";
+    currentPage === "forgot-password" ||
+    currentPage === "payment-return";
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {!isStandalonePage && (
-        <Header
-          onNavigate={handleNavigate}
-          currentPage={currentPage}
-          isAuthenticated={isAuthenticated}
-          userRole={userRole}
-          onSearchOpenChange={setIsSearchOpen}
-        />
-      )}
-      <main className="flex-1">{renderPage()}</main>
-      {!isStandalonePage && <Footer />}
-    </div>
+    <ErrorBoundary>
+      <ProtectedRoute>
+        <div className="min-h-screen flex flex-col">
+          {!isStandalonePage && (
+            <Header
+              onNavigate={handleNavigate}
+              currentPage={currentPage}
+              isAuthenticated={isAuthenticated}
+              userRole={userRole}
+              onSearchOpenChange={setIsSearchOpen}
+            />
+          )}
+          <main className="flex-1">
+            <Suspense fallback={<LoadingFallback />}>{renderPage()}</Suspense>
+          </main>
+          {!isStandalonePage && <Footer />}
+          <Toaster />
+        </div>
+      </ProtectedRoute>
+    </ErrorBoundary>
   );
 }

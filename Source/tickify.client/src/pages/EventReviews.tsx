@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Star,
@@ -7,11 +8,8 @@ import {
   Flag,
   ChevronDown,
   Camera,
-  X,
   Search,
-  Filter,
   CheckCircle,
-  TrendingUp,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -37,22 +35,21 @@ import { Textarea } from '../components/ui/textarea';
 import { Progress } from '../components/ui/progress';
 import { mockEvents } from '../mockData';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { reviewService, type ReviewDto } from '../services/reviewService';
+import { eventService } from '../services/eventService';
+import { authService } from '../services/authService';
+import { useEffect } from 'react';
 
 interface EventReviewsProps {
   eventId?: string;
   onNavigate: (page: string, eventId?: string) => void;
 }
 
-interface Review {
-  id: string;
-  authorName: string;
-  authorAvatar?: string;
-  isVerified: boolean;
-  rating: number;
-  reviewDate: string;
-  attendedDate: string;
-  title: string;
-  content: string;
+// Sử dụng ReviewDto từ service, nhưng extend thêm các field UI cần
+interface Review extends ReviewDto {
+  isVerified?: boolean;
+  attendedDate?: string;
+  title?: string;
   photos?: string[];
   categoryRatings?: {
     organization: number;
@@ -60,8 +57,8 @@ interface Review {
     value: number;
     entertainment: number;
   };
-  helpfulCount: number;
-  notHelpfulCount: number;
+  helpfulCount?: number;
+  notHelpfulCount?: number;
   userVote?: 'helpful' | 'not-helpful';
   organizerResponse?: {
     text: string;
@@ -70,75 +67,9 @@ interface Review {
   };
 }
 
-const mockReviews: Review[] = [
-  {
-    id: '1',
-    authorName: 'Sarah Johnson',
-    authorAvatar: '/api/placeholder/50/50',
-    isVerified: true,
-    rating: 5,
-    reviewDate: '3 days ago',
-    attendedDate: 'Jun 10, 2024',
-    title: 'Amazing experience! Highly recommend',
-    content: 'This was hands down one of the best concerts I\'ve ever attended. The sound quality was exceptional, the venue was well-organized, and the staff were incredibly friendly and helpful. Every aspect exceeded my expectations!',
-    photos: ['/api/placeholder/100/100', '/api/placeholder/100/100', '/api/placeholder/100/100'],
-    categoryRatings: {
-      organization: 5,
-      venue: 5,
-      value: 4,
-      entertainment: 5,
-    },
-    helpfulCount: 45,
-    notHelpfulCount: 2,
-    organizerResponse: {
-      text: 'Thank you so much for the wonderful feedback! We\'re thrilled you enjoyed the event.',
-      date: '2 days ago',
-      organizerName: 'Event Organizer',
-    },
-  },
-  {
-    id: '2',
-    authorName: 'Mike Chen',
-    isVerified: true,
-    rating: 4,
-    reviewDate: '1 week ago',
-    attendedDate: 'Jun 8, 2024',
-    title: 'Great event, minor sound issues',
-    content: 'Overall a fantastic experience. The lineup was incredible and the atmosphere was electric. Only issue was some sound feedback in the beginning, but it was resolved quickly.',
-    categoryRatings: {
-      organization: 4,
-      venue: 4,
-      value: 5,
-      entertainment: 5,
-    },
-    helpfulCount: 28,
-    notHelpfulCount: 1,
-  },
-  {
-    id: '3',
-    authorName: 'Emily Rodriguez',
-    authorAvatar: '/api/placeholder/50/50',
-    isVerified: true,
-    rating: 5,
-    reviewDate: '2 weeks ago',
-    attendedDate: 'Jun 5, 2024',
-    title: 'Worth every penny!',
-    content: 'Absolutely loved this event! The venue was beautiful, easy to get to, and the whole experience was seamless from start to finish. Will definitely attend again next year!',
-    photos: ['/api/placeholder/100/100', '/api/placeholder/100/100'],
-    helpfulCount: 32,
-    notHelpfulCount: 0,
-  },
-];
-
-const ratingDistribution = [
-  { stars: 5, count: 180, percentage: 73 },
-  { stars: 4, count: 45, percentage: 18 },
-  { stars: 3, count: 15, percentage: 6 },
-  { stars: 2, count: 5, percentage: 2 },
-  { stars: 1, count: 3, percentage: 1 },
-];
 
 export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRating, setFilterRating] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
@@ -149,20 +80,193 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
   const [reportReviewId, setReportReviewId] = useState<string | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
-
-  const event = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
   
-  const averageRating = 4.8;
-  const totalReviews = 248;
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [event, setEvent] = useState<{ id: string; title: string; image?: string; date?: string; venue?: string; city?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [averageRating, setAverageRating] = useState<number>(0);
+  const [totalReviews, setTotalReviews] = useState<number>(0);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
-  const toggleExpanded = (reviewId: string) => {
-    const newExpanded = new Set(expandedReviews);
-    if (newExpanded.has(reviewId)) {
-      newExpanded.delete(reviewId);
+  // Get current user ID
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    if (user && user.userId) {
+      setCurrentUserId(parseInt(user.userId, 10));
+    }
+  }, []);
+
+  // Fetch event details
+  useEffect(() => {
+    let mounted = true;
+    if (eventId) {
+      eventService.getEventByIdentifier(eventId)
+        .then((ev) => {
+          if (mounted) setEvent(ev);
+        })
+        .catch(() => {
+          // Fallback to mock data if API fails
+          if (mounted) {
+            const mockEvent = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
+            setEvent(mockEvent);
+          }
+        });
     } else {
-      newExpanded.add(reviewId);
+      const mockEvent = mockEvents[0];
+      setEvent(mockEvent);
+    }
+    return () => { mounted = false; };
+  }, [eventId]);
+
+  // Fetch reviews
+  useEffect(() => {
+    let mounted = true;
+    const fetchReviews = async () => {
+      if (!eventId) return;
+      
+      try {
+        setLoading(true);
+        const eventReviews = await reviewService.getEventReviews(parseInt(eventId, 10));
+        
+        if (!mounted) return;
+
+        // Map ReviewDto to Review interface
+        const mappedReviews: Review[] = eventReviews.map((r) => ({
+          ...r,
+          isVerified: true, // TODO: Add verification logic from backend
+          attendedDate: r.createdAt, // Use createdAt as attended date for now
+          title: r.comment ? r.comment.substring(0, 50) : undefined,
+          content: r.comment || '',
+          helpfulCount: 0, // TODO: Add helpful count from backend
+          notHelpfulCount: 0, // TODO: Add not helpful count from backend
+        }));
+
+        setReviews(mappedReviews);
+
+        // Calculate average rating
+        if (eventReviews.length > 0) {
+          const avg = eventReviews.reduce((sum, r) => sum + r.rating, 0) / eventReviews.length;
+          setAverageRating(avg);
+          setTotalReviews(eventReviews.length);
+        }
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+        if (mounted) {
+          // Fallback to empty state
+          setReviews([]);
+          setAverageRating(0);
+          setTotalReviews(0);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchReviews();
+    return () => { mounted = false; };
+  }, [eventId]);
+
+  // Filter and sort reviews
+  const filteredReviews = reviews.filter((review) => {
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = 
+        review.comment?.toLowerCase().includes(query) ||
+        review.userName.toLowerCase().includes(query);
+      if (!matchesSearch) return false;
+    }
+
+    // Rating filter
+    if (filterRating !== 'all') {
+      if (filterRating === 'below3') {
+        if (review.rating >= 3) return false;
+      } else if (filterRating === 'threePlusStars') {
+        if (review.rating < 3) return false;
+      } else if (filterRating === 'fourFiveStars') {
+        if (review.rating < 4) return false;
+      } else if (filterRating === '5') {
+        if (review.rating !== 5) return false;
+      }
+    }
+
+    // Verified filter
+    if (showVerifiedOnly && !review.isVerified) return false;
+
+    // Photos filter
+    if (showPhotosOnly && (!review.photos || review.photos.length === 0)) return false;
+
+    return true;
+  }).sort((a, b) => {
+    if (sortBy === 'recent') {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    } else if (sortBy === 'highest') {
+      return b.rating - a.rating;
+    } else if (sortBy === 'lowest') {
+      return a.rating - b.rating;
+    } else if (sortBy === 'helpful') {
+      const aHelpful = (a.helpfulCount || 0) - (a.notHelpfulCount || 0);
+      const bHelpful = (b.helpfulCount || 0) - (b.notHelpfulCount || 0);
+      return bHelpful - aHelpful;
+    }
+    return 0;
+  });
+
+  // Calculate rating distribution
+  const ratingDistribution = [5, 4, 3, 2, 1].map((stars) => {
+    const count = reviews.filter((r) => r.rating === stars).length;
+    const percentage = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+    return { stars, count, percentage };
+  });
+
+  if (!event) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2>{t('events.eventNotFound')}</h2>
+          <Button onClick={() => onNavigate('home')} className="mt-4">
+            {t('common.back')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const toggleExpanded = (reviewId: number) => {
+    const idStr = reviewId.toString();
+    const newExpanded = new Set(expandedReviews);
+    if (newExpanded.has(idStr)) {
+      newExpanded.delete(idStr);
+    } else {
+      newExpanded.add(idStr);
     }
     setExpandedReviews(newExpanded);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return t('common.today');
+    if (diffDays === 1) return t('common.yesterday');
+    if (diffDays < 7) return `${diffDays} ${t('common.daysAgo')}`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `${weeks} ${t('common.weeksAgo')}`;
+    }
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return `${months} ${t('common.monthsAgo')}`;
+    }
+    return date.toLocaleDateString('vi-VN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
   };
 
   const renderStars = (rating: number, size: 'sm' | 'md' | 'lg' = 'md') => {
@@ -182,13 +286,13 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
     );
   };
 
-  const handleVote = (reviewId: string, voteType: 'helpful' | 'not-helpful') => {
-    console.log('Vote:', reviewId, voteType);
-    // Implement voting logic
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleVote = (_reviewId: number, _voteType: 'helpful' | 'not-helpful') => {
+    // TODO: Implement voting logic when backend API is available
   };
 
   const handleReport = () => {
-    console.log('Report:', reportReviewId, reportReason, reportDetails);
+    // TODO: Implement report logic when backend API is available
     setReportReviewId(null);
     setReportReason('');
     setReportDetails('');
@@ -205,7 +309,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
             className="mb-4"
           >
             <ArrowLeft size={18} className="mr-2" />
-            Back to Event
+            {t('eventReviews.backToEvent')}
           </Button>
 
           <Card>
@@ -229,7 +333,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                     onClick={() => onNavigate('event-detail', event.id)}
                     className="p-0 h-auto text-purple-600 mt-2"
                   >
-                    View Event Details →
+                    {t('eventReviews.viewEventDetails')} →
                   </Button>
                 </div>
               </div>
@@ -245,9 +349,9 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
               <div className="md:col-span-2 text-center md:text-left">
                 <div className="text-6xl mb-2">{averageRating.toFixed(1)}</div>
                 {renderStars(Math.round(averageRating), 'lg')}
-                <p className="text-neutral-600 mt-2">Based on {totalReviews} reviews</p>
-                <Badge className="bg-green-100 text-green-700 mt-2">Excellent</Badge>
-                <p className="text-xs text-neutral-500 mt-2">Updated today</p>
+                <p className="text-neutral-600 mt-2">{t('eventReviews.basedOn')} {totalReviews} {t('eventReviews.reviewsCount')}</p>
+                <Badge className="bg-green-100 text-green-700 mt-2">{t('eventReviews.excellent')}</Badge>
+                <p className="text-xs text-neutral-500 mt-2">{t('eventReviews.updatedToday')}</p>
               </div>
 
               {/* Right: Rating Distribution */}
@@ -273,22 +377,22 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
             {/* Category Ratings */}
             <div className="mt-6 pt-6 border-t grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <div className="text-sm text-neutral-600 mb-1">Organization</div>
+                <div className="text-sm text-neutral-600 mb-1">{t('eventReviews.organization')}</div>
                 {renderStars(5, 'sm')}
                 <div className="text-sm mt-1">4.5</div>
               </div>
               <div>
-                <div className="text-sm text-neutral-600 mb-1">Venue</div>
+                <div className="text-sm text-neutral-600 mb-1">{t('eventReviews.venue')}</div>
                 {renderStars(5, 'sm')}
-                <div className="text-sm mt-1">4.8</div>
+                <div className="text-sm mt-1">4.7</div>
               </div>
               <div>
-                <div className="text-sm text-neutral-600 mb-1">Value</div>
+                <div className="text-sm text-neutral-600 mb-1">{t('eventReviews.value')}</div>
                 {renderStars(4, 'sm')}
                 <div className="text-sm mt-1">4.3</div>
               </div>
               <div>
-                <div className="text-sm text-neutral-600 mb-1">Entertainment</div>
+                <div className="text-sm text-neutral-600 mb-1">{t('eventReviews.entertainment')}</div>
                 {renderStars(5, 'sm')}
                 <div className="text-sm mt-1">5.0</div>
               </div>
@@ -305,15 +409,15 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                   <AvatarFallback className="bg-purple-100 text-purple-600">U</AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-neutral-900 mb-1">Share Your Experience</h3>
-                  <p className="text-sm text-neutral-600">You attended this event. Write a review!</p>
+                  <h3 className="text-neutral-900 mb-1">{t('eventReviews.shareExperience')}</h3>
+                  <p className="text-sm text-neutral-600">{t('eventReviews.writeReviewCTA')}</p>
                 </div>
               </div>
               <Button
                 onClick={() => onNavigate('review-submission', event.id)}
                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
               >
-                Write Review
+                {t('eventReviews.writeReview')}
               </Button>
             </div>
           </CardContent>
@@ -328,7 +432,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search reviews..."
+                placeholder={t('eventReviews.searchReviews')}
                 className="pl-10"
               />
             </div>
@@ -337,10 +441,10 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="recent">Most Recent</SelectItem>
-                <SelectItem value="helpful">Most Helpful</SelectItem>
-                <SelectItem value="highest">Highest Rated</SelectItem>
-                <SelectItem value="lowest">Lowest Rated</SelectItem>
+                <SelectItem value="recent">{t('eventReviews.mostRecent')}</SelectItem>
+                <SelectItem value="helpful">{t('eventReviews.mostHelpful')}</SelectItem>
+                <SelectItem value="highest">{t('eventReviews.highestRated')}</SelectItem>
+                <SelectItem value="lowest">{t('eventReviews.lowestRated')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -354,7 +458,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
               className={showVerifiedOnly ? 'bg-green-600 hover:bg-green-700' : ''}
             >
               <CheckCircle size={14} className="mr-2" />
-              Verified Only
+              {t('eventReviews.verifiedOnly')}
             </Button>
             <Button
               variant={showPhotosOnly ? 'default' : 'outline'}
@@ -363,56 +467,100 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
               className={showPhotosOnly ? 'bg-purple-600 hover:bg-purple-700' : ''}
             >
               <Camera size={14} className="mr-2" />
-              With Photos
+              {t('eventReviews.withPhotos')}
             </Button>
             <Select value={filterRating} onValueChange={setFilterRating}>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="All Ratings" />
+                <SelectValue placeholder={t('eventReviews.allRatings')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Ratings</SelectItem>
-                <SelectItem value="5">5 stars only</SelectItem>
-                <SelectItem value="4">4-5 stars</SelectItem>
-                <SelectItem value="3">3+ stars</SelectItem>
-                <SelectItem value="below3">Below 3 stars</SelectItem>
+                <SelectItem value="all">{t('eventReviews.allRatings')}</SelectItem>
+                <SelectItem value="5">{t('eventReviews.fiveStarsOnly')}</SelectItem>
+                <SelectItem value="4">{t('eventReviews.fourFiveStars')}</SelectItem>
+                <SelectItem value="3">{t('eventReviews.threePlusStars')}</SelectItem>
+                <SelectItem value="below3">{t('eventReviews.belowThreeStars')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {/* Reviews List */}
-        <div className="space-y-4">
-          <div className="text-sm text-neutral-600 mb-4">
-            Showing 1-{mockReviews.length} of {totalReviews} reviews
-          </div>
+        {/* Loading State */}
+        {loading && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center text-neutral-500">{t('common.loading')}...</div>
+            </CardContent>
+          </Card>
+        )}
 
-          {mockReviews.map((review) => (
-            <Card key={review.id}>
-              <CardContent className="p-6">
-                {/* Review Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex gap-3">
-                    <Avatar className="w-12 h-12">
-                      {review.authorAvatar ? (
-                        <AvatarImage src={review.authorAvatar} />
-                      ) : (
-                        <AvatarFallback className="bg-purple-100 text-purple-600">
-                          {review.authorName.charAt(0)}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-neutral-900">{review.authorName}</span>
-                        {review.isVerified && (
-                          <Badge className="bg-green-100 text-green-700 text-xs">
-                            <CheckCircle size={12} className="mr-1" />
-                            Verified
-                          </Badge>
+        {/* No Reviews State */}
+        {!loading && filteredReviews.length === 0 && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center py-8">
+                <Star className="mx-auto text-gray-300 mb-4" size={48} />
+                <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                  {searchQuery || filterRating !== 'all' 
+                    ? t('common.noResults')
+                    : t('eventReviews.noReviewsYet')}
+                </h3>
+                <p className="text-sm text-neutral-600">
+                  {searchQuery || filterRating !== 'all'
+                    ? t('eventReviews.tryDifferentFilters')
+                    : t('eventReviews.beFirstToReview')}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Reviews List */}
+        {!loading && filteredReviews.length > 0 && (
+          <div className="space-y-4">
+            <div className="text-sm text-neutral-600 mb-4">
+              {t('eventReviews.showing')} 1-{filteredReviews.length} {t('eventReviews.of')} {totalReviews} {t('eventReviews.reviewsCount')}
+            </div>
+
+            {filteredReviews.map((review) => {
+              const isMyReview = currentUserId !== null && review.userId === currentUserId;
+              
+              return (
+              <Card 
+                key={review.id}
+                className={isMyReview ? 'border-2 border-purple-500 bg-purple-50/30' : ''}
+              >
+                <CardContent className="p-6">
+                  {/* Review Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex gap-3">
+                      <Avatar className="w-12 h-12">
+                        {review.userAvatar ? (
+                          <AvatarImage src={review.userAvatar} />
+                        ) : (
+                          <AvatarFallback className="bg-purple-100 text-purple-600">
+                            {review.userName?.charAt(0) || 'U'}
+                          </AvatarFallback>
                         )}
-                      </div>
-                      <div className="text-sm text-neutral-500">{review.reviewDate}</div>
-                      <div className="text-xs text-neutral-500">Attended on {review.attendedDate}</div>
+                      </Avatar>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-neutral-900">{review.userName}</span>
+                          {isMyReview && (
+                            <Badge className="bg-purple-600 text-white text-xs">
+                              {t('eventReviews.yourReview') || 'Your Review'}
+                            </Badge>
+                          )}
+                          {review.isVerified && (
+                            <Badge className="bg-green-100 text-green-700 text-xs">
+                              <CheckCircle size={12} className="mr-1" />
+                              {t('eventReviews.verified')}
+                            </Badge>
+                          )}
+                        </div>
+                      <div className="text-sm text-neutral-500">{formatDate(review.createdAt)}</div>
+                      {review.attendedDate && (
+                        <div className="text-xs text-neutral-500">{t('eventReviews.attendedOn')} {formatDate(review.attendedDate)}</div>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -426,42 +574,44 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                 )}
 
                 {/* Review Content */}
-                <div className="text-neutral-700 mb-4">
-                  <p className={expandedReviews.has(review.id) ? '' : 'line-clamp-3'}>
-                    {review.content}
-                  </p>
-                  {review.content.length > 300 && (
-                    <button
-                      onClick={() => toggleExpanded(review.id)}
-                      className="text-purple-600 hover:text-purple-700 text-sm mt-1"
-                    >
-                      {expandedReviews.has(review.id) ? 'Show less' : 'Read more'}
-                    </button>
-                  )}
-                </div>
+                {review.comment && (
+                  <div className="text-neutral-700 mb-4">
+                    <p className={expandedReviews.has(review.id.toString()) ? '' : 'line-clamp-3'}>
+                      {review.comment}
+                    </p>
+                    {review.comment.length > 300 && (
+                      <button
+                        onClick={() => toggleExpanded(review.id)}
+                        className="text-purple-600 hover:text-purple-700 text-sm mt-1"
+                      >
+                        {expandedReviews.has(review.id.toString()) ? t('eventReviews.showLess') : t('eventReviews.readMore')}
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Category Ratings */}
                 {review.categoryRatings && (
                   <details className="mb-4">
                     <summary className="cursor-pointer text-sm text-neutral-600 hover:text-neutral-900 flex items-center gap-1">
-                      Category Ratings
-                      <ChevronDown size={14} />
+                      {t('eventReviews.categoryRatings')}
+                      <ChevronDown size={18} />
                     </summary>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 ml-4">
                       <div className="text-sm">
-                        <div className="text-neutral-600">Organization</div>
+                        <div className="text-neutral-600">{t('eventReviews.organization')}</div>
                         {renderStars(review.categoryRatings.organization, 'sm')}
                       </div>
                       <div className="text-sm">
-                        <div className="text-neutral-600">Venue</div>
+                        <div className="text-neutral-600">{t('eventReviews.venue')}</div>
                         {renderStars(review.categoryRatings.venue, 'sm')}
                       </div>
                       <div className="text-sm">
-                        <div className="text-neutral-600">Value</div>
+                        <div className="text-neutral-600">{t('eventReviews.value')}</div>
                         {renderStars(review.categoryRatings.value, 'sm')}
                       </div>
                       <div className="text-sm">
-                        <div className="text-neutral-600">Entertainment</div>
+                        <div className="text-neutral-600">{t('eventReviews.entertainment')}</div>
                         {renderStars(review.categoryRatings.entertainment, 'sm')}
                       </div>
                     </div>
@@ -490,7 +640,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
 
                 {/* Footer */}
                 <div className="flex items-center gap-4 pt-4 border-t">
-                  <span className="text-sm text-neutral-600">Was this helpful?</span>
+                  <span className="text-sm text-neutral-600">{t('eventReviews.wasHelpful')}</span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -498,7 +648,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                     className={review.userVote === 'helpful' ? 'bg-blue-50' : ''}
                   >
                     <ThumbsUp size={14} className="mr-1" />
-                    {review.helpfulCount}
+                    {review.helpfulCount || 0}
                   </Button>
                   <Button
                     variant="ghost"
@@ -507,16 +657,16 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                     className={review.userVote === 'not-helpful' ? 'bg-red-50' : ''}
                   >
                     <ThumbsDown size={14} className="mr-1" />
-                    {review.notHelpfulCount}
+                    {review.notHelpfulCount || 0}
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setReportReviewId(review.id)}
+                    onClick={() => setReportReviewId(review.id.toString())}
                     className="ml-auto"
                   >
                     <Flag size={14} className="mr-1" />
-                    Report
+                    {t('eventReviews.report')}
                   </Button>
                 </div>
 
@@ -524,7 +674,7 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                 {review.organizerResponse && (
                   <div className="mt-4 ml-8 p-4 bg-purple-50 rounded-lg border border-purple-100">
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge className="bg-purple-100 text-purple-700">Response from Organizer</Badge>
+                      <Badge className="bg-purple-100 text-purple-700">Orgnaizer</Badge>
                       <span className="text-sm text-neutral-500">{review.organizerResponse.date}</span>
                     </div>
                     <p className="text-sm text-neutral-700">{review.organizerResponse.text}</p>
@@ -535,15 +685,10 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
                 )}
               </CardContent>
             </Card>
-          ))}
-        </div>
-
-        {/* Load More */}
-        <div className="text-center mt-8">
-          <Button variant="outline" size="lg">
-            Load More Reviews
-          </Button>
-        </div>
+            );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Photo Lightbox */}
@@ -555,58 +700,57 @@ export function EventReviews({ eventId, onNavigate }: EventReviewsProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Report Modal */}
       <Dialog open={!!reportReviewId} onOpenChange={() => setReportReviewId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Report Review</DialogTitle>
+            <DialogTitle>{t('eventReviews.reportReview')}</DialogTitle>
             <DialogDescription>
-              Help us maintain quality by reporting inappropriate content
+              {t('eventReviews.reportDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <label className="text-sm text-neutral-700 mb-2 block">Reason for report</label>
+              <label className="text-sm text-neutral-700 mb-2 block">{t('eventReviews.reasonForReport')}</label>
               <Select value={reportReason} onValueChange={setReportReason}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a reason..." />
+                  <SelectValue placeholder={t('eventReviews.selectReason')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="inappropriate">Inappropriate content</SelectItem>
-                  <SelectItem value="spam">Spam</SelectItem>
-                  <SelectItem value="fake">Fake review</SelectItem>
-                  <SelectItem value="offtopic">Off-topic</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="inappropriate">{t('eventReviews.inappropriate')}</SelectItem>
+                  <SelectItem value="spam">{t('eventReviews.spam')}</SelectItem>
+                  <SelectItem value="fake">{t('eventReviews.fakeReview')}</SelectItem>
+                  <SelectItem value="offtopic">{t('eventReviews.offTopic')}</SelectItem>
+                  <SelectItem value="other">{t('eventReviews.other')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <label className="text-sm text-neutral-700 mb-2 block">Additional details</label>
+              <label className="text-sm text-neutral-700 mb-2 block">{t('eventReviews.additionalDetails')}</label>
               <Textarea
                 value={reportDetails}
                 onChange={(e) => setReportDetails(e.target.value)}
-                placeholder="Please provide more information..."
+                placeholder={t('eventReviews.provideMoreInfo')}
                 rows={4}
               />
             </div>
 
             <p className="text-xs text-neutral-500">
-              Reports are reviewed within 24 hours
+              {t('eventReviews.reviewTime')}
             </p>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setReportReviewId(null)}>
-              Cancel
+              {t('eventReviews.cancel')}
             </Button>
             <Button
               onClick={handleReport}
               disabled={!reportReason}
               className="bg-red-500 hover:bg-red-600"
             >
-              Submit Report
+              {t('eventReviews.submitReport')}
             </Button>
           </DialogFooter>
         </DialogContent>

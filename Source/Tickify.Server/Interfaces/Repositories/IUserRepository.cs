@@ -14,6 +14,14 @@ public interface IUserRepository
     Task<User?> GetUserByEmailVerificationTokenAsync(string token);
     Task<User?> GetUserByPasswordResetTokenAsync(string token);
     Task<User?> GetUserByProviderAsync(string provider, string providerId);
+    Task<User> GetByIdAsync(int id);
+    Task<User> GetByEmailAsync(string email);
     Task<int> GetTotalBookingsCountAsync(int userId);
     Task<int> GetTotalEventsAttendedCountAsync(int userId);
+    Task<OrganizerRequest?> GetPendingOrganizerRequestAsync(int userId);
+    Task AddOrganizerRequestAsync(OrganizerRequest request);
+    Task<List<User>> GetUsersByRoleAsync(string roleName);
+    Task<Organizer?> GetOrganizerByUserIdAsync(int userId);
+
+
 }

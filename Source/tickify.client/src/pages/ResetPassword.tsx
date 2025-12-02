@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, CheckCircle, XCircle, Loader2, ArrowLeft, Check } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -6,6 +7,9 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { authService } from '../services/authService';
+import { toast } from 'sonner';
 
 interface ResetPasswordProps {
   token?: string;
@@ -13,6 +17,9 @@ interface ResetPasswordProps {
 }
 
 export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
+  const { t } = useTranslation();
+  const [email, setEmail] = useState('');
+  const [urlToken, setUrlToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -21,6 +28,15 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
   const [tokenStatus, setTokenStatus] = useState<'validating' | 'valid' | 'invalid'>('validating');
   const [resetSuccess, setResetSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  // Get token and email from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenParam = params.get('token') || token || '';
+    const emailParam = params.get('email') || '';
+    setUrlToken(tokenParam);
+    setEmail(emailParam);
+  }, [token]);
 
   // Password requirements state
   const [requirements, setRequirements] = useState({
@@ -36,13 +52,15 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
   // Validate token on mount
   useEffect(() => {
     const validateToken = async () => {
-      // Simulate API call
+      // Simple validation - check if token exists
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      // In real app, validate token with API
-      setTokenStatus(token ? 'valid' : 'invalid');
+      setTokenStatus(urlToken ? 'valid' : 'invalid');
     };
-    validateToken();
-  }, [token]);
+    
+    if (urlToken) {
+      validateToken();
+    }
+  }, [urlToken]);
 
   // Check password requirements
   useEffect(() => {
@@ -96,27 +114,41 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
 
     // Validation
     if (!Object.values(requirements).every(Boolean)) {
-      setError('Please meet all password requirements');
+      setError(t('auth.passwordRequirementsError') || 'Please meet all password requirements');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth.passwordMismatch') || 'Passwords do not match');
+      return;
+    }
+
+    if (!email) {
+      setError('Email is required');
       return;
     }
 
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      await authService.resetPassword(email, urlToken, newPassword, confirmPassword);
+      setResetSuccess(true);
 
-    setIsLoading(false);
-    setResetSuccess(true);
-
-    // Redirect to login after 3 seconds
-    setTimeout(() => {
-      onNavigate('login');
-    }, 3000);
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        onNavigate('login');
+      }, 3000);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message || 
+                          t('auth.resetPasswordError') || 
+                          'Không thể đặt lại mật khẩu. Vui lòng thử lại.';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (tokenStatus === 'validating') {
@@ -126,7 +158,7 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
           <CardContent className="p-8">
             <div className="text-center">
               <Loader2 className="mx-auto text-purple-600 animate-spin mb-4" size={48} />
-              <p className="text-gray-600">Validating reset token...</p>
+              <p className="text-gray-600">{t('auth.validatingToken')}</p>
             </div>
           </CardContent>
         </Card>
@@ -141,12 +173,12 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
           <CardContent className="p-8">
             <div className="text-center">
               <XCircle className="mx-auto text-red-500 mb-4" size={48} />
-              <h2 className="text-neutral-900 mb-2">Invalid or Expired Token</h2>
+              <h2 className="text-neutral-900 mb-2">{t('auth.invalidToken')}</h2>
               <p className="text-gray-600 mb-6">
-                This password reset link is invalid or has expired. Please request a new one.
+                {t('auth.invalidTokenMessage')}
               </p>
               <Button onClick={() => onNavigate('forgot-password')} className="bg-purple-600 hover:bg-purple-700">
-                Request New Link
+                {t('auth.requestNewLink')}
               </Button>
             </div>
           </CardContent>
@@ -162,12 +194,12 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
           <CardContent className="p-8">
             <div className="text-center">
               <CheckCircle className="mx-auto text-green-500 mb-4" size={48} />
-              <h2 className="text-neutral-900 mb-2">Password Reset Successful</h2>
+              <h2 className="text-neutral-900 mb-2">{t('auth.resetPasswordSuccess')}</h2>
               <p className="text-gray-600 mb-6">
-                Your password has been reset successfully. Redirecting to login...
+                {t('auth.resetPasswordSuccessMessage')}
               </p>
               <Button onClick={() => onNavigate('login')} className="bg-purple-600 hover:bg-purple-700">
-                Go to Login
+                {t('auth.goToLoginButton')}
               </Button>
             </div>
           </CardContent>

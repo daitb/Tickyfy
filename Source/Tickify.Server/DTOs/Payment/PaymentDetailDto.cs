@@ -2,8 +2,8 @@ namespace Tickify.DTOs.Payment
 {
     public class PaymentDetailDto
     {
-        public Guid Id { get; set; }
-        public Guid BookingId { get; set; }
+        public int Id { get; set; }
+        public int BookingId { get; set; }
         public string BookingNumber { get; set; } = string.Empty;
         public string EventName { get; set; } = string.Empty;
         public decimal Amount { get; set; }

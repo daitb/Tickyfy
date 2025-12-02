@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Tickify.Data;
+using Tickify.Interfaces.Repositories;
 using Tickify.Models;
 
 namespace Tickify.Repositories;
@@ -115,5 +116,47 @@ public class UserRepository : IUserRepository
             .Select(b => b.EventId)
             .Distinct()
             .CountAsync();
+    }
+
+    public async Task<OrganizerRequest?> GetPendingOrganizerRequestAsync(int userId)
+    {
+        return await _context.OrganizerRequests
+            .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == "Pending");
+    }
+
+    public async Task AddOrganizerRequestAsync(OrganizerRequest request)
+    {
+        await _context.OrganizerRequests.AddAsync(request);
+    }
+
+    public async Task<List<User>> GetUsersByRoleAsync(string roleName)
+    {
+        return await _context.Users
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+            .Where(u => u.UserRoles.Any(ur => ur.Role.Name == roleName))
+            .ToListAsync();
+    }
+
+    public async Task<Organizer?> GetOrganizerByUserIdAsync(int userId)
+    {
+        return await _context.Organizers
+            .FirstOrDefaultAsync(o => o.UserId == userId);
+    }
+
+    public async Task<User> GetByIdAsync(int id)
+    {
+        var user = await GetUserByIdAsync(id);
+        if (user == null)
+            throw new KeyNotFoundException($"User with ID {id} not found");
+        return user;
+    }
+
+    public async Task<User> GetByEmailAsync(string email)
+    {
+        var user = await GetUserByEmailAsync(email);
+        if (user == null)
+            throw new KeyNotFoundException($"User with email {email} not found");
+        return user;
     }
 }

@@ -6,11 +6,12 @@ using Tickify.DTOs.Ticket;
 using Tickify.Interfaces.Services;
 using Tickify.Interfaces.Repositories;
 using Tickify.Services.Email;
+using Tickify.Models;
 using QRCoder;
 
 namespace Tickify.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/tickets")]
 [ApiController]
 [Authorize]
 public class TicketController : ControllerBase
@@ -65,27 +66,90 @@ public class TicketController : ControllerBase
 
     /// Get current user's tickets
     [HttpGet("my-tickets")]
+    [AllowAnonymous] // Allow testing without authentication
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<TicketDetailDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<TicketDetailDto>>>> GetMyTickets(
         [FromQuery] string? status = null,
         [FromQuery] int? eventId = null)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        // Return empty list if not authenticated (for development/testing)
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdClaim))
+        {
+            return Ok(ApiResponse<IEnumerable<TicketDetailDto>>.SuccessResponse(
+                new List<TicketDetailDto>(),
+                "No tickets found (user not authenticated)"
+            ));
+        }
+
+        var userId = int.Parse(userIdClaim);
         
         var tickets = await _ticketService.GetUserTicketsAsync(userId);
 
-        // Apply filters
+        // Validate and apply status filter
         if (!string.IsNullOrEmpty(status))
         {
+            // Validate status is a valid TicketStatus enum value
+            if (!Enum.TryParse<TicketStatus>(status, true, out var ticketStatus))
+            {
+                var validStatuses = string.Join(", ", Enum.GetNames(typeof(TicketStatus)));
+                return BadRequest(ApiResponse<object>.FailureResponse(
+                    $"Invalid status value. Valid values are: {validStatuses}"
+                ));
+            }
             tickets = tickets.Where(t => t.Status.Equals(status, StringComparison.OrdinalIgnoreCase));
         }
 
+        // Apply eventId filter
         if (eventId.HasValue)
         {
+            if (eventId.Value <= 0)
+            {
+                return BadRequest(ApiResponse<object>.FailureResponse(
+                    "EventId must be a positive number"
+                ));
+            }
             tickets = tickets.Where(t => t.EventId == eventId.Value);
         }
 
-        return Ok(ApiResponse<IEnumerable<TicketDetailDto>>.SuccessResponse(tickets));
+        return Ok(ApiResponse<IEnumerable<TicketDetailDto>>.SuccessResponse(
+            tickets,
+            tickets.Any() 
+                ? $"Found {tickets.Count()} ticket(s)" 
+                : "No tickets found matching the criteria"
+        ));
+    }
+
+    /// Get ticket statistics for current user
+    [HttpGet("my-tickets/stats")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<object>>> GetMyTicketsStats()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdClaim))
+        {
+            return Ok(ApiResponse<object>.SuccessResponse(
+                new { totalTickets = 0 },
+                "User not authenticated"
+            ));
+        }
+
+        var userId = int.Parse(userIdClaim);
+        var totalTickets = await _ticketService.GetUserTicketsCountAsync(userId);
+        var tickets = await _ticketService.GetUserTicketsAsync(userId);
+        
+        var stats = new
+        {
+            totalTickets = totalTickets,
+            validTickets = tickets.Count(t => t.Status.Equals("Valid", StringComparison.OrdinalIgnoreCase)),
+            usedTickets = tickets.Count(t => t.Status.Equals("Used", StringComparison.OrdinalIgnoreCase)),
+            cancelledTickets = tickets.Count(t => t.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+        };
+
+        return Ok(ApiResponse<object>.SuccessResponse(
+            stats,
+            $"You have {totalTickets} ticket(s) in total"
+        ));
     }
 
     /// Transfer ticket to another user
@@ -108,7 +172,7 @@ public class TicketController : ControllerBase
         ));
     }
 
-    /// Accept ticket transfer
+    /// Accept ticket transfer (via POST with body)
     [HttpPost("transfers/{id}/accept")]
     [ProducesResponseType(typeof(ApiResponse<TicketDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -124,7 +188,88 @@ public class TicketController : ControllerBase
 
         return Ok(ApiResponse<TicketDto>.SuccessResponse(
             ticket,
-            "Ticket transfer accepted successfully. Ticket is now yours."
+            $"Ticket transfer accepted successfully! Ticket {ticket.TicketNumber} is now yours. Check your email for confirmation."
+        ));
+    }
+
+    /// Accept ticket transfer (via GET with query params - for email links)
+    [HttpGet("transfers/accept")]
+    [ProducesResponseType(typeof(ApiResponse<TicketDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<TicketDto>>> AcceptTransferByToken(
+        [FromQuery] int transferId,
+        [FromQuery] string token)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdClaim))
+        {
+            return Unauthorized(ApiResponse<object>.FailureResponse("Please login to accept the transfer"));
+        }
+
+        var userId = int.Parse(userIdClaim);
+        var acceptTransferDto = new AcceptTransferDto
+        {
+            TransferId = transferId,
+            AcceptanceToken = token
+        };
+
+        var ticket = await _ticketService.AcceptTransferAsync(acceptTransferDto, userId);
+
+        return Ok(ApiResponse<TicketDto>.SuccessResponse(
+            ticket,
+            $"Ticket transfer accepted successfully! Ticket {ticket.TicketNumber} is now yours. Check your email for confirmation."
+        ));
+    }
+
+    /// Get pending ticket transfers for current user
+    [HttpGet("transfers/pending")]
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<TicketTransferResponseDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<IEnumerable<TicketTransferResponseDto>>>> GetPendingTransfers()
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        
+        var transfers = await _ticketService.GetPendingTransfersAsync(userId);
+        
+        return Ok(ApiResponse<IEnumerable<TicketTransferResponseDto>>.SuccessResponse(
+            transfers,
+            $"Found {transfers.Count()} pending transfer(s)."
+        ));
+    }
+
+    /// Reject ticket transfer (via GET with query params - for email links)
+    [HttpGet("transfers/reject")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<object>>> RejectTransferByToken(
+        [FromQuery] int transferId,
+        [FromQuery] string token)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdClaim))
+        {
+            return Unauthorized(ApiResponse<object>.FailureResponse("Please login to reject the transfer"));
+        }
+
+        var userId = int.Parse(userIdClaim);
+        var rejectTransferDto = new AcceptTransferDto
+        {
+            TransferId = transferId,
+            AcceptanceToken = token
+        };
+
+        var result = await _ticketService.RejectTransferAsync(rejectTransferDto, userId);
+
+        return Ok(ApiResponse<object>.SuccessResponse(
+            new { 
+                transferId = transferId, 
+                rejected = result,
+                message = "Transfer has been rejected. The sender has been notified."
+            },
+            "Ticket transfer rejected successfully. The sender has been notified via email."
         ));
     }
 
@@ -143,8 +288,12 @@ public class TicketController : ControllerBase
         var result = await _ticketService.RejectTransferAsync(rejectTransferDto, userId);
 
         return Ok(ApiResponse<object>.SuccessResponse(
-            new { transferId = id, rejected = result },
-            "Ticket transfer rejected successfully."
+            new { 
+                transferId = id, 
+                rejected = result,
+                message = "Transfer has been rejected. The sender has been notified."
+            },
+            "Ticket transfer rejected successfully. The sender has been notified via email."
         ));
     }
 

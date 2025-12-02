@@ -1,4 +1,7 @@
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Tickify.Data;
 using Tickify.DTOs.Booking;
 using Tickify.Exceptions;
 using Tickify.Interfaces.Repositories;
@@ -13,20 +16,29 @@ public class BookingService : IBookingService
     private readonly ITicketRepository _ticketRepository;
     private readonly ISeatRepository _seatRepository;
     private readonly IPromoCodeRepository _promoCodeRepository;
+    private readonly INotificationService _notificationService;
+    private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
+    private readonly ILogger<BookingService> _logger;
 
     public BookingService(
         IBookingRepository bookingRepository,
         ITicketRepository ticketRepository,
         ISeatRepository seatRepository,
         IPromoCodeRepository promoCodeRepository,
-        IMapper mapper)
+        INotificationService notificationService,
+        ApplicationDbContext context,
+        IMapper mapper,
+        ILogger<BookingService> logger)
     {
         _bookingRepository = bookingRepository;
         _ticketRepository = ticketRepository;
         _seatRepository = seatRepository;
         _promoCodeRepository = promoCodeRepository;
+        _notificationService = notificationService;
+        _context = context;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<BookingDto> GetByIdAsync(int id)
@@ -61,9 +73,34 @@ public class BookingService : IBookingService
 
     public async Task<BookingConfirmationDto> CreateBookingAsync(CreateBookingDto createBookingDto, int userId)
     {
-        // Calculate total amount based on ticket type and quantity (should be calculated, not from DTO)
-        // For now, we'll need to get ticket type price
-        decimal totalAmount = 0; // TODO: Get from TicketType price * quantity
+        // Validate user exists
+        var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
+        if (!userExists)
+            throw new NotFoundException($"User with ID {userId} not found. Please log in again.");
+
+        // Get ticket type to calculate price
+        var ticketType = await _context.TicketTypes
+            .FirstOrDefaultAsync(tt => tt.Id == createBookingDto.TicketTypeId && tt.EventId == createBookingDto.EventId);
+        
+        if (ticketType == null)
+            throw new NotFoundException($"Ticket type {createBookingDto.TicketTypeId} not found for event {createBookingDto.EventId}");
+        
+        if (!ticketType.IsActive)
+            throw new BadRequestException("Ticket type is not active");
+        
+        if (ticketType.AvailableQuantity < createBookingDto.Quantity)
+            throw new BadRequestException($"Not enough tickets available. Available: {ticketType.AvailableQuantity}, Requested: {createBookingDto.Quantity}");
+
+        // Calculate subtotal based on ticket type price and quantity
+        decimal subtotal = ticketType.Price * createBookingDto.Quantity;
+        
+        // Calculate service fee (5% như frontend)
+        // TODO: Nên lấy từ configuration thay vì hardcode
+        const decimal SERVICE_FEE_PERCENTAGE = 0.05m;
+        decimal serviceFee = subtotal * SERVICE_FEE_PERCENTAGE;
+        
+        // Total amount = subtotal + service fee
+        decimal totalAmount = subtotal + serviceFee;
 
         // Validate seat availability
         if (createBookingDto.SeatIds?.Any() == true)
@@ -77,6 +114,7 @@ public class BookingService : IBookingService
         }
 
         // Validate and apply promo code if provided
+        // Lưu ý: Discount chỉ áp dụng cho subtotal (giá vé), KHÔNG áp dụng cho service fee
         decimal discount = 0;
         int? promoCodeId = null;
         if (!string.IsNullOrEmpty(createBookingDto.PromoCode))
@@ -87,36 +125,81 @@ public class BookingService : IBookingService
 
             promoCodeId = promoCode.Id;
 
-            // Calculate discount
+            // Calculate discount - chỉ áp dụng cho subtotal (giá vé), không áp dụng cho service fee
             if (promoCode.DiscountPercent.HasValue)
-                discount = totalAmount * (promoCode.DiscountPercent.Value / 100);
+                discount = subtotal * (promoCode.DiscountPercent.Value / 100);
             else if (promoCode.DiscountAmount.HasValue)
                 discount = promoCode.DiscountAmount.Value;
+            
+            // Đảm bảo discount không vượt quá subtotal
+            if (discount > subtotal)
+                discount = subtotal;
         }
+        
+        // Final total = subtotal - discount + service fee
+        // Service fee luôn được tính, không bị discount
+        decimal finalAmount = subtotal - discount + serviceFee;
 
-        // Create booking
-        var booking = new Booking
+        // Sử dụng transaction để đảm bảo data consistency
+        _logger.LogInformation("Bắt đầu tạo booking cho UserId: {UserId}, EventId: {EventId}, Quantity: {Quantity}", 
+            userId, createBookingDto.EventId, createBookingDto.Quantity);
+        
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            UserId = userId,
-            EventId = createBookingDto.EventId,
-            BookingCode = GenerateBookingCode(),
-            TotalAmount = totalAmount - discount,
-            DiscountAmount = discount,
-            PromoCodeId = promoCodeId,
-            Status = BookingStatus.Pending,
-            BookingDate = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(15) // 15 minutes to complete payment
-        };
+            // Create booking
+            // TotalAmount bao gồm: subtotal - discount + service fee
+            var booking = new Booking
+            {
+                UserId = userId,
+                EventId = createBookingDto.EventId,
+                BookingCode = GenerateBookingCode(),
+                TotalAmount = finalAmount, // Đã bao gồm service fee
+                DiscountAmount = discount,
+                PromoCodeId = promoCodeId,
+                Status = BookingStatus.Pending,
+                BookingDate = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(15) // 15 minutes to complete payment
+            };
+            
+            _logger.LogInformation("Tính toán booking amount - Subtotal: {Subtotal}, ServiceFee: {ServiceFee}, Discount: {Discount}, FinalAmount: {FinalAmount}", 
+                subtotal, serviceFee, discount, finalAmount);
 
-        var createdBooking = await _bookingRepository.CreateAsync(booking);
+            var createdBooking = await _bookingRepository.CreateAsync(booking);
+            _logger.LogInformation("Đã tạo booking {BookingId} với code {BookingCode}", 
+                createdBooking.Id, createdBooking.BookingCode);
 
-        // Increment promo code usage if applied
-        if (promoCodeId.HasValue)
-        {
-            await _promoCodeRepository.IncrementUsageAsync(promoCodeId.Value);
+            // Update ticket type available quantity (reserve tickets)
+            ticketType.AvailableQuantity -= createBookingDto.Quantity;
+            _context.TicketTypes.Update(ticketType);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Đã cập nhật số lượng ticket type {TicketTypeId}: AvailableQuantity = {AvailableQuantity}", 
+                ticketType.Id, ticketType.AvailableQuantity);
+
+            // Increment promo code usage if applied
+            if (promoCodeId.HasValue)
+            {
+                await _promoCodeRepository.IncrementUsageAsync(promoCodeId.Value);
+                _logger.LogInformation("Đã tăng usage cho promo code {PromoCodeId}", promoCodeId.Value);
+            }
+
+            // Commit transaction
+            await transaction.CommitAsync();
+            _logger.LogInformation("Transaction committed thành công cho booking {BookingId}", createdBooking.Id);
+
+            // Reload booking with related entities for mapping
+            var bookingWithDetails = await _bookingRepository.GetByIdAsync(createdBooking.Id);
+            
+            return _mapper.Map<BookingConfirmationDto>(bookingWithDetails);
         }
-
-        return _mapper.Map<BookingConfirmationDto>(createdBooking);
+        catch (Exception ex)
+        {
+            // Rollback transaction nếu có lỗi
+            _logger.LogError(ex, "Lỗi khi tạo booking, đang rollback transaction. UserId: {UserId}, EventId: {EventId}", 
+                userId, createBookingDto.EventId);
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<BookingDto> CancelBookingAsync(int bookingId, CancelBookingDto cancelBookingDto, int userId)
@@ -134,20 +217,44 @@ public class BookingService : IBookingService
         if (booking.Status == BookingStatus.Confirmed)
             throw new BadRequestException("Cannot cancel a confirmed booking. Please request a refund instead.");
 
-        booking.Status = BookingStatus.Cancelled;
-        booking.CancellationReason = cancelBookingDto.CancellationReason;
-        booking.CancelledAt = DateTime.UtcNow;
-
-        // Release seats
-        var tickets = await _ticketRepository.GetByBookingIdAsync(bookingId);
-        var seatIds = tickets.Where(t => t.SeatId.HasValue).Select(t => t.SeatId!.Value);
-        if (seatIds.Any())
+        // Sử dụng transaction để đảm bảo data consistency
+        _logger.LogInformation("Bắt đầu hủy booking {BookingId} cho UserId: {UserId}", bookingId, userId);
+        
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            await _seatRepository.ReleaseSeatsAsync(seatIds);
-        }
+            booking.Status = BookingStatus.Cancelled;
+            booking.CancellationReason = cancelBookingDto.CancellationReason;
+            booking.CancelledAt = DateTime.UtcNow;
 
-        var updatedBooking = await _bookingRepository.UpdateAsync(booking);
-        return _mapper.Map<BookingDto>(updatedBooking);
+            // Release seats
+            var tickets = await _ticketRepository.GetByBookingIdAsync(bookingId);
+            var seatIds = tickets.Where(t => t.SeatId.HasValue).Select(t => t.SeatId!.Value);
+            if (seatIds.Any())
+            {
+                await _seatRepository.ReleaseSeatsAsync(seatIds);
+                _logger.LogInformation("Đã release {SeatCount} seats cho booking {BookingId}", seatIds.Count(), bookingId);
+            }
+
+            var updatedBooking = await _bookingRepository.UpdateAsync(booking);
+            _logger.LogInformation("Đã cập nhật booking {BookingId} thành Cancelled", bookingId);
+            
+            // Commit transaction
+            await transaction.CommitAsync();
+            _logger.LogInformation("Transaction committed thành công cho cancel booking {BookingId}", bookingId);
+            
+            // Notify users in waitlist that tickets are now available
+            await NotifyWaitlistUsersAsync(booking.EventId);
+            
+            return _mapper.Map<BookingDto>(updatedBooking);
+        }
+        catch (Exception ex)
+        {
+            // Rollback transaction nếu có lỗi
+            _logger.LogError(ex, "Lỗi khi hủy booking {BookingId}, đang rollback transaction", bookingId);
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<BookingDetailDto> GetBookingDetailsAsync(int bookingId, int userId)
@@ -258,21 +365,105 @@ public class BookingService : IBookingService
         if (discountAmount > booking.TotalAmount)
             discountAmount = booking.TotalAmount;
 
-        // Apply discount
-        booking.PromoCodeId = promo.Id;
-        booking.DiscountAmount = discountAmount;
+        // Sử dụng transaction để đảm bảo data consistency
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // Apply discount
+            booking.PromoCodeId = promo.Id;
+            booking.DiscountAmount = discountAmount;
 
-        // Increment promo code usage
-        await _promoCodeRepository.IncrementUsageAsync(promo.Id);
+            // Increment promo code usage
+            await _promoCodeRepository.IncrementUsageAsync(promo.Id);
 
-        // Update booking
-        await _bookingRepository.UpdateAsync(booking);
+            // Update booking
+            await _bookingRepository.UpdateAsync(booking);
 
-        return _mapper.Map<BookingDto>(booking);
+            // Commit transaction
+            await transaction.CommitAsync();
+
+            return _mapper.Map<BookingDto>(booking);
+        }
+        catch (Exception)
+        {
+            // Rollback transaction nếu có lỗi
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     private string GenerateBookingCode()
     {
         return $"BK{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
+    }
+
+    /// <summary>
+    /// Notify waitlist users when tickets become available for an event
+    /// </summary>
+    private async Task NotifyWaitlistUsersAsync(int eventId)
+    {
+        try
+        {
+            // Get event details
+            var eventEntity = await _context.Events
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.Id == eventId);
+
+            if (eventEntity == null)
+            {
+                _logger.LogWarning("[BookingService] Event {EventId} not found for waitlist notification", eventId);
+                return;
+            }
+
+            // Get users in waitlist who haven't been notified yet
+            var waitlistUsers = await _context.Waitlists
+                .Where(w => w.EventId == eventId && !w.IsNotified && !w.HasPurchased)
+                .OrderBy(w => w.JoinedAt) // First come, first served
+                .Take(10) // Notify up to 10 users at a time
+                .ToListAsync();
+
+            if (!waitlistUsers.Any())
+            {
+                _logger.LogInformation("[BookingService] No waitlist users to notify for event {EventId}", eventId);
+                return;
+            }
+
+            foreach (var waitlistEntry in waitlistUsers)
+            {
+                try
+                {
+                    // Send notification
+                    await _notificationService.NotifyWaitlistAvailableAsync(
+                        waitlistEntry.UserId,
+                        eventId,
+                        eventEntity.Title
+                    );
+
+                    // Mark as notified
+                    waitlistEntry.IsNotified = true;
+                    waitlistEntry.NotifiedAt = DateTime.UtcNow;
+                    waitlistEntry.ExpiresAt = DateTime.UtcNow.AddHours(24); // 24 hours to purchase
+
+                    _logger.LogInformation(
+                        "[BookingService] Notified waitlist user {UserId} for event {EventId}",
+                        waitlistEntry.UserId, eventId
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "[BookingService] Failed to notify waitlist user {UserId} for event {EventId}",
+                        waitlistEntry.UserId, eventId
+                    );
+                }
+            }
+
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[BookingService] Failed to notify waitlist users for event {EventId}", eventId);
+            // Don't throw - waitlist notification failure shouldn't block booking cancellation
+        }
     }
 }

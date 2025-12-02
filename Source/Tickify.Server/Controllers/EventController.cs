@@ -1,26 +1,31 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Tickify.Common;
+using Tickify.Data;
 using Tickify.DTOs.Event;
 using Tickify.Interfaces.Services;
 
 namespace Tickify.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/events")]
 [Produces("application/json")]
 public class EventController : ControllerBase
 {
     private readonly IEventService _eventService;
     private readonly ILogger<EventController> _logger;
+    private readonly ApplicationDbContext _context;
 
     public EventController(
         IEventService eventService,
-        ILogger<EventController> logger)
+        ILogger<EventController> logger,
+        ApplicationDbContext context)
     {
         _eventService = eventService;
         _logger = logger;
+        _context = context;
     }
 
     #region Public Endpoints
@@ -145,34 +150,44 @@ public class EventController : ControllerBase
     public async Task<ActionResult<ApiResponse<EventDetailDto>>> CreateEvent(
         [FromBody] CreateEventDto dto)
     {
-        if (!ModelState.IsValid)
+        try
         {
-            var errors = ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage)
-                .ToList();
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
 
-            return BadRequest(ApiResponse<EventDetailDto>.FailureResponse(
-                "Validation failed",
-                errors
-            ));
+                _logger.LogWarning("CreateEvent validation failed: {Errors}", string.Join(", ", errors));
+
+                return BadRequest(ApiResponse<EventDetailDto>.FailureResponse(
+                    "Validation failed",
+                    errors
+                ));
+            }
+
+            var organizerId = await GetOrganizerIdFromClaimsAsync();
+
+            _logger.LogInformation("Organizer {OrganizerId} creating event: {EventTitle}",
+                organizerId, dto.Title);
+
+            var createdEvent = await _eventService.CreateEventAsync(dto, organizerId);
+
+            return CreatedAtAction(
+                nameof(GetEventById),
+                new { id = createdEvent.EventId },
+                ApiResponse<EventDetailDto>.SuccessResponse(
+                    createdEvent,
+                    "Event created successfully and submitted for approval"
+                )
+            );
         }
-
-        var organizerId = GetOrganizerIdFromClaims();
-
-        _logger.LogInformation("Organizer {OrganizerId} creating event: {EventTitle}",
-            organizerId, dto.Title);
-
-        var createdEvent = await _eventService.CreateEventAsync(dto, organizerId);
-
-        return CreatedAtAction(
-            nameof(GetEventById),
-            new { id = createdEvent.EventId },
-            ApiResponse<EventDetailDto>.SuccessResponse(
-                createdEvent,
-                "Event created successfully and submitted for approval"
-            )
-        );
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating event: {Message}. DTO: {@Dto}", ex.Message, dto);
+            throw; // Re-throw to be caught by ExceptionHandlingMiddleware
+        }
     }
 
     /// Update existing event (Organizer/Admin)
@@ -221,7 +236,7 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<EventDetailDto>>> PublishEvent(int id)
     {
-        var organizerId = GetOrganizerIdFromClaims();
+        var organizerId = await GetOrganizerIdFromClaimsAsync();
 
         _logger.LogInformation("Organizer {OrganizerId} publishing event {EventId}",
             organizerId, id);
@@ -271,7 +286,7 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<EventDetailDto>>> DuplicateEvent(int id)
     {
-        var organizerId = GetOrganizerIdFromClaims();
+        var organizerId = await GetOrganizerIdFromClaimsAsync();
 
         _logger.LogInformation("Organizer {OrganizerId} duplicating event {EventId}",
             organizerId, id);
@@ -324,7 +339,7 @@ public class EventController : ControllerBase
         int id,
         [FromBody] RejectEventDto dto)
     {
-        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(dto.Reason))
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(dto.RejectionReason))
         {
             return BadRequest(ApiResponse<EventDetailDto>.FailureResponse(
                 "Rejection reason is required",
@@ -335,9 +350,9 @@ public class EventController : ControllerBase
         var adminId = GetUserIdFromClaims();
 
         _logger.LogInformation("Admin {AdminId} rejecting event {EventId} with reason: {Reason}",
-            adminId, id, dto.Reason);
+            adminId, id, dto.RejectionReason);
 
-        var rejectedEvent = await _eventService.RejectEventAsync(id, adminId, dto.Reason);
+        var rejectedEvent = await _eventService.RejectEventAsync(id, adminId, dto.RejectionReason);
 
         return Ok(ApiResponse<EventDetailDto>.SuccessResponse(
             rejectedEvent,
@@ -412,13 +427,98 @@ public class EventController : ControllerBase
     }
 
     /// Get organizer ID from JWT claims (for organizers)
-    private int GetOrganizerIdFromClaims()
+    private async Task<int> GetOrganizerIdFromClaimsAsync()
     {
+        // Log all claims for debugging
+        var allClaims = User.Claims.Select(c => $"{c.Type}={c.Value}").ToList();
+        _logger.LogInformation("User claims: {Claims}", string.Join(", ", allClaims));
+
         var organizerIdClaim = User.FindFirst("organizerId")?.Value;
 
-        if (string.IsNullOrEmpty(organizerIdClaim) || !int.TryParse(organizerIdClaim, out var organizerId))
+        // If organizerId is not in token, try to get it from database
+        if (string.IsNullOrEmpty(organizerIdClaim))
         {
-            throw new UnauthorizedAccessException("Organizer ID not found in token. User may not be an organizer.");
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                throw new UnauthorizedAccessException("User ID not found in token.");
+            }
+
+            _logger.LogWarning("organizerId not found in token, fetching from database for userId {UserId}", userId);
+
+            var organizer = await _context.Organizers
+                .FirstOrDefaultAsync(o => o.UserId == userId);
+
+            if (organizer == null)
+            {
+                // First, check if user actually has Organizer role in database
+                // This is a safety check - user should not have Organizer role in token without having it in database
+                var user = await _context.Users
+                    .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+                
+                if (user == null)
+                {
+                    throw new UnauthorizedAccessException($"User {userId} not found.");
+                }
+
+                var hasOrganizerRole = user.UserRoles?.Any(ur => ur.Role.Name == "Organizer") ?? false;
+                
+                if (!hasOrganizerRole)
+                {
+                    // User does not have Organizer role in database - this should not happen
+                    // User should not have Organizer role in token without having it in database
+                    _logger.LogWarning("User {UserId} has Organizer role in token but not in database. This may indicate a token issue.", userId);
+                    throw new UnauthorizedAccessException("You do not have organizer permissions. Please contact admin if you believe this is an error.");
+                }
+
+                // Check if user has an approved organizer request
+                // Only auto-create if there's an approved request, not just a pending one
+                var approvedRequest = await _context.OrganizerRequests
+                    .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == "Approved");
+                
+                if (approvedRequest == null)
+                {
+                    // User has Organizer role in database but no approved request
+                    // This should not happen - user should not have Organizer role without approval
+                    _logger.LogWarning("User {UserId} has Organizer role in database but no approved organizer request. This may indicate a data inconsistency.", userId);
+                    throw new UnauthorizedAccessException("You do not have a valid organizer profile. Please contact admin if you believe this is an error.");
+                }
+
+                // Auto-create Organizer profile from approved request
+                _logger.LogInformation("Auto-creating Organizer profile for user {UserId} from approved request {RequestId}", userId, approvedRequest.RequestId);
+
+                organizer = new Tickify.Models.Organizer
+                {
+                    UserId = userId,
+                    CompanyName = approvedRequest.OrganizationName,
+                    BusinessRegistrationNumber = approvedRequest.BusinessRegistration,
+                    CompanyAddress = approvedRequest.Address,
+                    CompanyPhone = approvedRequest.PhoneNumber,
+                    Description = approvedRequest.Description ?? "New organizer profile - please update your information",
+                    IsVerified = true,
+                    VerifiedAt = approvedRequest.ReviewedAt ?? DateTime.UtcNow,
+                    VerifiedByStaffId = approvedRequest.ReviewedByAdminId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Organizers.Add(organizer);
+                await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Created organizer {OrganizerId} for user {UserId} from approved request", organizer.Id, userId);
+            }
+            else
+            {
+                _logger.LogInformation("Found organizer {OrganizerId} for user {UserId}", organizer.Id, userId);
+            }
+            
+            return organizer.Id;
+        }
+
+        if (!int.TryParse(organizerIdClaim, out var organizerId))
+        {
+            throw new UnauthorizedAccessException("Invalid organizerId format in token.");
         }
 
         return organizerId;

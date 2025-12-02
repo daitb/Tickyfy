@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Calendar, Ticket, DollarSign, Plus, MoreVertical, Eye, Edit, 
   Copy, Trash2, XCircle, LayoutGrid, List, Search, TrendingUp, Filter
@@ -63,6 +64,7 @@ interface EventWithStats {
 }
 
 export function EventManagement({ onNavigate }: EventManagementProps) {
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -128,11 +130,11 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'published':
-        return <Badge className="bg-green-100 text-green-700">Published</Badge>;
+        return <Badge className="bg-green-100 text-green-700">{t('eventManagement.published')}</Badge>;
       case 'draft':
-        return <Badge className="bg-amber-100 text-amber-700">Draft</Badge>;
+        return <Badge className="bg-amber-100 text-amber-700">{t('eventManagement.draft')}</Badge>;
       case 'cancelled':
-        return <Badge className="bg-red-100 text-red-700">Cancelled</Badge>;
+        return <Badge className="bg-red-100 text-red-700">{t('eventManagement.cancelled')}</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -152,7 +154,7 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
         onNavigate('event-analytics', eventId);
         break;
       case 'duplicate':
-        console.log('Duplicate event:', eventId);
+        // TODO: Implement duplicate event functionality
         break;
       case 'cancel':
         setEventToCancel(eventId);
@@ -164,12 +166,12 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
   };
 
   const confirmCancelEvent = () => {
-    console.log('Cancelling event:', eventToCancel);
+    // TODO: Implement cancel event API call
     setEventToCancel(null);
   };
 
   const confirmDeleteEvent = () => {
-    console.log('Deleting event:', eventToDelete);
+    // TODO: Implement delete event API call
     setEventToDelete(null);
   };
 
@@ -178,14 +180,14 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
       <div className="max-w-7xl mx-auto px-4">
         {/* Top Action Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-          <h1>My Events</h1>
+          <h1>{t('editEvent.myEvents')}</h1>
           <div className="flex gap-3">
             <Button
               onClick={() => onNavigate('organizer-wizard')}
               className="bg-teal-500 hover:bg-teal-600"
             >
               <Plus size={18} className="mr-2" />
-              Create New Event
+              {t('eventManagement.createEvent')}
             </Button>
             <div className="flex gap-1 bg-white rounded-lg border p-1">
               <Button
@@ -213,7 +215,7 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
           <Card className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-neutral-600">Total Events</div>
+                <div className="text-sm text-neutral-600">{t('eventManagement.totalEvents')}</div>
                 <Calendar className="text-teal-500" size={20} />
               </div>
               <div className="text-2xl text-neutral-900">{totalEvents}</div>
@@ -223,18 +225,18 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
           <Card className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-neutral-600">Active Events</div>
+                <div className="text-sm text-neutral-600">{t('eventManagement.activeEvents')}</div>
                 <TrendingUp className="text-green-500" size={20} />
               </div>
               <div className="text-2xl text-neutral-900">{activeEvents}</div>
-              <div className="text-xs text-green-600 mt-1">Published</div>
+              <div className="text-xs text-green-600 mt-1">{t('eventManagement.published')}</div>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-neutral-600">Tickets Sold</div>
+                <div className="text-sm text-neutral-600">{t('eventManagement.ticketsSold')}</div>
                 <Ticket className="text-teal-500" size={20} />
               </div>
               <div className="text-2xl text-neutral-900">{totalTicketsSold.toLocaleString()}</div>
@@ -244,7 +246,7 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
           <Card className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-neutral-600">Total Revenue</div>
+                <div className="text-sm text-neutral-600">{t('eventManagement.totalRevenue')}</div>
                 <DollarSign className="text-teal-500" size={20} />
               </div>
               <div className="text-2xl text-neutral-900">
@@ -261,31 +263,31 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                 <Input
-                  placeholder="Search events..."
+                  placeholder={t('eventManagement.searchEvents')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={(value: StatusFilter) => setStatusFilter(value)}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Status" />
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder={t('eventManagement.status')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="all">{t('eventManagement.allStatus')}</SelectItem>
+                  <SelectItem value="published">{t('eventManagement.published')}</SelectItem>
+                  <SelectItem value="draft">{t('eventManagement.draft')}</SelectItem>
+                  <SelectItem value="cancelled">{t('eventManagement.cancelled')}</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={dateFilter} onValueChange={(value: DateFilter) => setDateFilter(value)}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Date" />
+              <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder={t('eventManagement.date')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="upcoming">Upcoming</SelectItem>
-                  <SelectItem value="past">Past</SelectItem>
+                  <SelectItem value="all">{t('eventManagement.allTime')}</SelectItem>
+                  <SelectItem value="upcoming">{t('eventManagement.upcoming')}</SelectItem>
+                  <SelectItem value="past">{t('eventManagement.past')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -301,14 +303,14 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                   <Calendar className="mx-auto text-neutral-400 mb-4" size={64} />
                   <h3 className="text-neutral-900 mb-2">
                     {searchTerm || statusFilter !== 'all' || dateFilter !== 'all' 
-                      ? 'No events found'
-                      : 'No events yet'
+                      ? t('eventManagement.noEvents')
+                      : t('eventManagement.noEvents')
                     }
                   </h3>
                   <p className="text-neutral-600 mb-6">
                     {searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
                       ? 'Try adjusting your filters'
-                      : 'Create your first event to get started'
+                      : t('eventManagement.noEventsMessage')
                     }
                   </p>
                   {!searchTerm && statusFilter === 'all' && dateFilter === 'all' && (
@@ -317,7 +319,7 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                       className="bg-teal-500 hover:bg-teal-600"
                     >
                       <Plus size={18} className="mr-2" />
-                      Create Event
+                      {t('eventManagement.createEvent')}
                     </Button>
                   )}
                 </div>
@@ -355,13 +357,13 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                       {/* Quick Stats */}
                       <div className="flex items-center justify-between py-3 border-t">
                         <div>
-                          <div className="text-xs text-neutral-600">Tickets Sold</div>
+                          <div className="text-xs text-neutral-600">{t('eventManagement.ticketsSold')}</div>
                           <div className="text-neutral-900">
                             {event.ticketsSold}/{event.totalTickets}
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs text-neutral-600">Revenue</div>
+                          <div className="text-xs text-neutral-600">{t('eventManagement.revenue')}</div>
                           <div className="text-teal-600">
                             {formatPrice(event.revenue)}
                           </div>
@@ -377,7 +379,7 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                           onClick={() => handleEventAction('view', event.id)}
                         >
                           <Eye size={14} className="mr-1" />
-                          View
+                          {t('eventManagement.viewDetails')}
                         </Button>
                         <Button
                           variant="outline"
@@ -386,7 +388,7 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                           onClick={() => handleEventAction('edit', event.id)}
                         >
                           <Edit size={14} className="mr-1" />
-                          Edit
+                          {t('eventManagement.editEvent')}
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -397,11 +399,11 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleEventAction('analytics', event.id)}>
                               <TrendingUp size={14} className="mr-2" />
-                              View Analytics
+                              {t('eventManagement.viewDetails')}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEventAction('duplicate', event.id)}>
                               <Copy size={14} className="mr-2" />
-                              Duplicate Event
+                              {t('eventManagement.duplicate')}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
@@ -409,14 +411,14 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                               className="text-red-600"
                             >
                               <XCircle size={14} className="mr-2" />
-                              Cancel Event
+                              {t('eventManagement.cancelEvent')}
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => handleEventAction('delete', event.id)}
                               className="text-red-600"
                             >
                               <Trash2 size={14} className="mr-2" />
-                              Delete Event
+                              {t('eventManagement.deleteEvent')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -438,14 +440,14 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                   <Calendar className="mx-auto text-neutral-400 mb-4" size={64} />
                   <h3 className="text-neutral-900 mb-2">
                     {searchTerm || statusFilter !== 'all' || dateFilter !== 'all' 
-                      ? 'No events found'
-                      : 'No events yet'
+                      ? t('eventManagement.noEvents')
+                      : t('eventManagement.noEvents')
                     }
                   </h3>
                   <p className="text-neutral-600 mb-6">
                     {searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
                       ? 'Try adjusting your filters'
-                      : 'Create your first event to get started'
+                      : t('eventManagement.noEventsMessage')
                     }
                   </p>
                   {!searchTerm && statusFilter === 'all' && dateFilter === 'all' && (
@@ -454,7 +456,7 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                       className="bg-teal-500 hover:bg-teal-600"
                     >
                       <Plus size={18} className="mr-2" />
-                      Create Event
+                      {t('eventManagement.createEvent')}
                     </Button>
                   )}
                 </div>
@@ -462,14 +464,14 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[80px]">Image</TableHead>
-                      <TableHead>Event Name</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Sold</TableHead>
-                      <TableHead className="text-right">Revenue</TableHead>
-                      <TableHead className="text-right w-[80px]">Actions</TableHead>
+                      <TableHead className="w-[80px]">{t('eventManagement.image')}</TableHead>
+                      <TableHead>{t('eventManagement.eventName')}</TableHead>
+                      <TableHead>{t('eventManagement.date')}</TableHead>
+                      <TableHead>{t('eventManagement.location')}</TableHead>
+                      <TableHead>{t('eventManagement.status')}</TableHead>
+                      <TableHead className="text-right">{t('eventManagement.sold')}</TableHead>
+                      <TableHead className="text-right">{t('eventManagement.revenue')}</TableHead>
+                      <TableHead className="text-right w-[80px]">{t('eventManagement.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -517,19 +519,19 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleEventAction('view', event.id)}>
                                 <Eye size={14} className="mr-2" />
-                                View Details
+                                {t('eventManagement.viewDetails')}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEventAction('edit', event.id)}>
                                 <Edit size={14} className="mr-2" />
-                                Edit Event
+                                {t('eventManagement.editEvent')}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEventAction('analytics', event.id)}>
                                 <TrendingUp size={14} className="mr-2" />
-                                View Analytics
+                                {t('eventManagement.viewDetails')}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEventAction('duplicate', event.id)}>
                                 <Copy size={14} className="mr-2" />
-                                Duplicate Event
+                                {t('eventManagement.duplicate')}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
@@ -537,14 +539,14 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                                 className="text-red-600"
                               >
                                 <XCircle size={14} className="mr-2" />
-                                Cancel Event
+                                {t('eventManagement.cancelEvent')}
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleEventAction('delete', event.id)}
                                 className="text-red-600"
                               >
                                 <Trash2 size={14} className="mr-2" />
-                                Delete Event
+                                {t('eventManagement.deleteEvent')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -563,20 +565,20 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
       <Dialog open={!!eventToCancel} onOpenChange={() => setEventToCancel(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancel Event?</DialogTitle>
+            <DialogTitle>{t('eventManagement.cancelEventTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel this event? This action will notify all ticket holders and process refunds according to your refund policy.
+              {t('eventManagement.cancelEventMessage')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEventToCancel(null)}>
-              Keep Event
+              {t('eventManagement.keepEvent')}
             </Button>
             <Button 
               className="bg-red-500 hover:bg-red-600"
               onClick={confirmCancelEvent}
             >
-              Cancel Event
+              {t('eventManagement.confirmCancel')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -586,20 +588,20 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
       <Dialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Event?</DialogTitle>
+            <DialogTitle>{t('eventManagement.deleteEventTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to permanently delete this event? This action cannot be undone. All event data, tickets, and orders will be permanently removed.
+              {t('eventManagement.deleteEventMessage')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEventToDelete(null)}>
-              Cancel
+              {t('eventManagement.keepIt')}
             </Button>
             <Button 
               className="bg-red-500 hover:bg-red-600"
               onClick={confirmDeleteEvent}
             >
-              Delete Permanently
+              {t('eventManagement.confirmDelete')}
             </Button>
           </DialogFooter>
         </DialogContent>

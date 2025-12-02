@@ -8,7 +8,7 @@ using Tickify.Services.Auth;
 namespace Tickify.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/auth")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -21,16 +21,16 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
     {
-        var response = await _authService.RegisterAsync(registerDto);
+        await _authService.RegisterAsync(registerDto);
         
         _logger.LogInformation("User {Email} registered successfully", registerDto.Email);
         
-        return Ok(ApiResponse<LoginResponse>.SuccessResponse(
-            response,
+        return Ok(ApiResponse<object?>.SuccessResponse(
+            null,
             "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản."
         ));
     }
@@ -94,6 +94,21 @@ public class AuthController : ControllerBase
         return Ok(ApiResponse<object?>.SuccessResponse(
             null,
             "Xác thực email thành công"
+        ));
+    }
+
+    [HttpPost("resend-verification")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationDto resendDto)
+    {
+        await _authService.ResendVerificationEmailAsync(resendDto.Email);
+        
+        _logger.LogInformation("Verification email resent to {Email}", resendDto.Email);
+        
+        return Ok(ApiResponse<object?>.SuccessResponse(
+            null,
+            "Email xác thực đã được gửi lại. Vui lòng kiểm tra hộp thư."
         ));
     }
 

@@ -1,4 +1,4 @@
-import type { Event, Order, Category, WishlistItem, WaitlistEntry } from './types';
+import type { Event, Order, Category, WaitlistEntry } from './types';
 
 // Categories for filtering
 export const categories: Category[] = [
@@ -634,27 +634,6 @@ export const mockOrders: Order[] = [
     userEmail: 'user@example.com',
     userName: 'Nguyen Van A',
     paymentMethod: 'VNPay'
-  }
-];
-
-export const mockWishlist: WishlistItem[] = [
-  {
-    id: 'wish-1',
-    userId: 'user-1',
-    eventId: 'evt-1',
-    addedAt: '2025-10-01T10:00:00'
-  },
-  {
-    id: 'wish-2',
-    userId: 'user-1',
-    eventId: 'evt-3',
-    addedAt: '2025-10-05T14:30:00'
-  },
-  {
-    id: 'wish-3',
-    userId: 'user-1',
-    eventId: 'evt-4',
-    addedAt: '2025-10-10T08:15:00'
   }
 ];
 

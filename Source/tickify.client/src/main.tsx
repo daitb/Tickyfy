@@ -1,10 +1,19 @@
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { AppRoutes } from "./routes.tsx";
+import App from "./App";
 import "./index.css";
+import "./i18n";
+import { WishlistProvider } from "./contexts/WishlistContext";
 
 createRoot(document.getElementById("root")!).render(
-  <BrowserRouter>
-    <AppRoutes />
+  <BrowserRouter
+    future={{
+      v7_startTransition: true,
+      v7_relativeSplatPath: true,
+    }}
+  >
+    <WishlistProvider>
+      <App />
+    </WishlistProvider>
   </BrowserRouter>
 );

@@ -23,6 +23,8 @@ namespace Tickify.Data
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<SupportTicket> SupportTickets { get; set; }
         public DbSet<SupportMessage> SupportMessages { get; set; }
+        public DbSet<ChatConversation> ChatConversations { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<RefundRequest> RefundRequests { get; set; }
         public DbSet<SystemSetting> SystemSettings { get; set; }
         public DbSet<Payout> Payouts { get; set; }
@@ -36,6 +38,7 @@ namespace Tickify.Data
         public DbSet<Waitlist> Waitlists { get; set; }
         public DbSet<TicketTransfer> TicketTransfers { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<OrganizerRequest> OrganizerRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -190,6 +193,34 @@ namespace Tickify.Data
                 .HasForeignKey(sm => sm.SupportTicketId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // ChatConversation - User relationship
+            modelBuilder.Entity<ChatConversation>()
+                .HasOne(cc => cc.User)
+                .WithMany()
+                .HasForeignKey(cc => cc.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ChatConversation - Staff relationship
+            modelBuilder.Entity<ChatConversation>()
+                .HasOne(cc => cc.Staff)
+                .WithMany()
+                .HasForeignKey(cc => cc.StaffId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ChatConversation - ChatMessage relationship
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(cm => cm.ChatConversation)
+                .WithMany(cc => cc.Messages)
+                .HasForeignKey(cm => cm.ChatConversationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ChatMessage - Sender relationship
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(cm => cm.Sender)
+                .WithMany()
+                .HasForeignKey(cm => cm.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // RefundRequest - Booking relationship
             modelBuilder.Entity<RefundRequest>()
                 .HasOne(rr => rr.Booking)
@@ -338,6 +369,18 @@ namespace Tickify.Data
                 .WithMany()
                 .HasForeignKey(tt => tt.ApprovedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+                
+            // TicketTransfer - column config
+            modelBuilder.Entity<TicketTransfer>()
+                .Property(tt => tt.AcceptanceToken)
+                .HasMaxLength(200)
+                .IsUnicode(false)
+                .IsRequired(false);
+
+            modelBuilder.Entity<TicketTransfer>()
+                .Property(tt => tt.AcceptanceExpiresAt)
+                .HasColumnType("datetime2")
+                .IsRequired(false);
 
             // Add indexes for better performance
 
@@ -507,6 +550,11 @@ namespace Tickify.Data
                 .Property(tt => tt.Price)
                 .HasPrecision(18, 2);
 
+            // SeatZone - Zone price precision
+            modelBuilder.Entity<SeatZone>()
+                .Property(sz => sz.ZonePrice)
+                .HasPrecision(18, 2);
+
             // ===== CHECK CONSTRAINTS FOR DATA VALIDATION =====
 
             // Events - Business rules
@@ -642,6 +690,31 @@ namespace Tickify.Data
 
             modelBuilder.Entity<RefreshToken>()
                 .HasIndex(rt => new { rt.UserId, rt.IsRevoked });
+
+            // OrganizerRequest - Primary key
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasKey(or => or.RequestId);
+
+            // OrganizerRequest - User relationship
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasOne(or => or.User)
+                .WithMany()
+                .HasForeignKey(or => or.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // OrganizerRequest - ReviewedByAdmin relationship
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasOne(or => or.ReviewedByAdmin)
+                .WithMany()
+                .HasForeignKey(or => or.ReviewedByAdminId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // OrganizerRequest - Indexes
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasIndex(or => or.UserId);
+
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasIndex(or => or.Status);
         }
     }
 }

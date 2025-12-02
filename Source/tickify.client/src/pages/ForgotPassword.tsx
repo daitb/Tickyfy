@@ -3,32 +3,48 @@ import { Mail, ArrowLeft, Ticket } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { authService } from '../services/authService';
+import { toast } from 'sonner';
 
 interface ForgotPasswordProps {
   onNavigate: (page: string) => void;
 }
 
 export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await authService.forgotPassword(email);
       setIsEmailSent(true);
-    }, 1000);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message || 
+                          t('auth.forgotPasswordError') || 
+                          'Không thể gửi link đặt lại mật khẩu. Vui lòng thử lại.';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <button 
             onClick={() => onNavigate('home')}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -38,6 +54,7 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
             </div>
             <span className="text-xl text-neutral-900">Tickify</span>
           </button>
+          <LanguageSwitcher />
         </div>
       </div>
 
@@ -50,22 +67,29 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
               <>
                 {/* Header */}
                 <div className="text-center mb-8">
-                  <h1 className="text-neutral-900 mb-2">Reset your password</h1>
+                  <h1 className="text-neutral-900 mb-2">{t('auth.forgotPasswordTitle')}</h1>
                   <p className="text-sm text-neutral-600">
-                    Enter your email address and we'll send you a link to reset your password
+                    {t('auth.forgotPasswordSubtitle')}
                   </p>
                 </div>
+
+                {/* Error Alert */}
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                    {error}
+                  </div>
+                )}
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">{t('auth.email')}</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                       <Input
                         id="email"
                         type="email"
-                        placeholder="Enter your email"
+                        placeholder={t('auth.emailPlaceholder')}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="pl-10"
@@ -79,7 +103,7 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
                     className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                     disabled={isLoading}
                   >
-                    {isLoading ? 'Sending...' : 'Send reset link'}
+                    {isLoading ? t('auth.sending') : t('auth.sendResetLink')}
                   </Button>
 
                   <button
@@ -88,7 +112,7 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
                     className="w-full flex items-center justify-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
                   >
                     <ArrowLeft size={16} />
-                    Back to sign in
+                    {t('auth.backToLogin')}
                   </button>
                 </form>
               </>
@@ -112,9 +136,9 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
                     </svg>
                   </div>
 
-                  <h1 className="text-neutral-900 mb-2">Check your email</h1>
+                  <h1 className="text-neutral-900 mb-2">{t('auth.checkYourEmail')}</h1>
                   <p className="text-sm text-neutral-600 mb-8">
-                    We've sent a password reset link to<br />
+                    {t('auth.resetLinkSent')}<br />
                     <span className="text-neutral-900">{email}</span>
                   </p>
 
@@ -123,16 +147,16 @@ export function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
                       onClick={() => onNavigate('login')}
                       className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                     >
-                      Back to sign in
+                      {t('auth.backToSignIn')}
                     </Button>
 
                     <p className="text-sm text-neutral-600">
-                      Didn't receive the email?{' '}
+                      {t('auth.didntReceive')}{' '}
                       <button
                         onClick={() => setIsEmailSent(false)}
                         className="text-orange-500 hover:text-orange-600 transition-colors"
                       >
-                        Click to resend
+                        {t('auth.clickToResend')}
                       </button>
                     </p>
                   </div>

@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useTranslation } from 'react-i18next';
 import {
   Undo2,
   Redo2,
@@ -122,6 +123,7 @@ const defaultZones: Zone[] = [
 ];
 
 export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
+  const { t } = useTranslation();
   const [zones, setZones] = useState<Zone[]>(defaultZones);
   const [seats, setSeats] = useState<GridSeat[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>("seat");

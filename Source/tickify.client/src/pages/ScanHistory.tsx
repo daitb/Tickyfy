@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from 'react-i18next';
 import {
   QrCode,
   XCircle,
@@ -123,6 +124,7 @@ const mockScans: ScanRecord[] = [
 ];
 
 export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedScan, setSelectedScan] = useState<ScanRecord | null>(null);
@@ -138,7 +140,7 @@ export function ScanHistory({ eventId, onNavigate }: ScanHistoryProps) {
   };
 
   const handleExport = (format: string) => {
-    console.log("Exporting as:", format);
+    // TODO: Implement export functionality
   };
 
   const filteredScans = mockScans.filter((scan) => {

@@ -12,7 +12,8 @@ using Tickify.Services.Auth;
 // [ADD] using cho DI của Payment/Refund/Repositories
 using Tickify.Services.Payments;              // PaymentService, VNPayProvider, MoMoProvider
 using Tickify.Services.Refunds;              // RefundService
-using Tickify.Repositories;                  // EfPaymentRepository, EfRefundRequestRepository
+using Tickify.Services.Payouts;              // PayoutService
+using Tickify.Repositories;                  // EfPaymentRepository, EfRefundRequestRepository, EfPayoutRepository
 using Tickify.Interfaces.Repositories;
 using Tickify.Interfaces.Services;
 using Tickify.Services;       // IBookingRepository, IPaymentRepository, IRefundRequestRepository
@@ -21,7 +22,7 @@ namespace Tickify
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -59,11 +60,16 @@ namespace Tickify
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IFileUploadService, FileUploadService>();
             builder.Services.AddScoped<Tickify.Services.Reviews.IReviewService, Tickify.Services.Reviews.ReviewService>();
+            builder.Services.AddScoped<Tickify.Interfaces.Services.IAdminService, Tickify.Services.AdminService>();
 
 
             // [ADD] HttpClient + HttpContextAccessor (MoMoProvider dùng HttpClient; controller cần lấy IP)
             builder.Services.AddHttpClient();
             builder.Services.AddHttpContextAccessor();
+
+            // [ADD] Configure MoMo options from appsettings.json
+            builder.Services.Configure<Tickify.Models.Momo.MomoOptionModel>(
+                builder.Configuration.GetSection("MomoAPI"));
 
             // [ADD] Đăng ký Payment/Refund theo Week 2 (không ảnh hưởng module khác)
             builder.Services.AddScoped<IReviewRepository, EfReviewRepository>();
@@ -74,6 +80,10 @@ namespace Tickify
             builder.Services.AddScoped<IPaymentProvider, VNPayProvider>();
             builder.Services.AddScoped<IPaymentProvider, MoMoProvider>();
             builder.Services.AddScoped<IRefundService, RefundService>();
+
+            // Payout Services & Repositories
+            builder.Services.AddScoped<IPayoutRepository, EfPayoutRepository>();
+            builder.Services.AddScoped<Services.Payouts.IPayoutService, Services.Payouts.PayoutService>();
 
             // [NOTE] Nếu IBookingRepository CHƯA được đăng ký ở nơi khác thì thêm dòng dưới:
             // builder.Services.AddScoped<IBookingRepository, EfBookingRepository>(); // <-- chỉ bật nếu bạn đã có EfBookingRepository
@@ -91,10 +101,23 @@ namespace Tickify
             builder.Services.AddScoped<Tickify.Interfaces.Services.ITicketService, Tickify.Services.TicketService>();
             builder.Services.AddScoped<Tickify.Interfaces.Services.IBookingService, Tickify.Services.BookingService>();
             builder.Services.AddScoped<Tickify.Interfaces.Services.IPromoCodeService, Tickify.Services.PromoCodeService>();
-            
+
             // Seat Management Services & Repositories (Week 2 - Seat Selection)
             builder.Services.AddScoped<Tickify.Repositories.ISeatMapRepository, Tickify.Repositories.SeatMapRepository>();
             builder.Services.AddScoped<Tickify.Services.ISeatMapService, Tickify.Services.SeatMapService>();
+
+            // Category, Organizer & Support Services (Developer 2 - Week 2)
+            builder.Services.AddScoped<ICategoryService, CategoryService>();
+            builder.Services.AddScoped<IOrganizerService, OrganizerService>();
+            builder.Services.AddScoped<ISupportService, SupportService>();
+            builder.Services.AddScoped<IWishlistService, WishlistService>();
+
+            // Chat Services & Repositories
+            builder.Services.AddScoped<IChatRepository, EfChatRepository>();
+            builder.Services.AddScoped<IChatService, ChatService>();
+
+            // Notification Services
+            builder.Services.AddScoped<INotificationService, Tickify.Services.Notifications.NotificationService>();
 
             // ============================================
             // 4. JWT AUTHENTICATION CONFIGURATION
@@ -133,16 +156,17 @@ namespace Tickify
                     ClockSkew = TimeSpan.Zero // Token hết hạn chính xác
                 };
 
-                // [ADD] Cho phép đọc token từ query nếu cần cho SignalR/webhooks (tắt nếu không dùng)
-                // options.Events = new JwtBearerEvents
-                // {
-                //     OnMessageReceived = ctx => {
-                //         var accessToken = ctx.Request.Query["access_token"];
-                //         if (!string.IsNullOrEmpty(accessToken) && ctx.HttpContext.Request.Path.StartsWithSegments("/hub"))
-                //             ctx.Token = accessToken;
-                //         return Task.CompletedTask;
-                //     }
-                // };
+                // [ADD] Cho phép đọc token từ query cho SignalR
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = ctx =>
+                    {
+                        var accessToken = ctx.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(accessToken) && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                            ctx.Token = accessToken;
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
             builder.Services.AddAuthorization();
@@ -151,9 +175,9 @@ namespace Tickify
             // 5. CORS CONFIGURATION
             // Cho phép frontend gọi API (đọc từ appsettings.json)
             // ============================================
-            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                                  ?? new[] { "http://localhost:3000", "http://localhost:5173" };
-            
+
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
@@ -166,19 +190,25 @@ namespace Tickify
             });
 
             // ============================================
-            // 6. CONTROLLERS & JSON OPTIONS
+            // 6. SIGNALR CONFIGURATION (Real-time chat)
+            // ============================================
+            builder.Services.AddSignalR();
+
+            // ============================================
+            // 7. CONTROLLERS & JSON OPTIONS
             // ============================================
             builder.Services.AddControllers()
                 .AddJsonOptions(options =>
                 {
                     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
                     options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-                    // [ADD] Giới hạn độ sâu JSON để tránh reference loop lớn (tuỳ ý)
                     options.JsonSerializerOptions.MaxDepth = 64;
+                    // [ADD] Ensure encoding UTF-8 for Unicode characters
+                    options.JsonSerializerOptions.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
                 });
 
             // ============================================
-            // 7. SWAGGER CONFIGURATION
+            // 8. SWAGGER CONFIGURATION
             // API documentation với JWT support
             // ============================================
             builder.Services.AddEndpointsApiExplorer();
@@ -226,12 +256,50 @@ namespace Tickify
             var app = builder.Build();
 
             // ============================================
+            // 7.5. DATABASE INITIALIZATION
+            // Apply migrations và seed dữ liệu ban đầu
+            // ============================================
+            // using (var scope = app.Services.CreateScope())
+            // {
+            //     var services = scope.ServiceProvider;
+            //     var logger = services.GetRequiredService<ILogger<Program>>();
+            //     var context = services.GetRequiredService<ApplicationDbContext>();
+
+            //     try
+            //     {
+            //         logger.LogInformation("Đang kiểm tra và apply database migrations...");
+                    
+            //         // Apply pending migrations
+            //         await context.Database.MigrateAsync();
+            //         logger.LogInformation("✅ Database migrations đã được apply thành công");
+
+            //         // Seed dữ liệu ban đầu (Roles, Categories, Admin user)
+            //         logger.LogInformation("Đang seed dữ liệu ban đầu...");
+            //         await DbInitializer.SeedAsync(context);
+            //         logger.LogInformation("✅ Database seeding hoàn tất");
+            //     }
+            //     catch (Exception ex)
+            //     {
+            //         logger.LogError(ex, "❌ Lỗi khi khởi tạo database: {Message}", ex.Message);
+            //         // Không throw để app vẫn có thể start, nhưng log lỗi rõ ràng
+            //         // Trong production có thể muốn throw để fail fast
+            //         if (app.Environment.IsDevelopment())
+            //         {
+            //             throw; // Trong dev, throw để dễ debug
+            //         }
+            //     }
+            // }
+
+            // ============================================
             // 8. MIDDLEWARE PIPELINE
             // Thứ tự middleware rất quan trọng!
             // ============================================
 
             // Exception handling (phải đặt đầu tiên)
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+            // Rate limiting (đặt sau exception handling, trước authentication)
+            app.UseMiddleware<RateLimitingMiddleware>();
 
             // Swagger (chỉ trong Development)
             if (app.Environment.IsDevelopment())
@@ -255,7 +323,12 @@ namespace Tickify
 
             app.MapControllers();
 
+            // Map SignalR hubs
+            app.MapHub<Tickify.Hubs.ChatHub>("/hubs/chat");
+            app.MapHub<Tickify.Hubs.NotificationHub>("/hubs/notifications");
+
             app.Run();
         }
     }
 }
+

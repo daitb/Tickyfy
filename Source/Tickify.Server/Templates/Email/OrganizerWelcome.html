@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chào mừng Organizer - Tickify</title>
+    <style>
+      /* Base styles */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f4f4;
+      }
+
+      /* Container */
+      .email-container {
+        max-width: 600px;
+        margin: 40px auto;
+        background-color: #ffffff;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Header */
+      .email-header {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        padding: 40px 30px;
+        text-align: center;
+        color: #ffffff;
+      }
+
+      .email-header h1 {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 600;
+      }
+
+      .logo {
+        font-size: 48px;
+        margin-bottom: 10px;
+      }
+
+      /* Body */
+      .email-body {
+        padding: 40px 30px;
+        color: #333333;
+        line-height: 1.6;
+      }
+
+      .email-body h2 {
+        color: #14b8a6;
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+
+      .email-body p {
+        margin: 15px 0;
+        font-size: 16px;
+      }
+
+      .company-name {
+        color: #14b8a6;
+        font-weight: 600;
+      }
+
+      /* Features */
+      .features {
+        margin: 30px 0;
+        padding: 20px;
+        background-color: #f0fdfa;
+        border-left: 4px solid #14b8a6;
+        border-radius: 5px;
+      }
+
+      .feature-item {
+        margin: 15px 0;
+        padding-left: 25px;
+        position: relative;
+      }
+
+      .feature-item:before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: #14b8a6;
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      /* Next steps */
+      .next-steps {
+        margin: 30px 0;
+        padding: 20px;
+        background-color: #fef3c7;
+        border-radius: 5px;
+      }
+
+      .next-steps h3 {
+        color: #92400e;
+        margin-top: 0;
+      }
+
+      .step {
+        margin: 10px 0;
+        padding-left: 30px;
+        position: relative;
+      }
+
+      .step-number {
+        position: absolute;
+        left: 0;
+        width: 24px;
+        height: 24px;
+        background-color: #14b8a6;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 24px;
+        font-size: 14px;
+        font-weight: bold;
+      }
+
+      /* Button */
+      .button-container {
+        text-align: center;
+        margin: 30px 0;
+      }
+
+      .button {
+        display: inline-block;
+        padding: 15px 40px;
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        color: #ffffff;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: 600;
+        font-size: 16px;
+        transition: transform 0.3s ease;
+      }
+
+      .button:hover {
+        transform: translateY(-2px);
+      }
+
+      /* Footer */
+      .email-footer {
+        padding: 30px;
+        background-color: #f9fafb;
+        color: #6b7280;
+        text-align: center;
+        font-size: 14px;
+      }
+
+      .email-footer p {
+        margin: 5px 0;
+      }
+
+      .social-links {
+        margin: 20px 0;
+      }
+
+      .social-links a {
+        display: inline-block;
+        margin: 0 10px;
+        color: #14b8a6;
+        text-decoration: none;
+      }
+
+      /* Responsive */
+      @media only screen and (max-width: 600px) {
+        .email-container {
+          margin: 20px;
+        }
+
+        .email-header,
+        .email-body,
+        .email-footer {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <!-- Header -->
+      <div class="email-header">
+        <div class="logo">🎟️</div>
+        <h1>Chào mừng đến với Tickify</h1>
+      </div>
+
+      <!-- Body -->
+      <div class="email-body">
+        <h2>Xin chào {UserName}! 👋</h2>
+
+        <p>
+          Chúc mừng bạn đã đăng ký thành công tài khoản Organizer tại Tickify
+          cho <span class="company-name">{CompanyName}</span>!
+        </p>
+
+        <p>
+          Bạn đã chính thức trở thành một phần của cộng đồng các nhà tổ chức sự
+          kiện chuyên nghiệp tại Việt Nam. Tickify sẽ giúp bạn dễ dàng quản lý
+          và phát triển các sự kiện của mình.
+        </p>
+
+        <!-- Features -->
+        <div class="features">
+          <h3 style="margin-top: 0; color: #14b8a6">
+            🎯 Những gì bạn có thể làm với Tickify:
+          </h3>
+          <div class="feature-item">Tạo và quản lý sự kiện không giới hạn</div>
+          <div class="feature-item">
+            Thiết kế vé và bản đồ chỗ ngồi tùy chỉnh
+          </div>
+          <div class="feature-item">
+            Quản lý bán vé và thanh toán trực tuyến
+          </div>
+          <div class="feature-item">
+            Theo dõi doanh thu và phân tích chi tiết
+          </div>
+          <div class="feature-item">
+            Quét mã QR và check-in khách hàng nhanh chóng
+          </div>
+          <div class="feature-item">Marketing và quảng bá sự kiện</div>
+        </div>
+
+        <!-- Next Steps -->
+        <div class="next-steps">
+          <h3>📋 Các bước tiếp theo:</h3>
+          <div class="step">
+            <span class="step-number">1</span>
+            Hoàn thiện thông tin công ty và hồ sơ của bạn
+          </div>
+          <div class="step">
+            <span class="step-number">2</span>
+            Xác thực danh tính để được phê duyệt (yêu cầu từ Admin)
+          </div>
+          <div class="step">
+            <span class="step-number">3</span>
+            Tạo sự kiện đầu tiên của bạn
+          </div>
+          <div class="step">
+            <span class="step-number">4</span>
+            Bắt đầu bán vé và quảng bá sự kiện
+          </div>
+        </div>
+
+        <p>
+          <strong>Lưu ý quan trọng:</strong> Tài khoản của bạn đang trong trạng
+          thái chờ xác thực. Vui lòng hoàn thiện hồ sơ và chờ Admin xác minh để
+          có thể tạo sự kiện công khai.
+        </p>
+
+        <!-- CTA Button -->
+        <div class="button-container">
+          <a
+            href="https://tickify.vn/organizer-dashboard"
+            class="button"
+            target="_blank"
+            >Truy cập Dashboard</a
+          >
+        </div>
+
+        <p>
+          Nếu bạn có bất kỳ câu hỏi nào, đừng ngần ngại liên hệ với đội ngũ hỗ
+          trợ của chúng tôi tại
+          <a href="mailto:support@tickify.vn">support@tickify.vn</a>
+        </p>
+
+        <p style="margin-top: 30px">
+          Chúc bạn thành công với các sự kiện sắp tới!<br />
+          <strong>Đội ngũ Tickify</strong>
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div class="email-footer">
+        <div class="social-links">
+          <a href="https://facebook.com/tickify">Facebook</a> |
+          <a href="https://twitter.com/tickify">Twitter</a> |
+          <a href="https://instagram.com/tickify">Instagram</a>
+        </div>
+        <p>&copy; 2025 Tickify. All rights reserved.</p>
+        <p>
+          Email này được gửi tới {UserName} từ Tickify Event Management Platform
+        </p>
+        <p style="font-size: 12px; color: #9ca3af; margin-top: 15px">
+          Nếu bạn không đăng ký tài khoản này, vui lòng bỏ qua email này.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
