@@ -541,18 +541,6 @@ export function UserProfile({ onNavigate }: UserProfileProps) {
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* Delete Account */}
-                <div className="text-center pt-6 border-t">
-                  <Button
-                    variant="link"
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 size={14} className="mr-1" />
-                    {t('pages.userProfile.deleteAccount')}
-                  </Button>
-                </div>
               </TabsContent>
 
               {/* Security Tab */}

@@ -126,14 +126,6 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
   });
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
-  const stats = {
-    total: notifications.length,
-    unread: unreadCount,
-    booking: notifications.filter(n => n.type === 'booking').length,
-    event: notifications.filter(n => n.type === 'event').length,
-    payment: notifications.filter(n => n.type === 'payment').length,
-    system: notifications.filter(n => n.type === 'system').length,
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -173,57 +165,6 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
               </Button>
             )}
           </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveType('all')}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                  <p className="text-xs text-gray-600">Total</p>
-                </div>
-                <Bell className="text-gray-400" size={24} />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveType('booking')}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-purple-600">{stats.booking}</p>
-                  <p className="text-xs text-gray-600">Bookings</p>
-                </div>
-                <Ticket className="text-purple-400" size={24} />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveType('event')}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-blue-600">{stats.event}</p>
-                  <p className="text-xs text-gray-600">Events</p>
-                </div>
-                <Calendar className="text-blue-400" size={24} />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveType('payment')}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-green-600">{stats.payment}</p>
-                  <p className="text-xs text-gray-600">Payments</p>
-                </div>
-                <CreditCard className="text-green-400" size={24} />
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Filters */}
