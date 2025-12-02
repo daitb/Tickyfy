@@ -18,9 +18,7 @@ public class TicketService : ITicketService
     private readonly ITicketTransferRepository _ticketTransferRepository;
     private readonly ITicketScanRepository _ticketScanRepository;
     private readonly IUserRepository _userRepository;
-    private readonly IEventRepository _eventRepository;
     private readonly Email.IEmailService _emailService;
-    private readonly INotificationService _notificationService;
     private readonly IMapper _mapper;
 
     public TicketService(
@@ -29,9 +27,7 @@ public class TicketService : ITicketService
         ITicketTransferRepository ticketTransferRepository,
         ITicketScanRepository ticketScanRepository,
         IUserRepository userRepository,
-        IEventRepository eventRepository,
         Email.IEmailService emailService,
-        INotificationService notificationService,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
@@ -39,9 +35,7 @@ public class TicketService : ITicketService
         _ticketTransferRepository = ticketTransferRepository;
         _ticketScanRepository = ticketScanRepository;
         _userRepository = userRepository;
-        _eventRepository = eventRepository;
         _emailService = emailService;
-        _notificationService = notificationService;
         _mapper = mapper;
     }
 
@@ -216,18 +210,6 @@ public class TicketService : ITicketService
                     recipientEmail: recipient.Email,
                     recipientName: recipient.FullName ?? recipient.Email,
                     ticketCode: ticket.TicketCode
-                );
-            }
-
-            // Send in-app notification to recipient
-            var eventEntity = await _eventRepository.GetByIdAsync(oldBooking.EventId);
-            if (eventEntity != null && sender != null)
-            {
-                await _notificationService.NotifyTicketTransferAsync(
-                    userId,
-                    ticket.Id,
-                    eventEntity.Title,
-                    sender.FullName ?? sender.Email
                 );
             }
         }
