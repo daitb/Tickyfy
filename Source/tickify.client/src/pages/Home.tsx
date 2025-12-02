@@ -69,22 +69,22 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-teal-500 animate-spin mx-auto mb-4" />
-          <p className="text-neutral-600">{t("common.loading")}</p>
+          <p className="text-muted-foreground">{t("common.loading")}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       {/* Hero Slider - pauses when search is open */}
       <HeroSlider onViewDetails={handleViewDetails} isPaused={isSearchOpen} />
 
       {/* Categories Filter */}
-      <section className="bg-white border-b border-neutral-100">
+      <section className="bg-background border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
             <Badge
@@ -92,7 +92,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
               className={`cursor-pointer whitespace-nowrap ${
                 selectedCategory === "all"
                   ? "bg-teal-500 hover:bg-teal-600 text-white"
-                  : "bg-neutral-100 hover:bg-neutral-200"
+                  : "bg-neutral-100 hover:bg-neutral-200 text-neutral-900 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-100"
               }`}
               onClick={() => setSelectedCategory("all")}
             >
@@ -107,7 +107,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
                 className={`cursor-pointer whitespace-nowrap ${
                   selectedCategory === category
                     ? "bg-teal-500 hover:bg-teal-600 text-white"
-                    : "bg-neutral-100 hover:bg-neutral-200"
+                    : "bg-neutral-100 hover:bg-neutral-200 text-neutral-900 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-100"
                 }`}
                 onClick={() =>
                   setSelectedCategory(category as Category | "all")
@@ -121,12 +121,12 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
       </section>
 
       {/* Special Events */}
-      <section className="py-12 bg-gradient-to-br from-teal-50 to-white">
+      <section className="py-12 bg-gradient-to-br from-muted to-background">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <Star className="text-teal-500" size={28} />
-              <h2 className="text-neutral-900">{t("home.specialEvents")}</h2>
+              <h2 className="text-foreground">{t("home.specialEvents")}</h2>
             </div>
             <Button
               variant="ghost"
@@ -155,12 +155,12 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
       </section>
 
       {/* Trending Section */}
-      <section className="py-12 bg-white">
+      <section className="py-12 bg-background">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <TrendingUp className="text-teal-500" size={28} />
-              <h2 className="text-neutral-900">{t("home.trendingEvents")}</h2>
+              <h2 className="text-foreground">{t("home.trendingEvents")}</h2>
             </div>
           </div>
 
@@ -181,10 +181,10 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
       </section>
 
       {/* Upcoming Events */}
-      <section className="py-12 bg-neutral-50">
+      <section className="py-12 bg-background">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-neutral-900">
+            <h2 className="text-foreground">
               {selectedCategory === "all"
                 ? t("home.upcomingEvents")
                 : `${selectedCategory} ${t("home.events")}`}
@@ -192,7 +192,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
             <Button
               variant="ghost"
               onClick={() => onNavigate("listing")}
-              className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+              className="text-teal-600 hover:text-teal-700 hover:bg-muted dark:text-teal-400 dark:hover:text-teal-300"
             >
               {t("common.viewAll")}
               <ArrowRight size={16} className="ml-2" />

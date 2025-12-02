@@ -80,7 +80,7 @@ export function EventListing({ onNavigate }: EventListingProps) {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-background">
       {/* Filter Bar - Now below header */}
       <FilterBar 
         filters={filters}

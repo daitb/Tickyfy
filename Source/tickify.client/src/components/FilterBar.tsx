@@ -84,7 +84,7 @@ export function FilterBar({ filters, onFiltersChange, resultCount }: FilterBarPr
     (filters.categories && filters.categories.length > 0);
 
   return (
-    <div className="bg-white border-b border-neutral-100 sticky top-20 z-30">
+    <div className="bg-background border-b border-border sticky top-20 z-30">
       <div className="max-w-7xl mx-auto px-4 py-4">
         {/* Filter Controls */}
         <div className="flex items-center gap-3 mb-3">

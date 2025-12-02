@@ -75,9 +75,9 @@ export const EventCard = React.memo(function EventCard({ event, onClick }: Event
   return (
     <div 
       onClick={onClick}
-      className="group cursor-pointer bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+      className="group cursor-pointer bg-card rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border border-border"
     >
-      <div className="aspect-[4/3] overflow-hidden bg-neutral-100 relative">
+      <div className="aspect-[4/3] overflow-hidden bg-muted relative">
         <ImageWithFallback
           src={event.image}
           alt={event.title}
@@ -94,14 +94,14 @@ export const EventCard = React.memo(function EventCard({ event, onClick }: Event
       </div>
       <div className="p-4">
         <div className="flex items-center gap-2 mb-2">
-          <Badge variant="secondary" className="bg-neutral-100">
+          <Badge variant="secondary" className="bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
             {event.category}
           </Badge>
         </div>
-        <h3 className="mb-1 line-clamp-2 min-h-[3em]">
+        <h3 className="mb-1 line-clamp-2 min-h-[3em] text-card-foreground">
           {event.title}
         </h3>
-        <div className="space-y-2 text-neutral-600">
+        <div className="space-y-2 text-muted-foreground">
           <div className="flex items-center gap-2">
             <Calendar size={16} />
             <span className="text-sm">{formattedDate}</span>
@@ -111,9 +111,9 @@ export const EventCard = React.memo(function EventCard({ event, onClick }: Event
             <span className="text-sm">{event.city}</span>
           </div>
         </div>
-        <div className="mt-4 pt-4 border-t border-neutral-100 flex items-center justify-between">
-          <span className="text-neutral-500 text-sm">From</span>
-          <span className="text-teal-600 font-semibold">{formatPriceRange(lowestPrice, highestPrice)}</span>
+        <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+          <span className="text-muted-foreground text-sm">From</span>
+          <span className="text-teal-600 dark:text-teal-400 font-semibold">{formatPriceRange(lowestPrice, highestPrice)}</span>
         </div>
       </div>
     </div>

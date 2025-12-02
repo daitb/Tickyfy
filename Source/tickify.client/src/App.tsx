@@ -16,6 +16,7 @@ import type { CartItem, Order } from "./types";
 import { mockOrders } from "./mockData";
 import { authService } from "./services/authService";
 import { Toaster } from "./components/ui/sonner";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 // Lazy load các pages lớn để giảm initial bundle size
 const EventReviews = lazy(() =>
@@ -718,25 +719,27 @@ export default function App() {
     currentPage === "payment-return";
 
   return (
-    <ErrorBoundary>
-      <ProtectedRoute>
-        <div className="min-h-screen flex flex-col">
-          {!isStandalonePage && (
-            <Header
-              onNavigate={handleNavigate}
-              currentPage={currentPage}
-              isAuthenticated={isAuthenticated}
-              userRole={userRole}
-              onSearchOpenChange={setIsSearchOpen}
-            />
-          )}
-          <main className="flex-1">
-            <Suspense fallback={<LoadingFallback />}>{renderPage()}</Suspense>
-          </main>
-          {!isStandalonePage && <Footer />}
-          <Toaster />
-        </div>
-      </ProtectedRoute>
-    </ErrorBoundary>
+    <ThemeProvider>
+      <ErrorBoundary>
+        <ProtectedRoute>
+          <div className="min-h-screen flex flex-col">
+            {!isStandalonePage && (
+              <Header
+                onNavigate={handleNavigate}
+                currentPage={currentPage}
+                isAuthenticated={isAuthenticated}
+                userRole={userRole}
+                onSearchOpenChange={setIsSearchOpen}
+              />
+            )}
+            <main className="flex-1">
+              <Suspense fallback={<LoadingFallback />}>{renderPage()}</Suspense>
+            </main>
+            {!isStandalonePage && <Footer />}
+            <Toaster />
+          </div>
+        </ProtectedRoute>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }

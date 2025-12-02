@@ -6,8 +6,8 @@ import { Skeleton } from '../ui/skeleton';
  */
 export function EventCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-      <div className="aspect-[4/3] overflow-hidden bg-neutral-100 relative">
+    <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border">
+      <div className="aspect-[4/3] overflow-hidden bg-muted relative">
         <Skeleton className="w-full h-full" />
       </div>
       <div className="p-4">

@@ -32,6 +32,7 @@ import { useTranslation } from "react-i18next";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { useWishlistToggle } from "../hooks/useWishlistToggle";
 import { useEffect, useState } from "react";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface HeaderProps {
   onNavigate: (page: string, eventId?: string) => void;
@@ -116,6 +117,11 @@ export function Header({
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Theme Toggle */}
+            <div className="hover:bg-teal-600 rounded-lg">
+              <ThemeToggle />
+            </div>
+
             {/* Language Switcher */}
             <div className="hover:bg-teal-600 rounded-lg">
               <LanguageSwitcher />

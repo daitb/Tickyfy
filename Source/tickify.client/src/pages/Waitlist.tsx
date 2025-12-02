@@ -237,7 +237,7 @@ export function Waitlist({ waitlistEntries, onNavigate }: WaitlistProps) {
                         />
                         {/* Category Badge */}
                         <div className="absolute top-3 left-3">
-                          <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm">
+                          <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-neutral-900 dark:bg-neutral-800/90 dark:text-neutral-100">
                             {event.category}
                           </Badge>
                         </div>
@@ -279,7 +279,7 @@ export function Waitlist({ waitlistEntries, onNavigate }: WaitlistProps) {
                       <div className="flex flex-wrap gap-4 text-sm text-neutral-600">
                         {entry.status === 'active' && entry.position > 0 && (
                           <div>
-                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
                               {entry.position === 1 ? 'Next in line!' : `#${entry.position} in waitlist`}
                             </Badge>
                           </div>
