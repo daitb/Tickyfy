@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { mockEvents, mockOrders } from '../mockData';
 import { payoutService, type PayoutDto, type ApprovePayoutDto, type RejectPayoutDto } from '../services/payoutService';
+import { userService, type UserListDto, type UserDetailDto, type PagedResult } from '../services/userService';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ import {
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import apiClient from '../services/apiClient';
+import { authService } from '../services/authService';
 import { toast } from 'sonner';
 
 interface AdminDashboardProps {
@@ -50,6 +52,30 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [isApprovingEvent, setIsApprovingEvent] = useState<number | null>(null);
   const [isRejectingEvent, setIsRejectingEvent] = useState<number | null>(null);
   const [isApprovingRequest, setIsApprovingRequest] = useState<number | null>(null);
+
+  // User management state
+  const [users, setUsers] = useState<UserListDto[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userPageNumber, setUserPageNumber] = useState(1);
+  const [userPageSize] = useState(10);
+  const [userTotalPages, setUserTotalPages] = useState(1);
+  const [userTotalCount, setUserTotalCount] = useState(0);
+  const [selectedUser, setSelectedUser] = useState<UserDetailDto | null>(null);
+  const [showUserDetailDialog, setShowUserDetailDialog] = useState(false);
+  const [showDeleteUserDialog, setShowDeleteUserDialog] = useState(false);
+  const [showAssignRoleDialog, setShowAssignRoleDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserListDto | null>(null);
+  const [userToAssignRole, setUserToAssignRole] = useState<UserListDto | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState<number>(4);
+  const [isTogglingStatus, setIsTogglingStatus] = useState<number | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [isAssigningRole, setIsAssigningRole] = useState(false);
+  const [isLoadingUserDetail, setIsLoadingUserDetail] = useState(false);
+
+  // Get current admin user ID to prevent self-modification
+  const currentUser = authService.getCurrentUser();
+  const currentAdminId = currentUser ? parseInt(currentUser.userId, 10) : null;
 
   // Calculate platform statistics
   const totalRevenue = mockOrders.reduce((sum, order) => sum + order.total, 0);
@@ -103,14 +129,23 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }).format(price);
   };
 
-  // Load organizer requests
+  // Load organizer requests and users based on active tab
   useEffect(() => {
     if (activeTab === 'requests') {
       loadOrganizerRequests();
     } else if (activeTab === 'event-approvals') {
       loadPendingEvents();
+    } else if (activeTab === 'users') {
+      loadUsers();
     }
   }, [activeTab]);
+
+  // Reload users when page or search changes
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadUsers();
+    }
+  }, [userPageNumber, userSearchTerm]);
 
   const loadOrganizerRequests = async () => {
     setIsLoadingRequests(true);
@@ -331,6 +366,151 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       default:
         return <Badge>Unknown</Badge>;
     }
+  };
+
+  // User management functions
+  const loadUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      const result = await userService.getUsers(userPageNumber, userPageSize, userSearchTerm || undefined);
+      setUsers(result.items || []);
+      setUserTotalPages(result.totalPages || 1);
+      setUserTotalCount(result.totalCount || 0);
+    } catch (error: any) {
+      console.error('Failed to load users:', error);
+      toast.error('Không thể tải danh sách người dùng', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+      setUsers([]);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const handleViewUserDetail = async (userId: number) => {
+    setIsLoadingUserDetail(true);
+    setShowUserDetailDialog(true);
+    try {
+      const user = await userService.getUserById(userId);
+      setSelectedUser(user);
+    } catch (error: any) {
+      console.error('Failed to load user detail:', error);
+      toast.error('Không thể tải thông tin người dùng', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+      setShowUserDetailDialog(false);
+    } finally {
+      setIsLoadingUserDetail(false);
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: number) => {
+    try {
+      setIsTogglingStatus(userId);
+      await userService.toggleActiveStatus(userId);
+      toast.success('Đã cập nhật trạng thái người dùng', {
+        duration: 2000,
+        closeButton: false,
+      });
+      await loadUsers();
+    } catch (error: any) {
+      console.error('Failed to toggle user status:', error);
+      toast.error('Không thể cập nhật trạng thái', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+    } finally {
+      setIsTogglingStatus(null);
+    }
+  };
+
+  const handleAssignRole = async () => {
+    if (!userToAssignRole) return;
+    try {
+      setIsAssigningRole(true);
+      await userService.assignRole(userToAssignRole.userId, selectedRoleId);
+      toast.success('Đã gán vai trò thành công', {
+        duration: 2000,
+        closeButton: false,
+      });
+      setShowAssignRoleDialog(false);
+      setUserToAssignRole(null);
+      setSelectedRoleId(4);
+      await loadUsers();
+    } catch (error: any) {
+      console.error('Failed to assign role:', error);
+      toast.error('Không thể gán vai trò', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+    } finally {
+      setIsAssigningRole(false);
+    }
+  };
+
+  const handleUserSearch = (value: string) => {
+    setUserSearchTerm(value);
+    setUserPageNumber(1); // Reset to first page when searching
+  };
+
+  const getUserRoleBadge = (roles: string[]) => {
+    if (roles.includes('Admin')) {
+      return (
+        <Badge className="bg-purple-100 text-purple-700">
+          <Shield size={12} className="mr-1" />
+          Admin
+        </Badge>
+      );
+    }
+    if (roles.includes('Staff')) {
+      return (
+        <Badge className="bg-yellow-100 text-yellow-700">
+          <Users size={12} className="mr-1" />
+          Staff
+        </Badge>
+      );
+    }
+    if (roles.includes('Organizer')) {
+      return (
+        <Badge className="bg-blue-100 text-blue-700">
+          <Users size={12} className="mr-1" />
+          Organizer
+        </Badge>
+      );
+    }
+    if (roles.includes('Customer')) {
+      return (
+        <Badge className="bg-green-100 text-green-700">
+          <Users size={12} className="mr-1" />
+          Customer
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-gray-100 text-gray-700">
+        User
+      </Badge>
+    );
+  };
+
+  const getUserStatusBadge = (isActive: boolean) => {
+    return isActive ? (
+      <Badge className="bg-green-100 text-green-700">
+        <CheckCircle size={12} className="mr-1" />
+        {t('admin.active', 'Active')}
+      </Badge>
+    ) : (
+      <Badge className="bg-red-100 text-red-700">
+        <XCircle size={12} className="mr-1" />
+        {t('admin.inactive', 'Inactive')}
+      </Badge>
+    );
   };
 
   return (
@@ -893,45 +1073,161 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <TabsContent value="users">
             <Card>
               <CardHeader>
-                <CardTitle>{t('admin.platformUsers')}</CardTitle>
-                <CardDescription>{t('admin.platformUsersDesc', 'Manage platform users and activity')}</CardDescription>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle>{t('admin.platformUsers')}</CardTitle>
+                    <CardDescription>{t('admin.platformUsersDesc', 'Manage platform users and activity')}</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-neutral-500">
+                      {t('admin.totalUsers')}: {userTotalCount}
+                    </span>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
+                {/* Search */}
                 <div className="mb-4">
-                  <div className="relative">
+                  <div className="relative w-full sm:w-80">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                     <Input
-                      placeholder={t('admin.searchUsers')}
+                      placeholder={t('admin.searchUsers', 'Tìm kiếm người dùng...')}
+                      value={userSearchTerm}
+                      onChange={(e) => handleUserSearch(e.target.value)}
                       className="pl-9"
                     />
                   </div>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('admin.user')}</TableHead>
-                      <TableHead>{t('admin.email')}</TableHead>
-                      <TableHead>{t('admin.joined')}</TableHead>
-                      <TableHead>{t('admin.orders')}</TableHead>
-                      <TableHead>{t('admin.totalSpent')}</TableHead>
-                      <TableHead className="text-right">{t('admin.actions')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="text-neutral-900">{user.name}</TableCell>
-                        <TableCell className="text-neutral-600">{user.email}</TableCell>
-                        <TableCell>{new Date(user.joined).toLocaleDateString()}</TableCell>
-                        <TableCell>{user.orders}</TableCell>
-                        <TableCell>{formatPrice(user.spent)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">{t('common.view')}</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+
+                {isLoadingUsers ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-orange-500" />
+                    <p className="text-neutral-600 mt-2">{t('common.loading', 'Đang tải...')}</p>
+                  </div>
+                ) : users.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="mx-auto h-12 w-12 text-neutral-400" />
+                    <p className="text-neutral-600 mt-2">{t('admin.noUsersFound', 'Không tìm thấy người dùng')}</p>
+                  </div>
+                ) : (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>{t('admin.user')}</TableHead>
+                          <TableHead>{t('admin.email')}</TableHead>
+                          <TableHead>{t('admin.role', 'Vai trò')}</TableHead>
+                          <TableHead>{t('admin.status')}</TableHead>
+                          <TableHead>{t('admin.joined')}</TableHead>
+                          <TableHead className='text-center'>{t('admin.actions')}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map((user) => (
+                          <TableRow key={user.userId}>
+                            <TableCell className="font-medium">#{user.userId}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                                  <span className="text-orange-600 font-medium text-sm">
+                                    {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                                  </span>
+                                </div>
+                                <span className="text-neutral-900">{user.fullName}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-neutral-600">{user.email}</TableCell>
+                            <TableCell>{getUserRoleBadge(user.roles || [user.role])}</TableCell>
+                            <TableCell>{getUserStatusBadge(user.isActive)}</TableCell>
+                            <TableCell>
+                              {new Date(user.createdAt).toLocaleDateString('vi-VN')}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {(() => {
+                                const isCurrentUser = currentAdminId === user.userId;
+                                return (
+                                  <div className="flex gap-2 justify-end">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleViewUserDetail(user.userId)}
+                                    >
+                                      <Eye size={16} className="mr-1" />
+                                      {t('common.view')}
+                                    </Button>
+                                    {!isCurrentUser && (
+                                      <>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleToggleUserStatus(user.userId)}
+                                          disabled={isTogglingStatus === user.userId}
+                                          className={user.isActive ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'}
+                                        >
+                                          {isTogglingStatus === user.userId ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <>
+                                              {user.isActive ? t('admin.deactivate', 'Vô hiệu hóa') : t('admin.activate', 'Kích hoạt')}
+                                            </>
+                                          )}
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            setUserToAssignRole(user);
+                                            setShowAssignRoleDialog(true);
+                                          }}
+                                          className="text-blue-600 hover:text-blue-700"
+                                        >
+                                          {t('admin.assignRole', 'Gán vai trò')}
+                                        </Button>
+                                      </>
+                                    )}
+                                    {isCurrentUser && (
+                                      <Badge className="bg-blue-100 text-blue-700">
+                                        {t('admin.you', 'Bạn')}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    {userTotalPages > 1 && (
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                        <div className="text-sm text-neutral-500">
+                          {t('admin.showingPage', 'Trang')} {userPageNumber} / {userTotalPages}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setUserPageNumber((prev) => Math.max(1, prev - 1))}
+                            disabled={userPageNumber === 1}
+                          >
+                            {t('common.previous', 'Trước')}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setUserPageNumber((prev) => Math.min(userTotalPages, prev + 1))}
+                            disabled={userPageNumber === userTotalPages}
+                          >
+                            {t('common.next', 'Sau')}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1041,6 +1337,169 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               disabled={!rejectReason.trim()}
             >
               {t('admin.reject')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Detail Dialog */}
+      <Dialog open={showUserDetailDialog} onOpenChange={setShowUserDetailDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('admin.userDetail', 'Chi tiết người dùng')}</DialogTitle>
+            <DialogDescription>
+              {t('admin.userDetailDesc', 'Thông tin chi tiết về người dùng')}
+            </DialogDescription>
+          </DialogHeader>
+          {isLoadingUserDetail ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+            </div>
+          ) : selectedUser ? (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-4 pb-4 border-b">
+                <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
+                  <span className="text-orange-600 font-bold text-2xl">
+                    {selectedUser.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">{selectedUser.fullName}</h3>
+                  <p className="text-neutral-500">{selectedUser.email}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-neutral-500">{t('admin.userId', 'ID người dùng')}</Label>
+                  <p className="font-medium">#{selectedUser.userId}</p>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.phoneNumber', 'Số điện thoại')}</Label>
+                  <p className="font-medium">{selectedUser.phoneNumber || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.dateOfBirth', 'Ngày sinh')}</Label>
+                  <p className="font-medium">
+                    {selectedUser.dateOfBirth 
+                      ? new Date(selectedUser.dateOfBirth).toLocaleDateString('vi-VN') 
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.address', 'Địa chỉ')}</Label>
+                  <p className="font-medium">{selectedUser.address || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.role', 'Vai trò')}</Label>
+                  <div className="mt-1">
+                    {getUserRoleBadge(selectedUser.roles || [])}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.status')}</Label>
+                  <div className="mt-1">
+                    {getUserStatusBadge(selectedUser.isActive)}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.emailVerified', 'Email đã xác thực')}</Label>
+                  <div className="mt-1">
+                    {selectedUser.emailVerified ? (
+                      <Badge className="bg-green-100 text-green-700">
+                        <CheckCircle size={12} className="mr-1" />
+                        {t('common.yes', 'Có')}
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-yellow-100 text-yellow-700">
+                        <Clock size={12} className="mr-1" />
+                        {t('common.no', 'Chưa')}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.createdAt', 'Ngày tạo')}</Label>
+                  <p className="font-medium">
+                    {new Date(selectedUser.createdAt).toLocaleDateString('vi-VN', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUserDetailDialog(false)}>
+              {t('common.close', 'Đóng')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Role Dialog */}
+      <Dialog open={showAssignRoleDialog} onOpenChange={setShowAssignRoleDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('admin.assignRole', 'Gán vai trò')}</DialogTitle>
+            <DialogDescription>
+              {t('admin.assignRoleDesc', 'Chọn vai trò mới cho người dùng này')}
+            </DialogDescription>
+          </DialogHeader>
+          {userToAssignRole && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg">
+                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                  <span className="text-orange-600 font-medium">
+                    {userToAssignRole.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-medium">{userToAssignRole.fullName}</p>
+                  <p className="text-sm text-neutral-500">{userToAssignRole.email}</p>
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="roleSelect">{t('admin.selectRole', 'Chọn vai trò')} *</Label>
+                <Select 
+                  value={selectedRoleId.toString()} 
+                  onValueChange={(value) => setSelectedRoleId(parseInt(value))}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder={t('admin.selectRolePlaceholder', 'Chọn vai trò...')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="4">Customer</SelectItem>
+                    <SelectItem value="3">Organizer</SelectItem>
+                    <SelectItem value="2">Staff</SelectItem>
+                    <SelectItem value="1">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAssignRoleDialog(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={handleAssignRole}
+              className="bg-orange-500 hover:bg-orange-600"
+              disabled={isAssigningRole}
+            >
+              {isAssigningRole ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('admin.assigning', 'Đang gán...')}
+                </>
+              ) : (
+                t('admin.assign', 'Gán vai trò')
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
