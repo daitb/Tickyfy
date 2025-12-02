@@ -636,7 +636,12 @@ export default function App() {
         return <UserProfile onNavigate={handleNavigate} />;
 
       case "seat-selection":
-        return <SeatSelectionReal onNavigate={handleNavigate} />;
+        return (
+          <SeatSelectionReal
+            eventId={selectedEventId || undefined}
+            onNavigate={handleNavigate}
+          />
+        );
 
       case "seat-map-builder":
         return <SeatMapBuilder onNavigate={handleNavigate} />;

@@ -13,12 +13,14 @@ namespace Tickify.Services
         Task<SeatMapResponseDto?> GetSeatMapByIdAsync(int id);
         Task<SeatMapResponseDto?> GetSeatMapByEventIdAsync(int eventId);
         Task<List<SeatMapResponseDto>> GetTemplatesAsync(); // Lấy seat map templates
+        Task<List<SeatMapResponseDto>> GetSeatMapsByOrganizerAsync(int organizerId); // Lấy seat maps của organizer
         Task<List<SeatResponseDto>> GetEventSeatsAsync(int eventId); // Lấy danh sách seats cho event
         Task<SeatMapResponseDto> CreateSeatMapAsync(CreateSeatMapDto dto);
         Task<SeatMapResponseDto> UpdateSeatMapAsync(int id, UpdateSeatMapDto dto);
         Task<bool> DeleteSeatMapAsync(int id);
-        Task<bool> ReserveSeatsAsync(List<int> seatIds);
-        Task<bool> ReleaseSeatsAsync(List<int> seatIds);
+        Task<bool> ReserveSeatsAsync(List<int> seatIds, int userId);
+        Task<bool> ReleaseSeatsAsync(List<int> seatIds, int userId);
+        Task<int> ReleaseExpiredReservationsAsync();
     }
 
     public class SeatMapService : ISeatMapService
@@ -56,6 +58,36 @@ namespace Tickify.Services
         {
             var templates = await _seatMapRepository.GetTemplatesAsync();
             return _mapper.Map<List<SeatMapResponseDto>>(templates);
+        }
+
+        public async Task<List<SeatMapResponseDto>> GetSeatMapsByOrganizerAsync(int organizerId)
+        {
+            // Get all events by this organizer
+            var organizerEvents = await _dbContext.Events
+                .Where(e => e.OrganizerId == organizerId)
+                .Select(e => e.Id)
+                .ToListAsync();
+
+            // Get seat maps for these events
+            var seatMaps = await _dbContext.SeatMaps
+                .Include(sm => sm.Zones)
+                .Include(sm => sm.Event)
+                .Where(sm => organizerEvents.Contains(sm.EventId))
+                .ToListAsync();
+
+            var result = _mapper.Map<List<SeatMapResponseDto>>(seatMaps);
+            
+            // Add event title to each seat map for display
+            foreach (var sm in result)
+            {
+                var evt = await _dbContext.Events.FindAsync(sm.EventId);
+                if (evt != null)
+                {
+                    sm.Name = $"{evt.Title} - {sm.Name}";
+                }
+            }
+
+            return result;
         }
 
         public async Task<List<SeatResponseDto>> GetEventSeatsAsync(int eventId)
@@ -103,7 +135,7 @@ namespace Tickify.Services
                     .ToListAsync();
                 
                 // Delete seats in those zones
-                var oldSeats = _dbContext.Seats.Where(s => oldZoneIds.Contains(s.SeatZoneId.Value));
+                var oldSeats = _dbContext.Seats.Where(s => s.SeatZoneId.HasValue && oldZoneIds.Contains(s.SeatZoneId.Value));
                 _dbContext.Seats.RemoveRange(oldSeats);
                 
                 // Delete zones
@@ -128,14 +160,19 @@ namespace Tickify.Services
             return await _seatMapRepository.DeleteAsync(id);
         }
 
-        public async Task<bool> ReserveSeatsAsync(List<int> seatIds)
+        public async Task<bool> ReserveSeatsAsync(List<int> seatIds, int userId)
         {
-            return await _seatRepository.ReserveSeatsAsync(seatIds);
+            return await _seatRepository.ReserveSeatsAsync(seatIds, userId);
         }
 
-        public async Task<bool> ReleaseSeatsAsync(List<int> seatIds)
+        public async Task<bool> ReleaseSeatsAsync(List<int> seatIds, int userId)
         {
-            return await _seatRepository.ReleaseSeatsAsync(seatIds);
+            return await _seatRepository.ReleaseSeatsAsync(seatIds, userId);
+        }
+
+        public async Task<int> ReleaseExpiredReservationsAsync()
+        {
+            return await _seatRepository.ReleaseExpiredReservationsAsync();
         }
 
         private async Task CreateZonesAndSeatsFromLayoutAsync(int seatMapId, string layoutConfig, int eventId)
@@ -169,25 +206,25 @@ namespace Tickify.Services
 
                 foreach (var zone in layout.Zones)
                 {
-                    // Try to find matching ticket type by price or create new one
-                    var ticketType = eventTicketTypes.FirstOrDefault(tt => tt.Price == zone.Price);
+                    // IMPORTANT: Do NOT auto-create ticket types. Only use existing ones.
+                    // Match by name first, then by price
+                    var ticketType = eventTicketTypes.FirstOrDefault(tt => 
+                        tt.Name.Equals(zone.Name, StringComparison.OrdinalIgnoreCase)) 
+                        ?? eventTicketTypes.FirstOrDefault(tt => tt.Price == zone.Price);
                     
                     if (ticketType == null)
                     {
-                        // Create new ticket type
-                        ticketType = new TicketType
-                        {
-                            EventId = eventId,
-                            Name = zone.Name,
-                            Price = zone.Price,
-                            TotalQuantity = zone.Capacity,
-                            AvailableQuantity = zone.Capacity,
-                            Description = $"Auto-created for zone {zone.Name}",
-                            HasSeatSelection = true,
-                            CreatedAt = DateTime.UtcNow
-                        };
-                        _dbContext.TicketTypes.Add(ticketType);
-                        await _dbContext.SaveChangesAsync();
+                        Console.WriteLine($"[SeatMapService] Warning: No matching ticket type found for zone '{zone.Name}' with price {zone.Price}. Skipping zone.");
+                        continue; // Skip this zone instead of creating a new ticket type
+                    }
+                    
+                    // Update ticket type quantity to match seat capacity if needed
+                    if (ticketType.TotalQuantity != zone.Capacity)
+                    {
+                        ticketType.TotalQuantity = zone.Capacity;
+                        ticketType.AvailableQuantity = zone.Capacity;
+                        ticketType.HasSeatSelection = true;
+                        _dbContext.TicketTypes.Update(ticketType);
                     }
 
                     zoneIdMap[zone.Id] = ticketType.Id;
@@ -242,6 +279,7 @@ namespace Tickify.Services
                         GridColumn = seatData.Col,
                         Status = SeatStatus.Available,
                         IsBlocked = seatData.IsBlocked,
+                        IsWheelchair = seatData.IsWheelchair, // Save wheelchair status
                         CreatedAt = DateTime.UtcNow
                     };
                     _dbContext.Seats.Add(seat);

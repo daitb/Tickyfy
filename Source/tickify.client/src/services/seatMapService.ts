@@ -13,7 +13,9 @@ export interface SeatDto {
   status: string;
   isBlocked: boolean;
   blockedReason?: string;
+  isWheelchair: boolean;
   isReserved: boolean;
+  reservedByUserId?: number;
   reservedUntil?: string;
   price: number;
   zoneName?: string;
@@ -103,6 +105,16 @@ class SeatMapService {
   }
 
   /**
+   * Get all seat maps for an organizer
+   */
+  async getOrganizerSeatMaps(organizerId: number): Promise<SeatMapDto[]> {
+    const response = await apiClient.get<SeatMapDto[]>(
+      `/seatmaps/organizer/${organizerId}`
+    );
+    return response.data;
+  }
+
+  /**
    * Get seat map templates (not assigned to any event)
    */
   async getSeatMapTemplates(): Promise<SeatMapDto[]> {
@@ -140,17 +152,24 @@ class SeatMapService {
   }
 
   /**
-   * Reserve seats
+   * Reserve seats during checkout
    */
-  async reserveSeats(seatMapId: string, seatIds: string[]): Promise<void> {
-    await apiClient.post(`/seatmaps/${seatMapId}/reserve`, { seatIds });
+  async reserveSeats(
+    seatMapId: number,
+    seatIds: number[]
+  ): Promise<{ message: string; expiresIn: number }> {
+    const response = await apiClient.post<{
+      message: string;
+      expiresIn: number;
+    }>(`/seatmaps/${seatMapId}/reserve`, seatIds);
+    return response.data;
   }
 
   /**
-   * Release seats
+   * Release seats (Organizer/Admin only)
    */
-  async releaseSeats(seatMapId: string, seatIds: string[]): Promise<void> {
-    await apiClient.post(`/seatmaps/${seatMapId}/release`, { seatIds });
+  async releaseSeats(seatMapId: number, seatIds: number[]): Promise<void> {
+    await apiClient.post(`/seatmaps/${seatMapId}/release`, seatIds);
   }
 }
 

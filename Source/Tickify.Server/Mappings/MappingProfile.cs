@@ -139,8 +139,15 @@ public class MappingProfile : Profile
         
         CreateMap<Seat, DTOs.SeatMap.SeatResponseDto>()
             .ForMember(dest => dest.FullSeatCode, opt => opt.MapFrom(src => $"{src.Row}{src.SeatNumber}"))
-            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.IsBlocked ? "Blocked" : (src.ReservedByUserId.HasValue ? "Reserved" : "Available")))
-            .ForMember(dest => dest.IsReserved, opt => opt.MapFrom(src => src.ReservedByUserId.HasValue));
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => 
+                src.IsBlocked ? "Blocked" : 
+                (src.ReservedByUserId.HasValue && src.ReservedUntil.HasValue && src.ReservedUntil.Value > DateTime.UtcNow ? "Reserved" : 
+                (src.Tickets != null && src.Tickets.Any(t => t.Status == TicketStatus.Valid || t.Status == TicketStatus.Used) ? "Sold" : "Available"))))
+            .ForMember(dest => dest.IsReserved, opt => opt.MapFrom(src => src.ReservedByUserId.HasValue && src.ReservedUntil.HasValue && src.ReservedUntil.Value > DateTime.UtcNow))
+            .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.TicketType != null ? src.TicketType.Price : 0))
+            .ForMember(dest => dest.ZoneName, opt => opt.MapFrom(src => src.SeatZone != null ? src.SeatZone.Name : null))
+            .ForMember(dest => dest.ZoneColor, opt => opt.MapFrom(src => src.SeatZone != null ? src.SeatZone.Color : null))
+            .ForMember(dest => dest.IsWheelchair, opt => opt.MapFrom(src => src.IsWheelchair));
         CreateMap<CreateSeatDto, Seat>();
 
         // PromoCode mappings

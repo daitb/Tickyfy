@@ -12,6 +12,7 @@ import {
 } from "../components/PaymentMethodSelector";
 import { Separator } from "../components/ui/separator";
 import { eventService } from "../services/eventService";
+import { seatMapService, type SeatDto } from "../services/seatMapService";
 import type { CartItem, Order } from "../types";
 import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
@@ -66,7 +67,8 @@ export function Checkout({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const [eventsMap, setEventsMap] = useState<Record<number, any>>({});
-  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  const [seatDetails, setSeatDetails] = useState<SeatDto[]>([]);
   const [seatBookingMode, setSeatBookingMode] = useState(false);
   const steps = [
     { number: 1, label: t("booking.checkout.step1") },
@@ -83,15 +85,31 @@ export function Checkout({
     return m ? parseInt(m[1], 10) : NaN;
   };
 
-  // Check if this is seat-based booking
+  // Check if this is seat-based booking and load seat details
   useEffect(() => {
     const seatsJson = sessionStorage.getItem("selectedSeats");
-    if (seatsJson) {
+    const eventIdStr = sessionStorage.getItem("eventId");
+
+    if (seatsJson && eventIdStr) {
       try {
-        const seats = JSON.parse(seatsJson);
-        if (Array.isArray(seats) && seats.length > 0) {
-          setSelectedSeats(seats);
+        const seatIds = JSON.parse(seatsJson);
+        if (Array.isArray(seatIds) && seatIds.length > 0) {
+          setSelectedSeats(seatIds);
           setSeatBookingMode(true);
+
+          // Load full seat details from backend
+          seatMapService
+            .getEventSeats(eventIdStr)
+            .then((allSeats) => {
+              const selectedSeatDetails = allSeats.filter((seat) =>
+                seatIds.includes(seat.id)
+              );
+              setSeatDetails(selectedSeatDetails);
+            })
+            .catch((err) => {
+              console.error("Failed to load seat details:", err);
+              toast.error("Failed to load seat information");
+            });
         }
       } catch (e) {
         console.error("Failed to parse selected seats:", e);
@@ -121,7 +139,8 @@ export function Checkout({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
-  if (items.length === 0) {
+  // Check if cart is empty (allow seat booking mode even with empty cart items)
+  if (items.length === 0 && !seatBookingMode) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
@@ -141,10 +160,10 @@ export function Checkout({
     );
   }
 
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const subtotal =
+    seatBookingMode && seatDetails.length > 0
+      ? seatDetails.reduce((sum, seat) => sum + seat.price, 0)
+      : items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const serviceFee = subtotal * 0.05;
   const total = subtotal + serviceFee;
 
@@ -303,18 +322,32 @@ export function Checkout({
         return;
       }
 
-      // Get first item (in real app, would handle multiple events)
-      const firstItem = items[0];
+      // Determine eventId, ticketTypeId, and quantity based on booking mode
+      let eventId: number;
+      let ticketTypeId: number;
+      let totalQuantity: number;
 
-      const eventId = extractTrailingNumber(firstItem.eventId);
-      const ticketTypeId = extractTrailingNumber(firstItem.tierId);
+      if (seatBookingMode && seatDetails.length > 0) {
+        // Seat-based booking: get from seatDetails
+        const eventIdStr = sessionStorage.getItem("eventId");
+        eventId = eventIdStr ? parseInt(eventIdStr, 10) : NaN;
+
+        // All seats should have same ticketTypeId (same zone/ticket type)
+        ticketTypeId = seatDetails[0].ticketTypeId;
+        totalQuantity = seatDetails.length;
+      } else {
+        // Regular cart-based booking: get from items
+        const firstItem = items[0];
+        eventId = extractTrailingNumber(firstItem.eventId);
+        ticketTypeId = extractTrailingNumber(firstItem.tierId);
+        totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+      }
 
       if (isNaN(eventId) || isNaN(ticketTypeId)) {
         setError(t("booking.checkout.invalidEventOrTicket"));
+        setIsProcessing(false);
         return;
       }
-
-      const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
       // Create booking via API with numeric IDs
       const bookingData: any = {
@@ -325,7 +358,7 @@ export function Checkout({
 
       // If seat-based booking, add seat IDs
       if (seatBookingMode && selectedSeats.length > 0) {
-        bookingData.seatIds = selectedSeats.map((seatId) => parseInt(seatId));
+        bookingData.seatIds = selectedSeats; // Already number[]
       }
 
       const response = await bookingService.createBooking(bookingData);
@@ -666,43 +699,77 @@ export function Checkout({
                       {/* Items */}
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <h4 className="mb-4">
-                          {t("booking.checkout.ticketSummary")}
+                          {seatBookingMode
+                            ? "Selected Seats"
+                            : t("booking.checkout.ticketSummary")}
                         </h4>
                         <div className="space-y-3">
-                          {items.map((item, index) => {
-                            const numericEventId = extractTrailingNumber(
-                              item.eventId
-                            );
-                            const event = eventsMap[numericEventId];
-                            return (
-                              <div key={index}>
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="text-neutral-900">
-                                      {item.eventTitle}
+                          {seatBookingMode && seatDetails.length > 0
+                            ? // Show seat details
+                              seatDetails.map((seat, index) => (
+                                <div key={seat.id}>
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <div className="text-neutral-900">
+                                        {seat.isWheelchair && "♿ "}
+                                        Seat {seat.row}
+                                        {seat.seatNumber}
+                                        {seat.zoneName && (
+                                          <span className="text-sm text-neutral-600 ml-2">
+                                            ({seat.zoneName})
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="text-sm text-neutral-600 mt-1">
-                                      {item.tierName}
-                                    </div>
-                                    <div className="text-sm text-neutral-500 mt-1">
-                                      {event?.date} • {event?.venue}
-                                    </div>
-                                  </div>
-                                  <div className="text-right ml-4">
-                                    <div className="text-neutral-900">
-                                      {formatPrice(item.price * item.quantity)}
-                                    </div>
-                                    <div className="text-sm text-neutral-500 mt-1">
-                                      {t("booking.quantity")}: {item.quantity}
+                                    <div className="text-right ml-4">
+                                      <div className="text-neutral-900">
+                                        {formatPrice(seat.price)}
+                                      </div>
                                     </div>
                                   </div>
+                                  {index < seatDetails.length - 1 && (
+                                    <Separator className="mt-3" />
+                                  )}
                                 </div>
-                                {index < items.length - 1 && (
-                                  <Separator className="mt-3" />
-                                )}
-                              </div>
-                            );
-                          })}
+                              ))
+                            : // Show cart items
+                              items.map((item, index) => {
+                                const numericEventId = extractTrailingNumber(
+                                  item.eventId
+                                );
+                                const event = eventsMap[numericEventId];
+                                return (
+                                  <div key={index}>
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <div className="text-neutral-900">
+                                          {item.eventTitle}
+                                        </div>
+                                        <div className="text-sm text-neutral-600 mt-1">
+                                          {item.tierName}
+                                        </div>
+                                        <div className="text-sm text-neutral-500 mt-1">
+                                          {event?.date} • {event?.venue}
+                                        </div>
+                                      </div>
+                                      <div className="text-right ml-4">
+                                        <div className="text-neutral-900">
+                                          {formatPrice(
+                                            item.price * item.quantity
+                                          )}
+                                        </div>
+                                        <div className="text-sm text-neutral-500 mt-1">
+                                          {t("booking.quantity")}:{" "}
+                                          {item.quantity}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {index < items.length - 1 && (
+                                      <Separator className="mt-3" />
+                                    )}
+                                  </div>
+                                );
+                              })}
                         </div>
                       </div>
 

@@ -152,8 +152,11 @@ export function SeatMapBuilder({
   const [isDrawing, setIsDrawing] = useState(false);
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
+  const [availableSeatMaps, setAvailableSeatMaps] = useState<any[]>([]);
+  const [loadingSeatMaps, setLoadingSeatMaps] = useState(false);
   const [history, setHistory] = useState<GridSeat[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
@@ -224,7 +227,7 @@ export function SeatMapBuilder({
           col: s.gridColumn || 0,
           zoneId: s.seatZoneId?.toString() || null,
           isBlocked: s.isBlocked,
-          isWheelchair: s.blockedReason === "wheelchair" || false, // Use blockedReason as temporary wheelchair indicator
+          isWheelchair: s.isWheelchair || false, // Load wheelchair status from database
           label: s.fullSeatCode,
         }));
 
@@ -823,7 +826,7 @@ export function SeatMapBuilder({
               <CardHeader>
                 <CardTitle className="text-sm">Templates</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -832,6 +835,35 @@ export function SeatMapBuilder({
                 >
                   <Layout size={16} className="mr-2" />
                   Load Template
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={async () => {
+                    setShowCopyModal(true);
+                    setLoadingSeatMaps(true);
+                    try {
+                      // Get current user's organizer ID from auth service
+                      const user = JSON.parse(
+                        localStorage.getItem("user") || "{}"
+                      );
+                      if (user.organizerId) {
+                        const maps = await seatMapService.getOrganizerSeatMaps(
+                          user.organizerId
+                        );
+                        setAvailableSeatMaps(maps);
+                      }
+                    } catch (err) {
+                      console.error("Failed to load seat maps:", err);
+                      toast.error("Failed to load seat maps");
+                    } finally {
+                      setLoadingSeatMaps(false);
+                    }
+                  }}
+                >
+                  <Copy size={16} className="mr-2" />
+                  Copy from Event
                 </Button>
               </CardContent>
             </Card>
@@ -1164,6 +1196,110 @@ export function SeatMapBuilder({
 
           <DialogFooter>
             <Button onClick={() => setShowPreview(false)}>Close Preview</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Copy Seat Map Modal */}
+      <Dialog open={showCopyModal} onOpenChange={setShowCopyModal}>
+        <DialogContent className="max-w-2xl max-h-[600px]">
+          <DialogHeader>
+            <DialogTitle>Copy Seat Map from Another Event</DialogTitle>
+            <DialogDescription>
+              Select an existing seat map to copy its layout
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-y-auto max-h-[400px]">
+            {loadingSeatMaps ? (
+              <div className="text-center py-8 text-neutral-500">
+                Loading seat maps...
+              </div>
+            ) : availableSeatMaps.length === 0 ? (
+              <div className="text-center py-8 text-neutral-500">
+                No seat maps available to copy
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {availableSeatMaps.map((map) => (
+                  <button
+                    key={map.id}
+                    onClick={async () => {
+                      try {
+                        const fullMap = await seatMapService.getSeatMapById(
+                          map.id.toString()
+                        );
+
+                        // Load zones from the seat map
+                        if (fullMap.zones && fullMap.zones.length > 0) {
+                          const loadedZones: Zone[] = fullMap.zones.map(
+                            (z) => ({
+                              id: `zone${z.id}`,
+                              name: z.name,
+                              color: z.color || "#00C16A",
+                              price: z.zonePrice,
+                              capacity: z.capacity,
+                            })
+                          );
+                          setZones(loadedZones);
+                          setSelectedZone(loadedZones[0]?.id || null);
+                        }
+
+                        // Load seats from the full seat map
+                        const eventSeats = await seatMapService.getEventSeats(
+                          fullMap.eventId.toString()
+                        );
+
+                        // Convert backend seats to grid seats
+                        const loadedSeats: GridSeat[] = eventSeats.map((s) => ({
+                          id: `seat-${s.id}`,
+                          row: s.gridRow ?? 0,
+                          col: s.gridColumn ?? 0,
+                          zoneId: s.seatZoneId ? `zone${s.seatZoneId}` : null,
+                          isBlocked: s.isBlocked,
+                          isWheelchair: s.isWheelchair,
+                          label: `${s.row}${s.seatNumber}`,
+                        }));
+
+                        setSeats(loadedSeats);
+                        setGridSize({
+                          rows: fullMap.totalRows,
+                          cols: fullMap.totalColumns,
+                        });
+
+                        toast.success("Seat map copied successfully!");
+                        setShowCopyModal(false);
+                      } catch (error) {
+                        console.error("Failed to copy seat map:", error);
+                        toast.error("Failed to copy seat map");
+                      }
+                    }}
+                    className="w-full p-4 border-2 rounded-lg hover:border-teal-500 transition-colors text-left"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-medium text-neutral-900 mb-1">
+                          {map.name}
+                        </div>
+                        <div className="text-sm text-neutral-500">
+                          {map.description || "No description"}
+                        </div>
+                        <div className="text-xs text-neutral-400 mt-1">
+                          {map.totalRows} rows × {map.totalColumns} columns
+                        </div>
+                      </div>
+                      <Copy size={16} className="text-neutral-400" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCopyModal(false)}>
+              Cancel
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -38,6 +38,8 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
   const [showTimer, setShowTimer] = useState(false);
   const [hasSeatMap, setHasSeatMap] = useState(false);
   const [checkingSeatMap, setCheckingSeatMap] = useState(true);
+  const [seatMapZones, setSeatMapZones] = useState<any[]>([]); // Store seat map zones
+  const [minPrice, setMinPrice] = useState<number>(0); // Minimum ticket price
 
   useEffect(() => {
     let mounted = true;
@@ -54,7 +56,7 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
     };
   }, [eventId]);
 
-  // Check if event has seat map
+  // Check if event has seat map and fetch zone pricing
   useEffect(() => {
     if (!event?.id) return;
 
@@ -63,11 +65,31 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
 
     seatMapService
       .getSeatMapByEvent(event.id.toString())
-      .then(() => {
-        if (mounted) setHasSeatMap(true);
+      .then((seatMapData) => {
+        if (mounted) {
+          setHasSeatMap(true);
+          // Extract zones with pricing
+          if (seatMapData.zones && seatMapData.zones.length > 0) {
+            setSeatMapZones(seatMapData.zones);
+            // Calculate minimum price from zones
+            const prices = seatMapData.zones.map((z: any) => z.zonePrice);
+            setMinPrice(Math.min(...prices));
+          } else if (event.ticketTiers && event.ticketTiers.length > 0) {
+            // Fallback to ticket tiers
+            const prices = event.ticketTiers.map((t: any) => t.price);
+            setMinPrice(Math.min(...prices));
+          }
+        }
       })
       .catch(() => {
-        if (mounted) setHasSeatMap(false);
+        if (mounted) {
+          setHasSeatMap(false);
+          // Use ticket tiers pricing if no seat map
+          if (event.ticketTiers && event.ticketTiers.length > 0) {
+            const prices = event.ticketTiers.map((t: any) => t.price);
+            setMinPrice(Math.min(...prices));
+          }
+        }
       })
       .finally(() => {
         if (mounted) setCheckingSeatMap(false);
@@ -76,7 +98,7 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
     return () => {
       mounted = false;
     };
-  }, [event?.id]);
+  }, [event?.id, event?.ticketTiers]);
 
   // Get related events from the same category
   useEffect(() => {
@@ -329,11 +351,7 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
                         Starting from
                       </div>
                       <div className="text-2xl font-bold text-teal-600">
-                        {formatPrice(
-                          Math.min(
-                            ...event.ticketTiers.map((t: any) => t.price)
-                          )
-                        )}
+                        {formatPrice(minPrice || 0)}
                       </div>
                     </div>
                   </div>
@@ -405,27 +423,33 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
               )}
 
               {/* Available ticket info for seat map events */}
-              {hasSeatMap && !checkingSeatMap && (
+              {hasSeatMap && !checkingSeatMap && seatMapZones.length > 0 && (
                 <div className="mt-6 space-y-3">
                   <div className="text-sm font-semibold text-neutral-700 mb-2">
-                    Ticket Types
+                    Ticket Types (By Zone)
                   </div>
-                  {event.ticketTiers.map((tier: any) => (
+                  {seatMapZones.map((zone: any) => (
                     <div
-                      key={tier.id}
+                      key={zone.id}
                       className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"
                     >
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-neutral-900">
-                          {tier.name}
-                        </div>
-                        <div className="text-xs text-neutral-500">
-                          {formatPrice(tier.price)}
+                      <div className="flex items-center gap-2 flex-1">
+                        <div
+                          className="w-4 h-4 rounded"
+                          style={{ backgroundColor: zone.color || "#94a3b8" }}
+                        />
+                        <div>
+                          <div className="text-sm font-medium text-neutral-900">
+                            {zone.name}
+                          </div>
+                          <div className="text-xs text-neutral-500">
+                            {formatPrice(zone.zonePrice)}
+                          </div>
                         </div>
                       </div>
                       <div className="text-xs text-neutral-600">
-                        {tier.available > 0 ? (
-                          `${tier.available} available`
+                        {zone.availableSeats > 0 ? (
+                          `${zone.availableSeats} available`
                         ) : (
                           <span className="text-red-600 font-medium">
                             Sold out

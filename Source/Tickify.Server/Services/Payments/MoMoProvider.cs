@@ -1,11 +1,13 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tickify.Data;
 using Tickify.DTOs.Payment;
 using Tickify.Extensions;
+using Tickify.Hubs;
 using Tickify.Interfaces.Repositories;
 using Tickify.Interfaces.Services;
 using Tickify.Models;
@@ -26,6 +28,7 @@ public sealed class MoMoProvider : IPaymentProvider
     private readonly ApplicationDbContext _context;
     private readonly INotificationService _notificationService;
     private readonly ILogger<MoMoProvider> _logger;
+    private readonly IHubContext<SeatHub> _seatHubContext;
 
     public MoMoProvider(
         IOptions<MomoOptionModel> options,
@@ -35,7 +38,8 @@ public sealed class MoMoProvider : IPaymentProvider
         ITicketRepository tickets,
         ApplicationDbContext context,
         INotificationService notificationService,
-        ILogger<MoMoProvider> logger)
+        ILogger<MoMoProvider> logger,
+        IHubContext<SeatHub> seatHubContext)
     {
         _opt = options.Value;
         _http = hf.CreateClient();
@@ -45,6 +49,7 @@ public sealed class MoMoProvider : IPaymentProvider
         _context = context;
         _notificationService = notificationService;
         _logger = logger;
+        _seatHubContext = seatHubContext;
     }
 
     public async Task<bool> VerifyAsync(int paymentId, CancellationToken ct)
@@ -528,31 +533,91 @@ public sealed class MoMoProvider : IPaymentProvider
             if (quantity <= 0) quantity = 1;
         }
 
-        // Note: Seat assignment is skipped here because we don't have access to the original
-        // SeatIds from CreateBookingDto in the webhook. Seats should be assigned when booking
-        // is created or through a separate process. For now, tickets are created without seat assignment.
-        // TODO: Store SeatIds in Booking model or create a BookingSeats junction table to track seat assignments.
-
-        // Create tickets
+        // Create tickets based on seat selection or general booking
         var ticketsToCreate = new List<Ticket>();
-        for (int i = 0; i < quantity; i++)
+        
+        // Check if this is a seat-based booking
+        if (!string.IsNullOrEmpty(booking.SeatIdsJson))
         {
-            var ticket = new Ticket
+            try
             {
-                BookingId = bookingId,
-                TicketTypeId = selectedTicketType.Id,
-                TicketCode = GenerateTicketCode(bookingId, i + 1),
-                Price = selectedTicketType.Price,
-                Status = TicketStatus.Valid,
-                CreatedAt = DateTime.UtcNow
-            };
+                var seatIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(booking.SeatIdsJson);
+                if (seatIds != null && seatIds.Any())
+                {
+                    // Get seat details for ticket creation
+                    var seats = await _context.Seats
+                        .Include(s => s.TicketType)
+                        .Include(s => s.SeatZone)
+                        .Where(s => seatIds.Contains(s.Id))
+                        .ToListAsync(ct);
 
-            ticketsToCreate.Add(ticket);
+                    int ticketIndex = 1;
+                    var eventId = seats.FirstOrDefault()?.TicketType.EventId;
+                    
+                    foreach (var seat in seats)
+                    {
+                        var ticket = new Ticket
+                        {
+                            BookingId = bookingId,
+                            TicketTypeId = seat.TicketTypeId,
+                            SeatId = seat.Id,
+                            TicketCode = GenerateTicketCode(bookingId, ticketIndex++),
+                            Price = seat.SeatZone?.ZonePrice ?? seat.TicketType.Price,
+                            Status = TicketStatus.Valid,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        ticketsToCreate.Add(ticket);
+
+                        // Mark seat as sold
+                        seat.Status = SeatStatus.Sold;
+                        seat.ReservedByUserId = null;
+                        seat.ReservedUntil = null;
+                    }
+
+                    // Broadcast seat sold status
+                    if (eventId.HasValue)
+                    {
+                        await _seatHubContext.Clients
+                            .Group($"Event_{eventId}")
+                            .SendAsync("SeatsUpdated", new
+                            {
+                                eventId = eventId.Value,
+                                seatIds = seatIds,
+                                status = "Sold"
+                            }, ct);
+                    }
+
+                    Console.WriteLine($"[MoMo] Created {ticketsToCreate.Count} seat-based tickets for booking {bookingId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MoMo] Error parsing seat IDs: {ex.Message}");
+            }
+        }
+        
+        // Fallback: create general tickets if no seats or error
+        if (!ticketsToCreate.Any())
+        {
+            for (int i = 0; i < quantity; i++)
+            {
+                var ticket = new Ticket
+                {
+                    BookingId = bookingId,
+                    TicketTypeId = selectedTicketType.Id,
+                    TicketCode = GenerateTicketCode(bookingId, i + 1),
+                    Price = selectedTicketType.Price,
+                    Status = TicketStatus.Valid,
+                    CreatedAt = DateTime.UtcNow
+                };
+                ticketsToCreate.Add(ticket);
+            }
+            Console.WriteLine($"[MoMo] Created {ticketsToCreate.Count} general tickets for booking {bookingId}");
         }
 
         // Bulk create tickets
         await _tickets.CreateBulkAsync(ticketsToCreate);
-        Console.WriteLine($"[MoMo] Created {ticketsToCreate.Count} tickets for booking {bookingId}");
+        await _context.SaveChangesAsync(); // Save seat status changes
     }
 
     private static string GenerateTicketCode(int bookingId, int ticketNumber)

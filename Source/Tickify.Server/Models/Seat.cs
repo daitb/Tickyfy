@@ -27,6 +27,7 @@ namespace Tickify.Models
         public SeatStatus Status { get; set; } = SeatStatus.Available;
         public bool IsBlocked { get; set; } = false;
         public string? BlockedReason { get; set; }
+        public bool IsWheelchair { get; set; } = false; // Wheelchair accessible seat
         
         // Reservation handling (temporary hold during checkout)
         public int? ReservedByUserId { get; set; }
