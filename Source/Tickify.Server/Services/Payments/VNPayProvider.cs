@@ -7,6 +7,7 @@ using Tickify.Data;
 using Tickify.DTOs.Payment;
 using Tickify.Extensions;
 using Tickify.Interfaces.Repositories;
+using Tickify.Interfaces.Services;
 using Tickify.Models;
 using Tickify.Repositories;
 
@@ -19,6 +20,7 @@ public sealed class VNPayProvider : IPaymentProvider
     private readonly IBookingRepository _bookings;
     private readonly ITicketRepository _tickets;
     private readonly ApplicationDbContext _context;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<VNPayProvider> _logger;
 
     public VNPayProvider(
@@ -27,6 +29,7 @@ public sealed class VNPayProvider : IPaymentProvider
         IBookingRepository bookings,
         ITicketRepository tickets,
         ApplicationDbContext context,
+        INotificationService notificationService,
         ILogger<VNPayProvider> logger)
     { 
         _cfg = cfg; 
@@ -34,6 +37,7 @@ public sealed class VNPayProvider : IPaymentProvider
         _bookings = bookings;
         _tickets = tickets;
         _context = context;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -168,7 +172,18 @@ public sealed class VNPayProvider : IPaymentProvider
                     // Commit transaction
                     await transaction.CommitAsync(ct);
 
-                    // Không cần gửi notification vì user đã được redirect về Order Detail
+
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await SendPaymentSuccessNotificationsAsync(booking, payment, ct);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"[VNPay] Failed to send notifications for payment {paymentId}");
+                        }
+                    }, ct);
 
                     Console.WriteLine($"[VNPay VerifyFromReturnUrl] Payment {paymentId} completed successfully from return URL");
                     return true;
@@ -422,7 +437,18 @@ public sealed class VNPayProvider : IPaymentProvider
                     // Commit transaction
                     await transaction.CommitAsync(ct);
 
-                    // Không cần gửi notification vì user đã được redirect về Order Detail
+                    // Gửi notification sau khi commit thành công (không block transaction)
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await SendPaymentSuccessNotificationsAsync(booking, payment, ct);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"[VNPay] Failed to send notifications for payment {paymentId}");
+                        }
+                    }, ct);
 
                     Console.WriteLine($"[VNPay Webhook] Payment {paymentId} completed successfully");
                     return true;
@@ -558,7 +584,46 @@ public sealed class VNPayProvider : IPaymentProvider
         return $"TK{bookingId:D6}{ticketNumber:D3}{DateTime.UtcNow:yyyyMMdd}";
     }
 
-    // Không cần gửi notification cho payment success/booking confirmed
-    // vì user đã được redirect trực tiếp về Order Detail page
-    // và thấy kết quả ngay trên UI
+    /// <summary>
+    /// Gửi notifications khi payment thành công và booking được confirm
+    /// </summary>
+    private async Task SendPaymentSuccessNotificationsAsync(Booking? booking, Payment payment, CancellationToken ct)
+    {
+        if (booking == null) return;
+
+        try
+        {
+            // Load booking với Event để lấy event name
+            var fullBooking = await _context.Bookings
+                .Include(b => b.Event)
+                .FirstOrDefaultAsync(b => b.Id == booking.Id, ct);
+
+            if (fullBooking?.Event == null)
+            {
+                _logger.LogWarning($"[VNPay] Booking {booking.Id} or Event not found for notification");
+                return;
+            }
+
+            // Gửi notification payment thành công
+            await _notificationService.NotifyPaymentSuccessAsync(
+                booking.UserId,
+                booking.Id,
+                payment.Amount
+            );
+
+            // Gửi notification booking confirmed
+            await _notificationService.NotifyBookingConfirmedAsync(
+                booking.UserId,
+                booking.Id,
+                fullBooking.Event.Title
+            );
+
+            _logger.LogInformation($"[VNPay] Sent notifications for payment {payment.Id} and booking {booking.Id}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"[VNPay] Error sending notifications for booking {booking.Id}");
+            // Không throw để không ảnh hưởng đến transaction
+        }
+    }
 }

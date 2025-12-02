@@ -172,21 +172,13 @@ public class UserService : IUserService
             throw new NotFoundException($"Không tìm thấy vai trò với ID {roleId}");
         }
 
-        // Check if user already has this exact role
+        // Check if user already has this role
         var existingUserRole = await _userRoleRepository.GetUserRoleAsync(userId, roleId);
         if (existingUserRole != null)
         {
             throw new BadRequestException("Người dùng đã có vai trò này");
         }
 
-        // Remove all existing roles for this user (each user has only one role)
-        var existingRoles = await _userRoleRepository.GetUserRolesByUserIdAsync(userId);
-        if (existingRoles.Any())
-        {
-            await _userRoleRepository.RemoveUserRolesAsync(existingRoles);
-        }
-
-        // Add the new role
         var userRole = new UserRole
         {
             UserId = userId,
@@ -197,7 +189,7 @@ public class UserService : IUserService
         await _userRoleRepository.AddUserRoleAsync(userRole);
         await _userRoleRepository.SaveChangesAsync();
 
-        _logger.LogInformation("Role {RoleId} assigned to UserId: {UserId} (previous roles removed)", roleId, userId);
+        _logger.LogInformation("Role {RoleId} assigned to UserId: {UserId}", roleId, userId);
     }
 
     public async Task ToggleActiveStatusAsync(int userId)

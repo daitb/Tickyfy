@@ -95,7 +95,7 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
     if (!notification.isRead) {
       await markAsRead(notification.id);
     }
-
+    
     // Navigate based on notification type or actionUrl
     if (notification.actionUrl) {
       const route = notification.actionUrl.split('/')[1];
@@ -126,6 +126,14 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
   });
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
+  const stats = {
+    total: notifications.length,
+    unread: unreadCount,
+    booking: notifications.filter(n => n.type === 'booking').length,
+    event: notifications.filter(n => n.type === 'event').length,
+    payment: notifications.filter(n => n.type === 'payment').length,
+    system: notifications.filter(n => n.type === 'system').length,
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -165,6 +173,57 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
               </Button>
             )}
           </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveType('all')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                  <p className="text-xs text-gray-600">Total</p>
+                </div>
+                <Bell className="text-gray-400" size={24} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveType('booking')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-purple-600">{stats.booking}</p>
+                  <p className="text-xs text-gray-600">Bookings</p>
+                </div>
+                <Ticket className="text-purple-400" size={24} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveType('event')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-blue-600">{stats.event}</p>
+                  <p className="text-xs text-gray-600">Events</p>
+                </div>
+                <Calendar className="text-blue-400" size={24} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveType('payment')}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-green-600">{stats.payment}</p>
+                  <p className="text-xs text-gray-600">Payments</p>
+                </div>
+                <CreditCard className="text-green-400" size={24} />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Filters */}
@@ -215,20 +274,22 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                   <div
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${!notification.isRead ? 'bg-purple-50/30 border-l-4 border-l-purple-500' : ''
-                      }`}
+                    className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${
+                      !notification.isRead ? 'bg-purple-50/30 border-l-4 border-l-purple-500' : ''
+                    }`}
                   >
                     <div className="flex gap-4">
                       <div className="flex-shrink-0 mt-1">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${notification.type === 'booking' ? 'bg-purple-100' :
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                          notification.type === 'booking' ? 'bg-purple-100' :
                           notification.type === 'event' ? 'bg-blue-100' :
-                            notification.type === 'payment' ? 'bg-green-100' :
-                              'bg-orange-100'
-                          }`}>
+                          notification.type === 'payment' ? 'bg-green-100' :
+                          'bg-orange-100'
+                        }`}>
                           {getIcon(notification.type)}
                         </div>
                       </div>
-
+                      
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4 mb-2">
                           <div className="flex items-center gap-2">
@@ -254,7 +315,7 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                             </button>
                           </div>
                         </div>
-
+                        
                         <p className="text-gray-600 text-sm leading-relaxed">
                           {notification.message}
                         </p>
@@ -283,11 +344,11 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                 <Bell size={64} className="mx-auto mb-4 opacity-20" />
                 <h3 className="text-lg font-medium text-gray-700 mb-2">No notifications found</h3>
                 <p className="text-sm">
-                  {activeFilter === 'unread'
+                  {activeFilter === 'unread' 
                     ? 'You have no unread notifications'
                     : activeType !== 'all'
-                      ? `No ${activeType} notifications`
-                      : 'You have no notifications at this time'}
+                    ? `No ${activeType} notifications`
+                    : 'You have no notifications at this time'}
                 </p>
               </div>
             )}

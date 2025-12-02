@@ -10,7 +10,6 @@ namespace Tickify.Models
         public bool IsRead { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? ReadAt { get; set; }
-        public string? ActionUrl { get; set; }
         
         // Navigation properties
         public User? User { get; set; }

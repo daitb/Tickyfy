@@ -16,7 +16,6 @@ public class BookingService : IBookingService
     private readonly ITicketRepository _ticketRepository;
     private readonly ISeatRepository _seatRepository;
     private readonly IPromoCodeRepository _promoCodeRepository;
-    private readonly INotificationService _notificationService;
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
     private readonly ILogger<BookingService> _logger;
@@ -26,7 +25,6 @@ public class BookingService : IBookingService
         ITicketRepository ticketRepository,
         ISeatRepository seatRepository,
         IPromoCodeRepository promoCodeRepository,
-        INotificationService notificationService,
         ApplicationDbContext context,
         IMapper mapper,
         ILogger<BookingService> logger)
@@ -35,7 +33,6 @@ public class BookingService : IBookingService
         _ticketRepository = ticketRepository;
         _seatRepository = seatRepository;
         _promoCodeRepository = promoCodeRepository;
-        _notificationService = notificationService;
         _context = context;
         _mapper = mapper;
         _logger = logger;
@@ -243,9 +240,6 @@ public class BookingService : IBookingService
             await transaction.CommitAsync();
             _logger.LogInformation("Transaction committed thành công cho cancel booking {BookingId}", bookingId);
             
-            // Notify users in waitlist that tickets are now available
-            await NotifyWaitlistUsersAsync(booking.EventId);
-            
             return _mapper.Map<BookingDto>(updatedBooking);
         }
         catch (Exception ex)
@@ -395,75 +389,5 @@ public class BookingService : IBookingService
     private string GenerateBookingCode()
     {
         return $"BK{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
-    }
-
-    /// <summary>
-    /// Notify waitlist users when tickets become available for an event
-    /// </summary>
-    private async Task NotifyWaitlistUsersAsync(int eventId)
-    {
-        try
-        {
-            // Get event details
-            var eventEntity = await _context.Events
-                .AsNoTracking()
-                .FirstOrDefaultAsync(e => e.Id == eventId);
-
-            if (eventEntity == null)
-            {
-                _logger.LogWarning("[BookingService] Event {EventId} not found for waitlist notification", eventId);
-                return;
-            }
-
-            // Get users in waitlist who haven't been notified yet
-            var waitlistUsers = await _context.Waitlists
-                .Where(w => w.EventId == eventId && !w.IsNotified && !w.HasPurchased)
-                .OrderBy(w => w.JoinedAt) // First come, first served
-                .Take(10) // Notify up to 10 users at a time
-                .ToListAsync();
-
-            if (!waitlistUsers.Any())
-            {
-                _logger.LogInformation("[BookingService] No waitlist users to notify for event {EventId}", eventId);
-                return;
-            }
-
-            foreach (var waitlistEntry in waitlistUsers)
-            {
-                try
-                {
-                    // Send notification
-                    await _notificationService.NotifyWaitlistAvailableAsync(
-                        waitlistEntry.UserId,
-                        eventId,
-                        eventEntity.Title
-                    );
-
-                    // Mark as notified
-                    waitlistEntry.IsNotified = true;
-                    waitlistEntry.NotifiedAt = DateTime.UtcNow;
-                    waitlistEntry.ExpiresAt = DateTime.UtcNow.AddHours(24); // 24 hours to purchase
-
-                    _logger.LogInformation(
-                        "[BookingService] Notified waitlist user {UserId} for event {EventId}",
-                        waitlistEntry.UserId, eventId
-                    );
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex,
-                        "[BookingService] Failed to notify waitlist user {UserId} for event {EventId}",
-                        waitlistEntry.UserId, eventId
-                    );
-                }
-            }
-
-            await _context.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "[BookingService] Failed to notify waitlist users for event {EventId}", eventId);
-            // Don't throw - waitlist notification failure shouldn't block booking cancellation
-        }
     }
 }
