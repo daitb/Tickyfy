@@ -192,7 +192,7 @@ public class NotificationService : INotificationService
             Title = "Booking Confirmed",
             Message = $"Your booking for '{eventName}' has been confirmed. Your tickets are ready!",
             Type = "BookingConfirmed",
-            RelatedUrl = $"/orders/{bookingId}"
+            ActionUrl = $"/orders/{bookingId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -213,7 +213,7 @@ public class NotificationService : INotificationService
             Title = "Event Approved",
             Message = $"Your event '{eventName}' has been approved and is now live!",
             Type = "EventApproved",
-            RelatedUrl = $"/events/{eventId}"
+            ActionUrl = $"/events/{eventId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -233,7 +233,7 @@ public class NotificationService : INotificationService
             Title = "Event Rejected",
             Message = $"Your event '{eventName}' has been rejected. Reason: {reason}",
             Type = "EventRejected",
-            RelatedUrl = $"/events/{eventId}"
+            ActionUrl = $"/events/{eventId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -247,7 +247,7 @@ public class NotificationService : INotificationService
             Title = "Payment Successful",
             Message = $"Payment of {amount:C} has been processed successfully.",
             Type = "PaymentSuccess",
-            RelatedUrl = $"/orders/{bookingId}"
+            ActionUrl = $"/orders/{bookingId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -261,7 +261,7 @@ public class NotificationService : INotificationService
             Title = "Payment Failed",
             Message = "Your payment could not be processed. Please try again.",
             Type = "PaymentFailed",
-            RelatedUrl = $"/orders/{bookingId}"
+            ActionUrl = $"/orders/{bookingId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -275,7 +275,7 @@ public class NotificationService : INotificationService
             Title = "Ticket Transfer",
             Message = $"{senderName} has transferred a ticket for '{eventName}' to you.",
             Type = "TicketTransfer",
-            RelatedUrl = $"/tickets/{ticketId}"
+            ActionUrl = $"/tickets/{ticketId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -289,7 +289,7 @@ public class NotificationService : INotificationService
             Title = "Refund Approved",
             Message = $"Your refund request has been approved. Amount: {amount:C}",
             Type = "RefundApproved",
-            RelatedUrl = $"/refunds/{refundId}"
+            ActionUrl = $"/refunds/{refundId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -303,7 +303,7 @@ public class NotificationService : INotificationService
             Title = "Refund Rejected",
             Message = $"Your refund request has been rejected. Reason: {reason}",
             Type = "RefundRejected",
-            RelatedUrl = $"/refunds/{refundId}"
+            ActionUrl = $"/refunds/{refundId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -317,7 +317,7 @@ public class NotificationService : INotificationService
             Title = "Tickets Available",
             Message = $"Good news! Tickets are now available for '{eventName}'. Book now before they're gone!",
             Type = "WaitlistAvailable",
-            RelatedUrl = $"/events/{eventId}"
+            ActionUrl = $"/events/{eventId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -335,7 +335,7 @@ public class NotificationService : INotificationService
             Title = "Event Reminder",
             Message = $"'{eventName}' starts in {timeText}. Don't forget to bring your tickets!",
             Type = "EventReminder",
-            RelatedUrl = $"/events/{eventId}"
+            ActionUrl = $"/events/{eventId}"
         };
 
         await CreateNotificationAsync(dto);

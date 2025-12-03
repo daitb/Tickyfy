@@ -1,26 +1,3 @@
-<<<<<<< HEAD
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Calendar, MapPin, User, Minus, Plus, Clock, Share2 } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { MiniCartBar } from '../components/MiniCartBar';
-import { HoldTimer } from '../components/HoldTimer';
-import { PolicyBlock } from '../components/PolicyBlock';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import { Separator } from '../components/ui/separator';
-import { Badge } from '../components/ui/badge';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import EventHighlights from '../components/event-detail/EventHighlights';
-import FAQSection from '../components/event-detail/FAQSection';
-import LocationMap from '../components/event-detail/LocationMap';
-import ShareButtons from '../components/event-detail/ShareButtons';
-import RelatedEvents from '../components/event-detail/RelatedEvents';
-import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
-import { eventService } from '../services/eventService';
-import { WishlistButton } from '../components/WishlistButton';
-import { authService } from '../services/authService';
-import type { CartItem } from '../types';
-=======
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Calendar, MapPin, User, Clock, Share2, Loader2 } from "lucide-react";
@@ -46,7 +23,8 @@ import { eventService } from "../services/eventService";
 import { seatMapService } from "../services/seatMapService";
 import { WishlistButton } from "../components/WishlistButton";
 import { authService } from "../services/authService";
->>>>>>> origin/develop
+import type { CartItem } from "../types";
+import { MiniCartBar } from "../components/MiniCartBar";
 
 interface EventDetailProps {
   eventId: string;
@@ -61,7 +39,6 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [showTimer, setShowTimer] = useState(false);
   const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
-  const [showTimer, setShowTimer] = useState(false);
   const [hasSeatMap, setHasSeatMap] = useState(false);
   const [checkingSeatMap, setCheckingSeatMap] = useState(true);
   const [seatMapZones, setSeatMapZones] = useState<any[]>([]); // Store seat map zones
@@ -336,66 +313,6 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
             <div className="bg-white rounded-2xl p-6 shadow-lg sticky top-20">
               <h3 className="mb-6">{t('events.selectTickets')}</h3>
 
-<<<<<<< HEAD
-              <div className="space-y-4">
-                {event.ticketTiers.map((tier: any) => (
-                  <div
-                    key={tier.id}
-                    className={`border rounded-xl p-4 transition-all ${
-                      tier.available === 0
-                        ? 'border-neutral-200 bg-neutral-50 opacity-60'
-                        : quantities[tier.id] > 0
-                        ? 'border-teal-500 bg-teal-50'
-                        : 'border-neutral-200 hover:border-teal-300'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="text-neutral-900">{tier.name}</div>
-                        <div className="text-sm text-neutral-500 mt-1">
-                          {tier.description}
-                        </div>
-                      </div>
-                      <div className="text-right ml-4">
-                        <div className="text-neutral-900">{formatPrice(tier.price)}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="text-sm text-neutral-500">
-                        {tier.available > 0 ? (
-                          `${tier.available} ${t('events.available')}`
-                        ) : (
-                          <span className="text-red-600">{t('events.soldOut')}</span>
-                        )}
-                      </div>
-
-                      {tier.available > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-8 h-8 p-0"
-                            onClick={() => handleQuantityChange(tier.id, -1)}
-                            disabled={!quantities[tier.id]}
-                          >
-                            <Minus size={16} />
-                          </Button>
-                          <span className="w-8 text-center">
-                            {quantities[tier.id] || 0}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-8 h-8 p-0"
-                            onClick={() => handleQuantityChange(tier.id, 1)}
-                            disabled={quantities[tier.id] >= tier.available}
-                          >
-                            <Plus size={16} />
-                          </Button>
-                        </div>
-                      )}
-=======
               {checkingSeatMap ? (
                 <div className="p-6 text-center">
                   <Loader2 className="w-8 h-8 animate-spin mx-auto text-teal-600 mb-2" />
@@ -421,7 +338,6 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                       <div className="text-2xl font-bold text-teal-600">
                         {formatPrice(minPrice || 0)}
                       </div>
->>>>>>> origin/develop
                     </div>
                   </div>
 
