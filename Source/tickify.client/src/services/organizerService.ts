@@ -44,10 +44,13 @@ export interface OrganizerEventDto {
   eventId: number;
   title: string;
   startDate: string;
+  endDate: string;
+  bannerImage?: string;
   status: string;
   totalSeats: number;
   soldSeats: number;
   revenue: number;
+  rejectionReason?: string;
 }
 
 export interface OrganizerEarningsDto {
@@ -69,6 +72,21 @@ export interface OrganizerEarningsDto {
     revenue: number;
     ticketsSold: number;
   }>;
+}
+
+export interface OrganizerBookingDto {
+  bookingId: number;
+  bookingCode: string;
+  bookingDate: string;
+  status: string;
+  eventId: number;
+  eventTitle: string;
+  customerName: string;
+  customerEmail: string;
+  totalTickets: number;
+  totalAmount: number;
+  paymentStatus?: string;
+  paymentDate?: string;
 }
 
 // ===== ORGANIZER SERVICE =====
@@ -111,6 +129,14 @@ class OrganizerService {
    */
   async getOrganizerEarnings(id: number): Promise<OrganizerEarningsDto> {
     const response = await apiClient.get<OrganizerEarningsDto>(`/organizers/${id}/earnings`);
+    return response.data;
+  }
+
+  /**
+   * GET /api/organizers/{id}/bookings - Get organizer bookings
+   */
+  async getOrganizerBookings(id: number): Promise<OrganizerBookingDto[]> {
+    const response = await apiClient.get<OrganizerBookingDto[]>(`/organizers/${id}/bookings`);
     return response.data;
   }
 

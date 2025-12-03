@@ -232,6 +232,31 @@ public class OrganizerController : ControllerBase
         ));
     }
 
+    /// GET /api/organizers/{id}/bookings - Get organizer bookings (Organizer only)
+    [HttpGet("{id}/bookings")]
+    [Authorize(Roles = "Organizer,Admin")]
+    [ProducesResponseType(typeof(ApiResponse<List<OrganizerBookingDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<List<OrganizerBookingDto>>>> GetOrganizerBookings(int id)
+    {
+        var userId = GetUserIdFromClaims();
+        var isAdmin = User.IsInRole("Admin");
+
+        _logger.LogInformation("Fetching bookings for organizer ID: {OrganizerId}", id);
+
+        // Admin can view any organizer's bookings
+        var bookings = isAdmin
+            ? await _organizerService.GetOrganizerBookingsAsync(id, 0)
+            : await _organizerService.GetOrganizerBookingsAsync(id, userId);
+
+        return Ok(ApiResponse<List<OrganizerBookingDto>>.SuccessResponse(
+            bookings,
+            $"Retrieved {bookings.Count} bookings"
+        ));
+    }
+
     #endregion
 
     #region Admin Endpoints

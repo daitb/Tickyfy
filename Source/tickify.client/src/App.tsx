@@ -131,7 +131,7 @@ export default function App() {
     if (path === "/wishlist") return "wishlist";
     if (path === "/waitlist") return "waitlist";
     if (path === "/create-event") return "create-event";
-    if (path === "/organizer-wizard") return "organizer-wizard";
+    if (path === "/organizer-wizard" || path.startsWith("/organizer-wizard/")) return "organizer-wizard";
     if (path === "/organizer-dashboard") return "organizer-dashboard";
     if (path === "/event-management") return "event-management";
     if (path.startsWith("/event-analytics/")) return "event-analytics";
@@ -239,6 +239,12 @@ export default function App() {
       const eventId = path.split("/event-analytics/")[1]?.split("/")[0];
       if (eventId) setSelectedEventId(eventId);
     }
+
+    // Extract eventId from organizer-wizard URL (for editing)
+    if (path.startsWith("/organizer-wizard/")) {
+      const eventId = path.split("/organizer-wizard/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
   }, [location.pathname]);
 
   // Check authentication on mount and when localStorage changes
@@ -298,6 +304,10 @@ export default function App() {
         path = `/transfer-ticket/${id}`;
       } else if (page === "event-analytics") {
         path = `/event-analytics/${id}`;
+      } else if (page === "organizer-wizard") {
+        // For editing events
+        setSelectedEventId(id);
+        path = `/organizer-wizard/${id}`;
       } else {
         setSelectedEventId(id);
       }
@@ -427,7 +437,7 @@ export default function App() {
         return <CreateEvent onNavigate={handleNavigate} />;
 
       case "organizer-wizard":
-        return <OrganizerWizard onNavigate={handleNavigate} />;
+        return <OrganizerWizard onNavigate={handleNavigate} eventId={selectedEventId || undefined} />;
 
       case "organizer-dashboard":
         return <OrganizerDashboard onNavigate={handleNavigate} />;

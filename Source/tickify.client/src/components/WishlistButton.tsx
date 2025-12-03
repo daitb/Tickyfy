@@ -47,11 +47,11 @@ export function WishlistButton({
       // Toast only after successful API call
       toast.success(
         wasInWishlist
-          ? t("wishlist.removedFromWishlist")
-          : t("wishlist.addedToWishlist")
+          ? t("wishlist.removedFromWishlist", "Đã xóa khỏi yêu thích")
+          : t("wishlist.addedToWishlist", "Đã thêm vào yêu thích")
       );
     } catch (err: any) {
-      const message = err?.response?.data?.message || err.message || t("wishlist.errorToggle");
+      const message = err?.response?.data?.message || err.message || t("wishlist.errorToggle", "Không thể cập nhật yêu thích");
       toast.error(message);
     }
   };

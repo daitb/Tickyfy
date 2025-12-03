@@ -47,6 +47,8 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [pendingEvents, setPendingEvents] = useState<any[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [showEventRejectDialog, setShowEventRejectDialog] = useState(false);
+  const [eventRejectReason, setEventRejectReason] = useState('');
   const [isApprovingEvent, setIsApprovingEvent] = useState<number | null>(null);
   const [isRejectingEvent, setIsRejectingEvent] = useState<number | null>(null);
   const [isApprovingRequest, setIsApprovingRequest] = useState<number | null>(null);
@@ -263,14 +265,34 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
-  const handleRejectEvent = async (eventId: number) => {
+  const handleRejectEvent = (eventId: number) => {
+    const event = pendingEvents.find(e => e.id === eventId);
+    setSelectedEvent(event);
+    setEventRejectReason('');
+    setShowEventRejectDialog(true);
+  };
+
+  const confirmRejectEvent = async () => {
+    if (!selectedEvent || eventRejectReason.trim().length < 10) {
+      toast.error('Lý do từ chối phải có ít nhất 10 ký tự', {
+        duration: 2000,
+        closeButton: false,
+      });
+      return;
+    }
+
     try {
-      setIsRejectingEvent(eventId);
-      await apiClient.post(`/admin/events/${eventId}/reject`);
+      setIsRejectingEvent(selectedEvent.id);
+      await apiClient.post(`/admin/events/${selectedEvent.id}/reject`, {
+        rejectionReason: eventRejectReason.trim()
+      });
       toast.success('Đã từ chối sự kiện', {
         duration: 2000,
         closeButton: false,
       });
+      setShowEventRejectDialog(false);
+      setEventRejectReason('');
+      setSelectedEvent(null);
       await loadPendingEvents();
     } catch (error: any) {
       console.error('Failed to reject event:', error);
@@ -360,9 +382,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-8">
             <TabsTrigger value="overview">{t('admin.overview')}</TabsTrigger>
-            <TabsTrigger value="events">{t('header.events')}</TabsTrigger>
             <TabsTrigger value="event-approvals">{t('admin.eventApprovals', 'Event Approvals')}</TabsTrigger>
-            <TabsTrigger value="organizers">{t('admin.organizer')}</TabsTrigger>
             <TabsTrigger value="requests">{t('admin.organizerRequests', 'Organizer Requests')}</TabsTrigger>
             <TabsTrigger value="users">{t('admin.users')}</TabsTrigger>
             <TabsTrigger value="payouts">{t('admin.payouts')}</TabsTrigger>
@@ -663,42 +683,53 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             </TableCell>
                             <TableCell>{getEventStatusBadge(event.status)}</TableCell>
                             <TableCell className="text-right">
-                              {event.status === 0 && ( // Pending status
-                                <div className="flex gap-2 justify-end">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-green-600 border-green-600 hover:bg-green-50"
-                                    onClick={() => handleApproveEvent(event.id)}
-                                    disabled={isApprovingEvent === event.id || isRejectingEvent === event.id}
-                                  >
-                                    {isApprovingEvent === event.id ? (
-                                      <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {t('admin.approving', 'Đang duyệt...')}
-                                      </>
-                                    ) : (
-                                      t('admin.approve')
-                                    )}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-red-600 border-red-600 hover:bg-red-50"
-                                    onClick={() => handleRejectEvent(event.id)}
-                                    disabled={isApprovingEvent === event.id || isRejectingEvent === event.id}
-                                  >
-                                    {isRejectingEvent === event.id ? (
-                                      <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {t('admin.rejecting', 'Đang từ chối...')}
-                                      </>
-                                    ) : (
-                                      t('admin.reject')
-                                    )}
-                                  </Button>
-                                </div>
-                              )}
+                              <div className="flex gap-2 justify-end">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                                  onClick={() => onNavigate('event-detail', event.id.toString())}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  {t('common.view', 'View')}
+                                </Button>
+                                {event.status === 0 && ( // Pending status
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-green-600 border-green-600 hover:bg-green-50"
+                                      onClick={() => handleApproveEvent(event.id)}
+                                      disabled={isApprovingEvent === event.id || isRejectingEvent === event.id}
+                                    >
+                                      {isApprovingEvent === event.id ? (
+                                        <>
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                          {t('admin.approving', 'Đang duyệt...')}
+                                        </>
+                                      ) : (
+                                        t('admin.approve')
+                                      )}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-red-600 border-red-600 hover:bg-red-50"
+                                      onClick={() => handleRejectEvent(event.id)}
+                                      disabled={isApprovingEvent === event.id || isRejectingEvent === event.id}
+                                    >
+                                      {isRejectingEvent === event.id ? (
+                                        <>
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                          {t('admin.rejecting', 'Đang từ chối...')}
+                                        </>
+                                      ) : (
+                                        t('admin.reject')
+                                      )}
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1046,6 +1077,73 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         </DialogContent>
       </Dialog>
 
+      {/* Event Reject Dialog - Custom Modal */}
+      {showEventRejectDialog && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center" onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setShowEventRejectDialog(false);
+            setEventRejectReason('');
+            setSelectedEvent(null);
+          }
+        }}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-semibold mb-2">{t('admin.rejectEvent', 'Reject Event')}</h2>
+            <p className="text-sm text-neutral-600 mb-4">
+              {selectedEvent?.title && <><strong>{selectedEvent.title}</strong><br /></>}
+              {t('admin.rejectEventDescription', 'Please provide a reason for rejecting this event. The organizer will be notified.')}
+            </p>
+            <div className="space-y-2 mb-4">
+              <label className="text-sm font-medium" htmlFor="eventRejectReason">
+                {t('admin.rejectionReason', 'Rejection Reason')} *
+              </label>
+              <textarea
+                id="eventRejectReason"
+                value={eventRejectReason}
+                onChange={(e) => setEventRejectReason(e.target.value)}
+                placeholder={t('admin.rejectionReasonPlaceholder', 'Enter rejection reason (minimum 10 characters)...')}
+                required
+                rows={4}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                  eventRejectReason.trim().length > 0 && eventRejectReason.trim().length < 10 
+                    ? 'border-red-500' 
+                    : 'border-neutral-300'
+                }`}
+              />
+              {eventRejectReason.trim().length > 0 && eventRejectReason.trim().length < 10 && (
+                <p className="text-sm text-red-500">
+                  Minimum 10 characters required ({eventRejectReason.trim().length}/10)
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowEventRejectDialog(false);
+                  setEventRejectReason('');
+                  setSelectedEvent(null);
+                }}
+              >
+                {t('admin.cancel', 'Cancel')}
+              </Button>
+              <Button
+                onClick={confirmRejectEvent}
+                className="bg-red-500 hover:bg-red-600 text-white"
+                disabled={eventRejectReason.trim().length < 10 || isRejectingEvent === selectedEvent?.id}
+              >
+                {isRejectingEvent === selectedEvent?.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t('admin.rejecting', 'Đang từ chối...')}
+                  </>
+                ) : (
+                  t('admin.confirmReject', 'Confirm Reject')
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

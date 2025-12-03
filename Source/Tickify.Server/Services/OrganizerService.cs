@@ -5,6 +5,7 @@ using Tickify.Data;
 using Tickify.DTOs.Event;
 using Tickify.DTOs.Organizer;
 using Tickify.Exceptions;
+using Tickify.Interfaces;
 using Tickify.Interfaces.Services;
 using Tickify.Models;
 using Tickify.Services.Email;
@@ -19,15 +20,18 @@ public class OrganizerService : IOrganizerService
     private readonly ApplicationDbContext _context;
     private readonly IEmailService _emailService;
     private readonly ILogger<OrganizerService> _logger;
+    private readonly IAzureStorageService _azureStorageService;
 
     public OrganizerService(
         ApplicationDbContext context,
         IEmailService emailService,
-        ILogger<OrganizerService> logger)
+        ILogger<OrganizerService> logger,
+        IAzureStorageService azureStorageService)
     {
         _context = context;
         _emailService = emailService;
         _logger = logger;
+        _azureStorageService = azureStorageService;
     }
 
     /// <summary>
@@ -293,21 +297,42 @@ public class OrganizerService : IOrganizerService
                 EventId = e.Id,
                 Title = e.Title,
                 StartDate = e.StartDate,
+                EndDate = e.EndDate,
+                BannerImage = e.BannerImage,
                 Status = e.Status.ToString(),
                 TotalSeats = e.TicketTypes!
                     .Select(tt => (int?)tt.TotalQuantity)
                     .Sum() ?? 0,
-                SoldSeats = e.TicketTypes!
-                    .Select(tt => (int?)(tt.TotalQuantity - tt.AvailableQuantity))
-                    .Sum() ?? 0,
+                SoldSeats = e.Bookings!
+                    .Where(b => b.Status == BookingStatus.Confirmed)
+                    .SelectMany(b => b.Tickets!)
+                    .Count(t => t.Status != TicketStatus.Cancelled && t.Status != TicketStatus.Refunded),
                 Revenue = e.Bookings!
                     .Where(b => b.Status == BookingStatus.Confirmed
                                 && b.Payment != null
                                 && b.Payment.Status == PaymentStatus.Completed)
                     .Select(b => (decimal?)b.Payment!.Amount)
-                    .Sum() ?? 0m
+                    .Sum() ?? 0m,
+                RejectionReason = e.RejectionReason
             })
             .ToListAsync();
+
+        // Generate fresh SAS URLs for banner images
+        foreach (var evt in events)
+        {
+            if (!string.IsNullOrEmpty(evt.BannerImage) && !evt.BannerImage.StartsWith("http"))
+            {
+                try
+                {
+                    evt.BannerImage = await _azureStorageService.GetBlobUrlWithSasAsync(evt.BannerImage, expiryHours: 24);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to generate SAS URL for banner image: {BannerImage}", evt.BannerImage);
+                    // Keep original blob name if SAS generation fails
+                }
+            }
+        }
 
         return events;
     }
@@ -400,7 +425,7 @@ public class OrganizerService : IOrganizerService
 
         var topEvents = await _context.Events
             .AsNoTracking()
-            .Where(e => e.OrganizerId == organizerId)
+            .Where(e => e.OrganizerId == organizerId && e.Status != EventStatus.Rejected)
             .Select(e => new OrganizerTopEventDto
             {
                 EventId = e.Id,
@@ -433,6 +458,58 @@ public class OrganizerService : IOrganizerService
             MonthlyRevenue = monthlyRevenue,
             TopEvents = topEvents
         };
+    }
+
+    /// <summary>
+    /// Get organizer bookings
+    /// </summary>
+    public async Task<List<OrganizerBookingDto>> GetOrganizerBookingsAsync(int organizerId, int userId)
+    {
+        _logger.LogInformation("Fetching bookings for organizer {OrganizerId}", organizerId);
+
+        // Verify organizer exists and user has permission
+        var organizer = await _context.Organizers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == organizerId);
+
+        if (organizer == null)
+        {
+            throw new NotFoundException($"Organizer with ID {organizerId} not found");
+        }
+
+        // Check permission (unless admin bypass with userId = 0)
+        if (userId != 0 && organizer.UserId != userId)
+        {
+            throw new ForbiddenException("You don't have permission to view this organizer's bookings");
+        }
+
+        // Get all bookings for this organizer's events
+        var bookings = await _context.Bookings
+            .AsNoTracking()
+            .Include(b => b.Event)
+            .Include(b => b.User)
+            .Include(b => b.Payment)
+            .Include(b => b.Tickets)
+            .Where(b => b.Event!.OrganizerId == organizerId)
+            .OrderByDescending(b => b.BookingDate)
+            .Select(b => new OrganizerBookingDto
+            {
+                BookingId = b.Id,
+                BookingCode = b.BookingCode,
+                BookingDate = b.BookingDate,
+                Status = b.Status.ToString(),
+                EventId = b.EventId,
+                EventTitle = b.Event!.Title,
+                CustomerName = b.User!.FullName,
+                CustomerEmail = b.User.Email,
+                TotalTickets = b.Tickets!.Count,
+                TotalAmount = b.TotalAmount,
+                PaymentStatus = b.Payment != null ? b.Payment.Status.ToString() : null,
+                PaymentDate = b.Payment != null ? b.Payment.PaidAt : null
+            })
+            .ToListAsync();
+
+        return bookings;
     }
 
     /// <summary>

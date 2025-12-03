@@ -243,7 +243,17 @@ public class EventService : IEventService
 
         // Check if event can be edited
         if (!await CanEditEventAsync(id))
-            throw new BadRequestException("This event cannot be edited (already published or completed)");
+        {
+            var currentEvent = await _eventRepository.GetByIdAsync(id);
+            if (currentEvent?.Status == EventStatus.Completed)
+                throw new BadRequestException("This event cannot be edited (already completed)");
+            else if (currentEvent?.Status == EventStatus.Cancelled)
+                throw new BadRequestException("This event cannot be edited (already cancelled)");
+            else if (currentEvent?.StartDate <= DateTime.UtcNow)
+                throw new BadRequestException("This event cannot be edited (already started or ended)");
+            else
+                throw new BadRequestException("This event cannot be edited");
+        }
 
         // Validate category exists
         var category = await _context.Categories.FindAsync(dto.CategoryId);
@@ -264,6 +274,10 @@ public class EventService : IEventService
         eventEntity.MaxCapacity = dto.TotalSeats;
         eventEntity.CategoryId = dto.CategoryId;
         eventEntity.UpdatedAt = DateTime.UtcNow;
+
+        // Note: Keep the current status - allow editing of Approved/Published events
+        // Organizer can update details even after approval, but significant changes
+        // may require re-submission for approval if needed
 
         await _eventRepository.UpdateAsync(eventEntity);
 
@@ -532,13 +546,28 @@ public class EventService : IEventService
         return MapToEventDetailDto(rejectedEvent!);
     }
 
-    /// Delete event (Admin only) - soft delete
-    public async Task<bool> DeleteEventAsync(int id)
+    /// Delete event (Organizer can delete Pending/Rejected, Admin can delete any) - soft delete
+    public async Task<bool> DeleteEventAsync(int id, int userId, bool isAdmin)
     {
-        var eventEntity = await _eventRepository.GetByIdAsync(id);
+        var eventEntity = await _eventRepository.GetByIdAsync(id, includeRelated: true);
 
         if (eventEntity == null)
             throw new NotFoundException($"Event with ID {id} not found");
+
+        // Authorization check - Organizer can only delete their own Pending/Rejected events
+        if (!isAdmin)
+        {
+            var user = await _context.Users
+                .Include(u => u.OrganizerProfile)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user?.OrganizerProfile == null || user.OrganizerProfile.Id != eventEntity.OrganizerId)
+                throw new ForbiddenException("You are not authorized to delete this event");
+
+            // Organizers can only delete Pending or Rejected events
+            if (eventEntity.Status != EventStatus.Pending && eventEntity.Status != EventStatus.Rejected)
+                throw new BadRequestException("You can only delete events that are Pending or Rejected. Please cancel the event instead.");
+        }
 
         // Check if event has confirmed bookings
         var hasConfirmedBookings = await _context.Bookings
@@ -675,9 +704,16 @@ public class EventService : IEventService
         if (eventEntity == null)
             return false;
 
-        // Can only edit Pending or Rejected events
-        return eventEntity.Status == EventStatus.Pending ||
-               eventEntity.Status == EventStatus.Rejected;
+        // Cannot edit if event has already started or completed
+        if (eventEntity.StartDate <= DateTime.UtcNow)
+            return false;
+
+        // Cannot edit cancelled or completed events
+        if (eventEntity.Status == EventStatus.Cancelled || eventEntity.Status == EventStatus.Completed)
+            return false;
+
+        // Can edit Pending, Rejected, Approved, or Published events (as long as not started)
+        return true;
     }
 
     /// Check if event can be canceled
