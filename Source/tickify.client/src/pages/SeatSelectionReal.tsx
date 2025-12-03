@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import * as signalR from "@microsoft/signalr";
 import { Button } from "../components/ui/button";
 import {
@@ -8,12 +9,21 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
+import {
   Loader2,
   MapPin,
   Calendar,
   ArrowLeft,
   ShoppingCart,
   Clock,
+  AlertTriangle,
 } from "lucide-react";
 import {
   seatMapService,
@@ -33,6 +43,7 @@ export function SeatSelectionReal({
   eventId,
   onNavigate,
 }: SeatSelectionRealProps) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [seats, setSeats] = useState<SeatDto[]>([]);
   const [seatMap, setSeatMap] = useState<SeatMapDto | null>(null);
@@ -41,9 +52,29 @@ export function SeatSelectionReal({
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [error, setError] = useState<string>("");
-  const [timeRemaining, setTimeRemaining] = useState(600); // 10 minutes
+  const [timeRemaining, setTimeRemaining] = useState(900); // 15 minutes (matches backend)
   const [seatConnection, setSeatConnection] =
     useState<signalR.HubConnection | null>(null);
+  const [reservationExpiresAt, setReservationExpiresAt] = useState<Date | null>(
+    null
+  );
+  const [showLeaveWarning, setShowLeaveWarning] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(
+    null
+  );
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  // Refs to track latest values for cleanup
+  const selectedSeatsRef = useRef<number[]>([]);
+  const seatMapRef = useRef<SeatMapDto | null>(null);
+  const isNavigatingRef = useRef(false);
+
+  // Update refs when state changes
+  useEffect(() => {
+    selectedSeatsRef.current = selectedSeats;
+    seatMapRef.current = seatMap;
+    isNavigatingRef.current = isNavigating;
+  }, [selectedSeats, seatMap, isNavigating]);
 
   useEffect(() => {
     // Get current user ID from localStorage
@@ -52,18 +83,9 @@ export function SeatSelectionReal({
       setCurrentUserId(user.id);
     }
 
-    // Restore selected seats from sessionStorage (for returning to checkout)
-    const savedSeats = sessionStorage.getItem("selectedSeats");
-    if (savedSeats) {
-      try {
-        const seatIds = JSON.parse(savedSeats);
-        if (Array.isArray(seatIds) && seatIds.length > 0) {
-          setSelectedSeats(seatIds);
-        }
-      } catch (e) {
-        console.error("Failed to restore seats:", e);
-      }
-    }
+    // Clear any old session data on mount (fresh start)
+    sessionStorage.removeItem("selectedSeats");
+    sessionStorage.removeItem("reservationExpiresAt");
 
     if (eventId) {
       loadSeatData(eventId);
@@ -86,6 +108,7 @@ export function SeatSelectionReal({
         seatIds: number[];
         status: string;
         reservedByUserId?: number;
+        reason?: string;
       }) => {
         console.log("Seats updated:", update);
 
@@ -104,15 +127,27 @@ export function SeatSelectionReal({
           })
         );
 
-        // Remove from selection if taken by ANOTHER user
+        // Remove from selection if taken by ANOTHER user OR expired
         if (
-          update.reservedByUserId &&
-          currentUserId &&
-          update.reservedByUserId !== currentUserId
+          update.reason === "ReservationExpired" ||
+          (update.reservedByUserId &&
+            currentUserId &&
+            update.reservedByUserId !== currentUserId)
         ) {
-          setSelectedSeats((prev) =>
-            prev.filter((seatId) => !update.seatIds.includes(seatId))
-          );
+          setSelectedSeats((prev) => {
+            const filtered = prev.filter(
+              (seatId) => !update.seatIds.includes(seatId)
+            );
+            if (
+              filtered.length !== prev.length &&
+              update.reason === "ReservationExpired"
+            ) {
+              // Clear session storage if our seats expired
+              sessionStorage.removeItem("selectedSeats");
+              sessionStorage.removeItem("reservationExpiresAt");
+            }
+            return filtered;
+          });
         }
       }
     );
@@ -127,36 +162,187 @@ export function SeatSelectionReal({
       .catch((err) => console.error("SignalR connection error:", err));
 
     return () => {
-      if (connection.state === signalR.HubConnectionState.Connected) {
-        connection.invoke("LeaveEventSeatMap", parseInt(eventId));
-        connection.stop();
-      }
+      // Cleanup SignalR connection safely
+      const cleanup = async () => {
+        try {
+          if (connection.state === signalR.HubConnectionState.Connected) {
+            await connection.invoke("LeaveEventSeatMap", parseInt(eventId));
+            await connection.stop();
+          } else if (
+            connection.state === signalR.HubConnectionState.Connecting
+          ) {
+            // Wait a bit for connection to establish before stopping
+            setTimeout(async () => {
+              try {
+                if (connection.state === signalR.HubConnectionState.Connected) {
+                  await connection.stop();
+                }
+              } catch (err) {
+                // Ignore errors during cleanup
+              }
+            }, 100);
+          }
+        } catch (err) {
+          // Ignore errors during cleanup - connection may already be closed
+          console.debug("SignalR cleanup error (safe to ignore):", err);
+        }
+      };
+      cleanup();
     };
   }, [eventId, currentUserId]);
 
   // Countdown timer when seats are selected
   useEffect(() => {
-    if (selectedSeats.length === 0) return;
+    if (selectedSeats.length === 0) {
+      setReservationExpiresAt(null);
+      return;
+    }
 
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
-          // Release seats
+          // Release seats automatically when timer expires
+          if (seatMap && selectedSeats.length > 0) {
+            seatMapService
+              .releaseSeats(seatMap.id, selectedSeats)
+              .catch(console.error);
+          }
           setSelectedSeats([]);
-          alert("Time expired! Please select your seats again.");
-          return 600;
+          sessionStorage.removeItem("selectedSeats");
+          sessionStorage.removeItem("reservationExpiresAt");
+          alert(
+            "Time expired! Your seats have been released. Please select again."
+          );
+          return 900; // Reset to 15 minutes
         }
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [selectedSeats.length]);
+  }, [selectedSeats.length, seatMap]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // Release seats when user leaves page (except when going to checkout)
+  useEffect(() => {
+    let hasReleasedOnUnmount = false;
+
+    // Shared release function
+    const releaseSeatsSync = () => {
+      const seats = selectedSeatsRef.current;
+      const map = seatMapRef.current;
+      const navigating = isNavigatingRef.current;
+
+      // Prevent double release
+      if (hasReleasedOnUnmount) {
+        console.log("[SeatSelection] Already released, skipping");
+        return;
+      }
+
+      if (seats.length > 0 && !navigating && map) {
+        console.log("[SeatSelection] Releasing seats on page leave:", seats);
+        hasReleasedOnUnmount = true;
+        const token = localStorage.getItem("token");
+
+        // Use fetch with keepalive for reliable request during page unload
+        fetch(`http://localhost:5179/api/seatmaps/${map.id}/release`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(seats),
+          keepalive: true,
+        })
+          .then(() => {
+            console.log("[SeatSelection] Seats released successfully");
+          })
+          .catch((err) => {
+            console.error("[SeatSelection] Failed to release seats:", err);
+          });
+
+        // Clear session storage
+        sessionStorage.removeItem("selectedSeats");
+        sessionStorage.removeItem("reservationExpiresAt");
+        sessionStorage.removeItem("eventId");
+        sessionStorage.removeItem("totalPrice");
+      } else {
+        console.log("[SeatSelection] No release needed:", {
+          hasSeats: seats.length > 0,
+          navigating,
+          hasMap: !!map,
+        });
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Don't prompt if navigating to checkout
+      if (isNavigatingRef.current) return;
+
+      // Show browser warning if seats are selected
+      if (selectedSeatsRef.current.length > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+
+    const handleUnload = () => {
+      releaseSeatsSync();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("unload", handleUnload);
+
+    // Cleanup function when component unmounts
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("unload", handleUnload);
+
+      // Release seats on unmount (refresh, navigate away)
+      releaseSeatsSync();
+    };
+  }, []); // Empty deps - use refs for latest values
+
+  // Intercept back button
+  const handleBackClick = () => {
+    if (selectedSeats.length > 0) {
+      setPendingNavigation(`/events/${eventId}`);
+      setShowLeaveWarning(true);
+    } else {
+      onNavigate("event-detail", eventId);
+    }
+  };
+
+  // Handle leave confirmation
+  const handleConfirmLeave = async () => {
+    setIsNavigating(true);
+
+    // Release seats immediately when leaving
+    if (selectedSeats.length > 0 && seatMap) {
+      try {
+        await seatMapService.releaseSeats(seatMap.id, selectedSeats);
+      } catch (error) {
+        console.error("Failed to release seats:", error);
+      }
+
+      // Clear session storage
+      sessionStorage.removeItem("selectedSeats");
+      sessionStorage.removeItem("reservationExpiresAt");
+    }
+
+    setShowLeaveWarning(false);
+    onNavigate("event-detail", eventId);
+  };
+
+  // Handle stay
+  const handleStay = () => {
+    setShowLeaveWarning(false);
+    setPendingNavigation(null);
   };
 
   const loadSeatData = async (id: string) => {
@@ -193,36 +379,71 @@ export function SeatSelectionReal({
     const seat = seats.find((s) => s.id === seatId);
     if (!seat) return;
 
-    // Allow clicking Available seats or seats reserved by current user
-    const canToggle =
+    const isSelected = selectedSeats.includes(seatId);
+
+    // If seat is already selected by current user, allow deselecting
+    if (isSelected) {
+      const newSelectedSeats = selectedSeats.filter((id) => id !== seatId);
+      setSelectedSeats(newSelectedSeats);
+
+      // Release this specific seat
+      if (seatMap) {
+        try {
+          await seatMapService.releaseSeats(seatMap.id, [seatId]);
+
+          // Update session storage
+          if (newSelectedSeats.length > 0) {
+            sessionStorage.setItem(
+              "selectedSeats",
+              JSON.stringify(newSelectedSeats)
+            );
+          } else {
+            sessionStorage.removeItem("selectedSeats");
+            sessionStorage.removeItem("reservationExpiresAt");
+            setReservationExpiresAt(null);
+          }
+        } catch (error) {
+          console.error("Failed to release seat:", error);
+          // Revert selection
+          setSelectedSeats(selectedSeats);
+        }
+      }
+      return;
+    }
+
+    // Check if seat can be selected
+    const canSelect =
       seat.status === "Available" ||
       (seat.status === "Reserved" && seat.reservedByUserId === currentUserId);
 
-    if (!canToggle) return;
+    if (!canSelect) return;
 
-    const isSelected = selectedSeats.includes(seatId);
-    const newSelectedSeats = isSelected
-      ? selectedSeats.filter((id) => id !== seatId)
-      : [...selectedSeats, seatId];
-
+    // Add seat to selection
+    const newSelectedSeats = [...selectedSeats, seatId];
     setSelectedSeats(newSelectedSeats);
 
-    // Always sync with server (reserve or release)
+    // Reserve the newly selected seat
     if (seatMap) {
       try {
-        if (isSelected) {
-          // Release the specific seat being deselected
-          await seatMapService.releaseSeats(seatMap.id, [seatId]);
-        } else {
-          // Reserve all currently selected seats
-          await seatMapService.reserveSeats(seatMap.id, newSelectedSeats);
-        }
+        await seatMapService.reserveSeats(seatMap.id, newSelectedSeats);
+
+        // Set new expiration time (15 minutes from now)
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+        setReservationExpiresAt(expiresAt);
+        setTimeRemaining(900); // Reset to 15 minutes
+
+        // Save to session storage
+        sessionStorage.setItem(
+          "selectedSeats",
+          JSON.stringify(newSelectedSeats)
+        );
+        sessionStorage.setItem("reservationExpiresAt", expiresAt.toISOString());
       } catch (error) {
-        console.error("Failed to update seat reservation:", error);
+        console.error("Failed to reserve seat:", error);
         // Revert selection if reservation fails
         setSelectedSeats(selectedSeats);
         alert(
-          "Unable to update seats. They may have been taken by another user."
+          "Unable to reserve seat. It may have been taken by another user."
         );
       }
     }
@@ -235,11 +456,19 @@ export function SeatSelectionReal({
 
   const getSeatColor = (seat: SeatDto) => {
     const status = getSeatStatus(seat);
-    if (status === "selected") return "#00C16A";
-    if (status === "sold" || status === "reserved") return "#DC2626";
-    if (seat.isWheelchair) return "#93C5FD"; // Blue for wheelchair
-    if (seat.zoneColor) return seat.zoneColor; // Use zone color
-    return "#E5E7EB"; // Default gray
+
+    // Priority colors
+    if (status === "selected") return "#00C16A"; // Green for selected
+    if (status === "sold" || status === "reserved") return "#DC2626"; // Red for unavailable
+
+    // Wheelchair accessible seats - distinct blue color
+    if (seat.isWheelchair && status === "available") return "#60A5FA"; // Blue-400
+
+    // Zone-specific colors for available seats
+    if (seat.zoneColor && status === "available") return seat.zoneColor;
+
+    // Default gray for available seats without zone
+    return "#E5E7EB";
   };
 
   const getTotalPrice = () => {
@@ -255,10 +484,21 @@ export function SeatSelectionReal({
       return;
     }
 
+    // Set flag to prevent releasing seats
+    setIsNavigating(true);
+
     // Store selected seats for booking
     sessionStorage.setItem("selectedSeats", JSON.stringify(selectedSeats));
     sessionStorage.setItem("eventId", eventId || "");
     sessionStorage.setItem("totalPrice", getTotalPrice().toString());
+
+    // Keep reservation info for checkout
+    if (reservationExpiresAt) {
+      sessionStorage.setItem(
+        "reservationExpiresAt",
+        reservationExpiresAt.toISOString()
+      );
+    }
 
     // Navigate to checkout
     onNavigate("checkout", eventId);
@@ -362,15 +602,33 @@ export function SeatSelectionReal({
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-b from-purple-50 to-white overflow-hidden">
-      {/* Header */}
-      <div className="relative h-32 bg-gradient-to-r from-purple-600 to-pink-600 flex-shrink-0">
-        <div className="absolute inset-0 bg-black/30" />
+    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+      {/* Header with Event Banner */}
+      <div className="relative h-48 flex-shrink-0 overflow-hidden">
+        {/* Event banner as background */}
+        {event?.image && (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${event.image})`,
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
+          </div>
+        )}
+
+        {/* Fallback solid color if no banner */}
+        {!event?.image && (
+          <div className="absolute inset-0 bg-purple-600">
+            <div className="absolute inset-0 bg-black/20" />
+          </div>
+        )}
+
         <div className="relative h-full px-4 py-4 flex flex-col justify-between">
           <Button
             variant="ghost"
             className="self-start text-white hover:bg-white/20"
-            onClick={() => onNavigate("event-detail", eventId)}
+            onClick={handleBackClick}
           >
             <ArrowLeft size={20} className="mr-2" />
             Back to Event
@@ -396,8 +654,10 @@ export function SeatSelectionReal({
       {selectedSeats.length > 0 && (
         <div
           className={`${
-            timeRemaining < 300 ? "bg-orange-500" : "bg-purple-600"
-          } text-white py-3 shadow-lg transition-colors flex-shrink-0`}
+            timeRemaining < 300
+              ? "bg-red-600 text-white"
+              : "bg-[#f4fc21] text-black"
+          } py-3 shadow-lg transition-colors flex-shrink-0`}
         >
           <div className="flex items-center justify-center gap-3">
             <Clock size={20} />
@@ -502,7 +762,7 @@ export function SeatSelectionReal({
                     <span>Sold</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded bg-blue-200 flex items-center justify-center text-xs">
+                    <div className="w-5 h-5 rounded bg-blue-400 flex items-center justify-center text-xs text-white">
                       ♿
                     </div>
                     <span>Wheelchair</span>
@@ -588,6 +848,40 @@ export function SeatSelectionReal({
           </Card>
         </div>
       </div>
+
+      {/* Warning Dialog */}
+      <Dialog open={showLeaveWarning} onOpenChange={setShowLeaveWarning}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-orange-600" />
+              Leave Page?
+            </DialogTitle>
+            <DialogDescription>
+              You have {selectedSeats.length} seat
+              {selectedSeats.length > 1 ? "s" : ""} selected. If you leave now,
+              your seats will be released immediately and become available for
+              other users.
+              <br />
+              <br />
+              <span className="font-medium text-red-600">
+                You will need to select seats again if you return.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleStay}>
+              Stay on Page
+            </Button>
+            <Button
+              onClick={handleConfirmLeave}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              Leave Page
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
