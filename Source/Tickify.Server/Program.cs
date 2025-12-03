@@ -257,7 +257,7 @@ namespace Tickify
 
             // ============================================
             // 7.5. DATABASE INITIALIZATION
-            // Apply migrations và seed dữ liệu ban đầu
+            // Seed dữ liệu ban đầu
             // ============================================
             using (var scope = app.Services.CreateScope())
             {
@@ -267,12 +267,6 @@ namespace Tickify
 
                 try
                 {
-                    logger.LogInformation("Đang kiểm tra và apply database migrations...");
-                    
-                    // Apply pending migrations
-                    await context.Database.MigrateAsync();
-                    logger.LogInformation("✅ Database migrations đã được apply thành công");
-
                     // Seed dữ liệu ban đầu (Roles, Categories, Admin user)
                     logger.LogInformation("Đang seed dữ liệu ban đầu...");
                     await DbInitializer.SeedAsync(context);
@@ -326,6 +320,7 @@ namespace Tickify
             // Map SignalR hubs
             app.MapHub<Tickify.Hubs.ChatHub>("/hubs/chat");
             app.MapHub<Tickify.Hubs.NotificationHub>("/hubs/notifications");
+            app.MapHub<Tickify.Hubs.SeatHub>("/hubs/seats");
 
             app.Run();
         }

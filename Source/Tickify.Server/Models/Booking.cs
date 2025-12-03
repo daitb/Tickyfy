@@ -26,6 +26,9 @@ namespace Tickify.Models
         public bool IsRefundRequested { get; set; } = false;
         public bool IsRefunded { get; set; } = false;
         public DateTime? RefundedAt { get; set; }
+        
+        // Store selected seat IDs for seat-based bookings (JSON array)
+        public string? SeatIdsJson { get; set; }
 
         // Computed property
         public bool IsExpired => ExpiresAt.HasValue && DateTime.UtcNow > ExpiresAt && Status == BookingStatus.Pending;

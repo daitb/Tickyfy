@@ -92,9 +92,6 @@ const EventAnalytics = lazy(() =>
 const EditEvent = lazy(() =>
   import("./pages/EditEvent").then((m) => ({ default: m.EditEvent }))
 );
-const EditSeatMap = lazy(() =>
-  import("./pages/EditSeatMap").then((m) => ({ default: m.EditSeatMap }))
-);
 const ScanHistory = lazy(() =>
   import("./pages/ScanHistory").then((m) => ({ default: m.ScanHistory }))
 );
@@ -263,7 +260,13 @@ export default function App() {
     if (path === "/event-management") return "event-management";
     if (path.startsWith("/event-analytics/")) return "event-analytics";
     if (path === "/edit-event") return "edit-event";
-    if (path.startsWith("/edit-seat-map/")) return "edit-seat-map";
+    if (path.startsWith("/edit-seat-map/")) {
+      console.log(
+        "[App.tsx getPageFromPath] Detected edit-seat-map path:",
+        path
+      );
+      return "edit-seat-map";
+    }
     if (path === "/scan-history") return "scan-history";
     if (path === "/promo-codes") return "promo-codes";
     if (path === "/organizer-payouts") return "organizer-payouts";
@@ -378,6 +381,12 @@ export default function App() {
       const eventId = path.split("/seat-selection/")[1]?.split("/")[0];
       if (eventId) setSelectedEventId(eventId);
     }
+
+    // Extract eventId from edit-seat-map URL
+    if (path.startsWith("/edit-seat-map/")) {
+      const eventId = path.split("/edit-seat-map/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
   }, [location.pathname]);
 
   // Check authentication on mount and when localStorage changes
@@ -439,6 +448,9 @@ export default function App() {
         path = `/event-analytics/${id}`;
       } else if (page === "seat-selection") {
         path = `/seat-selection/${id}`;
+      } else if (page === "edit-seat-map") {
+        setSelectedEventId(id);
+        path = `/edit-seat-map/${id}`;
       } else if (page === "event-reviews") {
         setSelectedEventId(id);
         path = `/event-reviews/${id}`;
@@ -591,7 +603,16 @@ export default function App() {
         return <EditEvent onNavigate={handleNavigate} />;
 
       case "edit-seat-map":
-        return <EditSeatMap onNavigate={handleNavigate} />;
+        console.log(
+          "[App.tsx] Rendering SeatMapBuilder component, selectedEventId:",
+          selectedEventId
+        );
+        return (
+          <SeatMapBuilder
+            onNavigate={handleNavigate}
+            eventId={selectedEventId}
+          />
+        );
 
       case "scan-history":
         return <ScanHistory onNavigate={handleNavigate} />;
@@ -615,7 +636,12 @@ export default function App() {
         return <UserProfile onNavigate={handleNavigate} />;
 
       case "seat-selection":
-        return <SeatSelectionReal onNavigate={handleNavigate} />;
+        return (
+          <SeatSelectionReal
+            eventId={selectedEventId || undefined}
+            onNavigate={handleNavigate}
+          />
+        );
 
       case "seat-map-builder":
         return <SeatMapBuilder onNavigate={handleNavigate} />;

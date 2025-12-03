@@ -71,6 +71,24 @@ namespace Tickify.Controllers
         }
 
         /// <summary>
+        /// Get all seat maps for organizer's events (for copying/reusing layouts)
+        /// </summary>
+        [HttpGet("organizer/{organizerId}")]
+        [Authorize(Roles = "Organizer,Admin")]
+        public async Task<ActionResult<List<SeatMapResponseDto>>> GetOrganizerSeatMaps(int organizerId)
+        {
+            try
+            {
+                var seatMaps = await _seatMapService.GetSeatMapsByOrganizerAsync(organizerId);
+                return Ok(seatMaps);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Create a new seat map for an event (Organizer only)
         /// </summary>
         [HttpPost]
@@ -133,11 +151,15 @@ namespace Tickify.Controllers
         {
             try
             {
-                var success = await _seatMapService.ReserveSeatsAsync(seatIds);
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                    return Unauthorized(new { message = "User not authenticated" });
+
+                var success = await _seatMapService.ReserveSeatsAsync(seatIds, userId);
                 if (!success)
                     return BadRequest(new { message = "One or more seats are not available" });
 
-                return Ok(new { message = "Seats reserved successfully" });
+                return Ok(new { message = "Seats reserved successfully", expiresIn = 15 * 60 });
             }
             catch (Exception ex)
             {
@@ -146,15 +168,21 @@ namespace Tickify.Controllers
         }
 
         /// <summary>
-        /// Release reserved seats (Admin/Organizer only)
+        /// Release reserved seats (Customer: own seats only, Admin/Organizer: any seats)
         /// </summary>
         [HttpPost("{seatMapId}/release")]
-        [Authorize(Roles = "Organizer,Admin")]
+        [Authorize]
         public async Task<ActionResult> ReleaseSeats(int seatMapId, [FromBody] List<int> seatIds)
         {
             try
             {
-                var success = await _seatMapService.ReleaseSeatsAsync(seatIds);
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                {
+                    return Unauthorized(new { message = "Invalid user" });
+                }
+
+                var success = await _seatMapService.ReleaseSeatsAsync(seatIds, userId);
                 return Ok(new { message = "Seats released successfully" });
             }
             catch (Exception ex)

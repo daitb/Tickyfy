@@ -13,6 +13,8 @@ public interface ISeatRepository
     Task<bool> ExistsAsync(int id);
     Task<IEnumerable<Seat>> CreateBulkAsync(IEnumerable<Seat> seats);
     Task<bool> IsSeatAvailableAsync(int seatId);
-    Task<bool> ReserveSeatsAsync(IEnumerable<int> seatIds);
-    Task<bool> ReleaseSeatsAsync(IEnumerable<int> seatIds);
+    Task<bool> ReserveSeatsAsync(IEnumerable<int> seatIds, int userId);
+    Task<bool> ReleaseSeatsAsync(IEnumerable<int> seatIds, int userId);
+    Task<bool> AdminReleaseSeatsAsync(IEnumerable<int> seatIds);
+    Task<int> ReleaseExpiredReservationsAsync();
 }
