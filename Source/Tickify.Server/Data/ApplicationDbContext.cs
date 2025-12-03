@@ -435,6 +435,12 @@ namespace Tickify.Data
             modelBuilder.Entity<Booking>()
                 .HasIndex(b => b.BookingDate);
 
+            // Booking - SeatIdsJson column configuration
+            modelBuilder.Entity<Booking>()
+                .Property(b => b.SeatIdsJson)
+                .HasColumnType("nvarchar(max)")
+                .IsRequired(false);
+
             // Tickets - Check-in and validation
             modelBuilder.Entity<Ticket>()
                 .HasIndex(t => t.BookingId);
@@ -451,6 +457,12 @@ namespace Tickify.Data
             // Seats - Real-time availability
             modelBuilder.Entity<Seat>()
                 .HasIndex(s => new { s.TicketTypeId, s.Status }); // Critical for seat selection!
+
+            modelBuilder.Entity<Seat>()
+                .HasIndex(s => s.IsWheelchair); // For wheelchair accessible seat filtering
+
+            modelBuilder.Entity<Seat>()
+                .HasIndex(s => s.SeatZoneId); // For zone-based queries
 
             // Notifications - User inbox (shown on every page!)
             modelBuilder.Entity<Notification>()

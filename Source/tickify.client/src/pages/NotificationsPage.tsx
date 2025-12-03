@@ -95,7 +95,7 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
     if (!notification.isRead) {
       await markAsRead(notification.id);
     }
-
+    
     // Navigate based on notification type or actionUrl
     if (notification.actionUrl) {
       const route = notification.actionUrl.split('/')[1];
@@ -274,20 +274,22 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                   <div
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${!notification.isRead ? 'bg-purple-50/30 border-l-4 border-l-purple-500' : ''
-                      }`}
+                    className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${
+                      !notification.isRead ? 'bg-purple-50/30 border-l-4 border-l-purple-500' : ''
+                    }`}
                   >
                     <div className="flex gap-4">
                       <div className="flex-shrink-0 mt-1">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${notification.type === 'booking' ? 'bg-purple-100' :
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                          notification.type === 'booking' ? 'bg-purple-100' :
                           notification.type === 'event' ? 'bg-blue-100' :
-                            notification.type === 'payment' ? 'bg-green-100' :
-                              'bg-orange-100'
-                          }`}>
+                          notification.type === 'payment' ? 'bg-green-100' :
+                          'bg-orange-100'
+                        }`}>
                           {getIcon(notification.type)}
                         </div>
                       </div>
-
+                      
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4 mb-2">
                           <div className="flex items-center gap-2">
@@ -313,7 +315,7 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                             </button>
                           </div>
                         </div>
-
+                        
                         <p className="text-gray-600 text-sm leading-relaxed">
                           {notification.message}
                         </p>
@@ -342,11 +344,11 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                 <Bell size={64} className="mx-auto mb-4 opacity-20" />
                 <h3 className="text-lg font-medium text-gray-700 mb-2">No notifications found</h3>
                 <p className="text-sm">
-                  {activeFilter === 'unread'
+                  {activeFilter === 'unread' 
                     ? 'You have no unread notifications'
                     : activeType !== 'all'
-                      ? `No ${activeType} notifications`
-                      : 'You have no notifications at this time'}
+                    ? `No ${activeType} notifications`
+                    : 'You have no notifications at this time'}
                 </p>
               </div>
             )}

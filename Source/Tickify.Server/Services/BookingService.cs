@@ -16,7 +16,6 @@ public class BookingService : IBookingService
     private readonly ITicketRepository _ticketRepository;
     private readonly ISeatRepository _seatRepository;
     private readonly IPromoCodeRepository _promoCodeRepository;
-    private readonly INotificationService _notificationService;
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
     private readonly ILogger<BookingService> _logger;
@@ -26,7 +25,6 @@ public class BookingService : IBookingService
         ITicketRepository ticketRepository,
         ISeatRepository seatRepository,
         IPromoCodeRepository promoCodeRepository,
-        INotificationService notificationService,
         ApplicationDbContext context,
         IMapper mapper,
         ILogger<BookingService> logger)
@@ -35,7 +33,6 @@ public class BookingService : IBookingService
         _ticketRepository = ticketRepository;
         _seatRepository = seatRepository;
         _promoCodeRepository = promoCodeRepository;
-        _notificationService = notificationService;
         _context = context;
         _mapper = mapper;
         _logger = logger;
@@ -91,8 +88,42 @@ public class BookingService : IBookingService
         if (ticketType.AvailableQuantity < createBookingDto.Quantity)
             throw new BadRequestException($"Not enough tickets available. Available: {ticketType.AvailableQuantity}, Requested: {createBookingDto.Quantity}");
 
-        // Calculate subtotal based on ticket type price and quantity
-        decimal subtotal = ticketType.Price * createBookingDto.Quantity;
+        // Validate seat availability and calculate price from seats if provided
+        decimal subtotal;
+        
+        if (createBookingDto.SeatIds?.Any() == true)
+        {
+            if (createBookingDto.SeatIds.Count != createBookingDto.Quantity)
+                throw new BadRequestException("Number of seats must match quantity");
+
+            // Get actual seat prices from database
+            var selectedSeats = await _context.Seats
+                .Where(s => createBookingDto.SeatIds.Contains(s.Id))
+                .Include(s => s.SeatZone)
+                .Include(s => s.TicketType)
+                .ToListAsync();
+
+            if (selectedSeats.Count != createBookingDto.SeatIds.Count)
+                throw new BadRequestException("One or more seat IDs are invalid");
+
+            // Validate all seats belong to the same event
+            var eventIds = selectedSeats.Select(s => s.TicketType.EventId).Distinct().ToList();
+            if (eventIds.Count > 1 || eventIds[0] != createBookingDto.EventId)
+                throw new BadRequestException("All seats must belong to the same event");
+
+            // Reserve seats (this will fail if any seat is not available)
+            var seatsReserved = await _seatRepository.ReserveSeatsAsync(createBookingDto.SeatIds, userId);
+            if (!seatsReserved)
+                throw new BadRequestException("One or more seats are not available");
+
+            // Calculate subtotal from actual seat prices (from zones)
+            subtotal = selectedSeats.Sum(s => s.SeatZone?.ZonePrice ?? s.TicketType.Price);
+        }
+        else
+        {
+            // Regular booking without specific seats - use ticket type price
+            subtotal = ticketType.Price * createBookingDto.Quantity;
+        }
         
         // Calculate service fee (5% như frontend)
         // TODO: Nên lấy từ configuration thay vì hardcode
@@ -101,17 +132,6 @@ public class BookingService : IBookingService
         
         // Total amount = subtotal + service fee
         decimal totalAmount = subtotal + serviceFee;
-
-        // Validate seat availability
-        if (createBookingDto.SeatIds?.Any() == true)
-        {
-            if (createBookingDto.SeatIds.Count != createBookingDto.Quantity)
-                throw new BadRequestException("Number of seats must match quantity");
-
-            var seatsReserved = await _seatRepository.ReserveSeatsAsync(createBookingDto.SeatIds);
-            if (!seatsReserved)
-                throw new BadRequestException("One or more seats are not available");
-        }
 
         // Validate and apply promo code if provided
         // Lưu ý: Discount chỉ áp dụng cho subtotal (giá vé), KHÔNG áp dụng cho service fee
@@ -159,7 +179,10 @@ public class BookingService : IBookingService
                 PromoCodeId = promoCodeId,
                 Status = BookingStatus.Pending,
                 BookingDate = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(15) // 15 minutes to complete payment
+                ExpiresAt = DateTime.UtcNow.AddMinutes(15), // 15 minutes to complete payment
+                SeatIdsJson = createBookingDto.SeatIds?.Any() == true 
+                    ? System.Text.Json.JsonSerializer.Serialize(createBookingDto.SeatIds) 
+                    : null
             };
             
             _logger.LogInformation("Tính toán booking amount - Subtotal: {Subtotal}, ServiceFee: {ServiceFee}, Discount: {Discount}, FinalAmount: {FinalAmount}", 
@@ -170,11 +193,34 @@ public class BookingService : IBookingService
                 createdBooking.Id, createdBooking.BookingCode);
 
             // Update ticket type available quantity (reserve tickets)
-            ticketType.AvailableQuantity -= createBookingDto.Quantity;
-            _context.TicketTypes.Update(ticketType);
+            if (createBookingDto.SeatIds?.Any() == true)
+            {
+                // For seat-based booking: update all affected ticket types
+                var selectedSeats = await _context.Seats
+                    .Where(s => createBookingDto.SeatIds.Contains(s.Id))
+                    .Include(s => s.TicketType)
+                    .ToListAsync();
+
+                var ticketTypeGroups = selectedSeats.GroupBy(s => s.TicketTypeId);
+                foreach (var group in ticketTypeGroups)
+                {
+                    var tt = group.First().TicketType;
+                    tt.AvailableQuantity -= group.Count();
+                    _context.TicketTypes.Update(tt);
+                    _logger.LogInformation("Đã cập nhật số lượng ticket type {TicketTypeId}: AvailableQuantity = {AvailableQuantity}", 
+                        tt.Id, tt.AvailableQuantity);
+                }
+            }
+            else
+            {
+                // For regular booking: update single ticket type
+                ticketType.AvailableQuantity -= createBookingDto.Quantity;
+                _context.TicketTypes.Update(ticketType);
+                _logger.LogInformation("Đã cập nhật số lượng ticket type {TicketTypeId}: AvailableQuantity = {AvailableQuantity}", 
+                    ticketType.Id, ticketType.AvailableQuantity);
+            }
+            
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Đã cập nhật số lượng ticket type {TicketTypeId}: AvailableQuantity = {AvailableQuantity}", 
-                ticketType.Id, ticketType.AvailableQuantity);
 
             // Increment promo code usage if applied
             if (promoCodeId.HasValue)
@@ -232,7 +278,7 @@ public class BookingService : IBookingService
             var seatIds = tickets.Where(t => t.SeatId.HasValue).Select(t => t.SeatId!.Value);
             if (seatIds.Any())
             {
-                await _seatRepository.ReleaseSeatsAsync(seatIds);
+                await _seatRepository.AdminReleaseSeatsAsync(seatIds);
                 _logger.LogInformation("Đã release {SeatCount} seats cho booking {BookingId}", seatIds.Count(), bookingId);
             }
 
@@ -242,9 +288,6 @@ public class BookingService : IBookingService
             // Commit transaction
             await transaction.CommitAsync();
             _logger.LogInformation("Transaction committed thành công cho cancel booking {BookingId}", bookingId);
-            
-            // Notify users in waitlist that tickets are now available
-            await NotifyWaitlistUsersAsync(booking.EventId);
             
             return _mapper.Map<BookingDto>(updatedBooking);
         }
@@ -304,7 +347,7 @@ public class BookingService : IBookingService
             var seatIds = tickets.Where(t => t.SeatId.HasValue).Select(t => t.SeatId!.Value);
             if (seatIds.Any())
             {
-                await _seatRepository.ReleaseSeatsAsync(seatIds);
+                await _seatRepository.AdminReleaseSeatsAsync(seatIds);
             }
 
             await _bookingRepository.UpdateAsync(booking);
@@ -395,75 +438,5 @@ public class BookingService : IBookingService
     private string GenerateBookingCode()
     {
         return $"BK{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
-    }
-
-    /// <summary>
-    /// Notify waitlist users when tickets become available for an event
-    /// </summary>
-    private async Task NotifyWaitlistUsersAsync(int eventId)
-    {
-        try
-        {
-            // Get event details
-            var eventEntity = await _context.Events
-                .AsNoTracking()
-                .FirstOrDefaultAsync(e => e.Id == eventId);
-
-            if (eventEntity == null)
-            {
-                _logger.LogWarning("[BookingService] Event {EventId} not found for waitlist notification", eventId);
-                return;
-            }
-
-            // Get users in waitlist who haven't been notified yet
-            var waitlistUsers = await _context.Waitlists
-                .Where(w => w.EventId == eventId && !w.IsNotified && !w.HasPurchased)
-                .OrderBy(w => w.JoinedAt) // First come, first served
-                .Take(10) // Notify up to 10 users at a time
-                .ToListAsync();
-
-            if (!waitlistUsers.Any())
-            {
-                _logger.LogInformation("[BookingService] No waitlist users to notify for event {EventId}", eventId);
-                return;
-            }
-
-            foreach (var waitlistEntry in waitlistUsers)
-            {
-                try
-                {
-                    // Send notification
-                    await _notificationService.NotifyWaitlistAvailableAsync(
-                        waitlistEntry.UserId,
-                        eventId,
-                        eventEntity.Title
-                    );
-
-                    // Mark as notified
-                    waitlistEntry.IsNotified = true;
-                    waitlistEntry.NotifiedAt = DateTime.UtcNow;
-                    waitlistEntry.ExpiresAt = DateTime.UtcNow.AddHours(24); // 24 hours to purchase
-
-                    _logger.LogInformation(
-                        "[BookingService] Notified waitlist user {UserId} for event {EventId}",
-                        waitlistEntry.UserId, eventId
-                    );
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex,
-                        "[BookingService] Failed to notify waitlist user {UserId} for event {EventId}",
-                        waitlistEntry.UserId, eventId
-                    );
-                }
-            }
-
-            await _context.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "[BookingService] Failed to notify waitlist users for event {EventId}", eventId);
-            // Don't throw - waitlist notification failure shouldn't block booking cancellation
-        }
     }
 }

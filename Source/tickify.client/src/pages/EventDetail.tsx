@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Calendar, MapPin, User, Minus, Plus, Clock, Share2 } from 'lucide-react';
@@ -19,6 +20,33 @@ import { eventService } from '../services/eventService';
 import { WishlistButton } from '../components/WishlistButton';
 import { authService } from '../services/authService';
 import type { CartItem } from '../types';
+=======
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Calendar, MapPin, User, Clock, Share2, Loader2 } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { PolicyBlock } from "../components/PolicyBlock";
+import { Avatar, AvatarFallback } from "../components/ui/avatar";
+import { Badge } from "../components/ui/badge";
+import { Separator } from "../components/ui/separator";
+import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { HoldTimer } from "../components/HoldTimer";
+import EventHighlights from "../components/event-detail/EventHighlights";
+import FAQSection from "../components/event-detail/FAQSection";
+import LocationMap from "../components/event-detail/LocationMap";
+import ShareButtons from "../components/event-detail/ShareButtons";
+import RelatedEvents from "../components/event-detail/RelatedEvents";
+import EventReviewsSummary from "../components/event-detail/EventReviewsSummary";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../components/ui/popover";
+import { eventService } from "../services/eventService";
+import { seatMapService } from "../services/seatMapService";
+import { WishlistButton } from "../components/WishlistButton";
+import { authService } from "../services/authService";
+>>>>>>> origin/develop
 
 interface EventDetailProps {
   eventId: string;
@@ -33,6 +61,11 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [showTimer, setShowTimer] = useState(false);
   const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
+  const [showTimer, setShowTimer] = useState(false);
+  const [hasSeatMap, setHasSeatMap] = useState(false);
+  const [checkingSeatMap, setCheckingSeatMap] = useState(true);
+  const [seatMapZones, setSeatMapZones] = useState<any[]>([]); // Store seat map zones
+  const [minPrice, setMinPrice] = useState<number>(0); // Minimum ticket price
 
   useEffect(() => {
     let mounted = true;
@@ -41,6 +74,50 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
       .catch(() => { if (mounted) setEvent(null); });
     return () => { mounted = false; };
   }, [eventId]);
+
+  // Check if event has seat map and fetch zone pricing
+  useEffect(() => {
+    if (!event?.id) return;
+
+    let mounted = true;
+    setCheckingSeatMap(true);
+
+    seatMapService
+      .getSeatMapByEvent(event.id.toString())
+      .then((seatMapData) => {
+        if (mounted) {
+          setHasSeatMap(true);
+          // Extract zones with pricing
+          if (seatMapData.zones && seatMapData.zones.length > 0) {
+            setSeatMapZones(seatMapData.zones);
+            // Calculate minimum price from zones
+            const prices = seatMapData.zones.map((z: any) => z.zonePrice);
+            setMinPrice(Math.min(...prices));
+          } else if (event.ticketTiers && event.ticketTiers.length > 0) {
+            // Fallback to ticket tiers
+            const prices = event.ticketTiers.map((t: any) => t.price);
+            setMinPrice(Math.min(...prices));
+          }
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setHasSeatMap(false);
+          // Use ticket tiers pricing if no seat map
+          if (event.ticketTiers && event.ticketTiers.length > 0) {
+            const prices = event.ticketTiers.map((t: any) => t.price);
+            setMinPrice(Math.min(...prices));
+          }
+        }
+      })
+      .finally(() => {
+        if (mounted) setCheckingSeatMap(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [event?.id, event?.ticketTiers]);
 
   // Get related events from the same category
   useEffect(() => {
@@ -259,6 +336,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
             <div className="bg-white rounded-2xl p-6 shadow-lg sticky top-20">
               <h3 className="mb-6">{t('events.selectTickets')}</h3>
 
+<<<<<<< HEAD
               <div className="space-y-4">
                 {event.ticketTiers.map((tier: any) => (
                   <div
@@ -317,10 +395,140 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                           </Button>
                         </div>
                       )}
+=======
+              {checkingSeatMap ? (
+                <div className="p-6 text-center">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto text-teal-600 mb-2" />
+                  <p className="text-sm text-neutral-600">Loading...</p>
+                </div>
+              ) : hasSeatMap ? (
+                /* Seat Selection Button - Show when event has seat map */
+                <div className="p-6 bg-gradient-to-r from-teal-50 to-green-50 border-2 border-teal-200 rounded-xl">
+                  <div className="text-center mb-4">
+                    <div className="text-2xl mb-2">🎫</div>
+                    <div className="text-lg font-semibold text-teal-900 mb-2">
+                      Choose Your Seats
+                    </div>
+                    <div className="text-sm text-teal-700 mb-4">
+                      Select specific seats on the interactive seat map
+                    </div>
+
+                    {/* Price range */}
+                    <div className="mb-4 p-3 bg-white rounded-lg">
+                      <div className="text-xs text-neutral-600 mb-1">
+                        Starting from
+                      </div>
+                      <div className="text-2xl font-bold text-teal-600">
+                        {formatPrice(minPrice || 0)}
+                      </div>
+>>>>>>> origin/develop
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <Button
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        onNavigate("login");
+                        return;
+                      }
+                      onNavigate("seat-selection", event.id);
+                      setShowTimer(true);
+                    }}
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white h-12 text-base font-semibold"
+                  >
+                    Select Seats & Book
+                  </Button>
+                </div>
+              ) : (
+                /* Regular Ticket Selection - Show when no seat map */
+                <div className="space-y-4">
+                  {event.ticketTiers.map((tier: any) => (
+                    <div
+                      key={tier.id}
+                      className="p-4 border-2 border-neutral-200 rounded-xl hover:border-teal-300 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <div className="font-semibold text-neutral-900">
+                            {tier.name}
+                          </div>
+                          <div className="text-sm text-neutral-500">
+                            {tier.description || "General Admission"}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xl font-bold text-teal-600">
+                            {formatPrice(tier.price)}
+                          </div>
+                          <div className="text-xs text-neutral-600">
+                            {tier.available > 0 ? (
+                              `${tier.available} left`
+                            ) : (
+                              <span className="text-red-600 font-medium">
+                                Sold out
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={() => {
+                          if (!isAuthenticated) {
+                            onNavigate("login");
+                            return;
+                          }
+                          // Navigate to checkout with this ticket tier
+                          onNavigate("checkout", event.id);
+                        }}
+                        disabled={tier.available <= 0}
+                        className="w-full"
+                      >
+                        {tier.available > 0 ? "Book Now" : "Sold Out"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Available ticket info for seat map events */}
+              {hasSeatMap && !checkingSeatMap && seatMapZones.length > 0 && (
+                <div className="mt-6 space-y-3">
+                  <div className="text-sm font-semibold text-neutral-700 mb-2">
+                    Ticket Types (By Zone)
+                  </div>
+                  {seatMapZones.map((zone: any) => (
+                    <div
+                      key={zone.id}
+                      className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2 flex-1">
+                        <div
+                          className="w-4 h-4 rounded"
+                          style={{ backgroundColor: zone.color || "#94a3b8" }}
+                        />
+                        <div>
+                          <div className="text-sm font-medium text-neutral-900">
+                            {zone.name}
+                          </div>
+                          <div className="text-xs text-neutral-500">
+                            {formatPrice(zone.zonePrice)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-neutral-600">
+                        {zone.availableSeats > 0 ? (
+                          `${zone.availableSeats} available`
+                        ) : (
+                          <span className="text-red-600 font-medium">
+                            Sold out
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

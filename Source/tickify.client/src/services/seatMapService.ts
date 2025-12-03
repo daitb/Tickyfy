@@ -2,42 +2,54 @@ import apiClient from "./apiClient";
 
 // ===== INTERFACES =====
 export interface SeatDto {
-  seatId: string;
-  row: number;
-  seatNumber: number;
-  gridRow: number;
-  gridColumn: number;
-  status: "Available" | "Reserved" | "Sold";
+  id: number;
+  ticketTypeId: number;
+  seatZoneId: number | null;
+  row: string;
+  seatNumber: string;
+  fullSeatCode: string;
+  gridRow: number | null;
+  gridColumn: number | null;
+  status: string;
+  isBlocked: boolean;
+  blockedReason?: string;
+  isWheelchair: boolean;
+  isReserved: boolean;
+  reservedByUserId?: number;
+  reservedUntil?: string;
   price: number;
-  seatZoneId: string;
+  zoneName?: string;
+  zoneColor?: string;
 }
 
 export interface SeatZoneDto {
-  seatZoneId: string;
+  id: number;
+  seatMapId: number;
+  ticketTypeId: number;
   name: string;
-  color: string;
+  color: string | null;
   description?: string;
-  rowStart: number;
-  rowEnd: number;
-  columnStart: number;
-  columnEnd: number;
+  startRow: number;
+  endRow: number;
+  startColumn: number;
+  endColumn: number;
   zonePrice: number;
   capacity: number;
   availableSeats: number;
-  seats: SeatDto[];
+  isActive: boolean;
 }
 
 export interface SeatMapDto {
-  seatMapId: string;
-  eventId: string;
+  id: number;
+  eventId: number;
   name: string;
-  layoutConfig?: string;
+  description?: string;
+  layoutConfig: string;
   totalRows: number;
   totalColumns: number;
   isActive: boolean;
   createdAt: string;
   zones: SeatZoneDto[];
-  seats: SeatDto[];
 }
 
 export interface CreateSeatMapDto {
@@ -93,6 +105,16 @@ class SeatMapService {
   }
 
   /**
+   * Get all seat maps for an organizer
+   */
+  async getOrganizerSeatMaps(organizerId: number): Promise<SeatMapDto[]> {
+    const response = await apiClient.get<SeatMapDto[]>(
+      `/seatmaps/organizer/${organizerId}`
+    );
+    return response.data;
+  }
+
+  /**
    * Get seat map templates (not assigned to any event)
    */
   async getSeatMapTemplates(): Promise<SeatMapDto[]> {
@@ -130,17 +152,24 @@ class SeatMapService {
   }
 
   /**
-   * Reserve seats
+   * Reserve seats during checkout
    */
-  async reserveSeats(seatMapId: string, seatIds: string[]): Promise<void> {
-    await apiClient.post(`/seatmaps/${seatMapId}/reserve`, { seatIds });
+  async reserveSeats(
+    seatMapId: number,
+    seatIds: number[]
+  ): Promise<{ message: string; expiresIn: number }> {
+    const response = await apiClient.post<{
+      message: string;
+      expiresIn: number;
+    }>(`/seatmaps/${seatMapId}/reserve`, seatIds);
+    return response.data;
   }
 
   /**
-   * Release seats
+   * Release seats (Organizer/Admin only)
    */
-  async releaseSeats(seatMapId: string, seatIds: string[]): Promise<void> {
-    await apiClient.post(`/seatmaps/${seatMapId}/release`, { seatIds });
+  async releaseSeats(seatMapId: number, seatIds: number[]): Promise<void> {
+    await apiClient.post(`/seatmaps/${seatMapId}/release`, seatIds);
   }
 }
 

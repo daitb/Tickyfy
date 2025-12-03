@@ -11,7 +11,6 @@ namespace Tickify.Data
             {
                 // Ensure database is created
                 await context.Database.EnsureCreatedAsync();
-
                 // Seed Roles
                 if (!await context.Roles.AnyAsync())
                 {
@@ -518,8 +517,11 @@ namespace Tickify.Data
                         Console.WriteLine("✅ Promo codes seeded.");
                     }
 
-                    // Seed SeatMaps, Zones and Seats for each saved event (small sample grid)
-                    foreach (var evt in savedEvents)
+                    // Seed SeatMaps, Zones and Seats for ALL existing events (not just newly created ones)
+                    var allEvents = await context.Events.Include(e => e.TicketTypes).ToListAsync();
+                    Console.WriteLine($"Checking {allEvents.Count} events for seat map seeding...");
+                    
+                    foreach (var evt in allEvents)
                     {
                         // If seatmap already exists skip
                         if (await context.SeatMaps.AnyAsync(sm => sm.EventId == evt.Id))
@@ -591,6 +593,8 @@ namespace Tickify.Data
                                 await context.SaveChangesAsync();
                             }
                         }
+                        
+                        Console.WriteLine($"✅ Created seat map for event '{evt.Title}' (ID: {evt.Id}) with {eventTicketTypes.Count} zones");
                     }
 
                     // Create a confirmed booking with payment and tickets for the sample customer
@@ -705,10 +709,99 @@ namespace Tickify.Data
                     Console.WriteLine("✅ Additional test seed data created.");
                 }
 
+                // Seed SeatMaps for ALL existing events (runs independently of event creation)
+                Console.WriteLine("\nChecking for seat map seeding...");
+                var allExistingEvents = await context.Events.Include(e => e.TicketTypes).ToListAsync();
+                Console.WriteLine($"Found {allExistingEvents.Count} events in database");
+                
+                foreach (var evt in allExistingEvents)
+                {
+                    // Skip if seatmap already exists
+                    if (await context.SeatMaps.AnyAsync(sm => sm.EventId == evt.Id))
+                    {
+                        Console.WriteLine($"  ⏭️  Event '{evt.Title}' (ID: {evt.Id}) already has a seat map, skipping");
+                        continue;
+                    }
+
+                    Console.WriteLine($"  🎫 Creating seat map for event '{evt.Title}' (ID: {evt.Id})...");
+
+                    var seatMap = new SeatMap
+                    {
+                        EventId = evt.Id,
+                        Name = "Default SeatMap",
+                        Description = "Auto-generated seat map for testing",
+                        TotalRows = 5,
+                        TotalColumns = 10,
+                        LayoutConfig = "{ \"type\": \"grid\" }",
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await context.SeatMaps.AddAsync(seatMap);
+                    await context.SaveChangesAsync();
+
+                    // For each ticket type of the event create a zone + some seats
+                    var eventTicketTypes = await context.TicketTypes.Where(tt => tt.EventId == evt.Id).ToListAsync();
+                    Console.WriteLine($"     Creating {eventTicketTypes.Count} zones for ticket types...");
+                    
+                    foreach (var tt in eventTicketTypes)
+                    {
+                        var zone = new SeatZone
+                        {
+                            SeatMapId = seatMap.Id,
+                            TicketTypeId = tt.Id,
+                            Name = tt.Name + " Zone",
+                            Description = $"Zone for {tt.Name}",
+                            StartRow = 1,
+                            EndRow = 2,
+                            StartColumn = 1,
+                            EndColumn = 5,
+                            ZonePrice = tt.Price,
+                            Capacity = Math.Min(tt.TotalQuantity, 30),
+                            AvailableSeats = Math.Min(tt.TotalQuantity, 30),
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        await context.SeatZones.AddAsync(zone);
+                        await context.SaveChangesAsync();
+
+                        // Create a small set of seats mapped to this zone
+                        var seatsToCreate = Math.Min(10, zone.Capacity);
+                        var createdSeats = new List<Seat>();
+                        for (int r = 0; r < 2 && createdSeats.Count < seatsToCreate; r++)
+                        {
+                            var rowLabel = ((char)('A' + r)).ToString();
+                            for (int s = 1; s <= 5 && createdSeats.Count < seatsToCreate; s++)
+                            {
+                                var seat = new Seat
+                                {
+                                    TicketTypeId = tt.Id,
+                                    SeatZoneId = zone.Id,
+                                    Row = rowLabel,
+                                    SeatNumber = s.ToString(),
+                                    GridRow = r + 1,
+                                    GridColumn = s,
+                                    Status = SeatStatus.Available,
+                                    CreatedAt = DateTime.UtcNow
+                                };
+                                createdSeats.Add(seat);
+                            }
+                        }
+
+                        if (createdSeats.Any())
+                        {
+                            await context.Seats.AddRangeAsync(createdSeats);
+                            await context.SaveChangesAsync();
+                        }
+                    }
+                    
+                    Console.WriteLine($"  ✅ Created seat map for event '{evt.Title}' with {eventTicketTypes.Count} zones");
+                }
+
                 Console.WriteLine("\n🎉 Database seeding completed successfully!");
                 Console.WriteLine("\n📝 Default Accounts:");
                 Console.WriteLine("   Admin: admin@tickify.com / Admin@123456");
                 Console.WriteLine("   Customer: customer@example.com / Customer@123");
+                Console.WriteLine($"   Email: organizer@example.com/Password: Organizer@123");
                 Console.WriteLine("\n💡 To add more test data, run the SQL script:");
                 Console.WriteLine("   Documents/SeedTestData.sql");
             }
