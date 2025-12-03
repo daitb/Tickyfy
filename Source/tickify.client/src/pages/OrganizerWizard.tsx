@@ -27,7 +27,6 @@ import { ProgressSteps } from "../components/ProgressSteps";
 import { cities } from "../mockData";
 import { eventService, type CreateEventDto } from "../services/eventService";
 import { categoryService, type CategoryDto } from "../services/categoryService";
-import { seatMapService, type SeatMapDto } from "../services/seatMapService";
 import { authService } from "../services/authService";
 import { imageService } from "../services/imageService";
 import { toast } from "sonner";
@@ -55,13 +54,6 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   const [ticketTiers, setTicketTiers] = useState<Partial<TicketTier>[]>([
     { name: "", price: 0, total: 100, description: "" },
   ]);
-
-  // Seat map states
-  const [seatMapTemplates, setSeatMapTemplates] = useState<SeatMapDto[]>([]);
-  const [selectedSeatMapId, setSelectedSeatMapId] = useState<number | null>(
-    null
-  );
-  const [loadingSeatMaps, setLoadingSeatMaps] = useState(false);
 
   // Image upload states
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -111,20 +103,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       }
     };
 
-    const loadSeatMapTemplates = async () => {
-      try {
-        setLoadingSeatMaps(true);
-        const templates = await seatMapService.getSeatMapTemplates();
-        setSeatMapTemplates(templates);
-      } catch (error) {
-        console.error("Error loading seat map templates:", error);
-      } finally {
-        setLoadingSeatMaps(false);
-      }
-    };
-
     loadCategories();
-    loadSeatMapTemplates();
   }, []);
 
   const steps = [
@@ -384,7 +363,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
           0
         ),
         isFeatured: false,
-        seatMapId: selectedSeatMapId ?? undefined,
+        // Note: seatMapId is NOT sent during event creation
+        // User must create seat map separately after event is created
         ticketTypes: ticketTiers.map((tier) => ({
           typeName: tier.name || "General",
           price: tier.price || 0,
@@ -820,68 +800,24 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                 ))}
               </div>
 
-              {/* Seat Map Selection */}
+              {/* Seat Map Info Message */}
               <div className="mt-8 border-t pt-6">
-                <h4 className="mb-4 text-lg font-semibold">
-                  Seat Map (Optional)
-                </h4>
-                <p className="text-sm text-neutral-600 mb-4">
-                  Select a seat map template for customers to choose specific
-                  seats when booking.
-                </p>
-
-                {loadingSeatMaps ? (
-                  <div className="flex items-center gap-2 text-sm text-neutral-500">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Loading seat map templates...
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        id="no-seatmap"
-                        name="seatmap"
-                        checked={selectedSeatMapId === null}
-                        onChange={() => setSelectedSeatMapId(null)}
-                        className="w-4 h-4"
-                      />
-                      <Label htmlFor="no-seatmap" className="cursor-pointer">
-                        No seat map (quantity-based booking)
-                      </Label>
-                    </div>
-
-                    {seatMapTemplates.map((template) => (
-                      <div
-                        key={template.id}
-                        className="flex items-center gap-2"
-                      >
-                        <input
-                          type="radio"
-                          id={`seatmap-${template.id}`}
-                          name="seatmap"
-                          checked={selectedSeatMapId === template.id}
-                          onChange={() => setSelectedSeatMapId(template.id)}
-                          className="w-4 h-4"
-                        />
-                        <Label
-                          htmlFor={`seatmap-${template.id}`}
-                          className="cursor-pointer"
-                        >
-                          {template.name} ({template.totalRows} ×{" "}
-                          {template.totalColumns})
-                        </Label>
-                      </div>
-                    ))}
-
-                    {seatMapTemplates.length === 0 && (
-                      <p className="text-sm text-neutral-500 italic">
-                        No seat map templates available. You can create one
-                        after creating the event.
-                      </p>
-                    )}
-                  </div>
-                )}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-blue-900 mb-2">
+                    ℹ️ Seat Map Configuration
+                  </h4>
+                  <p className="text-sm text-blue-700">
+                    You can create a seat map for this event{" "}
+                    <strong>after publishing</strong>. Go to Event Management →
+                    Select your event → Create Seat Map.
+                  </p>
+                  <p className="text-sm text-blue-700 mt-2">
+                    <strong>Important:</strong> Make sure to create ticket types
+                    (above) that match your seat map zones. For example, if your
+                    seat map has "VIP" and "Standard" zones, create ticket types
+                    with those exact names.
+                  </p>
+                </div>
               </div>
             </div>
           )}

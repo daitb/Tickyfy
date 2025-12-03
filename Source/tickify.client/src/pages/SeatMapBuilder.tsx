@@ -28,6 +28,7 @@ import {
   RotateCcw,
   Check,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
@@ -119,11 +120,7 @@ const predefinedTemplates = [
   },
 ];
 
-const defaultZones: Zone[] = [
-  { id: "zone1", name: "Orchestra", color: "#00C16A", price: 120, capacity: 0 },
-  { id: "zone2", name: "Mezzanine", color: "#4F46E5", price: 80, capacity: 0 },
-  { id: "zone3", name: "Balcony", color: "#7C3AED", price: 50, capacity: 0 },
-];
+// No default zones - user must create zones matching their ticket types
 
 export function SeatMapBuilder({
   onNavigate,
@@ -137,15 +134,13 @@ export function SeatMapBuilder({
       : eventIdProp
     : null;
 
-  const [zones, setZones] = useState<Zone[]>(defaultZones);
+  const [zones, setZones] = useState<Zone[]>([]); // Start with empty zones
   const [seatMapId, setSeatMapId] = useState<number | null>(null);
   const [eventTitle, setEventTitle] = useState("");
   const [loading, setLoading] = useState(true);
   const [seats, setSeats] = useState<GridSeat[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>("seat");
-  const [selectedZone, setSelectedZone] = useState<string | null>(
-    zones[0]?.id || null
-  );
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
   const [gridSize, setGridSize] = useState({ rows: 15, cols: 20 });
@@ -235,9 +230,40 @@ export function SeatMapBuilder({
         addToHistory(loadedSeats);
 
         toast.success("Seat map loaded successfully");
-      } catch (err) {
-        console.log("[SeatMapBuilder] No existing seat map, starting fresh");
-        // No existing seat map, start fresh
+      } catch (err: any) {
+        // Handle 404 gracefully - this is expected for new seat maps
+        if (
+          err?.response?.status === 404 ||
+          err?.message?.includes("not found")
+        ) {
+          console.log(
+            "[SeatMapBuilder] No existing seat map, auto-creating zones from ticket types"
+          );
+
+          // AUTO-CREATE ZONES FROM TICKET TYPES
+          if (event.ticketTiers && event.ticketTiers.length > 0) {
+            const autoZones: Zone[] = event.ticketTiers.map((tt, index) => ({
+              id: `zone-${tt.id || index}`,
+              name: tt.name,
+              color: ["#00C16A", "#4F46E5", "#7C3AED", "#EF4444", "#F59E0B"][
+                index % 5
+              ],
+              price: tt.price || 0,
+              capacity: 0, // Will be set when seats are placed
+            }));
+            setZones(autoZones);
+            setSelectedZone(autoZones[0]?.id || null);
+            console.log("[SeatMapBuilder] Auto-created zones:", autoZones);
+            toast.success(
+              `Auto-created ${autoZones.length} zones from ticket types`
+            );
+          } else {
+            toast.info("Creating new seat map - add zones manually");
+          }
+        } else {
+          console.error("[SeatMapBuilder] Error loading seat map:", err);
+          toast.error("Failed to load seat map data");
+        }
       }
     } catch (error) {
       console.error("Error loading seat map data:", error);
@@ -469,10 +495,39 @@ export function SeatMapBuilder({
       return;
     }
 
+    // Validate zones have proper names
+    if (zones.length === 0) {
+      toast.error("Please add at least one zone before saving");
+      return;
+    }
+
+    const emptyZoneNames = zones.filter((z) => !z.name || z.name.trim() === "");
+    if (emptyZoneNames.length > 0) {
+      toast.error("All zones must have names");
+      return;
+    }
+
     try {
+      // AUTO-UPDATE ZONE CAPACITIES from actual seat counts
+      const updatedZones = zones.map((z) => ({
+        ...z,
+        capacity: getZoneCapacity(z.id), // Count actual seats assigned to this zone
+      }));
+
+      console.log(
+        "[SeatMapBuilder] Saving zones with updated capacities:",
+        updatedZones.map((z) => ({ name: z.name, capacity: z.capacity }))
+      );
+
       // Include all seat properties including wheelchair status
       const layoutData = {
-        zones,
+        zones: updatedZones.map((z) => ({
+          id: z.id,
+          name: z.name,
+          color: z.color,
+          price: z.price,
+          capacity: z.capacity, // Now contains actual seat count
+        })),
         seats: seats.map((s) => ({
           ...s,
           isWheelchair: s.isWheelchair || false,
@@ -497,11 +552,25 @@ export function SeatMapBuilder({
           isActive: true,
         });
         toast.success("Seat map updated successfully");
+
+        // Reload data to get updated zones and seats with DB IDs
+        await loadSeatMapData();
       } else {
         // Create new
         const created = await seatMapService.createSeatMap(payload);
-        setSeatMapId(created.id);
+        const newSeatMapId = created.id;
+        setSeatMapId(newSeatMapId);
+
+        console.log(
+          "[SeatMapBuilder] Created new seat map with ID:",
+          newSeatMapId
+        );
         toast.success("Seat map saved successfully");
+
+        // Reload data to get zones and seats with DB IDs
+        // Wait a bit for backend to finish processing
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await loadSeatMapData();
       }
     } catch (error) {
       console.error("Error saving seat map:", error);
@@ -754,6 +823,26 @@ export function SeatMapBuilder({
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* Info Notice */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                  <div className="flex gap-2">
+                    <AlertCircle
+                      size={16}
+                      className="text-blue-600 flex-shrink-0 mt-0.5"
+                    />
+                    <div className="text-xs text-blue-800">
+                      <strong>Auto-Sync:</strong> Zones and ticket types are
+                      automatically synchronized.
+                      {eventTitle && (
+                        <div className="mt-1 text-blue-700">
+                          New zones will create matching ticket types
+                          automatically.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {zones.map((zone) => (
                   <div
                     key={zone.id}
