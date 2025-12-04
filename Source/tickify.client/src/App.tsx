@@ -16,6 +16,7 @@ import type { CartItem, Order } from "./types";
 import { mockOrders } from "./mockData";
 import { authService } from "./services/authService";
 import { Toaster } from "./components/ui/sonner";
+import notificationSignalRService from "./services/notificationSignalRService";
 
 // Lazy load các pages lớn để giảm initial bundle size
 const EventReviews = lazy(() =>

@@ -34,7 +34,7 @@ public class MappingProfile : Profile
         // ============================================
         // USER & ROLE MAPPINGS
         // ============================================
-        
+
         // User mappings
         CreateMap<User, UserDto>();
         CreateMap<User, UserDetailDto>();
@@ -52,7 +52,7 @@ public class MappingProfile : Profile
         // ============================================
         // EVENT & CATEGORY MAPPINGS
         // ============================================
-        
+
         // Event mappings
         CreateMap<Event, EventDetailDto>()
             .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : string.Empty))
@@ -82,7 +82,7 @@ public class MappingProfile : Profile
         // ============================================
         // BOOKING & TICKET MAPPINGS
         // ============================================
-        
+
         // Booking mappings
         CreateMap<Booking, BookingDto>();
         CreateMap<Booking, BookingDetailDto>();
@@ -126,22 +126,22 @@ public class MappingProfile : Profile
         // Seat mappings (original)
         CreateMap<Seat, DTOs.Seat.SeatDto>();
         CreateMap<DTOs.Seat.CreateSeatDto, Seat>();
-        
+
         // Seat Management mappings (Week 2 - Seat Selection)
         CreateMap<SeatMap, SeatMapResponseDto>();
         CreateMap<CreateSeatMapDto, SeatMap>();
         CreateMap<UpdateSeatMapDto, SeatMap>()
             .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
-        
+
         CreateMap<SeatZone, SeatZoneResponseDto>();
         CreateMap<CreateSeatZoneDto, SeatZone>();
         CreateMap<CreateSeatZoneDto, SeatZone>();
-        
+
         CreateMap<Seat, DTOs.SeatMap.SeatResponseDto>()
             .ForMember(dest => dest.FullSeatCode, opt => opt.MapFrom(src => $"{src.Row}{src.SeatNumber}"))
-            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => 
-                src.IsBlocked ? "Blocked" : 
-                (src.ReservedByUserId.HasValue && src.ReservedUntil.HasValue && src.ReservedUntil.Value > DateTime.UtcNow ? "Reserved" : 
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src =>
+                src.IsBlocked ? "Blocked" :
+                (src.ReservedByUserId.HasValue && src.ReservedUntil.HasValue && src.ReservedUntil.Value > DateTime.UtcNow ? "Reserved" :
                 (src.Tickets != null && src.Tickets.Any(t => t.Status == TicketStatus.Valid || t.Status == TicketStatus.Used) ? "Sold" : "Available"))))
             .ForMember(dest => dest.IsReserved, opt => opt.MapFrom(src => src.ReservedByUserId.HasValue && src.ReservedUntil.HasValue && src.ReservedUntil.Value > DateTime.UtcNow))
             .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.TicketType != null ? src.TicketType.Price : 0))
@@ -171,7 +171,7 @@ public class MappingProfile : Profile
         // ============================================
         // PAYMENT & REVIEW MAPPINGS
         // ============================================
-        
+
         // Payment mappings
         CreateMap<Payment, PaymentDto>()
             .ForMember(dest => dest.PaymentMethod, opt => opt.MapFrom(src => src.Method.ToString()))
@@ -197,7 +197,7 @@ public class MappingProfile : Profile
         // ============================================
         // SUPPORT & NOTIFICATION MAPPINGS
         // ============================================
-        
+
         // Support mappings
         CreateMap<SupportTicket, SupportTicketDto>();
         CreateMap<SupportTicket, SupportTicketDetailDto>()
@@ -206,13 +206,15 @@ public class MappingProfile : Profile
         CreateMap<SupportMessage, SupportMessageDto>();
 
         // Notification mappings
-        CreateMap<Notification, NotificationDto>();
+        CreateMap<Notification, NotificationDto>()
+           .ForMember(dest => dest.NotificationId, opt => opt.MapFrom(src => src.Id));
         CreateMap<CreateNotificationDto, Notification>();
+
 
         // ============================================
         // REFUND, WAITLIST, WISHLIST, PAYOUT MAPPINGS
         // ============================================
-        
+
         // Refund mappings
         CreateMap<RefundRequest, RefundRequestDto>()
             .ForMember(dest => dest.RefundId, opt => opt.MapFrom(src => src.Id))

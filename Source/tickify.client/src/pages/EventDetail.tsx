@@ -23,19 +23,22 @@ import { eventService } from "../services/eventService";
 import { seatMapService } from "../services/seatMapService";
 import { WishlistButton } from "../components/WishlistButton";
 import { authService } from "../services/authService";
+import type { CartItem } from "../types";
+import { MiniCartBar } from "../components/MiniCartBar";
 
 interface EventDetailProps {
   eventId: string;
   onNavigate: (page: string, eventId?: string) => void;
-  onAddToCart: (items: any[]) => void;
+  onAddToCart: (items: CartItem[]) => void;
 }
 
-export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
+export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailProps) {
   const { t } = useTranslation();
   const isAuthenticated = authService.isAuthenticated();
   const [event, setEvent] = useState<any | null>(null);
-  const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [showTimer, setShowTimer] = useState(false);
+  const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
   const [hasSeatMap, setHasSeatMap] = useState(false);
   const [checkingSeatMap, setCheckingSeatMap] = useState(true);
   const [seatMapZones, setSeatMapZones] = useState<any[]>([]); // Store seat map zones
@@ -43,17 +46,10 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
 
   useEffect(() => {
     let mounted = true;
-    eventService
-      .getEventByIdentifier(eventId)
-      .then((ev) => {
-        if (mounted) setEvent(ev);
-      })
-      .catch(() => {
-        if (mounted) setEvent(null);
-      });
-    return () => {
-      mounted = false;
-    };
+    eventService.getEventByIdentifier(eventId)
+      .then((ev) => { if (mounted) setEvent(ev); })
+      .catch(() => { if (mounted) setEvent(null); });
+    return () => { mounted = false; };
   }, [eventId]);
 
   // Check if event has seat map and fetch zone pricing
@@ -103,12 +99,11 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
   // Get related events from the same category
   useEffect(() => {
     if (event?.category) {
-      eventService
-        .getEvents()
-        .then((events) => {
-          const related = events
-            .filter((e) => e.category === event.category && e.id !== event.id)
-            .slice(0, 4);
+      eventService.getEvents()
+        .then(events => {
+          const related = events.filter(e => 
+            e.category === event.category && e.id !== event.id
+          ).slice(0, 4);
           setRelatedEvents(related);
         })
         .catch(() => setRelatedEvents([]));
@@ -119,29 +114,66 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2>{t("events.eventNotFound")}</h2>
-          <Button onClick={() => onNavigate("home")} className="mt-4">
-            {t("common.returnHome")}
+          <h2>{t('events.eventNotFound')}</h2>
+          <Button onClick={() => onNavigate('home')} className="mt-4">
+            {t('common.returnHome')}
           </Button>
         </div>
       </div>
     );
   }
 
+  const handleQuantityChange = (tierId: string, delta: number) => {
+    const tier = event.ticketTiers.find((t: any) => t.id === tierId);
+    if (!tier) return;
+
+    const currentQty = quantities[tierId] || 0;
+    const newQty = Math.max(0, Math.min(tier.available, currentQty + delta));
+    
+    setQuantities({ ...quantities, [tierId]: newQty });
+    
+    if (newQty > 0 && !showTimer) {
+      setShowTimer(true);
+    }
+  };
+
+  const totalItems = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
+  const subtotal = event.ticketTiers.reduce((sum: number, tier: any) => {
+    return sum + (tier.price * (quantities[tier.id] || 0));
+  }, 0);
+
+  const handleCheckout = () => {
+    const items: CartItem[] = event.ticketTiers
+      .filter((tier: any) => quantities[tier.id] > 0)
+      .map((tier: any) => ({
+        eventId: event.id,
+        eventTitle: event.title,
+        eventDate: event.date,
+        eventVenue: event.venue,
+        tierId: tier.id,
+        tierName: tier.name,
+        price: tier.price,
+        quantity: quantities[tier.id]
+      }));
+    
+    onAddToCart(items);
+    onNavigate('cart');
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
     }).format(price);
   };
 
@@ -156,27 +188,27 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
           alt={event.title}
           className="w-full h-full object-cover opacity-90"
         />
-
+        
         {/* Action Buttons Overlay */}
         <div className="absolute top-4 right-4 z-10 flex gap-2">
           {isAuthenticated && (
-            <WishlistButton eventId={parseInt(eventId, 10)} size="lg" />
+            <WishlistButton
+              eventId={parseInt(eventId, 10)}
+              size="lg"
+            />
           )}
           <Popover>
             <PopoverTrigger asChild>
-              <Button
-                variant="secondary"
+              <Button 
+                variant="secondary" 
                 size="sm"
                 className="bg-white/90 hover:bg-white backdrop-blur-sm"
               >
                 <Share2 size={16} className="mr-2" />
-                {t("common.share")}
+                {t('common.share')}
               </Button>
             </PopoverTrigger>
-            <PopoverContent
-              className="w-auto p-0 border-0 shadow-xl"
-              align="end"
-            >
+            <PopoverContent className="w-auto p-0 border-0 shadow-xl" align="end">
               <ShareButtons eventTitle={event.title} eventUrl={eventUrl} />
             </PopoverContent>
           </Popover>
@@ -189,45 +221,17 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-8 shadow-lg">
               <div className="flex items-start justify-between mb-4">
-                <Badge className="bg-teal-500 hover:bg-teal-600">
-                  {(() => {
-                    const categoryMap: Record<string, string> = {
-                      Music: t("editEvent.categoryMusic"),
-                      Sports: t("editEvent.categorySports"),
-                      "Arts & Culture": t("editEvent.categoryArts"),
-                      Arts: t("editEvent.categoryArts"),
-                      "Food & Drink": t("editEvent.categoryFood"),
-                      Food: t("editEvent.categoryFood"),
-                      Business: t("editEvent.categoryBusiness"),
-                      "Technology & Innovation": t(
-                        "editEvent.categoryTechnology"
-                      ),
-                      Technology: t("editEvent.categoryTechnology"),
-                    };
-                    return (
-                      categoryMap[event.category] ||
-                      event.category ||
-                      t("editEvent.category")
-                    );
-                  })()}
-                </Badge>
-                {showTimer && (
-                  <HoldTimer onExpire={() => setShowTimer(false)} />
-                )}
+                <Badge className="bg-teal-500 hover:bg-teal-600">{t(`editEvent.category${event.category}`)}</Badge>
+                {showTimer && <HoldTimer onExpire={() => setShowTimer(false)} />}
               </div>
 
               <h1 className="mb-6">{event.title}</h1>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div className="flex items-start gap-3">
-                  <Calendar
-                    className="text-teal-500 mt-1 flex-shrink-0"
-                    size={20}
-                  />
+                  <Calendar className="text-teal-500 mt-1 flex-shrink-0" size={20} />
                   <div>
-                    <div className="text-sm text-neutral-500">
-                      {t("events.dateTime")}
-                    </div>
+                    <div className="text-sm text-neutral-500">{t('events.dateTime')}</div>
                     <div className="text-neutral-900">
                       {formatDate(event.date)}
                     </div>
@@ -236,14 +240,9 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <MapPin
-                    className="text-teal-500 mt-1 flex-shrink-0"
-                    size={20}
-                  />
+                  <MapPin className="text-teal-500 mt-1 flex-shrink-0" size={20} />
                   <div>
-                    <div className="text-sm text-neutral-500">
-                      {t("common.venue")}
-                    </div>
+                    <div className="text-sm text-neutral-500">{t('common.venue')}</div>
                     <div className="text-neutral-900">{event.venue}</div>
                     <div className="text-neutral-600">{event.city}</div>
                   </div>
@@ -253,7 +252,7 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
               <Separator className="my-8" />
 
               <div>
-                <h3 className="mb-4">{t("events.aboutThisEvent")}</h3>
+                <h3 className="mb-4">{t('events.aboutThisEvent')}</h3>
                 <div className="text-neutral-600 leading-relaxed space-y-4 whitespace-pre-line">
                   {event.fullDescription || event.description}
                 </div>
@@ -263,7 +262,7 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
 
               {/* Organizer */}
               <div>
-                <h3 className="mb-4">{t("events.organizer")}</h3>
+                <h3 className="mb-4">{t('events.organizer')}</h3>
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
                     <AvatarFallback className="bg-teal-100 text-teal-600">
@@ -271,29 +270,15 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="text-neutral-900">
-                      {event.organizerName}
-                    </div>
-                    <div className="text-sm text-neutral-500">
-                      {t("events.eventOrganizer")}
-                    </div>
+                    <div className="text-neutral-900">{event.organizerName}</div>
+                    <div className="text-sm text-neutral-500">{t('events.eventOrganizer')}</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Reviews Summary */}
-            <EventReviewsSummary
-              eventId={parseInt(eventId, 10)}
-              averageRating={event.averageRating}
-              totalReviews={event.totalReviews}
-              onViewAll={() => onNavigate("event-reviews", eventId)}
-            />
-
             {/* Event Highlights */}
-            {event.highlights && (
-              <EventHighlights highlights={event.highlights} />
-            )}
+            {event.highlights && <EventHighlights highlights={event.highlights} />}
 
             {/* Location Map */}
             {event.venueDetails && (
@@ -316,7 +301,7 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
                 currentEventId={event.id}
                 relatedEvents={relatedEvents}
                 onEventClick={(id) => {
-                  onNavigate("event-detail", id);
+                  onNavigate('event-detail', id);
                   window.scrollTo(0, 0);
                 }}
               />
@@ -326,7 +311,7 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
           {/* Ticket Selection Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl p-6 shadow-lg sticky top-20">
-              <h3 className="mb-6">{t("events.selectTickets")}</h3>
+              <h3 className="mb-6">{t('events.selectTickets')}</h3>
 
               {checkingSeatMap ? (
                 <div className="p-6 text-center">
@@ -464,6 +449,12 @@ export function EventDetail({ eventId, onNavigate }: EventDetailProps) {
           </div>
         </div>
       </div>
+
+      <MiniCartBar
+        itemCount={totalItems}
+        subtotal={subtotal}
+        onCheckout={handleCheckout}
+      />
     </div>
   );
 }
