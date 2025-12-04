@@ -21,6 +21,7 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const isAuthenticated = authService.isAuthenticated();
 
   // Fetch notifications khi component mount và khi dropdown mở
@@ -30,7 +31,7 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
     }
   }, [isOpen, isAuthenticated]);
 
-  // Setup SignalR connection và fetch unread count khi component mount
+  // Setup SignalR connection khi component mount
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -73,30 +74,29 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
       unsubscribe = unsub;
     });
 
+    // Setup interval để sync unread count (mỗi 30 giây)
+    const interval = setInterval(fetchUnreadCount, 30000);
+
     // Cleanup khi component unmount
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
+      clearInterval(interval);
       notificationSignalRService.stopConnection().catch(console.error);
     };
   }, [isAuthenticated]);
 
-  // Fetch unread count định kỳ (mỗi 30 giây) để đảm bảo sync
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
-
   const fetchNotifications = async () => {
-    setIsLoading(true);
+    // Chỉ hiện loading khi lần đầu load hoặc chưa có data
+    if (isInitialLoad || notifications.length === 0) {
+      setIsLoading(true);
+    }
     try {
       // Lấy 20 notifications đầu tiên cho dropdown
       const result = await notificationService.getNotifications(1, 20);
       setNotifications(result.items);
+      setIsInitialLoad(false);
     } catch (error) {
       console.error('[NotificationDropdown] Error fetching notifications:', error);
     } finally {
@@ -129,13 +129,19 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
   };
 
   const markAsRead = async (id: string) => {
-    const success = await notificationService.markAsRead(id);
-    if (success) {
-      setNotifications(prev =>
-        prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
-      );
-      // Cập nhật unread count
-      setUnreadCount(prev => Math.max(0, prev - 1));
+    try {
+      console.log('[NotificationDropdown] Marking notification as read:', id);
+      const success = await notificationService.markAsRead(id);
+      console.log('[NotificationDropdown] Mark as read result:', success);
+      if (success) {
+        setNotifications(prev =>
+          prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+        );
+        // Cập nhật unread count
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('[NotificationDropdown] Error marking as read:', error);
     }
   };
 
@@ -156,31 +162,47 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
   };
 
   const handleNotificationClick = async (notification: Notification) => {
-    if (!notification.isRead) {
-      await markAsRead(notification.id);
-    }
+    // Đóng dropdown trước để tránh nhấp nháy
     setIsOpen(false);
+    
+    // Đánh dấu đã đọc (không await để navigation nhanh hơn)
+    if (!notification.isRead) {
+      markAsRead(notification.id);
+    }
     
     // Navigate based on notification type or actionUrl
     if (notification.actionUrl) {
       // Extract route from actionUrl (e.g., "/orders/123" -> "orders")
-      const route = notification.actionUrl.split('/')[1];
-      const id = notification.actionUrl.split('/')[2];
+      const parts = notification.actionUrl.split('/').filter(Boolean);
+      const route = parts[0];
+      const id = parts[1];
+      
       if (route === 'orders' || route === 'bookings') {
-        onNavigate?.('my-tickets', id);
+        onNavigate?.('order-detail', id);
       } else if (route === 'events') {
         onNavigate?.('event-detail', id);
+      } else if (route === 'tickets') {
+        onNavigate?.('ticket-detail', id);
+      } else if (route === 'refunds') {
+        onNavigate?.('refund-history');
       } else {
         onNavigate?.(route, id);
       }
     } else {
-      // Fallback navigation
-      if (notification.type === 'booking') {
-        onNavigate?.('my-tickets');
-      } else if (notification.type === 'event') {
-        onNavigate?.('home');
-      } else if (notification.type === 'payment') {
-        onNavigate?.('my-tickets');
+      // Fallback navigation based on type
+      switch (notification.type) {
+        case 'booking':
+        case 'ticket':
+          onNavigate?.('my-tickets');
+          break;
+        case 'event':
+          onNavigate?.('home');
+          break;
+        case 'payment':
+          onNavigate?.('my-tickets');
+          break;
+        default:
+          onNavigate?.('notifications');
       }
     }
   };
@@ -205,7 +227,10 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
       <DropdownMenuContent align="end" className="w-96 p-0">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="font-semibold text-lg">Notifications</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-lg">Notifications</h3>
+            {isLoading && <Loader2 size={14} className="animate-spin text-gray-400" />}
+          </div>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
@@ -220,7 +245,7 @@ export function NotificationDropdown({ onNavigate }: NotificationDropdownProps) 
         </div>
 
         {/* Notifications List */}
-        {isLoading ? (
+        {isLoading && notifications.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             <Loader2 size={24} className="mx-auto mb-3 animate-spin" />
             <p className="text-sm">Đang tải thông báo...</p>

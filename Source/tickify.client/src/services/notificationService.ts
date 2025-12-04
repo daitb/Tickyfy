@@ -9,7 +9,7 @@ export interface NotificationDto {
   message: string;
   type: string;
   isRead: boolean;
-  relatedUrl?: string;
+  actionUrl?: string;
   createdAt: string;
 }
 
@@ -86,7 +86,7 @@ function mapNotificationDtoToNotification(dto: NotificationDto): Notification {
     message: dto.message,
     timestamp: formatTimestamp(dto.createdAt),
     isRead: dto.isRead,
-    actionUrl: dto.relatedUrl,
+    actionUrl: dto.actionUrl,
   };
 }
 
