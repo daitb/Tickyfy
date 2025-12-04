@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { QRCodeCanvas } from "qrcode.react";
 import {
   Calendar,
   MapPin,
@@ -63,16 +64,22 @@ export function TicketDetail({
         // Fetch event details
         if (ticket.eventId) {
           try {
-            const event = await eventService.getEventByIdentifier(ticket.eventId.toString());
+            const event = await eventService.getEventByIdentifier(
+              ticket.eventId.toString()
+            );
             setCurrentEvent(event);
           } catch (err) {
-            console.error('Error fetching event:', err);
+            console.error("Error fetching event:", err);
             // Event fetch fail không block ticket display
           }
         }
       } catch (err: any) {
-        console.error('Error fetching ticket:', err);
-        setError(err.response?.data?.message || err.message || 'Không thể tải thông tin vé');
+        console.error("Error fetching ticket:", err);
+        setError(
+          err.response?.data?.message ||
+            err.message ||
+            "Không thể tải thông tin vé"
+        );
       } finally {
         setIsLoading(false);
       }
@@ -87,7 +94,7 @@ export function TicketDetail({
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center py-16">
             <Loader2 className="w-12 h-12 text-teal-500 animate-spin mx-auto mb-4" />
-            <p className="text-neutral-600">{t('common.loading')}</p>
+            <p className="text-neutral-600">{t("common.loading")}</p>
           </div>
         </div>
       </div>
@@ -99,9 +106,11 @@ export function TicketDetail({
       <div className="min-h-screen bg-neutral-50 py-8">
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center py-16">
-            <h2 className="text-neutral-900 mb-4">{error || 'Ticket not found'}</h2>
+            <h2 className="text-neutral-900 mb-4">
+              {error || "Ticket not found"}
+            </h2>
             <Button onClick={() => onNavigate("my-tickets")}>
-              {t('common.back')}
+              {t("common.back")}
             </Button>
           </div>
         </div>
@@ -130,11 +139,11 @@ export function TicketDetail({
   };
 
   const formatPrice = (price: number) => {
-    if (!price || price <= 0) return '0 ₫';
+    if (!price || price <= 0) return "0 ₫";
     // Price từ API đã là VND, không cần convert
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(Math.round(price));
@@ -190,15 +199,17 @@ export function TicketDetail({
               {/* Event Info */}
               <div>
                 <h1 className="text-white mb-4">
-                  {currentTicket.eventTitle || currentEvent?.title || "Event Title"}
+                  {currentTicket.eventTitle ||
+                    currentEvent?.title ||
+                    "Event Title"}
                 </h1>
                 <div className="space-y-2 text-white/90">
                   <div className="flex items-center gap-2">
                     <Calendar size={18} />
                     <span>
-                      {currentTicket.eventStartDate 
+                      {currentTicket.eventStartDate
                         ? formatDateTime(currentTicket.eventStartDate)
-                        : currentEvent?.date 
+                        : currentEvent?.date
                         ? formatDateTime(currentEvent.date, currentEvent.time)
                         : "N/A"}
                     </span>
@@ -206,7 +217,9 @@ export function TicketDetail({
                   <div className="flex items-center gap-2">
                     <MapPin size={18} />
                     <span>
-                      {currentTicket.eventVenue || currentEvent?.venue || "Venue"}
+                      {currentTicket.eventVenue ||
+                        currentEvent?.venue ||
+                        "Venue"}
                       {currentEvent?.city && `, ${currentEvent.city}`}
                     </span>
                   </div>
@@ -218,9 +231,7 @@ export function TicketDetail({
               {/* Ticket Info */}
               <div className="space-y-3">
                 <div className="text-white/90">Ticket Holder</div>
-                <div className="text-white">
-                  {name}
-                </div>
+                <div className="text-white">{name}</div>
 
                 <div className="flex items-center gap-3 flex-wrap">
                   <Badge className="bg-white text-indigo-600 text-base px-4 py-1">
@@ -239,28 +250,17 @@ export function TicketDetail({
                 <div className="text-center space-y-4">
                   {/* Large QR Code */}
                   <div className="inline-block p-6 bg-neutral-50 rounded-2xl">
-                    <div className="w-72 h-72 md:w-80 md:h-80 bg-white rounded-xl flex items-center justify-center shadow-lg">
-                      <svg
-                        className="w-64 h-64 md:w-72 md:h-72 text-neutral-900"
-                        viewBox="0 0 100 100"
-                        fill="currentColor"
-                      >
-                        {/* QR Code pattern */}
-                        <rect x="0" y="0" width="20" height="20" />
-                        <rect x="80" y="0" width="20" height="20" />
-                        <rect x="0" y="80" width="20" height="20" />
-                        <rect x="40" y="40" width="20" height="20" />
-                        <rect x="25" y="25" width="5" height="5" />
-                        <rect x="70" y="25" width="5" height="5" />
-                        <rect x="25" y="70" width="5" height="5" />
-                        <rect x="50" y="10" width="5" height="5" />
-                        <rect x="10" y="50" width="5" height="5" />
-                        <rect x="85" y="50" width="5" height="5" />
-                        <rect x="50" y="85" width="5" height="5" />
-                        <rect x="65" y="65" width="10" height="10" />
-                        <rect x="30" y="55" width="5" height="5" />
-                        <rect x="55" y="30" width="5" height="5" />
-                      </svg>
+                    <div className="w-72 h-72 md:w-80 md:h-80 bg-white rounded-xl flex items-center justify-center shadow-lg p-4">
+                      <QRCodeCanvas
+                        value={
+                          currentTicket.qrCode ||
+                          currentTicket.ticketNumber ||
+                          "INVALID"
+                        }
+                        size={256}
+                        level="H"
+                        includeMargin={false}
+                      />
                     </div>
                   </div>
 
@@ -269,10 +269,14 @@ export function TicketDetail({
                       {currentTicket.qrCode || currentTicket.ticketNumber}
                     </div>
                     <div className="text-sm text-neutral-600">
-                      {currentTicket.eventEndDate 
-                        ? `Valid until ${formatDate(currentTicket.eventEndDate)} 11:59 PM`
-                        : currentEvent?.date 
-                        ? `Valid until ${formatDate(currentEvent.date)} 11:59 PM`
+                      {currentTicket.eventEndDate
+                        ? `Valid until ${formatDate(
+                            currentTicket.eventEndDate
+                          )} 11:59 PM`
+                        : currentEvent?.date
+                        ? `Valid until ${formatDate(
+                            currentEvent.date
+                          )} 11:59 PM`
                         : "Valid ticket"}
                     </div>
                     <div className="flex items-center justify-center gap-2 text-sm text-red-600 mt-4">
@@ -293,16 +297,23 @@ export function TicketDetail({
               {/* Left Column */}
               <div className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">{t('pages.ticketRefund.orderId')}</span>
+                  <span className="text-neutral-600">
+                    {t("pages.ticketRefund.orderId")}
+                  </span>
                   <span className="text-neutral-900 font-medium">
-                    #{currentTicket.bookingNumber || currentTicket.bookingId || "N/A"}
+                    #
+                    {currentTicket.bookingNumber ||
+                      currentTicket.bookingId ||
+                      "N/A"}
                   </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-neutral-600">Purchase Date</span>
                   <span className="text-neutral-900 font-medium">
-                    {currentTicket.createdAt ? formatDate(currentTicket.createdAt) : "N/A"}
+                    {currentTicket.createdAt
+                      ? formatDate(currentTicket.createdAt)
+                      : "N/A"}
                   </span>
                 </div>
                 <Separator />
@@ -315,8 +326,12 @@ export function TicketDetail({
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-neutral-600">Ticket Status</span>
-                  <Badge variant={currentTicket.isUsed ? "default" : "secondary"}>
-                    {currentTicket.isUsed ? "Used" : currentTicket.status || "Valid"}
+                  <Badge
+                    variant={currentTicket.isUsed ? "default" : "secondary"}
+                  >
+                    {currentTicket.isUsed
+                      ? "Used"
+                      : currentTicket.status || "Valid"}
                   </Badge>
                 </div>
               </div>
@@ -331,9 +346,7 @@ export function TicketDetail({
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-600">Check-in Status</span>
                   <Badge
-                    variant={
-                      currentTicket.isUsed ? "default" : "secondary"
-                    }
+                    variant={currentTicket.isUsed ? "default" : "secondary"}
                   >
                     {currentTicket.isUsed && currentTicket.usedAt
                       ? `Checked in at ${formatDate(currentTicket.usedAt)}`
@@ -374,7 +387,9 @@ export function TicketDetail({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Button
             className="w-full bg-teal-500 hover:bg-teal-600"
-            onClick={() => onNavigate("transfer-ticket", currentTicket?.ticketId?.toString())}
+            onClick={() =>
+              onNavigate("transfer-ticket", currentTicket?.ticketId?.toString())
+            }
           >
             <Send size={16} className="mr-2" />
             Transfer
@@ -397,14 +412,16 @@ export function TicketDetail({
         {currentTicket && (
           <TicketRefundForm
             ticketId={currentTicket.ticketId.toString()}
-            orderId={currentTicket.bookingNumber || currentTicket.bookingId.toString()}
+            orderId={
+              currentTicket.bookingNumber || currentTicket.bookingId.toString()
+            }
             bookingId={currentTicket.bookingId}
-            ticketPrice={currentTicket.price} 
-            eventDate={currentTicket.eventStartDate || currentEvent?.date || ''}
-            eventTitle={currentTicket.eventTitle || currentEvent?.title || ''}
+            ticketPrice={currentTicket.price}
+            eventDate={currentTicket.eventStartDate || currentEvent?.date || ""}
+            eventTitle={currentTicket.eventTitle || currentEvent?.title || ""}
             onRefundSubmitted={() => {
               // Refresh data hoặc navigate
-              onNavigate('my-tickets');
+              onNavigate("my-tickets");
             }}
           />
         )}

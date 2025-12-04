@@ -33,6 +33,7 @@ import {
 } from "../services/seatMapService";
 import { eventService } from "../services/eventService";
 import type { Event } from "../types";
+import { formatVND } from "../utils/currency";
 
 interface SeatSelectionRealProps {
   eventId?: string;
@@ -52,7 +53,7 @@ export function SeatSelectionReal({
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [error, setError] = useState<string>("");
-  const [timeRemaining, setTimeRemaining] = useState(900); // 15 minutes (matches backend)
+  const [timeRemaining, setTimeRemaining] = useState(600); // 10 minutes (matches backend)
   const [seatConnection, setSeatConnection] =
     useState<signalR.HubConnection | null>(null);
   const [reservationExpiresAt, setReservationExpiresAt] = useState<Date | null>(
@@ -63,11 +64,16 @@ export function SeatSelectionReal({
     null
   );
   const [isNavigating, setIsNavigating] = useState(false);
+  const [hasExtendedReservation, setHasExtendedReservation] = useState(false);
+  const [isExtending, setIsExtending] = useState(false);
 
   // Refs to track latest values for cleanup
   const selectedSeatsRef = useRef<number[]>([]);
   const seatMapRef = useRef<SeatMapDto | null>(null);
   const isNavigatingRef = useRef(false);
+
+  // BroadcastChannel for multiple tabs warning
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
 
   // Update refs when state changes
   useEffect(() => {
@@ -79,8 +85,17 @@ export function SeatSelectionReal({
   useEffect(() => {
     // Get current user ID from localStorage
     const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (user.id) {
-      setCurrentUserId(user.id);
+
+    // Handle both 'id' and 'userId' properties (support different user object structures)
+    const userId =
+      user.id ||
+      (user.userId &&
+        (typeof user.userId === "string"
+          ? parseInt(user.userId)
+          : user.userId));
+
+    if (userId) {
+      setCurrentUserId(userId);
     }
 
     // Clear any old session data on mount (fresh start)
@@ -88,7 +103,48 @@ export function SeatSelectionReal({
     sessionStorage.removeItem("reservationExpiresAt");
 
     if (eventId) {
-      loadSeatData(eventId);
+      // Auto-release seats BEFORE loading data to ensure clean state
+      const initializePage = async () => {
+        try {
+          const token =
+            localStorage.getItem("token") || localStorage.getItem("authToken");
+
+          if (!token || !userId) {
+            loadSeatData(eventId);
+            return;
+          }
+
+          // First, get the seat map and seats
+          const seatMapData = await seatMapService.getSeatMapByEvent(eventId);
+          const seatsData = await seatMapService.getEventSeats(eventId);
+
+          // Find seats reserved by current user
+          const userReservedSeats = seatsData.filter((seat) => {
+            return (
+              seat.status === "Reserved" && seat.reservedByUserId === userId
+            );
+          });
+
+          if (userReservedSeats.length > 0) {
+            const seatIds = userReservedSeats.map((s) => s.id);
+
+            try {
+              await seatMapService.releaseSeats(seatMapData.id, seatIds);
+              // Wait a bit for SignalR to update before loading fresh data
+              await new Promise((resolve) => setTimeout(resolve, 300));
+            } catch (error) {
+              console.error("Failed to release seats:", error);
+            }
+          }
+        } catch (error) {
+          console.error("Error checking for reserved seats:", error);
+        } finally {
+          // Load seat data after release attempt
+          loadSeatData(eventId);
+        }
+      };
+
+      initializePage();
     }
   }, [eventId]);
 
@@ -152,6 +208,20 @@ export function SeatSelectionReal({
       }
     );
 
+    // Handle reconnection - refresh seat data
+    connection.onreconnected(() => {
+      console.log("SignalR reconnected - refreshing seat data");
+      if (eventId) {
+        loadSeatData(eventId);
+      }
+      alert("Connection restored! Seat availability has been refreshed.");
+    });
+
+    connection.onreconnecting(() => {
+      console.log("SignalR reconnecting...");
+      alert("Connection lost. Attempting to reconnect...");
+    });
+
     connection
       .start()
       .then(() => {
@@ -177,19 +247,53 @@ export function SeatSelectionReal({
                 if (connection.state === signalR.HubConnectionState.Connected) {
                   await connection.stop();
                 }
-              } catch (err) {
+              } catch {
                 // Ignore errors during cleanup
               }
             }, 100);
           }
-        } catch (err) {
+        } catch {
           // Ignore errors during cleanup - connection may already be closed
-          console.debug("SignalR cleanup error (safe to ignore):", err);
+          console.debug("SignalR cleanup - connection may already be closed");
         }
       };
       cleanup();
     };
   }, [eventId, currentUserId]);
+
+  // Setup BroadcastChannel for multiple tabs warning
+  useEffect(() => {
+    if (!eventId || typeof BroadcastChannel === "undefined") return;
+
+    const channel = new BroadcastChannel("tickify-seat-booking");
+    broadcastChannelRef.current = channel;
+
+    // Listen for messages from other tabs
+    channel.onmessage = (event) => {
+      if (
+        event.data.type === "SEAT_SELECTED" &&
+        event.data.eventId === eventId
+      ) {
+        alert(
+          "⚠️ Warning: You have this event open in another tab! Please use only one tab to avoid conflicts."
+        );
+      }
+    };
+
+    // Notify other tabs when selecting seats
+    if (selectedSeats.length > 0) {
+      channel.postMessage({
+        type: "SEAT_SELECTED",
+        eventId,
+        seatIds: selectedSeats,
+        timestamp: Date.now(),
+      });
+    }
+
+    return () => {
+      channel.close();
+    };
+  }, [eventId, selectedSeats]);
 
   // Countdown timer when seats are selected
   useEffect(() => {
@@ -213,7 +317,7 @@ export function SeatSelectionReal({
           alert(
             "Time expired! Your seats have been released. Please select again."
           );
-          return 900; // Reset to 15 minutes
+          return 600; // Reset to 10 minutes
         }
         return prev - 1;
       });
@@ -248,6 +352,12 @@ export function SeatSelectionReal({
         console.log("[SeatSelection] Releasing seats on page leave:", seats);
         hasReleasedOnUnmount = true;
         const token = localStorage.getItem("token");
+
+        // Only release if user is authenticated
+        if (!token) {
+          console.warn("[SeatSelection] No token found, skipping seat release");
+          return;
+        }
 
         // Use fetch with keepalive for reliable request during page unload
         fetch(`http://localhost:5179/api/seatmaps/${map.id}/release`, {
@@ -363,6 +473,18 @@ export function SeatSelectionReal({
         // Load seats
         const seatsData = await seatMapService.getEventSeats(id);
         setSeats(seatsData);
+
+        // Check if event is sold out
+        const availableSeats = seatsData.filter(
+          (s) => s.status === "Available"
+        );
+        if (availableSeats.length === 0) {
+          setError("This event is sold out!");
+          alert("This event is sold out! Redirecting back to event details...");
+          setTimeout(() => {
+            onNavigate("event-detail", id);
+          }, 2000);
+        }
       } catch (err) {
         console.error("Error loading seat map:", err);
         setError("This event does not have a seat map configured yet.");
@@ -372,6 +494,59 @@ export function SeatSelectionReal({
       setError("Failed to load event information");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExtendReservation = async () => {
+    if (!seatMap || selectedSeats.length === 0 || hasExtendedReservation) {
+      return;
+    }
+
+    setIsExtending(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:5179/api/seatmaps/${seatMap.id}/extend`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(selectedSeats),
+        }
+      );
+
+      if (response.ok) {
+        // Add 5 minutes to current time remaining
+        setTimeRemaining((prev) => prev + 300);
+        setHasExtendedReservation(true);
+
+        // Update expiration time in session
+        if (reservationExpiresAt) {
+          const newExpiresAt = new Date(
+            reservationExpiresAt.getTime() + 5 * 60 * 1000
+          );
+          setReservationExpiresAt(newExpiresAt);
+          sessionStorage.setItem(
+            "reservationExpiresAt",
+            newExpiresAt.toISOString()
+          );
+        }
+
+        alert("✅ Reservation extended by 5 minutes!");
+      } else {
+        const data = await response.json();
+        alert(
+          data.message ||
+            "Failed to extend reservation. You may have already extended once."
+        );
+      }
+    } catch (error) {
+      console.error("Failed to extend reservation:", error);
+      alert("Failed to extend reservation. Please try again.");
+    } finally {
+      setIsExtending(false);
     }
   };
 
@@ -386,10 +561,14 @@ export function SeatSelectionReal({
       const newSelectedSeats = selectedSeats.filter((id) => id !== seatId);
       setSelectedSeats(newSelectedSeats);
 
-      // Release this specific seat
+      // Release this specific seat immediately
       if (seatMap) {
         try {
           await seatMapService.releaseSeats(seatMap.id, [seatId]);
+
+          console.log(
+            `✅ Seat ${seat.row}${seat.seatNumber} released and available for others`
+          );
 
           // Update session storage
           if (newSelectedSeats.length > 0) {
@@ -397,15 +576,21 @@ export function SeatSelectionReal({
               "selectedSeats",
               JSON.stringify(newSelectedSeats)
             );
+            // Reset extension flag when deselecting seats
+            setHasExtendedReservation(false);
           } else {
+            // All seats deselected - clear everything
             sessionStorage.removeItem("selectedSeats");
             sessionStorage.removeItem("reservationExpiresAt");
             setReservationExpiresAt(null);
+            setHasExtendedReservation(false);
+            setTimeRemaining(600); // Reset timer
           }
         } catch (error) {
           console.error("Failed to release seat:", error);
-          // Revert selection
+          // Revert selection on error
           setSelectedSeats(selectedSeats);
+          alert("Failed to release seat. Please try again.");
         }
       }
       return;
@@ -416,7 +601,10 @@ export function SeatSelectionReal({
       seat.status === "Available" ||
       (seat.status === "Reserved" && seat.reservedByUserId === currentUserId);
 
-    if (!canSelect) return;
+    if (!canSelect) {
+      alert(`This seat is ${seat.status.toLowerCase()} by another user.`);
+      return;
+    }
 
     // Add seat to selection
     const newSelectedSeats = [...selectedSeats, seatId];
@@ -427,10 +615,11 @@ export function SeatSelectionReal({
       try {
         await seatMapService.reserveSeats(seatMap.id, newSelectedSeats);
 
-        // Set new expiration time (15 minutes from now)
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+        // Set new expiration time (10 minutes from now)
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
         setReservationExpiresAt(expiresAt);
-        setTimeRemaining(900); // Reset to 15 minutes
+        setTimeRemaining(600); // Reset to 10 minutes
+        setHasExtendedReservation(false); // Reset extension flag for new selection
 
         // Save to session storage
         sessionStorage.setItem(
@@ -438,6 +627,10 @@ export function SeatSelectionReal({
           JSON.stringify(newSelectedSeats)
         );
         sessionStorage.setItem("reservationExpiresAt", expiresAt.toISOString());
+
+        console.log(
+          `✅ Seat ${seat.row}${seat.seatNumber} reserved successfully`
+        );
       } catch (error) {
         console.error("Failed to reserve seat:", error);
         // Revert selection if reservation fails
@@ -526,15 +719,20 @@ export function SeatSelectionReal({
             key={seat.id}
             onClick={() => toggleSeat(seat.id)}
             disabled={
-              seat.status === "Sold" ||
-              (seat.status === "Reserved" &&
-                seat.reservedByUserId !== currentUserId)
+              // Allow clicking if already selected by current user (for deselection)
+              selectedSeats.includes(seat.id)
+                ? false
+                : // Otherwise, disable if sold or reserved by another user
+                  seat.status === "Sold" ||
+                  (seat.status === "Reserved" &&
+                    seat.reservedByUserId !== currentUserId)
             }
             className={`w-10 h-10 rounded text-xs font-medium transition-all border relative ${
-              (seat.status === "Sold" ||
-                (seat.status === "Reserved" &&
-                  seat.reservedByUserId !== currentUserId)) &&
-              !selectedSeats.includes(seat.id)
+              selectedSeats.includes(seat.id)
+                ? "hover:scale-110 cursor-pointer" // Always clickable if selected
+                : seat.status === "Sold" ||
+                  (seat.status === "Reserved" &&
+                    seat.reservedByUserId !== currentUserId)
                 ? "cursor-not-allowed opacity-50"
                 : "hover:scale-110 cursor-pointer"
             }`}
@@ -544,9 +742,13 @@ export function SeatSelectionReal({
               borderColor:
                 getSeatStatus(seat) === "selected" ? "#00C16A" : "#D1D5DB",
             }}
-            title={`${seat.row}${seat.seatNumber} - $${seat.price}${
+            title={`${seat.row}${seat.seatNumber} - ${formatVND(seat.price)}${
               seat.zoneName ? ` (${seat.zoneName})` : ""
-            }${seat.isWheelchair ? " - Wheelchair Accessible" : ""}`}
+            }${seat.isWheelchair ? " - Wheelchair Accessible" : ""}${
+              selectedSeats.includes(seat.id)
+                ? " - Click again to deselect"
+                : ""
+            }`}
           >
             {seat.isWheelchair ? (
               <span className="text-sm">♿</span>
@@ -695,7 +897,7 @@ export function SeatSelectionReal({
                       <div className="flex justify-between">
                         <span className="text-neutral-500">Price:</span>
                         <span className="font-medium text-neutral-900">
-                          ${zone.zonePrice}
+                          {formatVND(zone.zonePrice)}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -801,7 +1003,9 @@ export function SeatSelectionReal({
                               </span>
                             )}
                           </span>
-                          <span className="font-medium">${seat.price}</span>
+                          <span className="font-medium">
+                            {formatVND(seat.price)}
+                          </span>
                         </div>
                       );
                     })}
@@ -814,22 +1018,37 @@ export function SeatSelectionReal({
                 <div className="flex justify-between text-xs mb-2">
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium">
-                    ${getTotalPrice().toFixed(2)}
+                    {formatVND(getTotalPrice())}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs mb-2">
                   <span className="text-gray-600">Service Fee (5%)</span>
                   <span className="font-medium">
-                    ${(getTotalPrice() * 0.05).toFixed(2)}
+                    {formatVND(getTotalPrice() * 0.05)}
                   </span>
                 </div>
                 <div className="flex justify-between text-base font-bold pt-2 border-t">
                   <span>Total</span>
                   <span className="text-[#00C16A]">
-                    ${(getTotalPrice() * 1.05).toFixed(2)}
+                    {formatVND(getTotalPrice() * 1.05)}
                   </span>
                 </div>
               </div>
+
+              {/* Extend Reservation Button */}
+              {selectedSeats.length > 0 &&
+                timeRemaining < 300 &&
+                !hasExtendedReservation && (
+                  <Button
+                    onClick={handleExtendReservation}
+                    disabled={isExtending}
+                    variant="outline"
+                    className="w-full mb-2 border-orange-500 text-orange-600 hover:bg-orange-50"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    {isExtending ? "Extending..." : "Extend Time (+5 min)"}
+                  </Button>
+                )}
 
               {/* Checkout Button */}
               <Button
@@ -843,6 +1062,7 @@ export function SeatSelectionReal({
 
               <p className="text-xs text-gray-500 text-center">
                 Seats will be held for {formatTime(timeRemaining)}
+                {hasExtendedReservation && " (Extended)"}
               </p>
             </CardContent>
           </Card>
