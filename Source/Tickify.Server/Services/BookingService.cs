@@ -376,22 +376,22 @@ public class BookingService : IBookingService
 
         // Validate promo code (dates, max uses, minimum purchase, event-specific)
         if (!promo.IsActive)
-            throw new BadRequestException("Promo code is not active");
+            throw new BadRequestException($"Promo code '{promoCode}' is not active");
 
         if (promo.ValidFrom.HasValue && DateTime.UtcNow < promo.ValidFrom.Value)
-            throw new BadRequestException("Promo code is not yet valid");
+            throw new BadRequestException($"Promo code '{promoCode}' is not yet valid. Valid from: {promo.ValidFrom.Value:dd/MM/yyyy HH:mm}");
 
         if (promo.ValidTo.HasValue && DateTime.UtcNow > promo.ValidTo.Value)
-            throw new BadRequestException("Promo code has expired");
+            throw new BadRequestException($"Promo code '{promoCode}' has expired. Expired on: {promo.ValidTo.Value:dd/MM/yyyy HH:mm}");
 
         if (promo.MaxUses.HasValue && promo.CurrentUses >= promo.MaxUses.Value)
-            throw new BadRequestException("Promo code has reached maximum uses");
+            throw new BadRequestException($"Promo code '{promoCode}' has reached its maximum usage limit ({promo.MaxUses.Value} uses). This promo code is no longer available.");
 
         if (promo.MinimumPurchase.HasValue && booking.TotalAmount < promo.MinimumPurchase.Value)
-            throw new BadRequestException($"Minimum purchase of {promo.MinimumPurchase:C} required to use this promo code");
+            throw new BadRequestException($"Minimum purchase of {promo.MinimumPurchase.Value:N0}₫ required to use promo code '{promoCode}'. Your order total is {booking.TotalAmount:N0}₫");
 
         if (promo.EventId.HasValue && promo.EventId.Value != booking.EventId)
-            throw new BadRequestException("Promo code is not valid for this event");
+            throw new BadRequestException($"Promo code '{promoCode}' is not valid for this event");
 
         // Calculate discount
         decimal discountAmount = 0;

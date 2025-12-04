@@ -17,7 +17,9 @@ import type { CartItem, Order } from "../types";
 import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
 import { createPaymentIntent } from "../services/paymentService";
+import { promoCodeService } from "../services/promoCodeService";
 import { toast } from "sonner";
+import { Tag, X, Loader2 } from "lucide-react";
 import {
   validateEmail,
   validatePhone,
@@ -70,6 +72,11 @@ export function Checkout({
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [seatDetails, setSeatDetails] = useState<SeatDto[]>([]);
   const [seatBookingMode, setSeatBookingMode] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [appliedPromoCode, setAppliedPromoCode] = useState<any>(null);
+  const [promoCodeDiscount, setPromoCodeDiscount] = useState(0);
+  const [isValidatingPromoCode, setIsValidatingPromoCode] = useState(false);
+  const [promoCodeError, setPromoCodeError] = useState("");
   const steps = [
     { number: 1, label: t("booking.checkout.step1") },
     { number: 2, label: t("booking.checkout.step2") },
@@ -165,7 +172,7 @@ export function Checkout({
       ? seatDetails.reduce((sum, seat) => sum + seat.price, 0)
       : items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const serviceFee = subtotal * 0.05;
-  const total = subtotal + serviceFee;
+  const total = subtotal + serviceFee - promoCodeDiscount;
 
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
@@ -361,6 +368,11 @@ export function Checkout({
         bookingData.seatIds = selectedSeats; // Already number[]
       }
 
+      // Add promo code if applied
+      if (appliedPromoCode && promoCode.trim()) {
+        bookingData.promoCode = promoCode.trim().toUpperCase();
+      }
+
       const response = await bookingService.createBooking(bookingData);
 
       // Now create payment intent for the booking
@@ -451,6 +463,79 @@ export function Checkout({
     if (paymentMethod === "credit-card")
       return `Card ending in ${paymentDetails?.number?.slice(-4) || "****"}`;
     return t("booking.checkout.notSelected");
+  };
+
+  const handleApplyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoCodeError("Vui lòng nhập mã giảm giá");
+      return;
+    }
+
+    setIsValidatingPromoCode(true);
+    setPromoCodeError("");
+
+    try {
+      // Get eventId
+      let eventId: number;
+      if (seatBookingMode && seatDetails.length > 0) {
+        const eventIdStr = sessionStorage.getItem("eventId");
+        eventId = eventIdStr ? parseInt(eventIdStr, 10) : NaN;
+      } else {
+        const firstItem = items[0];
+        eventId = extractTrailingNumber(firstItem.eventId);
+      }
+
+      if (isNaN(eventId)) {
+        setPromoCodeError("Không thể xác định sự kiện");
+        setIsValidatingPromoCode(false);
+        return;
+      }
+
+      // Validate promo code
+      const validatedPromo = await promoCodeService.validatePromoCode({
+        code: promoCode.trim().toUpperCase(),
+        eventId: eventId,
+        orderTotal: subtotal,
+      });
+
+      // Calculate discount
+      const discount = await promoCodeService.calculateDiscount({
+        code: promoCode.trim().toUpperCase(),
+        eventId: eventId,
+        orderTotal: subtotal,
+      });
+
+      console.log('[Checkout] Promo code applied:', {
+        code: promoCode.trim().toUpperCase(),
+        discount: discount,
+        subtotal: subtotal,
+        serviceFee: subtotal * 0.05,
+        total: subtotal + (subtotal * 0.05) - discount
+      });
+
+      setAppliedPromoCode(validatedPromo);
+      setPromoCodeDiscount(discount);
+      setPromoCodeError("");
+      toast.success(`Áp dụng mã giảm giá "${promoCode.toUpperCase()}" thành công!`);
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Mã giảm giá không hợp lệ hoặc đã hết hạn";
+      setPromoCodeError(errorMsg);
+      setAppliedPromoCode(null);
+      setPromoCodeDiscount(0);
+      toast.error(errorMsg);
+    } finally {
+      setIsValidatingPromoCode(false);
+    }
+  };
+
+  const handleRemovePromoCode = () => {
+    setPromoCode("");
+    setAppliedPromoCode(null);
+    setPromoCodeDiscount(0);
+    setPromoCodeError("");
   };
 
   return (
@@ -773,6 +858,80 @@ export function Checkout({
                         </div>
                       </div>
 
+                      {/* Promo Code */}
+                      <div className="bg-neutral-50 rounded-xl p-5">
+                        <h4 className="mb-4">Mã giảm giá</h4>
+                        {!appliedPromoCode ? (
+                          <div className="space-y-3">
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Nhập mã giảm giá"
+                                value={promoCode}
+                                onChange={(e) => {
+                                  setPromoCode(e.target.value.toUpperCase());
+                                  setPromoCodeError("");
+                                }}
+                                onKeyPress={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleApplyPromoCode();
+                                  }
+                                }}
+                                className="flex-1"
+                              />
+                              <Button
+                                onClick={handleApplyPromoCode}
+                                disabled={isValidatingPromoCode || !promoCode.trim()}
+                                className="bg-teal-500 hover:bg-teal-600"
+                              >
+                                {isValidatingPromoCode ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Đang kiểm tra...
+                                  </>
+                                ) : (
+                                  "Áp dụng"
+                                )}
+                              </Button>
+                            </div>
+                            {promoCodeError && (
+                              <div className="flex items-center gap-2 text-sm text-red-600">
+                                <AlertCircle size={14} />
+                                <span>{promoCodeError}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                              <div className="flex items-center gap-2">
+                                <Tag className="text-green-600" size={18} />
+                                <div>
+                                  <div className="font-semibold text-green-900">
+                                    {appliedPromoCode.code}
+                                  </div>
+                                  {appliedPromoCode.description && (
+                                    <div className="text-xs text-green-700">
+                                      {appliedPromoCode.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleRemovePromoCode}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <X size={16} />
+                              </Button>
+                            </div>
+                            <div className="text-sm text-green-600">
+                              Bạn đã tiết kiệm được {formatPrice(promoCodeDiscount)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Payment Method */}
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <div className="flex items-start justify-between mb-3">
@@ -844,7 +1003,11 @@ export function Checkout({
           {/* Summary Sidebar */}
           <div className="lg:col-span-1">
             <div className="sticky top-20">
-              <FeeBreakdown subtotal={subtotal} serviceFee={serviceFee} />
+              <FeeBreakdown 
+                subtotal={subtotal} 
+                serviceFee={serviceFee} 
+                discount={promoCodeDiscount}
+              />
 
               {/* Order Items Preview */}
               <div className="mt-4 bg-white rounded-xl p-5 shadow-sm">

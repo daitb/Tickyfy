@@ -51,11 +51,17 @@ namespace Tickify.Controllers
             try
             {
                 var seats = await _seatMapService.GetEventSeatsAsync(eventId);
+                
+                // Log for debugging
+                Console.WriteLine($"[SeatMapController] GetEventSeats: Event {eventId}, Found {seats.Count} seats");
+                
                 return Ok(seats);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                Console.WriteLine($"[SeatMapController] GetEventSeats error for event {eventId}: {ex.Message}");
+                Console.WriteLine($"[SeatMapController] Stack trace: {ex.StackTrace}");
+                return BadRequest(new { message = $"Lỗi khi tải danh sách ghế: {ex.Message}" });
             }
         }
 
@@ -155,14 +161,23 @@ namespace Tickify.Controllers
                 if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
                     return Unauthorized(new { message = "User not authenticated" });
 
+                if (seatIds == null || !seatIds.Any())
+                    return BadRequest(new { message = "Không có ghế nào được chọn." });
+
                 var success = await _seatMapService.ReserveSeatsAsync(seatIds, userId);
                 if (!success)
-                    return BadRequest(new { message = "One or more seats are not available" });
+                {
+                    // Log for debugging
+                    Console.WriteLine($"[SeatMapController] ReserveSeats failed for user {userId}, seatMap {seatMapId}, seats: {string.Join(", ", seatIds)}");
+                    return BadRequest(new { message = "Một hoặc nhiều ghế không khả dụng. Ghế có thể đã bị chặn, đã được người khác đặt giữ, hoặc không tồn tại." });
+                }
 
                 return Ok(new { message = "Seats reserved successfully", expiresIn = 15 * 60 });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[SeatMapController] ReserveSeats exception: {ex.Message}");
+                Console.WriteLine($"[SeatMapController] Stack trace: {ex.StackTrace}");
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -188,6 +203,58 @@ namespace Tickify.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Validate seat data for an event (for debugging)
+        /// </summary>
+        [HttpGet("event/{eventId}/validate")]
+        [Authorize(Roles = "Admin,Organizer")]
+        public async Task<ActionResult> ValidateEventSeats(int eventId)
+        {
+            try
+            {
+                var seatMap = await _seatMapService.GetSeatMapByEventIdAsync(eventId);
+                var seats = await _seatMapService.GetEventSeatsAsync(eventId);
+                
+                var validation = new
+                {
+                    eventId,
+                    hasSeatMap = seatMap != null,
+                    seatMapId = seatMap?.Id,
+                    totalSeats = seats.Count,
+                    availableSeats = seats.Count(s => s.Status.ToLower() == "available"),
+                    reservedSeats = seats.Count(s => s.Status.ToLower() == "reserved"),
+                    soldSeats = seats.Count(s => s.Status.ToLower() == "sold"),
+                    blockedSeats = seats.Count(s => s.IsBlocked),
+                    seatsWithZones = seats.Count(s => s.SeatZoneId != null),
+                    seatsWithoutZones = seats.Count(s => s.SeatZoneId == null),
+                    issues = new List<string>()
+                };
+                
+                // Check for issues
+                if (seatMap == null)
+                {
+                    validation.issues.Add("No seat map found for this event");
+                }
+                
+                if (seats.Count == 0)
+                {
+                    validation.issues.Add("No seats found for this event");
+                }
+                
+                var seatsWithoutTicketType = seats.Where(s => s.TicketTypeId <= 0).ToList();
+                if (seatsWithoutTicketType.Any())
+                {
+                    validation.issues.Add($"{seatsWithoutTicketType.Count} seats missing ticket type");
+                }
+                
+                return Ok(validation);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = $"Lỗi khi validate: {ex.Message}" });
             }
         }
     }

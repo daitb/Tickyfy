@@ -139,20 +139,70 @@ public class MappingProfile : Profile
 
         CreateMap<Seat, DTOs.SeatMap.SeatResponseDto>()
             .ForMember(dest => dest.FullSeatCode, opt => opt.MapFrom(src => $"{src.Row}{src.SeatNumber}"))
-            .ForMember(dest => dest.Status, opt => opt.MapFrom(src =>
-                src.IsBlocked ? "Blocked" :
-                (src.ReservedByUserId.HasValue && src.ReservedUntil.HasValue && src.ReservedUntil.Value > DateTime.UtcNow ? "Reserved" :
-                (src.Tickets != null && src.Tickets.Any(t => t.Status == TicketStatus.Valid || t.Status == TicketStatus.Used) ? "Sold" : "Available"))))
-            .ForMember(dest => dest.IsReserved, opt => opt.MapFrom(src => src.ReservedByUserId.HasValue && src.ReservedUntil.HasValue && src.ReservedUntil.Value > DateTime.UtcNow))
-            .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.TicketType != null ? src.TicketType.Price : 0))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => "Available")) // Default, will be overridden in AfterMap
+            .ForMember(dest => dest.IsReserved, opt => opt.MapFrom(src => 
+                src.ReservedByUserId.HasValue && 
+                src.ReservedUntil.HasValue && 
+                src.ReservedUntil.Value > DateTime.UtcNow))
+            .ForMember(dest => dest.Price, opt => opt.MapFrom(src => 
+                src.SeatZone != null && src.SeatZone.ZonePrice > 0 
+                    ? src.SeatZone.ZonePrice 
+                    : (src.TicketType != null ? src.TicketType.Price : 0)))
             .ForMember(dest => dest.ZoneName, opt => opt.MapFrom(src => src.SeatZone != null ? src.SeatZone.Name : null))
             .ForMember(dest => dest.ZoneColor, opt => opt.MapFrom(src => src.SeatZone != null ? src.SeatZone.Color : null))
-            .ForMember(dest => dest.IsWheelchair, opt => opt.MapFrom(src => src.IsWheelchair));
+            .ForMember(dest => dest.IsWheelchair, opt => opt.MapFrom(src => src.IsWheelchair))
+            .AfterMap((src, dest) =>
+            {
+                // Priority: Blocked > Sold > Reserved > Available
+                if (src.IsBlocked)
+                {
+                    dest.Status = "Blocked";
+                    return;
+                }
+                
+                // Check if seat has valid tickets (sold)
+                if (src.Tickets != null && src.Tickets.Any(t => t.Status == TicketStatus.Valid || t.Status == TicketStatus.Used))
+                {
+                    dest.Status = "Sold";
+                    return;
+                }
+                
+                // Check if seat is reserved (and reservation hasn't expired)
+                if (src.ReservedByUserId.HasValue && src.ReservedUntil.HasValue && src.ReservedUntil.Value > DateTime.UtcNow)
+                {
+                    dest.Status = "Reserved";
+                    return;
+                }
+                
+                // Check seat status enum
+                if (src.Status == SeatStatus.Sold)
+                {
+                    dest.Status = "Sold";
+                    return;
+                }
+                if (src.Status == SeatStatus.Reserved)
+                {
+                    dest.Status = "Reserved";
+                    return;
+                }
+                if (src.Status == SeatStatus.Blocked)
+                {
+                    dest.Status = "Blocked";
+                    return;
+                }
+                
+                // Default to Available (already set in MapFrom)
+                dest.Status = "Available";
+            });
         CreateMap<CreateSeatDto, Seat>();
 
         // PromoCode mappings
         CreateMap<PromoCode, PromoCodeDto>()
             .ForMember(dest => dest.PromoCodeId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.CurrentUses, opt => opt.MapFrom(src => src.CurrentUses))
+            .ForMember(dest => dest.ValidFrom, opt => opt.MapFrom(src => src.ValidFrom))
+            .ForMember(dest => dest.ValidTo, opt => opt.MapFrom(src => src.ValidTo))
+            // Legacy fields for backward compatibility
             .ForMember(dest => dest.DiscountType, opt => opt.MapFrom(src =>
                 src.DiscountPercent.HasValue ? "Percentage" :
                 src.DiscountAmount.HasValue ? "Fixed" : "Free"))

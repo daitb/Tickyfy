@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import * as signalR from "@microsoft/signalr";
+import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -217,13 +218,26 @@ export function SeatSelectionReal({
           // Reserve all currently selected seats
           await seatMapService.reserveSeats(seatMap.id, newSelectedSeats);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to update seat reservation:", error);
         // Revert selection if reservation fails
         setSelectedSeats(selectedSeats);
-        alert(
-          "Unable to update seats. They may have been taken by another user."
-        );
+        
+        // Extract error message from backend response
+        let errorMessage = "Một hoặc nhiều ghế không khả dụng. Ghế có thể đã bị chặn, đã được người khác đặt giữ, hoặc không tồn tại.";
+        
+        if (error.response?.data) {
+          const responseData = error.response.data;
+          if (typeof responseData === 'string') {
+            errorMessage = responseData;
+          } else if (responseData.message) {
+            errorMessage = responseData.message;
+          }
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        toast.error(errorMessage);
       }
     }
   };

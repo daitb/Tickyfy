@@ -14,6 +14,6 @@ public interface IPromoCodeService
     Task<bool> ApplyPromoCodeAsync(int promoCodeId);
     Task<int> GetUsageCountAsync(int promoCodeId);
     Task<PromoCodeDto> CreateAsync(CreatePromoCodeDto createDto, int createdByUserId);
-    Task<PromoCodeDto> UpdateAsync(int id, UpdatePromoCodeDto updateDto);
+    Task<PromoCodeDto> UpdateAsync(int id, UpdatePromoCodeDto updateDto, int currentUserId);
     Task<bool> DeleteAsync(int id);
 }
