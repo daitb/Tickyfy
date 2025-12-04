@@ -189,6 +189,49 @@ public class AdminService : IAdminService
         if (eventEntity.Status != EventStatus.Pending)
             throw new BadRequestException($"Event is already {eventEntity.Status}");
 
+        // CHECK IF SEAT MAP EXISTS (Required for event approval)
+        var hasSeatMap = await _context.SeatMaps
+            .AnyAsync(sm => sm.EventId == eventId && sm.IsActive);
+        
+        if (!hasSeatMap)
+        {
+            throw new BadRequestException(
+                "Cannot approve event: Seat map is required. " +
+                "Please ensure the organizer has created a seat map for this event before approval."
+            );
+        }
+
+        // Verify seat map has seats configured
+        var seatMap = await _context.SeatMaps
+            .Include(sm => sm.Zones)
+            .FirstOrDefaultAsync(sm => sm.EventId == eventId && sm.IsActive);
+        
+        if (seatMap != null)
+        {
+            var hasSeatZones = seatMap.Zones != null && seatMap.Zones.Any();
+            if (!hasSeatZones)
+            {
+                throw new BadRequestException(
+                    "Cannot approve event: Seat map has no zones configured. " +
+                    "Please ensure the seat map has at least one zone with seats."
+                );
+            }
+
+            // Check if there are actual seats
+            var zoneIds = seatMap.Zones?.Select(z => z.Id).ToList() ?? new List<int>();
+            var seatCount = await _context.Seats
+                .Where(s => s.SeatZoneId.HasValue && zoneIds.Contains(s.SeatZoneId.Value))
+                .CountAsync();
+            
+            if (seatCount == 0)
+            {
+                throw new BadRequestException(
+                    "Cannot approve event: Seat map has no seats configured. " +
+                    "Please ensure the organizer has added seats to the seat map."
+                );
+            }
+        }
+
         // Update event status to Published
         eventEntity.Status = EventStatus.Published;
         eventEntity.ApprovedByStaffId = adminId;
