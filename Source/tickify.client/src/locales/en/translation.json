@@ -21,7 +21,10 @@
     "qrScanner": "QR Scanner",
     "scanHistory": "Scan History",
     "profileSettings": "Profile & Settings",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "chat": "Chat",
+    "account": "Account",
+    "pendingApproval": "Pending Approval"
   },
   "home": {
     "title": "Discover Amazing Events",
@@ -158,6 +161,16 @@
     "selectSeats": "Select Seats",
     "eventTitle": "Event Title",
     "getTickets": "Get Tickets",
+    "generalAdmission": "General Admission",
+    "bookNow": "Book Now",
+    "soldOut": "Sold Out",
+    "unknownEvent": "Unknown Event",
+    "publishEvent": "Publish Event",
+    "publishing": "Publishing...",
+    "freeTicket": "Free Ticket",
+    "left": "left",
+    "eventCheckIn": "Event Check-in",
+    "notYet": "Not yet",
     "bookNow": "Book Now",
     "ticketsFrom": "Tickets from",
     "share": "Share",
@@ -825,6 +838,21 @@
     "FAQ": "FAQ",
     "support": "Support"
   },
+  "footer": {
+    "description": "Your trusted platform for discovering and booking events across Vietnam.",
+    "company": "Company",
+    "aboutUs": "About Us",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "refundPolicy": "Refund Policy",
+    "support": "Support",
+    "faq": "FAQ",
+    "contactUs": "Contact Us",
+    "forOrganizers": "For Organizers",
+    "helpCenter": "Help Center",
+    "contact": "Contact",
+    "copyright": "© 2025 Tickify. All rights reserved."
+  },
   "contact": {
     "title": "Contact Us",
     "subtitle": "Get in touch with our team",
@@ -1160,7 +1188,13 @@
       "transferTicket": "Transfer Ticket",
       "customerSupport": "Need help? Contact Customer Support",
       "contactSupport": "Contact Support",
-      "viewDetail": "View Order Detail"
+      "viewDetail": "View Order Detail",
+      "timeline": {
+        "orderPlaced": "Order Placed",
+        "paymentConfirmed": "Payment Confirmed",
+        "ticketsIssued": "Tickets Issued",
+        "eventCheckIn": "Event Check-in"
+      }
     },
     "refundHistory": {
       "title": "Refund History",
@@ -1612,7 +1646,30 @@
         "price": "Price",
         "save": "Save Seat Map",
         "preview": "Preview",
-        "edit": "Edit"
+        "edit": "Edit",
+        "zone": {
+          "editZone": "Edit Zone",
+          "createNewZone": "Create New Zone",
+          "zoneName": "Zone Name",
+          "zoneColor": "Zone Color",
+          "pricePerSeat": "Price per Seat ($)",
+          "zoneDescription": "Define the zone name, color, and pricing",
+          "zoneNamePlaceholder": "e.g., VIP Section",
+          "cancel": "Cancel",
+          "updateZone": "Update Zone",
+          "createZone": "Create Zone"
+        },
+        "templates": {
+          "theaterStyle": "Theater Style",
+          "stadium": "Stadium",
+          "conference": "Conference",
+          "concertHall": "Concert Hall",
+          "theaterDescription": "Traditional theater seating",
+          "stadiumDescription": "Curved stadium layout",
+          "conferenceDescription": "Tables and chairs",
+          "concertDescription": "Mix of seated and standing"
+        },
+        "seatMapName": "{{eventTitle}} Seat Map"
       }
     },
     "qr": {
@@ -1853,6 +1910,531 @@
         "rejectError": "Rejection error",
         "error": "Error"
       }
+    }
+  },
+  "about": {
+    "title": "About Tickify",
+    "subtitle": "Your trusted partner for seamless event management and ticketing solutions",
+    "mission": {
+      "title": "Our Mission",
+      "description": "At Tickify, we are committed to revolutionizing the event management industry by providing innovative, user-friendly solutions that empower organizers and delight attendees. We believe that every event, big or small, deserves professional-grade tools and seamless experiences."
+    },
+    "features": {
+      "title": "Why Choose Tickify?",
+      "0": {
+        "title": "Event Management",
+        "description": "Create, manage and promote your events with ease. Our platform provides all the tools you need."
+      },
+      "1": {
+        "title": "Community Focused",
+        "description": "Connect with organizers and attendees. Build lasting relationships within our community."
+      },
+      "2": {
+        "title": "Secure Payments",
+        "description": "Process payments securely with integrated Stripe and VNPay payment gateways."
+      },
+      "3": {
+        "title": "24/7 Support",
+        "description": "Our dedicated support team is always here to help you succeed."
+      }
+    },
+    "story": {
+      "title": "Our Story",
+      "paragraph1": "Founded in 2024, Tickify was born from a simple observation: event management should be accessible, intuitive, and powerful. Our team of passionate developers and event professionals came together to create a platform that bridges the gap between technology and human connection.",
+      "paragraph2": "Today, we serve thousands of organizers and millions of attendees worldwide, helping them create memorable experiences that bring people together. From small community gatherings to large-scale conferences, Tickify is proud to be part of your journey."
+    },
+    "relatedLinks": {
+      "title": "Explore More",
+      "organizers": "For Organizers",
+      "helpCenter": "Help Center",
+      "contact": "Contact Us",
+      "faq": "FAQ"
+    }
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last Updated: January 2024",
+    "introduction": "At Tickify, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our event management and ticketing platform.",
+    "sections": {
+      "0": {
+        "title": "Information We Collect",
+        "content": "We collect information you provide directly to us, including: personal information (name, email, phone number), payment information (processed securely through third-party providers), profile information, event preferences, communication history, and device information (IP address, browser type, operating system)."
+      },
+      "1": {
+        "title": "How We Use Your Information",
+        "content": "We use the information we collect to: provide, maintain, and improve our services, process transactions and send related information, send you technical notices and support messages, respond to your comments and questions, communicate about events, promotions, and news, monitor and analyze trends and usage, detect and prevent fraud and abuse, and personalize your experience."
+      },
+      "2": {
+        "title": "Information Sharing",
+        "content": "We may share your information with: event organizers (when you purchase tickets), payment processors (Stripe and VNPay), service providers who assist our operations, law enforcement when required by law, other parties with your consent, and business transferees in case of merger or acquisition. We do not sell your personal information to third parties."
+      },
+      "3": {
+        "title": "Data Security",
+        "content": "We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the Internet is 100% secure. We use encryption for sensitive data, secure servers with firewall protection, regular security audits, and access controls for our team members."
+      },
+      "4": {
+        "title": "Cookies and Tracking",
+        "content": "We use cookies and similar tracking technologies to track activity on our service. Cookies are files with small amounts of data. You can instruct your browser to refuse all cookies or to indicate when a cookie is being sent. We use: essential cookies for authentication, preference cookies for your settings, analytics cookies to understand usage, and marketing cookies for targeted advertising."
+      },
+      "5": {
+        "title": "Your Rights and Choices",
+        "content": "You have the right to: access your personal information, correct inaccurate data, delete your account and data (subject to legal obligations), object to processing of your information, opt-out of marketing communications, and request data portability. To exercise these rights, contact us at privacy@tickify.com."
+      },
+      "6": {
+        "title": "Data Retention",
+        "content": "We retain your personal information for as long as necessary to provide our services and fulfill the purposes outlined in this policy. After you delete your account, we may retain certain information for legitimate business purposes or as required by law, typically for 7 years for financial records and 3 years for other data."
+      },
+      "7": {
+        "title": "International Data Transfers",
+        "content": "Your information may be transferred to and maintained on computers located outside of your country where data protection laws may differ. By using our service, you consent to this transfer. We ensure appropriate safeguards are in place for such transfers."
+      },
+      "8": {
+        "title": "Children's Privacy",
+        "content": "Our service is not intended for children under 16. We do not knowingly collect personal information from children under 16. If you are a parent or guardian and believe your child has provided us with personal information, please contact us so we can delete it."
+      },
+      "9": {
+        "title": "Third-Party Services",
+        "content": "Our service may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties. We encourage you to review the privacy policies of any third-party services you visit."
+      },
+      "10": {
+        "title": "California Privacy Rights",
+        "content": "If you are a California resident, you have specific rights under the California Consumer Privacy Act (CCPA), including the right to know what personal information we collect, the right to delete personal information, and the right to opt-out of the sale of personal information (we do not sell personal information)."
+      },
+      "11": {
+        "title": "GDPR Compliance",
+        "content": "For users in the European Economic Area (EEA), we process your personal data in accordance with the General Data Protection Regulation (GDPR). Our legal basis for processing includes: consent, contractual necessity, legal obligations, and legitimate interests. You have additional rights under GDPR as outlined in the \"Your Rights\" section."
+      },
+      "12": {
+        "title": "Changes to This Policy",
+        "content": "We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the \"Last Updated\" date. For material changes, we will provide prominent notice or seek your consent where required by law."
+      },
+      "13": {
+        "title": "Contact Us",
+        "content": "If you have any questions about this Privacy Policy, please contact us at: Email: privacy@tickify.com, Address: 123 Event Street, Ho Chi Minh City, Vietnam, Phone: +84 123 456 789. Our Data Protection Officer can be reached at dpo@tickify.com."
+      }
+    },
+    "relatedLinks": {
+      "title": "Related Information",
+      "terms": "Terms of Service",
+      "refund": "Refund Policy",
+      "helpCenter": "Help Center",
+      "contact": "Contact Us"
+    },
+    "footer": "By using Tickify, you acknowledge that you have read and understood this Privacy Policy and agree to its terms. Your continued use of our service after changes to this policy constitutes acceptance of those changes."
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "lastUpdated": "Last Updated: January 2024",
+    "introduction": "Welcome to Tickify. These Terms of Service (\"Terms\") govern your use of our website and services. Please read them carefully.",
+    "sections": {
+      "0": {
+        "title": "Acceptance of Terms",
+        "content": "By accessing and using Tickify, you accept and agree to be bound by the terms and provisions of this agreement. If you do not agree to these terms, please do not use our service."
+      },
+      "1": {
+        "title": "Use License",
+        "content": "Permission is granted to temporarily access Tickify for personal, non-commercial use only. This license does not include: modifying or copying materials, using materials for commercial purposes, attempting to reverse engineer any software, removing copyright or proprietary notations, or transferring materials to another person."
+      },
+      "2": {
+        "title": "User Accounts",
+        "content": "When you create an account with us, you must provide accurate, complete, and current information. Failure to do so constitutes a breach of the Terms. You are responsible for safeguarding your password and for any activities or actions under your account."
+      },
+      "3": {
+        "title": "Event Organizers",
+        "content": "Event organizers are responsible for the accuracy of event information, ticket pricing, refund policies, and event execution. Tickify acts as a platform provider and is not liable for event cancellations, changes, or disputes between organizers and attendees."
+      },
+      "4": {
+        "title": "Ticket Purchases",
+        "content": "All ticket sales are subject to availability and confirmation. Prices are subject to change without notice. Payment must be made in full at the time of booking. Refund policies are determined by individual event organizers unless otherwise specified."
+      },
+      "5": {
+        "title": "Payment Processing",
+        "content": "We use third-party payment processors (Stripe and VNPay) to process transactions. By submitting your payment information, you agree to the terms of these payment providers. Tickify does not store your complete payment card details."
+      },
+      "6": {
+        "title": "Prohibited Activities",
+        "content": "You may not: use the service for any illegal purpose, attempt to gain unauthorized access, interfere with the service's operation, transmit harmful code or viruses, collect user information without consent, or engage in ticket scalping or fraud."
+      },
+      "7": {
+        "title": "Intellectual Property",
+        "content": "The service and its original content, features, and functionality are owned by Tickify and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws."
+      },
+      "8": {
+        "title": "Limitation of Liability",
+        "content": "Tickify shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use or inability to use the service, unauthorized access to your data, or any other matter relating to the service."
+      },
+      "9": {
+        "title": "Indemnification",
+        "content": "You agree to defend, indemnify, and hold harmless Tickify and its affiliates from any claims, damages, obligations, losses, liabilities, costs, or expenses arising from your violation of these Terms or your use of the service."
+      },
+      "10": {
+        "title": "Termination",
+        "content": "We may terminate or suspend your account immediately, without prior notice or liability, for any reason, including breach of these Terms. Upon termination, your right to use the service will immediately cease."
+      },
+      "11": {
+        "title": "Governing Law",
+        "content": "These Terms shall be governed by and construed in accordance with the laws of Vietnam, without regard to its conflict of law provisions. Our failure to enforce any right or provision of these Terms will not be considered a waiver."
+      },
+      "12": {
+        "title": "Changes to Terms",
+        "content": "We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect. Continued use of the service after changes constitutes acceptance."
+      },
+      "13": {
+        "title": "Contact Information",
+        "content": "If you have any questions about these Terms, please contact us at legal@tickify.com or through our contact page."
+      }
+    },
+    "relatedLinks": {
+      "title": "Related Information",
+      "privacy": "Privacy Policy",
+      "refund": "Refund Policy",
+      "helpCenter": "Help Center",
+      "contact": "Contact Us"
+    },
+    "footer": "These terms constitute the entire agreement between you and Tickify regarding the use of our service. By using Tickify, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service."
+  },
+  "refundPolicy": {
+    "title": "Refund Policy",
+    "lastUpdated": "Last Updated: January 2024",
+    "introduction": "At Tickify, we understand that plans can change. This Refund Policy outlines the terms and conditions for ticket refunds on our platform. Please read this policy carefully before purchasing tickets.",
+    "sections": {
+      "0": {
+        "title": "General Refund Policy",
+        "content": "Tickify provides a platform for event organizers to sell tickets. Refund policies are primarily determined by individual event organizers. However, we have established baseline policies to protect both organizers and attendees."
+      },
+      "1": {
+        "title": "Refund Eligibility",
+        "content": "Tickets are generally eligible for refund if: the event is cancelled by the organizer, the event is postponed and you cannot attend the new date, you request a refund at least 7 days before the event (subject to organizer's policy), there is a technical error on our platform that prevents you from attending, or the event description was significantly misleading. Refunds are not available for: tickets purchased less than 7 days before the event (unless event is cancelled), tickets for events that have already occurred, tickets transferred to another person, or tickets purchased with promotional codes that specify \"no refunds\"."
+      },
+      "2": {
+        "title": "Requesting a Refund",
+        "content": "To request a refund: log into your Tickify account, navigate to \"My Tickets\", select the ticket you wish to refund, click \"Request Refund\", provide a reason for the refund request, and submit. You will receive an email confirmation of your request. Refund requests are typically reviewed within 2-3 business days."
+      },
+      "3": {
+        "title": "Refund Processing Time",
+        "content": "Once your refund is approved: refunds are processed within 5-10 business days, refunds are issued to the original payment method used, if the original payment method is no longer available, we will contact you for alternative arrangements, and you will receive an email notification when the refund is processed."
+      },
+      "4": {
+        "title": "Event Cancellations",
+        "content": "If an event is cancelled by the organizer: you will receive a full automatic refund, no action is required on your part, refunds are processed within 5-7 business days, and you will be notified via email about the cancellation and refund status."
+      },
+      "5": {
+        "title": "Event Postponements",
+        "content": "If an event is postponed: you can choose to keep your ticket for the new date, request a full refund if you cannot attend the new date, or transfer your ticket to someone else. Refund requests for postponed events must be submitted within 14 days of the postponement announcement."
+      },
+      "6": {
+        "title": "Partial Refunds",
+        "content": "Partial refunds may be available in certain circumstances: if only part of a multi-day event is cancelled, if you purchased a package but only want to refund specific tickets, or if there are service fees that can be refunded separately. Contact our support team for partial refund requests."
+      },
+      "7": {
+        "title": "Service Fees",
+        "content": "Service fees charged by Tickify are generally non-refundable unless: the event is cancelled, there is a technical error on our platform, or required by law. However, if you receive a full ticket refund, associated service fees may also be refunded at our discretion."
+      },
+      "8": {
+        "title": "Disputes and Appeals",
+        "content": "If your refund request is denied: you can appeal the decision by contacting our support team, provide additional information or documentation to support your case, our team will review your appeal within 5 business days, and we will work with both you and the organizer to find a fair resolution."
+      },
+      "9": {
+        "title": "Organizer Refund Policies",
+        "content": "Event organizers may set their own refund policies that are more lenient than our baseline policy. Always check the specific refund policy listed on the event page before purchasing tickets. Organizer policies cannot be less favorable than our minimum standards."
+      },
+      "10": {
+        "title": "Chargebacks",
+        "content": "We strongly discourage chargebacks as they can result in additional fees and complications. If you have an issue with a purchase, please contact our support team first. We are committed to resolving issues fairly and promptly. Chargebacks may result in account suspension."
+      },
+      "11": {
+        "title": "Contact for Refunds",
+        "content": "For refund-related questions or assistance, please contact us at: Email: refunds@tickify.com, Phone: +84 123 456 789, or through our Contact page. Our refund support team is available Monday-Friday, 9 AM - 6 PM."
+      }
+    },
+    "relatedLinks": {
+      "title": "Related Information",
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "helpCenter": "Help Center",
+      "contact": "Contact Us"
+    },
+    "footer": "This refund policy is subject to change. We recommend reviewing it periodically. By purchasing tickets through Tickify, you acknowledge that you have read and understood this Refund Policy."
+  },
+  "forOrganizers": {
+    "title": "For Event Organizers",
+    "subtitle": "Everything you need to create, manage, and promote successful events",
+    "getStarted": "Get Started Today",
+    "features": {
+      "title": "Powerful Features for Event Success",
+      "0": {
+        "title": "Easy Event Creation",
+        "description": "Create and manage your events with our intuitive event builder. Set up ticket types, pricing, and seating in minutes."
+      },
+      "1": {
+        "title": "Attendee Management",
+        "description": "Track registrations, manage check-ins, and communicate with your attendees all in one place."
+      },
+      "2": {
+        "title": "Secure Payments",
+        "description": "Accept payments through Stripe and VNPay. Get paid quickly with automated payouts after your event."
+      },
+      "3": {
+        "title": "Analytics & Insights",
+        "description": "Get detailed analytics on ticket sales, attendee demographics, and revenue to make data-driven decisions."
+      },
+      "4": {
+        "title": "Fraud Protection",
+        "description": "Advanced fraud detection and prevention to protect your events and revenue from fraudulent transactions."
+      },
+      "5": {
+        "title": "Dedicated Support",
+        "description": "Our support team is here to help you succeed. Get priority support and expert guidance whenever you need it."
+      }
+    },
+    "benefits": {
+      "title": "Why Choose Tickify?",
+      "0": "No upfront costs - only pay when you sell tickets",
+      "1": "Competitive service fees starting at 5%",
+      "2": "Real-time sales tracking and reporting",
+      "3": "Custom branding and event pages",
+      "4": "QR code ticket scanning",
+      "5": "Email marketing tools",
+      "6": "Social media integration",
+      "7": "Mobile-friendly check-in app"
+    },
+    "pricing": {
+      "title": "Simple, Transparent Pricing",
+      "perTicket": "per ticket sold",
+      "mostPopular": "Most Popular",
+      "starter": {
+        "0": "Up to 100 tickets per event",
+        "1": "Basic analytics",
+        "2": "Email support",
+        "3": "Standard payment processing"
+      },
+      "professional": {
+        "0": "Unlimited tickets",
+        "1": "Advanced analytics",
+        "2": "Priority support",
+        "3": "Custom branding",
+        "4": "Promo codes"
+      },
+      "enterprise": {
+        "0": "Everything in Professional",
+        "1": "Dedicated account manager",
+        "2": "API access",
+        "3": "White-label options",
+        "4": "Custom integrations"
+      }
+    },
+    "stats": {
+      "title": "Trusted by Thousands of Organizers",
+      "events": "Events Created",
+      "tickets": "Tickets Sold",
+      "organizers": "Active Organizers",
+      "satisfaction": "Satisfaction Rate"
+    },
+    "cta": {
+      "title": "Ready to Get Started?",
+      "description": "Join thousands of successful event organizers who trust Tickify to power their events.",
+      "button": "Become an Organizer"
+    },
+    "relatedLinks": {
+      "title": "Need More Information?",
+      "helpCenter": "Help Center",
+      "faq": "FAQ",
+      "contact": "Contact Us",
+      "about": "About Us"
+    }
+  },
+  "helpCenter": {
+    "title": "Help Center",
+    "subtitle": "Find answers to your questions and get the support you need",
+    "search": {
+      "placeholder": "Search for help articles...",
+      "noResults": "No articles found matching your search.",
+      "tryDifferent": "Try different keywords or browse categories above."
+    },
+    "categories": {
+      "title": "Browse by Category",
+      "articles": "{{count}} articles",
+      "0": {
+        "title": "Getting Started",
+        "description": "Learn the basics of using Tickify"
+      },
+      "1": {
+        "title": "Account & Profile",
+        "description": "Manage your account settings"
+      },
+      "2": {
+        "title": "Tickets & Bookings",
+        "description": "Everything about purchasing tickets"
+      },
+      "3": {
+        "title": "For Organizers",
+        "description": "Resources for event organizers"
+      },
+      "4": {
+        "title": "Payment & Refunds",
+        "description": "Payment methods and refund policies"
+      },
+      "5": {
+        "title": "Technical Support",
+        "description": "Troubleshooting and technical issues"
+      }
+    },
+    "popular": {
+      "title": "Popular Articles"
+    },
+    "articles": {
+      "views": "{{count}} views",
+      "0": {
+        "title": "How to create an account",
+        "description": "Step-by-step guide to creating your Tickify account"
+      },
+      "1": {
+        "title": "How to purchase tickets",
+        "description": "Complete guide to buying tickets for events"
+      },
+      "2": {
+        "title": "Accepted payment methods",
+        "description": "Learn about all available payment options"
+      },
+      "3": {
+        "title": "Creating your first event",
+        "description": "Guide to setting up and managing events"
+      },
+      "4": {
+        "title": "Updating your profile",
+        "description": "How to edit your personal information"
+      },
+      "5": {
+        "title": "Transferring tickets",
+        "description": "How to transfer tickets to another person"
+      }
+    },
+    "quickLinks": {
+      "faq": {
+        "title": "FAQ",
+        "description": "Frequently asked questions",
+        "button": "View FAQ"
+      },
+      "contact": {
+        "title": "Contact Support",
+        "description": "Get in touch with our team",
+        "button": "Contact Us"
+      },
+      "video": {
+        "title": "Video Tutorials",
+        "description": "Watch step-by-step guides",
+        "button": "Watch Videos"
+      }
+    },
+    "stillNeedHelp": {
+      "title": "Still need help?",
+      "description": "Can't find what you're looking for? Our support team is here to help.",
+      "contact": "Contact Support",
+      "email": "Email Us"
+    }
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "subtitle": "Find answers to common questions about Tickify",
+    "search": {
+      "placeholder": "Search for questions..."
+    },
+    "categories": {
+      "general": "General",
+      "tickets": "Tickets",
+      "refunds": "Refunds",
+      "organizers": "Organizers",
+      "support": "Support"
+    },
+    "items": {
+      "General-0": {
+        "question": "What is Tickify?",
+        "answer": "Tickify is a comprehensive event management and ticketing platform that helps organizers create, manage, and promote events while providing attendees with a seamless ticket purchasing experience."
+      },
+      "General-1": {
+        "question": "How do I create an account?",
+        "answer": "Click the \"Sign Up\" button in the top right corner, fill in your details (name, email, password), and verify your email address. You can then choose to become an attendee or event organizer."
+      },
+      "General-2": {
+        "question": "Is Tickify free to use?",
+        "answer": "Creating an account and browsing events is completely free. For organizers, we charge a small service fee per ticket sold. Attendees may see booking fees depending on the event."
+      },
+      "Tickets-0": {
+        "question": "How do I purchase tickets?",
+        "answer": "Browse events, select the event you want to attend, choose your ticket type and quantity, click \"Buy Tickets\", and complete the secure checkout process with your payment information."
+      },
+      "Tickets-1": {
+        "question": "What payment methods do you accept?",
+        "answer": "We accept all major credit/debit cards through Stripe, and VNPay for local Vietnamese payment methods including bank transfers, QR codes, and e-wallets."
+      },
+      "Tickets-2": {
+        "question": "How do I receive my tickets?",
+        "answer": "After successful payment, you will receive your tickets via email immediately. You can also view and download them from your account dashboard at any time."
+      },
+      "Tickets-3": {
+        "question": "Can I transfer my tickets to someone else?",
+        "answer": "Yes, you can transfer tickets to another person through your account dashboard. Simply select the ticket and enter the recipient's email address."
+      },
+      "Refunds-0": {
+        "question": "What is your refund policy?",
+        "answer": "Refund policies vary by event and are set by the organizer. Generally, tickets are refundable up to 7 days before the event. Check the specific event page for details."
+      },
+      "Refunds-1": {
+        "question": "How do I request a refund?",
+        "answer": "Go to your bookings, select the ticket you want to refund, click \"Request Refund\", provide a reason, and submit. Refunds are typically processed within 5-10 business days after approval."
+      },
+      "Refunds-2": {
+        "question": "What happens if an event is cancelled?",
+        "answer": "If an organizer cancels an event, you will receive a full refund automatically. You will be notified via email about the cancellation and refund status."
+      },
+      "Organizers-0": {
+        "question": "How do I create an event?",
+        "answer": "Register as an organizer, complete your profile verification, click \"Create Event\", fill in event details, set ticket types and pricing, and submit for approval. Events are typically reviewed within 24 hours."
+      },
+      "Organizers-1": {
+        "question": "How much does it cost to host an event?",
+        "answer": "We charge a service fee of 5-10% per ticket sold, depending on your subscription tier. There are no upfront costs to create and list your event."
+      },
+      "Organizers-2": {
+        "question": "When do I receive payment for ticket sales?",
+        "answer": "Payouts are processed after your event concludes, typically within 7 business days. You can request a payout from your organizer dashboard once funds are available."
+      },
+      "Organizers-3": {
+        "question": "Can I offer promotional codes or discounts?",
+        "answer": "Yes, you can create promo codes with percentage or fixed amount discounts. Set usage limits, expiration dates, and minimum purchase requirements from your event dashboard."
+      },
+      "Support-0": {
+        "question": "I forgot my password. What should I do?",
+        "answer": "Click \"Forgot Password\" on the login page, enter your email address, and follow the password reset link sent to your email. The link expires after 24 hours."
+      },
+      "Support-1": {
+        "question": "My payment failed. What should I do?",
+        "answer": "Check that your card details are correct and has sufficient funds. If the problem persists, try a different payment method or contact your bank. You can also reach our support team for assistance."
+      },
+      "Support-2": {
+        "question": "How do I contact customer support?",
+        "answer": "You can reach us through the Contact page, send an email to support@tickify.com, or use the live chat feature in your account dashboard. We respond within 24 hours."
+      },
+      "Support-3": {
+        "question": "Is my payment information secure?",
+        "answer": "Yes, we use industry-standard SSL encryption and partner with PCI-compliant payment processors (Stripe and VNPay). We never store your complete card details on our servers."
+      }
+    },
+    "noResults": "No questions found matching your search.",
+    "noResultsHint": "Try different keywords or browse all categories above.",
+    "stillNeedHelp": {
+      "title": "Still need help?",
+      "description": "Can't find the answer you're looking for? Our support team is here to help.",
+      "contact": "Contact us at",
+      "contactButton": "Contact Support",
+      "helpCenter": "Help Center"
+    },
+    "relatedLinks": {
+      "title": "Related Pages",
+      "helpCenter": "Help Center",
+      "contact": "Contact Us",
+      "refund": "Refund Policy",
+      "organizers": "For Organizers"
     }
   }
 }

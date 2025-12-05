@@ -261,23 +261,23 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
 
   const timelineSteps = [
     {
-      title: "Order Placed",
+      title: t("pages.orderDetail.timeline.orderPlaced"),
       timestamp: formatDate(currentOrder.createdAt),
       completed: true,
     },
     {
-      title: "Payment Confirmed",
+      title: t("pages.orderDetail.timeline.paymentConfirmed"),
       timestamp: formatDate(currentOrder.createdAt),
       completed: currentOrder.status === "completed",
     },
     {
-      title: "Tickets Issued",
+      title: t("pages.orderDetail.timeline.ticketsIssued"),
       timestamp: formatDate(currentOrder.createdAt),
       completed: currentOrder.status === "completed",
     },
     {
-      title: "Event Check-in",
-      timestamp: "Not yet",
+      title: t("pages.orderDetail.timeline.eventCheckIn"),
+      timestamp: t("common.notYet"),
       completed: false,
     },
   ];

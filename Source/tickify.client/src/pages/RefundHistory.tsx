@@ -168,10 +168,10 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
 
   const getEventTitle = (refund: RefundRequest) => {
     const booking = bookings.get(refund.bookingId);
-    if (!booking || !booking.eventId) return 'Unknown Event';
+    if (!booking || !booking.eventId) return t('common.unknownEvent');
     const eventIdKey = typeof booking.eventId === 'string' ? booking.eventId : booking.eventId.toString();
     const event = events.get(eventIdKey);
-    return event?.title || 'Unknown Event';
+    return event?.title || t('common.unknownEvent');
   };
 
   return (

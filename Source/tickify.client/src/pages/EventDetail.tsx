@@ -369,7 +369,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                             {tier.name}
                           </div>
                           <div className="text-sm text-neutral-500">
-                            {tier.description || "General Admission"}
+                            {tier.description || t("common.generalAdmission")}
                           </div>
                         </div>
                         <div className="text-right">
@@ -378,10 +378,10 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                           </div>
                           <div className="text-xs text-neutral-600">
                             {tier.available > 0 ? (
-                              `${tier.available} left`
+                              `${tier.available} ${t("common.left")}`
                             ) : (
                               <span className="text-red-600 font-medium">
-                                Sold out
+                                {t("common.soldOut")}
                               </span>
                             )}
                           </div>
@@ -400,7 +400,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                         disabled={tier.available <= 0}
                         className="w-full"
                       >
-                        {tier.available > 0 ? "Book Now" : "Sold Out"}
+                        {tier.available > 0 ? t("common.bookNow") : t("common.soldOut")}
                       </Button>
                     </div>
                   ))}

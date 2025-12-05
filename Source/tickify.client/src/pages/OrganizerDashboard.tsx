@@ -715,11 +715,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {event?.title ||
-                              t(
-                                "organizer.dashboard.unknownEvent",
-                                "Unknown Event"
-                              )}
+                            {event?.title || t("common.unknownEvent")}
                           </TableCell>
                           <TableCell>{order.tickets.length}</TableCell>
                           <TableCell>{formatPrice(order.total)}</TableCell>

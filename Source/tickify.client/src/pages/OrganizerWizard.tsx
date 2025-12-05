@@ -1001,7 +1001,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                     Publishing...
                   </>
                 ) : (
-                  "Publish Event"
+                  {t("common.publishEvent")}
                 )}
               </Button>
             )}
