@@ -156,6 +156,7 @@
     "organizer": "Organizer",
     "selectTickets": "Select Tickets",
     "selectSeats": "Select Seats",
+    "eventTitle": "Event Title",
     "getTickets": "Get Tickets",
     "bookNow": "Book Now",
     "ticketsFrom": "Tickets from",
@@ -746,6 +747,10 @@
     "pageViews": "Page Views",
     "conversionRate": "Conversion Rate"
   },
+  "language": {
+    "switchToVi": "Switch to Vietnamese",
+    "switchToEn": "Switch to English"
+  },
   "common": {
     "search": "Search",
     "filter": "Filter",
@@ -790,6 +795,7 @@
     "tryAgain": "Try again",
     "date": "Date",
     "venue": "Venue",
+    "returnHome": "Return to Home",
     "cut": "Cut",
     "undo": "Undo",
     "redo": "Redo",
@@ -818,6 +824,53 @@
     "about": "About",
     "FAQ": "FAQ",
     "support": "Support"
+  },
+  "contact": {
+    "title": "Contact Us",
+    "subtitle": "Get in touch with our team",
+    "form": {
+      "title": "Send us a Message",
+      "name": "Your Name",
+      "email": "Your Email",
+      "subject": "Subject",
+      "message": "Message",
+      "send": "Send Message",
+      "sending": "Sending...",
+      "success": "Thank you! Your message has been sent successfully.",
+      "errors": {
+        "nameRequired": "Name is required",
+        "emailRequired": "Email is required",
+        "emailInvalid": "Invalid email format",
+        "subjectRequired": "Subject is required",
+        "messageRequired": "Message is required",
+        "messageTooShort": "Message must be at least 10 characters",
+        "sendFailed": "Failed to send message. Please try again."
+      }
+    },
+    "info": {
+      "email": {
+        "title": "Email",
+        "content": "support@tickify.com"
+      },
+      "phone": {
+        "title": "Phone",
+        "content": "+84 123 456 789"
+      },
+      "address": {
+        "title": "Address",
+        "content": "123 Event Street, Ho Chi Minh City, Vietnam"
+      }
+    },
+    "hours": {
+      "title": "Business Hours",
+      "weekdays": "Monday - Friday: 9:00 AM - 6:00 PM",
+      "weekend": "Saturday - Sunday: 10:00 AM - 4:00 PM"
+    },
+    "quickLinks": {
+      "title": "Quick Links",
+      "faq": "FAQ",
+      "helpCenter": "Help Center"
+    }
   },
   "policy": {
     "policy": "Ticket Policy",
@@ -887,6 +940,7 @@
       "updatePassword": "Update Password",
       "updating": "Updating...",
       "passwordDescription": "Protect your account with a strong password.",
+      "passwordStrengthLabel": "Password strength:",
       "passwordWeak": "Weak",
       "passwordMedium": "Medium",
       "passwordGood": "Good",
@@ -1539,7 +1593,14 @@
         "selectedSeats": "Selected Seats",
         "totalPrice": "Total Price",
         "continueToCheckout": "Continue to Checkout",
-        "clearSelection": "Clear Selection"
+        "clearSelection": "Clear Selection",
+        "loadingSeatMap": "Loading seat map...",
+        "eventNotFound": "Event not found",
+        "backToHome": "Back to Home",
+        "backToEvent": "Back to Event",
+        "selectSeats": "Select Seats",
+        "wheelchairAccessible": "Wheelchair Accessible",
+        "clickToDeselect": "Click again to deselect"
       },
       "builder": {
         "title": "Seat Map Builder",

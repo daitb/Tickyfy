@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import * as signalR from "@microsoft/signalr";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
@@ -45,6 +46,7 @@ export function SeatSelectionReal({
   eventId,
   onNavigate,
 }: SeatSelectionRealProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [seats, setSeats] = useState<SeatDto[]>([]);
@@ -745,9 +747,9 @@ export function SeatSelectionReal({
             }}
             title={`${seat.row}${seat.seatNumber} - ${formatVND(seat.price)}${
               seat.zoneName ? ` (${seat.zoneName})` : ""
-            }${seat.isWheelchair ? " - Wheelchair Accessible" : ""}${
+            }${seat.isWheelchair ? ` - ${t("management.seat.selection.wheelchairAccessible")}` : ""}${
               selectedSeats.includes(seat.id)
-                ? " - Click again to deselect"
+                ? ` - ${t("management.seat.selection.clickToDeselect")}`
                 : ""
             }`}
           >
@@ -785,7 +787,7 @@ export function SeatSelectionReal({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-[#00C16A]" />
-          <p className="text-gray-600">Loading seat map...</p>
+          <p className="text-gray-600">{t("management.seat.selection.loadingSeatMap")}</p>
         </div>
       </div>
     );
@@ -796,8 +798,8 @@ export function SeatSelectionReal({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
-            <p className="text-red-600 mb-4">{error || "Event not found"}</p>
-            <Button onClick={() => onNavigate("home")}>Back to Home</Button>
+            <p className="text-red-600 mb-4">{error || t("management.seat.selection.eventNotFound")}</p>
+            <Button onClick={() => onNavigate("home")}>{t("management.seat.selection.backToHome")}</Button>
           </CardContent>
         </Card>
       </div>
@@ -834,11 +836,11 @@ export function SeatSelectionReal({
             onClick={handleBackClick}
           >
             <ArrowLeft size={20} className="mr-2" />
-            Back to Event
+            {t("management.seat.selection.backToEvent")}
           </Button>
 
           <div className="text-white">
-            <h1 className="text-2xl mb-1">{event?.title || "Select Seats"}</h1>
+            <h1 className="text-2xl mb-1">{event?.title || t("management.seat.selection.selectSeats")}</h1>
             <div className="flex items-center gap-4 text-sm opacity-90">
               <div className="flex items-center gap-2">
                 <MapPin size={16} />

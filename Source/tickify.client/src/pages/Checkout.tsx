@@ -895,7 +895,7 @@ export function Checkout({
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <h4 className="mb-4">
                           {seatBookingMode
-                            ? "Selected Seats"
+                            ? t("management.seat.selection.selectedSeats")
                             : t("booking.checkout.ticketSummary")}
                         </h4>
                         <div className="space-y-3">

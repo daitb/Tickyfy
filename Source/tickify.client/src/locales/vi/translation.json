@@ -156,6 +156,7 @@
     "organizer": "Nhà tổ chức",
     "selectTickets": "Chọn vé",
     "selectSeats": "Chọn ghế",
+    "eventTitle": "Tiêu đề sự kiện",
     "getTickets": "Lấy vé",
     "bookNow": "Đặt ngay",
     "ticketsFrom": "Vé từ",
@@ -347,8 +348,25 @@
     "benefit2Desc": "Dashboard chuyên nghiệp với đầy đủ tính năng",
     "benefit3Title": "Báo cáo chi tiết",
     "benefit3Desc": "Theo dõi doanh thu và phân tích chi tiết",
+    "createEvent": "Tạo sự kiện",
+    "myEvents": "Sự kiện của tôi",
+    "analytics": "Phân tích",
+    "earnings": "Thu nhập",
+    "attendees": "Người tham dự",
+    "ticketsSold": "Vé đã bán",
+    "revenue": "Doanh thu",
     "upcomingEvents": "Sự kiện sắp tới",
     "pastEvents": "Sự kiện đã qua",
+    "draftEvents": "Sự kiện nháp",
+    "eventName": "Tên sự kiện",
+    "eventDate": "Ngày sự kiện",
+    "ticketSales": "Bán vé",
+    "actions": "Thao tác",
+    "editEvent": "Chỉnh sửa sự kiện",
+    "deleteEvent": "Xóa sự kiện",
+    "viewAnalytics": "Xem phân tích",
+    "publishEvent": "Xuất bản sự kiện",
+    "createNewEvent": "Tạo sự kiện mới",
     "dashboard": {
       "title": "Bảng điều khiển Organizer",
       "subtitle": "Quản lý sự kiện và theo dõi hiệu suất",
@@ -729,6 +747,10 @@
     "pageViews": "Lượt xem trang",
     "conversionRate": "Tỷ lệ chuyển đổi"
   },
+  "language": {
+    "switchToVi": "Chuyển sang tiếng Việt",
+    "switchToEn": "Chuyển sang tiếng Anh"
+  },
   "common": {
     "search": "Tìm kiếm",
     "filter": "Lọc",
@@ -765,17 +787,14 @@
     "today": "Hôm nay",
     "yesterday": "Hôm qua",
     "daysAgo": "{count} ngày trước",
-    "returnHome": "Về trang chủ",
-    "viewAll": "Xem tất cả",
-    "today": "Hôm nay",
-    "yesterday": "Hôm qua",
-    "daysAgo": "ngày trước",
     "weeksAgo": "tuần trước",
     "monthsAgo": "tháng trước",
-    "characters": "ký tự",
-    "optional": "Tùy chọn",
+    "checking": "Đang kiểm tra...",
+    "tryAgain": "Thử lại",
+    "date": "Ngày",
+    "venue": "Địa điểm",
+    "returnHome": "Về trang chủ",
     "paste": "Dán",
-    "viewAll": "Xem tất cả",
     "cut": "Cắt",
     "undo": "Hoàn tác",
     "redo": "Làm lại",
@@ -791,6 +810,7 @@
     "all": "Tất cả",
     "none": "Không có",
     "other": "Khác",
+    "viewAll": "Xem tất cả",
     "help": "Trợ giúp",
     "settings": "Cài đặt",
     "logout": "Đăng xuất",
@@ -804,6 +824,53 @@
     "about": "Giới thiệu",
     "FAQ": "Câu hỏi thường gặp",
     "support": "Hỗ trợ"
+  },
+  "contact": {
+    "title": "Liên hệ",
+    "subtitle": "Liên hệ với đội ngũ của chúng tôi",
+    "form": {
+      "title": "Gửi tin nhắn cho chúng tôi",
+      "name": "Tên của bạn",
+      "email": "Email của bạn",
+      "subject": "Chủ đề",
+      "message": "Tin nhắn",
+      "send": "Gửi tin nhắn",
+      "sending": "Đang gửi...",
+      "success": "Cảm ơn bạn! Tin nhắn của bạn đã được gửi thành công.",
+      "errors": {
+        "nameRequired": "Tên là bắt buộc",
+        "emailRequired": "Email là bắt buộc",
+        "emailInvalid": "Định dạng email không hợp lệ",
+        "subjectRequired": "Chủ đề là bắt buộc",
+        "messageRequired": "Tin nhắn là bắt buộc",
+        "messageTooShort": "Tin nhắn phải có ít nhất 10 ký tự",
+        "sendFailed": "Không thể gửi tin nhắn. Vui lòng thử lại."
+      }
+    },
+    "info": {
+      "email": {
+        "title": "Email",
+        "content": "support@tickify.com"
+      },
+      "phone": {
+        "title": "Điện thoại",
+        "content": "+84 123 456 789"
+      },
+      "address": {
+        "title": "Địa chỉ",
+        "content": "123 Đường Sự Kiện, Thành phố Hồ Chí Minh, Việt Nam"
+      }
+    },
+    "hours": {
+      "title": "Giờ làm việc",
+      "weekdays": "Thứ Hai - Thứ Sáu: 9:00 - 18:00",
+      "weekend": "Thứ Bảy - Chủ Nhật: 10:00 - 16:00"
+    },
+    "quickLinks": {
+      "title": "Liên kết nhanh",
+      "faq": "Câu hỏi thường gặp",
+      "helpCenter": "Trung tâm trợ giúp"
+    }
   },
   "policy": {
     "policy": "Chính sách vé",
@@ -1366,7 +1433,23 @@
       "ticketsSold": "Vé đã bán",
       "revenue": "Doanh thu",
       "status": "Trạng thái",
-      "actions": "Thao tác"
+      "actions": "Thao tác",
+      "edit": "Sửa",
+      "duplicate": "Nhân bản",
+      "cancel": "Hủy",
+      "delete": "Xóa",
+      "viewAnalytics": "Xem phân tích"
+    },
+    "policy": {
+      "policy": "Chính sách vé",
+      "please": "Vui lòng xem xét trước khi mua",
+      "Refundable": "Hoàn tiền",
+      "Non-refundable": "Không hoàn tiền",
+      "Transferable": "Có thể chuyển nhượng",
+      "Non-transferable": "Không thể chuyển nhượng",
+      "notify": "Tất cả vé đều là vé chính thức và đã được xác minh. Vui lòng kiểm tra email để biết thông tin giao vé sau khi mua.",
+      "text1": "vé có thể được chuyển nhượng cho người khác",
+      "text2": "vé không thể được chuyển nhượng cho người khác"
     },
     "user": {
       "title": "Quản lý người dùng",
@@ -1583,7 +1666,14 @@
         "selectedSeats": "Ghế đã chọn",
         "totalPrice": "Tổng giá",
         "continueToCheckout": "Tiếp tục thanh toán",
-        "clearSelection": "Xóa lựa chọn"
+        "clearSelection": "Xóa lựa chọn",
+        "loadingSeatMap": "Đang tải sơ đồ ghế...",
+        "eventNotFound": "Không tìm thấy sự kiện",
+        "backToHome": "Về trang chủ",
+        "backToEvent": "Quay lại sự kiện",
+        "selectSeats": "Chọn ghế",
+        "wheelchairAccessible": "Hỗ trợ xe lăn",
+        "clickToDeselect": "Nhấp lại để bỏ chọn"
       },
       "builder": {
         "title": "Công cụ tạo sơ đồ ghế",
@@ -1801,6 +1891,7 @@
     "Non-transferable": "Không thể chuyển nhượng",
     "notify": "Tất cả vé đều là vé chính thức và đã được xác minh. Vui lòng kiểm tra email để biết thông tin giao vé sau khi mua.",
     "text1": "vé có thể được chuyển nhượng cho người khác",
-    "text2": "vé không thể được chuyển nhượng cho người khác"
+    "text2": "vé không thể được chuyển nhượng cho người khác",
+    "until": "đến"
   }
 }
