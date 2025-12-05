@@ -120,6 +120,11 @@ namespace Tickify
             builder.Services.AddScoped<INotificationService, Tickify.Services.Notifications.NotificationService>();
 
             // ============================================
+            // Background Jobs
+            // ============================================
+            builder.Services.AddHostedService<Tickify.Jobs.SeatReservationCleanupJob>();
+
+            // ============================================
             // 4. JWT AUTHENTICATION CONFIGURATION
             // Cấu hình xác thực JWT token
             // ============================================

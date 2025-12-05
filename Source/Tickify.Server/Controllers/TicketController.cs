@@ -56,9 +56,16 @@ public class TicketController : ControllerBase
         // If admin and ticket not found in user's tickets, try to get by ID
         if (ticket == null && isAdmin)
         {
-            var ticketDto = await _ticketService.GetByIdAsync(id);
-            // Convert TicketDto to TicketDetailDto (simplified - may need full details)
-            return Ok(ApiResponse<TicketDto>.SuccessResponse(ticketDto));
+            // For admin, get detailed ticket info directly
+            var allUserTickets = await _ticketService.GetUserTicketsAsync(userId);
+            var adminTicket = allUserTickets.FirstOrDefault(t => t.TicketId == id);
+            
+            if (adminTicket == null)
+            {
+                return NotFound(ApiResponse<object>.FailureResponse("Ticket not found"));
+            }
+            
+            return Ok(ApiResponse<TicketDetailDto>.SuccessResponse(adminTicket));
         }
 
         return Ok(ApiResponse<TicketDetailDto>.SuccessResponse(ticket!));

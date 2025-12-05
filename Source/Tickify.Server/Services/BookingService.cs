@@ -179,7 +179,7 @@ public class BookingService : IBookingService
                 PromoCodeId = promoCodeId,
                 Status = BookingStatus.Pending,
                 BookingDate = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(15), // 15 minutes to complete payment
+                ExpiresAt = DateTime.UtcNow.AddMinutes(10), // 10 minutes to complete payment
                 SeatIdsJson = createBookingDto.SeatIds?.Any() == true 
                     ? System.Text.Json.JsonSerializer.Serialize(createBookingDto.SeatIds) 
                     : null
@@ -273,13 +273,33 @@ public class BookingService : IBookingService
             booking.CancellationReason = cancelBookingDto.CancellationReason;
             booking.CancelledAt = DateTime.UtcNow;
 
-            // Release seats
-            var tickets = await _ticketRepository.GetByBookingIdAsync(bookingId);
-            var seatIds = tickets.Where(t => t.SeatId.HasValue).Select(t => t.SeatId!.Value);
-            if (seatIds.Any())
+            // Release seats from SeatIdsJson if present
+            if (!string.IsNullOrEmpty(booking.SeatIdsJson))
             {
-                await _seatRepository.AdminReleaseSeatsAsync(seatIds);
-                _logger.LogInformation("Đã release {SeatCount} seats cho booking {BookingId}", seatIds.Count(), bookingId);
+                var seatIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(booking.SeatIdsJson);
+                if (seatIds?.Any() == true)
+                {
+                    await _seatRepository.AdminReleaseSeatsAsync(seatIds);
+                    _logger.LogInformation("Đã release {SeatCount} seats từ SeatIdsJson cho booking {BookingId}", 
+                        seatIds.Count, bookingId);
+                }
+            }
+            
+            // Also release seats from tickets if they exist
+            var tickets = await _ticketRepository.GetByBookingIdAsync(bookingId);
+            var ticketSeatIds = tickets.Where(t => t.SeatId.HasValue).Select(t => t.SeatId!.Value).ToList();
+            if (ticketSeatIds.Any())
+            {
+                await _seatRepository.AdminReleaseSeatsAsync(ticketSeatIds);
+                _logger.LogInformation("Đã release {SeatCount} seats từ tickets cho booking {BookingId}", 
+                    ticketSeatIds.Count, bookingId);
+            }
+            
+            // Mark tickets as cancelled
+            foreach (var ticket in tickets)
+            {
+                ticket.Status = TicketStatus.Cancelled;
+                await _ticketRepository.UpdateAsync(ticket);
             }
 
             var updatedBooking = await _bookingRepository.UpdateAsync(booking);
@@ -438,5 +458,113 @@ public class BookingService : IBookingService
     private string GenerateBookingCode()
     {
         return $"BK{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
+    }
+
+    public async Task CompleteBookingAsync(int bookingId, string paymentId)
+    {
+        var booking = await _bookingRepository.GetByIdAsync(bookingId);
+        if (booking == null)
+            throw new NotFoundException($"Booking with ID {bookingId} not found");
+
+        if (booking.Status != BookingStatus.Pending)
+            throw new BadRequestException($"Booking is not in Pending status. Current status: {booking.Status}");
+
+        _logger.LogInformation("Completing booking {BookingId} with payment {PaymentId}", bookingId, paymentId);
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // Update booking status to Confirmed
+            booking.Status = BookingStatus.Confirmed;
+            booking.ExpiresAt = null; // Clear expiration since payment is complete
+            await _bookingRepository.UpdateAsync(booking);
+
+            // If booking has seats, change them from Reserved to Sold and create tickets per seat
+            if (!string.IsNullOrEmpty(booking.SeatIdsJson))
+            {
+                var seatIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(booking.SeatIdsJson);
+                if (seatIds?.Any() == true)
+                {
+                    var seats = await _context.Seats
+                        .Include(s => s.TicketType)
+                        .Include(s => s.SeatZone)
+                        .Where(s => seatIds.Contains(s.Id))
+                        .ToListAsync();
+
+                    // Mark seats as Sold using repository method
+                    await _seatRepository.MarkSeatsAsSoldAsync(seatIds);
+                    
+                    _logger.LogInformation("Changed {SeatCount} seats from Reserved to Sold for booking {BookingId}", 
+                        seats.Count, bookingId);
+
+                    // Create one ticket per seat
+                    foreach (var seat in seats)
+                    {
+                        var ticket = new Ticket
+                        {
+                            TicketCode = GenerateTicketCode(),
+                            BookingId = bookingId,
+                            TicketTypeId = seat.TicketTypeId,
+                            SeatId = seat.Id,
+                            SeatNumber = $"{seat.Row}{seat.SeatNumber}",
+                            Price = seat.SeatZone?.ZonePrice ?? seat.TicketType.Price,
+                            Status = TicketStatus.Valid,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        
+                        await _ticketRepository.CreateAsync(ticket);
+                        _logger.LogInformation("Created ticket {TicketCode} for seat {SeatId} in booking {BookingId}", 
+                            ticket.TicketCode, seat.Id, bookingId);
+                    }
+                }
+            }
+            else
+            {
+                // Regular booking without seats - create tickets based on quantity
+                // Check if tickets already exist (prevent duplicate creation)
+                var existingTickets = await _ticketRepository.GetByBookingIdAsync(bookingId);
+                if (!existingTickets.Any())
+                {
+                    // Get ticket type information
+                    var ticketType = await _context.TicketTypes
+                        .FirstOrDefaultAsync(tt => tt.EventId == booking.EventId);
+                    
+                    if (ticketType != null)
+                    {
+                        // Determine quantity from booking (need to add this to Booking model or calculate from other fields)
+                        // For now, create 1 ticket - you may need to adjust based on your booking structure
+                        var ticket = new Ticket
+                        {
+                            TicketCode = GenerateTicketCode(),
+                            BookingId = bookingId,
+                            TicketTypeId = ticketType.Id,
+                            SeatId = null,
+                            SeatNumber = null,
+                            Price = ticketType.Price,
+                            Status = TicketStatus.Valid,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        
+                        await _ticketRepository.CreateAsync(ticket);
+                        _logger.LogInformation("Created general admission ticket {TicketCode} for booking {BookingId}", 
+                            ticket.TicketCode, bookingId);
+                    }
+                }
+            }
+
+            await transaction.CommitAsync();
+            _logger.LogInformation("Successfully completed booking {BookingId} with tickets created", bookingId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error completing booking {BookingId}, rolling back", bookingId);
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+    
+    private string GenerateTicketCode()
+    {
+        return $"TK{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
     }
 }
