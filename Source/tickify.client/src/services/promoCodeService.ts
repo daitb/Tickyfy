@@ -2,9 +2,9 @@ import apiClient from "./apiClient";
 
 // ===== INTERFACES =====
 export interface ValidatePromoCodeDto {
-  promoCode: string;
-  eventId: string;
-  totalAmount: number;
+  code: string;
+  eventId: number;
+  orderTotal: number;
 }
 
 export interface PromoCodeValidationResult {
@@ -57,11 +57,12 @@ class PromoCodeService {
    */
   async validatePromoCode(
     data: ValidatePromoCodeDto
-  ): Promise<PromoCodeValidationResult> {
-    const response = await apiClient.post<PromoCodeValidationResult>(
-      "/promocodes/validate",
+  ): Promise<PromoCode> {
+    const response = await apiClient.post<PromoCode>(
+      "/PromoCode/validate",
       data
     );
+    // apiClient interceptor already extracts data from ApiResponse wrapper
     return response.data;
   }
 
@@ -70,11 +71,12 @@ class PromoCodeService {
    */
   async calculateDiscount(
     data: ValidatePromoCodeDto
-  ): Promise<{ discount: number }> {
-    const response = await apiClient.post<{ discount: number }>(
+  ): Promise<number> {
+    const response = await apiClient.post<number>(
       "/PromoCode/calculate-discount",
       data
     );
+    // apiClient interceptor already extracts data from ApiResponse wrapper
     return response.data;
   }
 

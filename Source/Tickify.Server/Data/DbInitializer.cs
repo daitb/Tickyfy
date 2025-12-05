@@ -295,6 +295,189 @@ namespace Tickify.Data
                     Console.WriteLine("✅ Organizer profile created!");
                 }
 
+                // Seed PromoCodes - Always seed new promo codes if they don't exist (independent of events)
+                Console.WriteLine("Seeding PromoCodes...");
+                var adminUserForPromo = await context.Users.FirstOrDefaultAsync(u => u.Email == "admin@tickify.com");
+                var adminUserIdForPromo = adminUserForPromo?.Id ?? 1;
+                var nowForPromo = DateTime.UtcNow;
+                
+                var promoCodesToSeed = new[]
+                {
+                    new PromoCode
+                    {
+                        Code = "EARLY5",
+                        Description = "Giảm 5% cho khách hàng đặt sớm - Áp dụng cho tất cả sự kiện",
+                        DiscountPercent = 5m,
+                        MaxUses = 1000,
+                        CurrentUses = 0,
+                        MaxUsesPerUser = 3,
+                        ValidFrom = nowForPromo.AddDays(-10),
+                        ValidTo = nowForPromo.AddMonths(6),
+                        IsActive = true,
+                        CreatedAt = nowForPromo,
+                        CreatedByUserId = adminUserIdForPromo
+                    },
+                    new PromoCode
+                    {
+                        Code = "SUMMER10",
+                        Description = "Giảm 10% mùa hè - Chỉ còn 500 lượt sử dụng",
+                        DiscountPercent = 10m,
+                        MaxUses = 500,
+                        CurrentUses = 0,
+                        MaxUsesPerUser = 2,
+                        ValidFrom = nowForPromo.AddDays(-5),
+                        ValidTo = nowForPromo.AddMonths(3),
+                        IsActive = true,
+                        CreatedAt = nowForPromo,
+                        CreatedByUserId = adminUserIdForPromo
+                    },
+                    new PromoCode
+                    {
+                        Code = "BIG15",
+                        Description = "Giảm 15% cho đơn hàng từ 500,000₫ - Chỉ 200 lượt",
+                        DiscountPercent = 15m,
+                        MinimumPurchase = 500000m,
+                        MaxUses = 200,
+                        CurrentUses = 0,
+                        MaxUsesPerUser = 1,
+                        ValidFrom = nowForPromo,
+                        ValidTo = nowForPromo.AddMonths(2),
+                        IsActive = true,
+                        CreatedAt = nowForPromo,
+                        CreatedByUserId = adminUserIdForPromo
+                    },
+                    new PromoCode
+                    {
+                        Code = "VIP20",
+                        Description = "Giảm 20% VIP - Chỉ còn 100 lượt sử dụng",
+                        DiscountPercent = 20m,
+                        MaxUses = 100,
+                        CurrentUses = 0,
+                        MaxUsesPerUser = 1,
+                        ValidFrom = nowForPromo,
+                        ValidTo = nowForPromo.AddMonths(4),
+                        IsActive = true,
+                        CreatedAt = nowForPromo,
+                        CreatedByUserId = adminUserIdForPromo
+                    },
+                    new PromoCode
+                    {
+                        Code = "SUPER25",
+                        Description = "Siêu giảm giá 25% cho đơn từ 1,000,000₫ - Chỉ 50 lượt",
+                        DiscountPercent = 25m,
+                        MinimumPurchase = 1000000m,
+                        MaxUses = 50,
+                        CurrentUses = 0,
+                        MaxUsesPerUser = 1,
+                        ValidFrom = nowForPromo,
+                        ValidTo = nowForPromo.AddMonths(1),
+                        IsActive = true,
+                        CreatedAt = nowForPromo,
+                        CreatedByUserId = adminUserIdForPromo
+                    },
+                    new PromoCode
+                    {
+                        Code = "SAVE50K",
+                        Description = "Giảm ngay 50,000₫ - Còn 300 lượt sử dụng",
+                        DiscountAmount = 50000m,
+                        MaxUses = 300,
+                        CurrentUses = 0,
+                        MaxUsesPerUser = 2,
+                        ValidFrom = nowForPromo.AddDays(-7),
+                        ValidTo = nowForPromo.AddMonths(3),
+                        IsActive = true,
+                        CreatedAt = nowForPromo,
+                        CreatedByUserId = adminUserIdForPromo
+                    },
+                    new PromoCode
+                    {
+                        Code = "SAVE100K",
+                        Description = "Giảm 100,000₫ cho đơn từ 800,000₫ - Chỉ 150 lượt",
+                        DiscountAmount = 100000m,
+                        MinimumPurchase = 800000m,
+                        MaxUses = 150,
+                        CurrentUses = 0,
+                        MaxUsesPerUser = 1,
+                        ValidFrom = nowForPromo,
+                        ValidTo = nowForPromo.AddMonths(2),
+                        IsActive = true,
+                        CreatedAt = nowForPromo,
+                        CreatedByUserId = adminUserIdForPromo
+                    },
+                    new PromoCode
+                    {
+                        Code = "MEGA30",
+                        Description = "Giảm siêu lớn 30% - CHỈ CÒN 20 LƯỢT - Nhanh tay đặt ngay!",
+                        DiscountPercent = 30m,
+                        MaxUses = 20,
+                        CurrentUses = 0,
+                        MaxUsesPerUser = 1,
+                        ValidFrom = nowForPromo,
+                        ValidTo = nowForPromo.AddMonths(1),
+                        IsActive = true,
+                        CreatedAt = nowForPromo,
+                        CreatedByUserId = adminUserIdForPromo
+                    },
+                    new PromoCode
+                    {
+                        Code = "SAVE150K",
+                        Description = "Tiết kiệm 150,000₫ - Còn 80 lượt sử dụng",
+                        DiscountAmount = 150000m,
+                        MinimumPurchase = 1000000m,
+                        MaxUses = 80,
+                        CurrentUses = 0,
+                        MaxUsesPerUser = 1,
+                        ValidFrom = nowForPromo,
+                        ValidTo = nowForPromo.AddMonths(3),
+                        IsActive = true,
+                        CreatedAt = nowForPromo,
+                        CreatedByUserId = adminUserIdForPromo
+                    },
+                    new PromoCode
+                    {
+                        Code = "FLASH200",
+                        Description = "Flash Sale - Giảm 200,000₫ - CHỈ CÒN 10 LƯỢT - Hết hạn sau 1 tháng",
+                        DiscountAmount = 200000m,
+                        MinimumPurchase = 1500000m,
+                        MaxUses = 10,
+                        CurrentUses = 0,
+                        MaxUsesPerUser = 1,
+                        ValidFrom = nowForPromo,
+                        ValidTo = nowForPromo.AddMonths(1),
+                        IsActive = true,
+                        CreatedAt = nowForPromo,
+                        CreatedByUserId = adminUserIdForPromo
+                    }
+                };
+
+                // Check and add each promo code if it doesn't exist
+                var existingCodes = await context.PromoCodes
+                    .Select(p => p.Code)
+                    .ToListAsync();
+                
+                var newPromoCodes = new List<PromoCode>();
+                foreach (var promoCode in promoCodesToSeed)
+                {
+                    if (!existingCodes.Contains(promoCode.Code, StringComparer.OrdinalIgnoreCase))
+                    {
+                        newPromoCodes.Add(promoCode);
+                    }
+                }
+                
+                if (newPromoCodes.Any())
+                {
+                    await context.PromoCodes.AddRangeAsync(newPromoCodes);
+                    await context.SaveChangesAsync();
+                    Console.WriteLine($"✅ {newPromoCodes.Count} new promo codes seeded successfully!");
+                    Console.WriteLine("   Promo codes include various discount levels (5%, 10%, 15%, 20%, 25%, 30%)");
+                    Console.WriteLine("   and fixed amounts (50k, 100k, 150k, 200k) with usage limits.");
+                    Console.WriteLine($"   Codes added: {string.Join(", ", newPromoCodes.Select(p => p.Code))}");
+                }
+                else
+                {
+                    Console.WriteLine("✅ All promo codes already exist in database.");
+                }
+
                 // Seed Sample Events
                 var organizer = await context.Organizers.Include(o => o.User).FirstOrDefaultAsync();
                 if (organizer != null && !await context.Events.AnyAsync())
@@ -475,47 +658,12 @@ namespace Tickify.Data
                     Console.WriteLine("✅ Ticket types created for all events!");
 
                     // --- Additional seed data for easier testing ---
-                    Console.WriteLine("Seeding PromoCodes, SeatMaps, Zones, Seats, Bookings, Payments, Tickets, Reviews and Waitlists...");
+                    Console.WriteLine("Seeding SeatMaps, Zones, Seats, Bookings, Payments, Tickets, Reviews and Waitlists...");
 
                     // Ensure we have references to users
                     var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "admin@tickify.com");
                     var customerUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "customer@example.com");
                     var organizerUserAccount = await context.Users.FirstOrDefaultAsync(u => u.Email == "organizer@example.com");
-
-                    // Seed PromoCodes
-                    if (!await context.PromoCodes.AnyAsync())
-                    {
-                        var adminUserId = adminUser?.Id ?? 1; // Default to 1 if adminUser is null
-                        
-                        var promo1 = new PromoCode
-                        {
-                            Code = "EARLYBIRD",
-                            Description = "10% off for early purchases",
-                            DiscountPercent = 10m,
-                            ValidFrom = DateTime.UtcNow.AddDays(-30),
-                            ValidTo = DateTime.UtcNow.AddMonths(3),
-                            IsActive = true,
-                            CreatedAt = DateTime.UtcNow,
-                            CreatedByUserId = adminUserId
-                        };
-
-                        var promo2 = new PromoCode
-                        {
-                            Code = "SUMMER25",
-                            Description = "25k off for bookings over 1,000,000",
-                            DiscountAmount = 25000m,
-                            MinimumPurchase = 1000000m,
-                            ValidFrom = DateTime.UtcNow.AddDays(-10),
-                            ValidTo = DateTime.UtcNow.AddMonths(2),
-                            IsActive = true,
-                            CreatedAt = DateTime.UtcNow,
-                            CreatedByUserId = adminUserId
-                        };
-
-                        await context.PromoCodes.AddRangeAsync(promo1, promo2);
-                        await context.SaveChangesAsync();
-                        Console.WriteLine("✅ Promo codes seeded.");
-                    }
 
                     // Seed SeatMaps, Zones and Seats for ALL existing events (not just newly created ones)
                     var allEvents = await context.Events.Include(e => e.TicketTypes).ToListAsync();
@@ -797,18 +945,12 @@ namespace Tickify.Data
                     Console.WriteLine($"  ✅ Created seat map for event '{evt.Title}' with {eventTicketTypes.Count} zones");
                 }
 
-                Console.WriteLine("\n🎉 Database seeding completed successfully!");
-                Console.WriteLine("\n📝 Default Accounts:");
-                Console.WriteLine("   Admin: admin@tickify.com / Admin@123456");
-                Console.WriteLine("   Customer: customer@example.com / Customer@123");
-                Console.WriteLine($"   Email: organizer@example.com/Password: Organizer@123");
-                Console.WriteLine("\n💡 To add more test data, run the SQL script:");
-                Console.WriteLine("   Documents/SeedTestData.sql");
+                Console.WriteLine("\n🎉 Database data seeded successfully!");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error seeding database: {ex.Message}");
-                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
+                Console.WriteLine($"❌ Lỗi khi khởi tạo dữ liệu database: {ex.Message}");
+                Console.WriteLine($"   Chi tiết lỗi: {ex.StackTrace}");
                 throw;
             }
         }

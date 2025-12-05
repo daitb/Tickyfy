@@ -22,6 +22,9 @@ namespace Tickify.Services
         Task<bool> ReserveSeatsAsync(List<int> seatIds, int userId);
         Task<bool> ReleaseSeatsAsync(List<int> seatIds, int userId);
         Task<int> ReleaseExpiredReservationsAsync();
+        Task<bool> ExtendReservationAsync(List<int> seatIds, int userId);
+        Task<bool> AdminLockSeatsAsync(List<int> seatIds, int adminId, string reason);
+        Task<bool> AdminUnlockSeatsAsync(List<int> seatIds);
     }
 
     public class SeatMapService : ISeatMapService
@@ -93,11 +96,36 @@ namespace Tickify.Services
 
         public async Task<List<SeatResponseDto>> GetEventSeatsAsync(int eventId)
         {
-            // Lấy tất cả seats của event thông qua ticket types
-            var seats = await _seatRepository.GetByEventIdAsync(eventId);
-            var seatDtos = _mapper.Map<List<SeatResponseDto>>(seats);
-            
-            return seatDtos;
+            try
+            {
+                // Lấy tất cả seats của event thông qua ticket types
+                var seats = await _seatRepository.GetByEventIdAsync(eventId);
+                
+                if (seats == null || !seats.Any())
+                {
+                    Console.WriteLine($"[SeatMapService] GetEventSeatsAsync: No seats found for event {eventId}");
+                    return new List<SeatResponseDto>();
+                }
+                
+                Console.WriteLine($"[SeatMapService] GetEventSeatsAsync: Event {eventId}, Found {seats.Count()} seats");
+                
+                var seatDtos = _mapper.Map<List<SeatResponseDto>>(seats);
+                
+                // Validate mapping results
+                var invalidSeats = seatDtos.Where(s => s.Id <= 0 || string.IsNullOrEmpty(s.Row)).ToList();
+                if (invalidSeats.Any())
+                {
+                    Console.WriteLine($"[SeatMapService] WARNING: Found {invalidSeats.Count} invalid seats after mapping");
+                }
+                
+                return seatDtos;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SeatMapService] GetEventSeatsAsync error for event {eventId}: {ex.Message}");
+                Console.WriteLine($"[SeatMapService] Stack trace: {ex.StackTrace}");
+                throw;
+            }
         }
 
         public async Task<SeatMapResponseDto> CreateSeatMapAsync(CreateSeatMapDto dto)
@@ -185,6 +213,21 @@ namespace Tickify.Services
         public async Task<int> ReleaseExpiredReservationsAsync()
         {
             return await _seatRepository.ReleaseExpiredReservationsAsync();
+        }
+        
+        public async Task<bool> ExtendReservationAsync(List<int> seatIds, int userId)
+        {
+            return await _seatRepository.ExtendReservationAsync(seatIds, userId);
+        }
+        
+        public async Task<bool> AdminLockSeatsAsync(List<int> seatIds, int adminId, string reason)
+        {
+            return await _seatRepository.AdminLockSeatsAsync(seatIds, adminId, reason);
+        }
+        
+        public async Task<bool> AdminUnlockSeatsAsync(List<int> seatIds)
+        {
+            return await _seatRepository.AdminUnlockSeatsAsync(seatIds);
         }
 
         private async Task CreateZonesAndSeatsFromLayoutAsync(int seatMapId, string layoutConfig, int eventId)

@@ -42,7 +42,9 @@ export function Login({ onNavigate }: LoginProps) {
 
   // Initialize Google Sign-In
   useEffect(() => {
-    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+    // Google Client ID - Replace with your actual Google OAuth Client ID
+    const GOOGLE_CLIENT_ID =
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
       "177365327171-n3jfda9entg6u3h6mc9glsgbeob65qs9.apps.googleusercontent.com";
 
     if (window.google && googleButtonRef.current) {
@@ -54,17 +56,14 @@ export function Login({ onNavigate }: LoginProps) {
       });
 
       // Render Google button
-      window.google.accounts.id.renderButton(
-        googleButtonRef.current,
-        {
-          theme: "outline",
-          size: "large",
-          width: googleButtonRef.current.offsetWidth,
-          text: "continue_with",
-          shape: "rectangular",
-          locale: "en_US",
-        }
-      );
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "outline",
+        size: "large",
+        width: googleButtonRef.current.offsetWidth,
+        text: "continue_with",
+        shape: "rectangular",
+        locale: "en_US",
+      });
     }
   }, []);
 
@@ -75,6 +74,14 @@ export function Login({ onNavigate }: LoginProps) {
 
       // Send credential to backend
       const loginResponse = await authService.googleLogin(response.credential);
+
+      // Check for return URL
+      const returnUrl = sessionStorage.getItem("returnUrl");
+      if (returnUrl) {
+        sessionStorage.removeItem("returnUrl");
+        window.location.href = returnUrl;
+        return;
+      }
 
       // Redirect based on role
       const userRole = loginResponse.roles[0];
@@ -116,6 +123,14 @@ export function Login({ onNavigate }: LoginProps) {
     try {
       // Call backend API
       const response = await authService.login({ email, password });
+
+      // Check for return URL
+      const returnUrl = sessionStorage.getItem("returnUrl");
+      if (returnUrl) {
+        sessionStorage.removeItem("returnUrl");
+        window.location.href = returnUrl;
+        return;
+      }
 
       // Redirect based on role (backend returns roles array)
       const userRole = response.roles[0];
@@ -190,9 +205,9 @@ export function Login({ onNavigate }: LoginProps) {
           <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 md:p-8">
             {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-neutral-900 mb-2">{t('auth.welcomeBack')}</h1>
+              <h1 className="text-neutral-900 mb-2">{t("auth.welcomeBack")}</h1>
               <p className="text-sm text-neutral-600">
-                {t('auth.loginSubtitle')}
+                {t("auth.loginSubtitle")}
               </p>
             </div>
 
@@ -214,7 +229,7 @@ export function Login({ onNavigate }: LoginProps) {
                 >
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                 </svg>
-                {t('auth.continueWithFacebook')}
+                {t("auth.continueWithFacebook")}
               </Button>
             </div>
 
@@ -222,7 +237,7 @@ export function Login({ onNavigate }: LoginProps) {
               <Separator />
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="bg-white px-3 text-xs text-neutral-500">
-                  {t('auth.orContinueWith')}
+                  {t("auth.orContinueWith")}
                 </span>
               </div>
             </div>
@@ -241,17 +256,23 @@ export function Login({ onNavigate }: LoginProps) {
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <div className="flex items-start space-x-3">
                     <div className="flex-shrink-0">
-                      <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <svg
+                        className="w-5 h-5 text-yellow-600 mt-0.5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                     <div className="flex-1">
                       <h3 className="text-sm font-semibold text-yellow-800 mb-1">
-                        {t('auth.emailNotVerified')}
+                        {t("auth.emailNotVerified")}
                       </h3>
-                      <p className="text-sm text-yellow-700 mb-3">
-                        {error}
-                      </p>
+                      <p className="text-sm text-yellow-700 mb-3">{error}</p>
                       <Button
                         type="button"
                         variant="outline"
@@ -260,10 +281,13 @@ export function Login({ onNavigate }: LoginProps) {
                           try {
                             setIsLoading(true);
                             await authService.resendVerificationEmail(email);
-                            setError(t('auth.verificationEmailResent'));
+                            setError(t("auth.verificationEmailResent"));
                             setIsEmailNotVerified(false);
                           } catch (err: any) {
-                            setError(err.response?.data?.message || t('auth.cannotResendEmail'));
+                            setError(
+                              err.response?.data?.message ||
+                                t("auth.cannotResendEmail")
+                            );
                           } finally {
                             setIsLoading(false);
                           }
@@ -271,7 +295,9 @@ export function Login({ onNavigate }: LoginProps) {
                         className="text-yellow-700 border-yellow-300 hover:bg-yellow-50"
                         disabled={isLoading || !email}
                       >
-                        {isLoading ? t('auth.resending') : t('auth.resendVerificationEmail')}
+                        {isLoading
+                          ? t("auth.resending")
+                          : t("auth.resendVerificationEmail")}
                       </Button>
                     </div>
                   </div>
@@ -279,7 +305,7 @@ export function Login({ onNavigate }: LoginProps) {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">{t('auth.email')}</Label>
+                <Label htmlFor="email">{t("auth.email")}</Label>
                 <div className="relative">
                   <Mail
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
@@ -288,7 +314,7 @@ export function Login({ onNavigate }: LoginProps) {
                   <Input
                     id="email"
                     type="email"
-                    placeholder={t('auth.emailPlaceholder')}
+                    placeholder={t("auth.emailPlaceholder")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
@@ -298,7 +324,7 @@ export function Login({ onNavigate }: LoginProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">{t('auth.password')}</Label>
+                <Label htmlFor="password">{t("auth.password")}</Label>
                 <div className="relative">
                   <Lock
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
@@ -307,7 +333,7 @@ export function Login({ onNavigate }: LoginProps) {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder={t('auth.passwordPlaceholder')}
+                    placeholder={t("auth.passwordPlaceholder")}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10"
@@ -336,7 +362,7 @@ export function Login({ onNavigate }: LoginProps) {
                     htmlFor="remember"
                     className="text-sm text-neutral-700 cursor-pointer"
                   >
-                    {t('auth.rememberMe')}
+                    {t("auth.rememberMe")}
                   </label>
                 </div>
                 <button
@@ -344,7 +370,7 @@ export function Login({ onNavigate }: LoginProps) {
                   onClick={() => onNavigate("forgot-password")}
                   className="text-sm text-orange-500 hover:text-orange-600 transition-colors"
                 >
-                  {t('auth.forgotPassword')}
+                  {t("auth.forgotPassword")}
                 </button>
               </div>
 
@@ -353,7 +379,7 @@ export function Login({ onNavigate }: LoginProps) {
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                 disabled={isLoading}
               >
-                {isLoading ? t('auth.signingIn') : t('auth.signIn')}
+                {isLoading ? t("auth.signingIn") : t("auth.signIn")}
               </Button>
             </form>
           </div>
@@ -361,12 +387,12 @@ export function Login({ onNavigate }: LoginProps) {
           {/* Sign Up Link */}
           <div className="text-center mt-6">
             <p className="text-sm text-neutral-600">
-              {t('auth.dontHaveAccount')}{" "}
+              {t("auth.dontHaveAccount")}{" "}
               <button
                 onClick={() => onNavigate("register")}
                 className="text-orange-500 hover:text-orange-600 transition-colors"
               >
-                {t('auth.registerNow')}
+                {t("auth.registerNow")}
               </button>
             </p>
           </div>

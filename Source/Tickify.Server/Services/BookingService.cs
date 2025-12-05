@@ -16,7 +16,6 @@ public class BookingService : IBookingService
     private readonly ITicketRepository _ticketRepository;
     private readonly ISeatRepository _seatRepository;
     private readonly IPromoCodeRepository _promoCodeRepository;
-    private readonly INotificationService _notificationService;
     private readonly ApplicationDbContext _context;
     private readonly IMapper _mapper;
     private readonly ILogger<BookingService> _logger;
@@ -26,7 +25,6 @@ public class BookingService : IBookingService
         ITicketRepository ticketRepository,
         ISeatRepository seatRepository,
         IPromoCodeRepository promoCodeRepository,
-        INotificationService notificationService,
         ApplicationDbContext context,
         IMapper mapper,
         ILogger<BookingService> logger)
@@ -35,7 +33,6 @@ public class BookingService : IBookingService
         _ticketRepository = ticketRepository;
         _seatRepository = seatRepository;
         _promoCodeRepository = promoCodeRepository;
-        _notificationService = notificationService;
         _context = context;
         _mapper = mapper;
         _logger = logger;
@@ -182,7 +179,7 @@ public class BookingService : IBookingService
                 PromoCodeId = promoCodeId,
                 Status = BookingStatus.Pending,
                 BookingDate = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(15), // 15 minutes to complete payment
+                ExpiresAt = DateTime.UtcNow.AddMinutes(10), // 10 minutes to complete payment
                 SeatIdsJson = createBookingDto.SeatIds?.Any() == true 
                     ? System.Text.Json.JsonSerializer.Serialize(createBookingDto.SeatIds) 
                     : null
@@ -276,13 +273,33 @@ public class BookingService : IBookingService
             booking.CancellationReason = cancelBookingDto.CancellationReason;
             booking.CancelledAt = DateTime.UtcNow;
 
-            // Release seats
-            var tickets = await _ticketRepository.GetByBookingIdAsync(bookingId);
-            var seatIds = tickets.Where(t => t.SeatId.HasValue).Select(t => t.SeatId!.Value);
-            if (seatIds.Any())
+            // Release seats from SeatIdsJson if present
+            if (!string.IsNullOrEmpty(booking.SeatIdsJson))
             {
-                await _seatRepository.AdminReleaseSeatsAsync(seatIds);
-                _logger.LogInformation("Đã release {SeatCount} seats cho booking {BookingId}", seatIds.Count(), bookingId);
+                var seatIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(booking.SeatIdsJson);
+                if (seatIds?.Any() == true)
+                {
+                    await _seatRepository.AdminReleaseSeatsAsync(seatIds);
+                    _logger.LogInformation("Đã release {SeatCount} seats từ SeatIdsJson cho booking {BookingId}", 
+                        seatIds.Count, bookingId);
+                }
+            }
+            
+            // Also release seats from tickets if they exist
+            var tickets = await _ticketRepository.GetByBookingIdAsync(bookingId);
+            var ticketSeatIds = tickets.Where(t => t.SeatId.HasValue).Select(t => t.SeatId!.Value).ToList();
+            if (ticketSeatIds.Any())
+            {
+                await _seatRepository.AdminReleaseSeatsAsync(ticketSeatIds);
+                _logger.LogInformation("Đã release {SeatCount} seats từ tickets cho booking {BookingId}", 
+                    ticketSeatIds.Count, bookingId);
+            }
+            
+            // Mark tickets as cancelled
+            foreach (var ticket in tickets)
+            {
+                ticket.Status = TicketStatus.Cancelled;
+                await _ticketRepository.UpdateAsync(ticket);
             }
 
             var updatedBooking = await _bookingRepository.UpdateAsync(booking);
@@ -291,9 +308,6 @@ public class BookingService : IBookingService
             // Commit transaction
             await transaction.CommitAsync();
             _logger.LogInformation("Transaction committed thành công cho cancel booking {BookingId}", bookingId);
-            
-            // Notify users in waitlist that tickets are now available
-            await NotifyWaitlistUsersAsync(booking.EventId);
             
             return _mapper.Map<BookingDto>(updatedBooking);
         }
@@ -382,22 +396,22 @@ public class BookingService : IBookingService
 
         // Validate promo code (dates, max uses, minimum purchase, event-specific)
         if (!promo.IsActive)
-            throw new BadRequestException("Promo code is not active");
+            throw new BadRequestException($"Promo code '{promoCode}' is not active");
 
         if (promo.ValidFrom.HasValue && DateTime.UtcNow < promo.ValidFrom.Value)
-            throw new BadRequestException("Promo code is not yet valid");
+            throw new BadRequestException($"Promo code '{promoCode}' is not yet valid. Valid from: {promo.ValidFrom.Value:dd/MM/yyyy HH:mm}");
 
         if (promo.ValidTo.HasValue && DateTime.UtcNow > promo.ValidTo.Value)
-            throw new BadRequestException("Promo code has expired");
+            throw new BadRequestException($"Promo code '{promoCode}' has expired. Expired on: {promo.ValidTo.Value:dd/MM/yyyy HH:mm}");
 
         if (promo.MaxUses.HasValue && promo.CurrentUses >= promo.MaxUses.Value)
-            throw new BadRequestException("Promo code has reached maximum uses");
+            throw new BadRequestException($"Promo code '{promoCode}' has reached its maximum usage limit ({promo.MaxUses.Value} uses). This promo code is no longer available.");
 
         if (promo.MinimumPurchase.HasValue && booking.TotalAmount < promo.MinimumPurchase.Value)
-            throw new BadRequestException($"Minimum purchase of {promo.MinimumPurchase:C} required to use this promo code");
+            throw new BadRequestException($"Minimum purchase of {promo.MinimumPurchase.Value:N0}₫ required to use promo code '{promoCode}'. Your order total is {booking.TotalAmount:N0}₫");
 
         if (promo.EventId.HasValue && promo.EventId.Value != booking.EventId)
-            throw new BadRequestException("Promo code is not valid for this event");
+            throw new BadRequestException($"Promo code '{promoCode}' is not valid for this event");
 
         // Calculate discount
         decimal discountAmount = 0;
@@ -446,73 +460,111 @@ public class BookingService : IBookingService
         return $"BK{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
     }
 
-    /// <summary>
-    /// Notify waitlist users when tickets become available for an event
-    /// </summary>
-    private async Task NotifyWaitlistUsersAsync(int eventId)
+    public async Task CompleteBookingAsync(int bookingId, string paymentId)
     {
+        var booking = await _bookingRepository.GetByIdAsync(bookingId);
+        if (booking == null)
+            throw new NotFoundException($"Booking with ID {bookingId} not found");
+
+        if (booking.Status != BookingStatus.Pending)
+            throw new BadRequestException($"Booking is not in Pending status. Current status: {booking.Status}");
+
+        _logger.LogInformation("Completing booking {BookingId} with payment {PaymentId}", bookingId, paymentId);
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            // Get event details
-            var eventEntity = await _context.Events
-                .AsNoTracking()
-                .FirstOrDefaultAsync(e => e.Id == eventId);
+            // Update booking status to Confirmed
+            booking.Status = BookingStatus.Confirmed;
+            booking.ExpiresAt = null; // Clear expiration since payment is complete
+            await _bookingRepository.UpdateAsync(booking);
 
-            if (eventEntity == null)
+            // If booking has seats, change them from Reserved to Sold and create tickets per seat
+            if (!string.IsNullOrEmpty(booking.SeatIdsJson))
             {
-                _logger.LogWarning("[BookingService] Event {EventId} not found for waitlist notification", eventId);
-                return;
-            }
-
-            // Get users in waitlist who haven't been notified yet
-            var waitlistUsers = await _context.Waitlists
-                .Where(w => w.EventId == eventId && !w.IsNotified && !w.HasPurchased)
-                .OrderBy(w => w.JoinedAt) // First come, first served
-                .Take(10) // Notify up to 10 users at a time
-                .ToListAsync();
-
-            if (!waitlistUsers.Any())
-            {
-                _logger.LogInformation("[BookingService] No waitlist users to notify for event {EventId}", eventId);
-                return;
-            }
-
-            foreach (var waitlistEntry in waitlistUsers)
-            {
-                try
+                var seatIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(booking.SeatIdsJson);
+                if (seatIds?.Any() == true)
                 {
-                    // Send notification
-                    await _notificationService.NotifyWaitlistAvailableAsync(
-                        waitlistEntry.UserId,
-                        eventId,
-                        eventEntity.Title
-                    );
+                    var seats = await _context.Seats
+                        .Include(s => s.TicketType)
+                        .Include(s => s.SeatZone)
+                        .Where(s => seatIds.Contains(s.Id))
+                        .ToListAsync();
 
-                    // Mark as notified
-                    waitlistEntry.IsNotified = true;
-                    waitlistEntry.NotifiedAt = DateTime.UtcNow;
-                    waitlistEntry.ExpiresAt = DateTime.UtcNow.AddHours(24); // 24 hours to purchase
+                    // Mark seats as Sold using repository method
+                    await _seatRepository.MarkSeatsAsSoldAsync(seatIds);
+                    
+                    _logger.LogInformation("Changed {SeatCount} seats from Reserved to Sold for booking {BookingId}", 
+                        seats.Count, bookingId);
 
-                    _logger.LogInformation(
-                        "[BookingService] Notified waitlist user {UserId} for event {EventId}",
-                        waitlistEntry.UserId, eventId
-                    );
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex,
-                        "[BookingService] Failed to notify waitlist user {UserId} for event {EventId}",
-                        waitlistEntry.UserId, eventId
-                    );
+                    // Create one ticket per seat
+                    foreach (var seat in seats)
+                    {
+                        var ticket = new Ticket
+                        {
+                            TicketCode = GenerateTicketCode(),
+                            BookingId = bookingId,
+                            TicketTypeId = seat.TicketTypeId,
+                            SeatId = seat.Id,
+                            SeatNumber = $"{seat.Row}{seat.SeatNumber}",
+                            Price = seat.SeatZone?.ZonePrice ?? seat.TicketType.Price,
+                            Status = TicketStatus.Valid,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        
+                        await _ticketRepository.CreateAsync(ticket);
+                        _logger.LogInformation("Created ticket {TicketCode} for seat {SeatId} in booking {BookingId}", 
+                            ticket.TicketCode, seat.Id, bookingId);
+                    }
                 }
             }
+            else
+            {
+                // Regular booking without seats - create tickets based on quantity
+                // Check if tickets already exist (prevent duplicate creation)
+                var existingTickets = await _ticketRepository.GetByBookingIdAsync(bookingId);
+                if (!existingTickets.Any())
+                {
+                    // Get ticket type information
+                    var ticketType = await _context.TicketTypes
+                        .FirstOrDefaultAsync(tt => tt.EventId == booking.EventId);
+                    
+                    if (ticketType != null)
+                    {
+                        // Determine quantity from booking (need to add this to Booking model or calculate from other fields)
+                        // For now, create 1 ticket - you may need to adjust based on your booking structure
+                        var ticket = new Ticket
+                        {
+                            TicketCode = GenerateTicketCode(),
+                            BookingId = bookingId,
+                            TicketTypeId = ticketType.Id,
+                            SeatId = null,
+                            SeatNumber = null,
+                            Price = ticketType.Price,
+                            Status = TicketStatus.Valid,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        
+                        await _ticketRepository.CreateAsync(ticket);
+                        _logger.LogInformation("Created general admission ticket {TicketCode} for booking {BookingId}", 
+                            ticket.TicketCode, bookingId);
+                    }
+                }
+            }
 
-            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            _logger.LogInformation("Successfully completed booking {BookingId} with tickets created", bookingId);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[BookingService] Failed to notify waitlist users for event {EventId}", eventId);
-            // Don't throw - waitlist notification failure shouldn't block booking cancellation
+            _logger.LogError(ex, "Error completing booking {BookingId}, rolling back", bookingId);
+            await transaction.RollbackAsync();
+            throw;
         }
+    }
+    
+    private string GenerateTicketCode()
+    {
+        return $"TK{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
     }
 }

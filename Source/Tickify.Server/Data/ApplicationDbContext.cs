@@ -463,6 +463,12 @@ namespace Tickify.Data
 
             modelBuilder.Entity<Seat>()
                 .HasIndex(s => s.SeatZoneId); // For zone-based queries
+                
+            modelBuilder.Entity<Seat>()
+                .HasIndex(s => s.IsAdminLocked); // For admin locked seats filtering
+                
+            modelBuilder.Entity<Seat>()
+                .HasIndex(s => new { s.ReservedByUserId, s.ReservedUntil }); // For reservation expiry checks
 
             // Notifications - User inbox (shown on every page!)
             modelBuilder.Entity<Notification>()
@@ -727,6 +733,30 @@ namespace Tickify.Data
 
             modelBuilder.Entity<OrganizerRequest>()
                 .HasIndex(or => or.Status);
+                
+            // ===== SEAT ADMIN LOCK CONFIGURATION =====
+            
+            // Seat - Admin lock fields configuration
+            modelBuilder.Entity<Seat>()
+                .Property(s => s.IsAdminLocked)
+                .IsRequired()
+                .HasDefaultValue(false);
+                
+            modelBuilder.Entity<Seat>()
+                .Property(s => s.AdminLockedReason)
+                .HasMaxLength(500)
+                .IsRequired(false);
+                
+            modelBuilder.Entity<Seat>()
+                .Property(s => s.HasExtendedReservation)
+                .IsRequired()
+                .HasDefaultValue(false);
+                
+            // Seat - Check constraints for admin lock
+            modelBuilder.Entity<Seat>()
+                .ToTable(t => t.HasCheckConstraint(
+                    "CK_Seats_AdminLock_Valid",
+                    "[IsAdminLocked] = 0 OR ([IsAdminLocked] = 1 AND [AdminLockedReason] IS NOT NULL)"));
         }
     }
 }

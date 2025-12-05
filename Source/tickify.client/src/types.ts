@@ -4,6 +4,8 @@ export interface Event {
   slug: string;
   category: Category;
   image: string;
+  bannerImage?: string; // Large banner for header backgrounds
+  posterImage?: string; // Poster/thumbnail image
   date: string;
   time: string;
   venue: string;

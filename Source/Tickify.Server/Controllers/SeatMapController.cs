@@ -51,11 +51,17 @@ namespace Tickify.Controllers
             try
             {
                 var seats = await _seatMapService.GetEventSeatsAsync(eventId);
+                
+                // Log for debugging
+                Console.WriteLine($"[SeatMapController] GetEventSeats: Event {eventId}, Found {seats.Count} seats");
+                
                 return Ok(seats);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                Console.WriteLine($"[SeatMapController] GetEventSeats error for event {eventId}: {ex.Message}");
+                Console.WriteLine($"[SeatMapController] Stack trace: {ex.StackTrace}");
+                return BadRequest(new { message = $"Lỗi khi tải danh sách ghế: {ex.Message}" });
             }
         }
 
@@ -155,14 +161,23 @@ namespace Tickify.Controllers
                 if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
                     return Unauthorized(new { message = "User not authenticated" });
 
+                if (seatIds == null || !seatIds.Any())
+                    return BadRequest(new { message = "Không có ghế nào được chọn." });
+
                 var success = await _seatMapService.ReserveSeatsAsync(seatIds, userId);
                 if (!success)
-                    return BadRequest(new { message = "One or more seats are not available" });
+                {
+                    // Log for debugging
+                    Console.WriteLine($"[SeatMapController] ReserveSeats failed for user {userId}, seatMap {seatMapId}, seats: {string.Join(", ", seatIds)}");
+                    return BadRequest(new { message = "Một hoặc nhiều ghế không khả dụng. Ghế có thể đã bị chặn, đã được người khác đặt giữ, hoặc không tồn tại." });
+                }
 
                 return Ok(new { message = "Seats reserved successfully", expiresIn = 15 * 60 });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[SeatMapController] ReserveSeats exception: {ex.Message}");
+                Console.WriteLine($"[SeatMapController] Stack trace: {ex.StackTrace}");
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -183,12 +198,141 @@ namespace Tickify.Controllers
                 }
 
                 var success = await _seatMapService.ReleaseSeatsAsync(seatIds, userId);
-                return Ok(new { message = "Seats released successfully" });
+                return Ok(new { message = "Seats released successfully", success = success });
             }
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
         }
+        
+        /// <summary>
+        /// Extend seat reservation by 5 minutes (can only be done once)
+        /// </summary>
+        [HttpPost("{seatMapId}/extend")]
+        [Authorize]
+        public async Task<ActionResult> ExtendReservation(int seatMapId, [FromBody] List<int> seatIds)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                    return Unauthorized(new { message = "User not authenticated" });
+
+                var success = await _seatMapService.ExtendReservationAsync(seatIds, userId);
+                if (!success)
+                    return BadRequest(new { message = "Unable to extend reservation. Either seats are not reserved by you or already extended" });
+
+                return Ok(new { message = "Reservation extended by 5 minutes", additionalMinutes = 5 });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+        
+        /// <summary>
+        /// Admin lock seats for VIP/sponsor
+        /// </summary>
+        [HttpPost("admin/lock-seats")]
+        [Authorize(Roles = "Admin,Organizer")]
+        public async Task<ActionResult> AdminLockSeats([FromBody] AdminLockSeatsDto dto)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int adminId))
+                    return Unauthorized(new { message = "Admin not authenticated" });
+
+                var success = await _seatMapService.AdminLockSeatsAsync(dto.SeatIds, adminId, dto.Reason);
+                if (!success)
+                    return BadRequest(new { message = "Unable to lock seats. Seats may not be available" });
+
+                return Ok(new { message = $"Successfully locked {dto.SeatIds.Count} seats", reason = dto.Reason });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+        
+        /// <summary>
+        /// Admin unlock previously locked seats
+        /// </summary>
+        [HttpPost("admin/unlock-seats")]
+        [Authorize(Roles = "Admin,Organizer")]
+        public async Task<ActionResult> AdminUnlockSeats([FromBody] List<int> seatIds)
+        {
+            try
+            {
+                var success = await _seatMapService.AdminUnlockSeatsAsync(seatIds);
+                if (!success)
+                    return BadRequest(new { message = "Unable to unlock seats. Seats may not be locked" });
+
+                return Ok(new { message = $"Successfully unlocked {seatIds.Count} seats" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Validate seat data for an event (for debugging)
+        /// </summary>
+        [HttpGet("event/{eventId}/validate")]
+        [Authorize(Roles = "Admin,Organizer")]
+        public async Task<ActionResult> ValidateEventSeats(int eventId)
+        {
+            try
+            {
+                var seatMap = await _seatMapService.GetSeatMapByEventIdAsync(eventId);
+                var seats = await _seatMapService.GetEventSeatsAsync(eventId);
+                
+                var validation = new
+                {
+                    eventId,
+                    hasSeatMap = seatMap != null,
+                    seatMapId = seatMap?.Id,
+                    totalSeats = seats.Count,
+                    availableSeats = seats.Count(s => s.Status.ToLower() == "available"),
+                    reservedSeats = seats.Count(s => s.Status.ToLower() == "reserved"),
+                    soldSeats = seats.Count(s => s.Status.ToLower() == "sold"),
+                    blockedSeats = seats.Count(s => s.IsBlocked),
+                    seatsWithZones = seats.Count(s => s.SeatZoneId != null),
+                    seatsWithoutZones = seats.Count(s => s.SeatZoneId == null),
+                    issues = new List<string>()
+                };
+                
+                // Check for issues
+                if (seatMap == null)
+                {
+                    validation.issues.Add("No seat map found for this event");
+                }
+                
+                if (seats.Count == 0)
+                {
+                    validation.issues.Add("No seats found for this event");
+                }
+                
+                var seatsWithoutTicketType = seats.Where(s => s.TicketTypeId <= 0).ToList();
+                if (seatsWithoutTicketType.Any())
+                {
+                    validation.issues.Add($"{seatsWithoutTicketType.Count} seats missing ticket type");
+                }
+                
+                return Ok(validation);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = $"Lỗi khi validate: {ex.Message}" });
+            }
+        }
     }
+}
+
+public class AdminLockSeatsDto
+{
+    public List<int> SeatIds { get; set; } = new();
+    public string Reason { get; set; } = string.Empty;
 }

@@ -15,4 +15,5 @@ public interface IBookingService
     Task<BookingDto> UpdateBookingStatusAsync(int bookingId, string status);
     Task HandleExpiredBookingsAsync();
     Task<BookingDto> ApplyPromoCodeAsync(int bookingId, string promoCode, int userId);
+    Task CompleteBookingAsync(int bookingId, string paymentId);
 }

@@ -79,7 +79,7 @@ public sealed class PaymentService : IPaymentService
                 Provider = "Free",
                 PaymentId = booking.Id, // Use bookingId as identifier since no payment record exists
                 RedirectUrl = successUrl,
-                ExpiresAtUtc = DateTime.UtcNow.AddMinutes(15)
+                ExpiresAtUtc = DateTime.UtcNow.AddMinutes(10)
             };
         }
 

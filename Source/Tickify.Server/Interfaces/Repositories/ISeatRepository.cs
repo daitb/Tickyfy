@@ -17,4 +17,8 @@ public interface ISeatRepository
     Task<bool> ReleaseSeatsAsync(IEnumerable<int> seatIds, int userId);
     Task<bool> AdminReleaseSeatsAsync(IEnumerable<int> seatIds);
     Task<int> ReleaseExpiredReservationsAsync();
+    Task<bool> ExtendReservationAsync(IEnumerable<int> seatIds, int userId);
+    Task<bool> AdminLockSeatsAsync(IEnumerable<int> seatIds, int adminId, string reason);
+    Task<bool> AdminUnlockSeatsAsync(IEnumerable<int> seatIds);
+    Task<bool> MarkSeatsAsSoldAsync(IEnumerable<int> seatIds);
 }

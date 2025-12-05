@@ -120,6 +120,11 @@ namespace Tickify
             builder.Services.AddScoped<INotificationService, Tickify.Services.Notifications.NotificationService>();
 
             // ============================================
+            // Background Jobs
+            // ============================================
+            builder.Services.AddHostedService<Tickify.Jobs.SeatReservationCleanupJob>();
+
+            // ============================================
             // 4. JWT AUTHENTICATION CONFIGURATION
             // Cấu hình xác thực JWT token
             // ============================================
@@ -264,13 +269,12 @@ namespace Tickify
             //     var services = scope.ServiceProvider;
             //     var logger = services.GetRequiredService<ILogger<Program>>();
             //     var context = services.GetRequiredService<ApplicationDbContext>();
-
             //     try
             //     {
             //         logger.LogInformation("Đang kiểm tra và apply database migrations...");
                     
             //         // Apply pending migrations
-            //         await context.Database.MigrateAsync();
+            //         // await context.Database.MigrateAsync();
             //         logger.LogInformation("✅ Database migrations đã được apply thành công");
 
             //         // Seed dữ liệu ban đầu (Roles, Categories, Admin user)

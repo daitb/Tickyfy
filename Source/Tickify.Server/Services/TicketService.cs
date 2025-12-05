@@ -139,8 +139,18 @@ public class TicketService : ITicketService
         if (transfer == null)
             throw new NotFoundException($"Transfer not found");
 
+        // Get recipient user info for better error message
+        var recipientUser = await _userRepository.GetUserByIdAsync(transfer.ToUserId);
+        var currentUser = await _userRepository.GetUserByIdAsync(userId);
+        
         if (transfer.ToUserId != userId)
-            throw new UnauthorizedException("You are not authorized to accept this transfer");
+        {
+            var expectedEmail = recipientUser?.Email ?? "unknown";
+            var currentEmail = currentUser?.Email ?? "unknown";
+            throw new UnauthorizedException(
+                $"This transfer was sent to {expectedEmail}. You are currently logged in as {currentEmail}. Please login with the correct account to accept this transfer."
+            );
+        }
 
         if (transfer.IsApproved)
             throw new BadRequestException("This transfer has already been accepted");
