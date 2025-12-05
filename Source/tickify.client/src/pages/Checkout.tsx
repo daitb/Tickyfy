@@ -77,6 +77,8 @@ export function Checkout({
   const [promoCodeDiscount, setPromoCodeDiscount] = useState(0);
   const [isValidatingPromoCode, setIsValidatingPromoCode] = useState(false);
   const [promoCodeError, setPromoCodeError] = useState("");
+  const [reservationExpired, setReservationExpired] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const steps = [
     { number: 1, label: t("booking.checkout.step1") },
     { number: 2, label: t("booking.checkout.step2") },
@@ -96,6 +98,7 @@ export function Checkout({
   useEffect(() => {
     const seatsJson = sessionStorage.getItem("selectedSeats");
     const eventIdStr = sessionStorage.getItem("eventId");
+    const expiresAtStr = sessionStorage.getItem("reservationExpiresAt");
 
     if (seatsJson && eventIdStr) {
       try {
@@ -103,6 +106,34 @@ export function Checkout({
         if (Array.isArray(seatIds) && seatIds.length > 0) {
           setSelectedSeats(seatIds);
           setSeatBookingMode(true);
+
+          // Check if reservation has expired
+          if (expiresAtStr) {
+            const expiresAt = new Date(expiresAtStr);
+            const now = new Date();
+
+            if (now >= expiresAt) {
+              // Reservation expired - redirect back to seat selection
+              setReservationExpired(true);
+              toast.error(
+                "Your seat reservation has expired. Please select seats again."
+              );
+              sessionStorage.removeItem("selectedSeats");
+              sessionStorage.removeItem("reservationExpiresAt");
+              sessionStorage.removeItem("eventId");
+              sessionStorage.removeItem("totalPrice");
+              setTimeout(() => {
+                onNavigate(`seat-selection-real`);
+              }, 2000);
+              return;
+            }
+
+            // Calculate time remaining
+            const remaining = Math.floor(
+              (expiresAt.getTime() - now.getTime()) / 1000
+            );
+            setTimeRemaining(remaining);
+          }
 
           // Load full seat details from backend
           seatMapService
@@ -122,7 +153,7 @@ export function Checkout({
         console.error("Failed to parse selected seats:", e);
       }
     }
-  }, []);
+  }, [onNavigate]);
 
   // When cart items change, fetch event metadata from backend for display
   useEffect(() => {
@@ -145,6 +176,39 @@ export function Checkout({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
+
+  // Timer countdown for seat reservation
+  useEffect(() => {
+    if (!seatBookingMode || timeRemaining === null || reservationExpired)
+      return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev === null || prev <= 0) {
+          // Expired during checkout
+          setReservationExpired(true);
+          toast.error("Your seat reservation has expired!");
+          sessionStorage.removeItem("selectedSeats");
+          sessionStorage.removeItem("reservationExpiresAt");
+          sessionStorage.removeItem("eventId");
+          sessionStorage.removeItem("totalPrice");
+          setTimeout(() => {
+            onNavigate("seat-selection-real");
+          }, 2000);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [seatBookingMode, timeRemaining, reservationExpired, onNavigate]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
 
   // Check if cart is empty (allow seat booking mode even with empty cart items)
   if (items.length === 0 && !seatBookingMode) {
@@ -265,6 +329,28 @@ export function Checkout({
     setError("");
 
     try {
+      // Check if reservation has expired (for seat booking mode)
+      if (seatBookingMode) {
+        const expiresAtStr = sessionStorage.getItem("reservationExpiresAt");
+        if (expiresAtStr) {
+          const expiresAt = new Date(expiresAtStr);
+          const now = new Date();
+
+          if (now >= expiresAt) {
+            toast.error("Your seat reservation has expired. Redirecting...");
+            sessionStorage.removeItem("selectedSeats");
+            sessionStorage.removeItem("reservationExpiresAt");
+            sessionStorage.removeItem("eventId");
+            sessionStorage.removeItem("totalPrice");
+            setTimeout(() => {
+              onNavigate("seat-selection-real");
+            }, 2000);
+            setIsProcessing(false);
+            return;
+          }
+        }
+      }
+
       // Validate step 1 (contact information)
       if (!validateStep1()) {
         setCurrentStep(1);
@@ -541,6 +627,30 @@ export function Checkout({
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
       <div className="max-w-5xl mx-auto px-4">
+        {/* Reservation Timer Warning (for seat booking mode) */}
+        {seatBookingMode && timeRemaining !== null && !reservationExpired && (
+          <div
+            className={`mb-6 rounded-lg p-4 flex items-center justify-between ${
+              timeRemaining < 300
+                ? "bg-orange-100 border border-orange-300 text-orange-800"
+                : "bg-blue-100 border border-blue-300 text-blue-800"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Lock size={20} />
+              <div>
+                <p className="font-medium">Your seats are reserved</p>
+                <p className="text-sm opacity-90">
+                  Complete payment within {formatTime(timeRemaining)}
+                </p>
+              </div>
+            </div>
+            <div className="text-2xl font-bold">
+              {formatTime(timeRemaining)}
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="mb-2">{t("booking.checkout.title")}</h1>

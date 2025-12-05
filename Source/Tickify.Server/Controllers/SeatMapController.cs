@@ -198,7 +198,78 @@ namespace Tickify.Controllers
                 }
 
                 var success = await _seatMapService.ReleaseSeatsAsync(seatIds, userId);
-                return Ok(new { message = "Seats released successfully" });
+                return Ok(new { message = "Seats released successfully", success = success });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+        
+        /// <summary>
+        /// Extend seat reservation by 5 minutes (can only be done once)
+        /// </summary>
+        [HttpPost("{seatMapId}/extend")]
+        [Authorize]
+        public async Task<ActionResult> ExtendReservation(int seatMapId, [FromBody] List<int> seatIds)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                    return Unauthorized(new { message = "User not authenticated" });
+
+                var success = await _seatMapService.ExtendReservationAsync(seatIds, userId);
+                if (!success)
+                    return BadRequest(new { message = "Unable to extend reservation. Either seats are not reserved by you or already extended" });
+
+                return Ok(new { message = "Reservation extended by 5 minutes", additionalMinutes = 5 });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+        
+        /// <summary>
+        /// Admin lock seats for VIP/sponsor
+        /// </summary>
+        [HttpPost("admin/lock-seats")]
+        [Authorize(Roles = "Admin,Organizer")]
+        public async Task<ActionResult> AdminLockSeats([FromBody] AdminLockSeatsDto dto)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int adminId))
+                    return Unauthorized(new { message = "Admin not authenticated" });
+
+                var success = await _seatMapService.AdminLockSeatsAsync(dto.SeatIds, adminId, dto.Reason);
+                if (!success)
+                    return BadRequest(new { message = "Unable to lock seats. Seats may not be available" });
+
+                return Ok(new { message = $"Successfully locked {dto.SeatIds.Count} seats", reason = dto.Reason });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+        
+        /// <summary>
+        /// Admin unlock previously locked seats
+        /// </summary>
+        [HttpPost("admin/unlock-seats")]
+        [Authorize(Roles = "Admin,Organizer")]
+        public async Task<ActionResult> AdminUnlockSeats([FromBody] List<int> seatIds)
+        {
+            try
+            {
+                var success = await _seatMapService.AdminUnlockSeatsAsync(seatIds);
+                if (!success)
+                    return BadRequest(new { message = "Unable to unlock seats. Seats may not be locked" });
+
+                return Ok(new { message = $"Successfully unlocked {seatIds.Count} seats" });
             }
             catch (Exception ex)
             {
@@ -258,4 +329,10 @@ namespace Tickify.Controllers
             }
         }
     }
+}
+
+public class AdminLockSeatsDto
+{
+    public List<int> SeatIds { get; set; } = new();
+    public string Reason { get; set; } = string.Empty;
 }

@@ -33,6 +33,15 @@ namespace Tickify.Models
         public int? ReservedByUserId { get; set; }
         public DateTime? ReservedUntil { get; set; }
         
+        // Admin lock functionality (for VIP/sponsor seats)
+        public bool IsAdminLocked { get; set; } = false;
+        public string? AdminLockedReason { get; set; }
+        public int? LockedByAdminId { get; set; }
+        public DateTime? LockedAt { get; set; }
+        
+        // Seat hold extension tracking
+        public bool HasExtendedReservation { get; set; } = false;
+        
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
 

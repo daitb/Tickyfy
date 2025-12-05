@@ -97,6 +97,7 @@ namespace Tickify.DTOs.SeatMap
         public string? BlockedReason { get; set; }
         public bool IsWheelchair { get; set; } // Wheelchair accessible
         public bool IsReserved { get; set; }
+        public int? ReservedByUserId { get; set; } // User ID who reserved the seat
         public DateTime? ReservedUntil { get; set; }
         public decimal Price { get; set; } // Giá của seat dựa trên ticket type
         public string? ZoneName { get; set; } // Tên zone (nếu có)
@@ -107,7 +108,7 @@ namespace Tickify.DTOs.SeatMap
     {
         public List<int> SeatIds { get; set; } = new();
         public int UserId { get; set; }
-        public int ReservationMinutes { get; set; } = 15; // Default 15 minutes hold
+        public int ReservationMinutes { get; set; } = 10; // Default 10 minutes hold
     }
 
     public class SeatAvailabilityDto

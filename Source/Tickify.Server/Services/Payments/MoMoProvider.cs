@@ -255,6 +255,11 @@ public sealed class MoMoProvider : IPaymentProvider
         // Log amount conversion để debug
         Console.WriteLine($"[MoMo] Amount conversion: {amount} VND -> {momoAmount} VND (integer, NOT multiplied by 100)");
 
+        // NOTE: orderExpireTime is not supported in MoMo test environment
+        // Backend will handle 10-minute expiration through booking.ExpiresAt
+        
+        // IMPORTANT: MoMo signature does NOT include orderExpireTime or requestType
+        // Only these fields in this exact order:
         var raw = $"partnerCode={_opt.PartnerCode}"
                 + $"&accessKey={_opt.AccessKey}"
                 + $"&requestId={requestId}"
@@ -278,6 +283,7 @@ public sealed class MoMoProvider : IPaymentProvider
             amount = momoAmount.ToString(),
             orderInfo = orderInfo,
             requestId = requestId,
+            // orderExpireTime removed - not supported in test environment
             extraData = "",
             signature = signature
         };
@@ -288,6 +294,7 @@ public sealed class MoMoProvider : IPaymentProvider
         Console.WriteLine($"[MoMo] PaymentId: {paymentId}, BookingId: {bookingId}");
         Console.WriteLine($"[MoMo] Original Amount (VND): {amount}");
         Console.WriteLine($"[MoMo] Converted Amount (smallest unit): {momoAmount}");
+        Console.WriteLine($"[MoMo] Backend will handle 10-minute expiration via booking.ExpiresAt");
         Console.WriteLine($"[MoMo] Request URL: {_opt.MomoApiUrl}");
         Console.WriteLine($"[MoMo] Request payload: {requestJson}");
         Console.WriteLine($"[MoMo] ======================================");

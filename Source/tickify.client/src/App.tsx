@@ -149,7 +149,9 @@ const BecomeOrganizer = lazy(() =>
     default: m.BecomeOrganizer,
   }))
 );
-const PaymentReturn = lazy(() => import("./pages/PaymentReturn"));
+const PaymentReturn = lazy(() =>
+  import("./pages/PaymentReturn").then((m) => ({ default: m.default }))
+);
 const About = lazy(() =>
   import("./pages/About").then((m) => ({ default: m.About }))
 );

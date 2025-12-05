@@ -22,6 +22,9 @@ namespace Tickify.Services
         Task<bool> ReserveSeatsAsync(List<int> seatIds, int userId);
         Task<bool> ReleaseSeatsAsync(List<int> seatIds, int userId);
         Task<int> ReleaseExpiredReservationsAsync();
+        Task<bool> ExtendReservationAsync(List<int> seatIds, int userId);
+        Task<bool> AdminLockSeatsAsync(List<int> seatIds, int adminId, string reason);
+        Task<bool> AdminUnlockSeatsAsync(List<int> seatIds);
     }
 
     public class SeatMapService : ISeatMapService
@@ -210,6 +213,21 @@ namespace Tickify.Services
         public async Task<int> ReleaseExpiredReservationsAsync()
         {
             return await _seatRepository.ReleaseExpiredReservationsAsync();
+        }
+        
+        public async Task<bool> ExtendReservationAsync(List<int> seatIds, int userId)
+        {
+            return await _seatRepository.ExtendReservationAsync(seatIds, userId);
+        }
+        
+        public async Task<bool> AdminLockSeatsAsync(List<int> seatIds, int adminId, string reason)
+        {
+            return await _seatRepository.AdminLockSeatsAsync(seatIds, adminId, reason);
+        }
+        
+        public async Task<bool> AdminUnlockSeatsAsync(List<int> seatIds)
+        {
+            return await _seatRepository.AdminUnlockSeatsAsync(seatIds);
         }
 
         private async Task CreateZonesAndSeatsFromLayoutAsync(int seatMapId, string layoutConfig, int eventId)

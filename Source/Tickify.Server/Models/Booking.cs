@@ -20,7 +20,7 @@ namespace Tickify.Models
         public decimal DiscountAmount { get; set; } = 0; // Discount applied from promo code
         public BookingStatus Status { get; set; } = BookingStatus.Pending;
         public DateTime BookingDate { get; set; } = DateTime.UtcNow;
-        public DateTime? ExpiresAt { get; set; } // Booking expires if not paid (typically 10-15 minutes)
+        public DateTime? ExpiresAt { get; set; } // Booking expires if not paid (10 minutes)
         public DateTime? CancelledAt { get; set; }
         public string? CancellationReason { get; set; }
         public bool IsRefundRequested { get; set; } = false;

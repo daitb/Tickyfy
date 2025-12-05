@@ -460,8 +460,16 @@ export function SeatMapBuilder({
   };
 
   const getSeatColor = (seat: GridSeat) => {
+    // Blocked seats - red
     if (seat.isBlocked) return "#EF5350";
+
+    // Wheelchair seats - distinct blue
+    if (seat.isWheelchair) return "#60A5FA";
+
+    // No zone assigned - gray
     if (!seat.zoneId) return "#E0E0E0";
+
+    // Use zone color
     const zone = zones.find((z) => z.id === seat.zoneId);
     return zone?.color || "#E0E0E0";
   };
@@ -678,7 +686,7 @@ export function SeatMapBuilder({
               </Button>
 
               <Button
-                className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
+                className="bg-teal-600 hover:bg-teal-700 text-white"
                 size="sm"
                 onClick={handlePublish}
               >

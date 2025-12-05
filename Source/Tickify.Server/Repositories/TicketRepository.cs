@@ -51,6 +51,7 @@ public class TicketRepository : ITicketRepository
             .Include(t => t.Booking)
                 .ThenInclude(b => b!.Event)
             .Include(t => t.TicketType)
+            .Include(t => t.Seat) // Include seat information for seat-based tickets
             .Where(t => t.Booking != null && t.Booking.UserId == userId)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync();
