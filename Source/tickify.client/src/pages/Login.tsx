@@ -42,8 +42,7 @@ export function Login({ onNavigate }: LoginProps) {
 
   // Initialize Google Sign-In
   useEffect(() => {
-    // Google Client ID - Replace with your actual Google OAuth Client ID
-    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 
+    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ||
       "177365327171-n3jfda9entg6u3h6mc9glsgbeob65qs9.apps.googleusercontent.com";
 
     if (window.google && googleButtonRef.current) {
@@ -79,7 +78,7 @@ export function Login({ onNavigate }: LoginProps) {
 
       // Redirect based on role
       const userRole = loginResponse.roles[0];
-      
+
       if (userRole === "User") {
         onNavigate("home");
       } else if (userRole === "Organizer") {
@@ -97,7 +96,12 @@ export function Login({ onNavigate }: LoginProps) {
         "Đăng nhập Google thất bại. Vui lòng thử lại.";
 
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast.error(errorMessage, {
+        duration: 5000,
+        description: err.response?.status === 401
+          ? "Vui lòng liên hệ quản trị viên nếu bạn cho rằng đây là lỗi."
+          : undefined
+      });
     } finally {
       setIsLoading(false);
     }
@@ -134,12 +138,17 @@ export function Login({ onNavigate }: LoginProps) {
         "Email hoặc mật khẩu không đúng";
 
       setError(errorMessage);
-      toast.error(errorMessage);
-      
+      toast.error(errorMessage, {
+        duration: 5000,
+        description: err.response?.status === 401
+          ? "Vui lòng liên hệ quản trị viên nếu bạn cho rằng đây là lỗi."
+          : undefined
+      });
+
       // Check if error is about email verification
-      if (errorMessage.toLowerCase().includes("xác thực email") || 
-          errorMessage.toLowerCase().includes("verify") ||
-          errorMessage.toLowerCase().includes("verification")) {
+      if (errorMessage.toLowerCase().includes("xác thực email") ||
+        errorMessage.toLowerCase().includes("verify") ||
+        errorMessage.toLowerCase().includes("verification")) {
         setIsEmailNotVerified(true);
       }
     } finally {
