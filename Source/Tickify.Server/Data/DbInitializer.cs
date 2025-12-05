@@ -945,18 +945,12 @@ namespace Tickify.Data
                     Console.WriteLine($"  ✅ Created seat map for event '{evt.Title}' with {eventTicketTypes.Count} zones");
                 }
 
-                Console.WriteLine("\n🎉 Database seeding completed successfully!");
-                Console.WriteLine("\n📝 Default Accounts:");
-                Console.WriteLine("   Admin: admin@tickify.com / Admin@123456");
-                Console.WriteLine("   Customer: customer@example.com / Customer@123");
-                Console.WriteLine($"   Email: organizer@example.com/Password: Organizer@123");
-                Console.WriteLine("\n💡 To add more test data, run the SQL script:");
-                Console.WriteLine("   Documents/SeedTestData.sql");
+                Console.WriteLine("\n🎉 Database data seeded successfully!");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error seeding database: {ex.Message}");
-                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
+                Console.WriteLine($"❌ Lỗi khi khởi tạo dữ liệu database: {ex.Message}");
+                Console.WriteLine($"   Chi tiết lỗi: {ex.StackTrace}");
                 throw;
             }
         }

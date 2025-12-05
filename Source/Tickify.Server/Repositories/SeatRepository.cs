@@ -212,38 +212,6 @@ public class SeatRepository : ISeatRepository
         // Check if already extended
         if (seats.Any(s => s.HasExtendedReservation))
             return false;
-        }
-        
-        // Check for blocked seats
-        var blockedSeats = allSeats.Where(s => s.IsBlocked).Select(s => s.Id).ToList();
-        if (blockedSeats.Any())
-        {
-            Console.WriteLine($"[SeatRepository] ReserveSeats: ❌ Blocked seats: {string.Join(", ", blockedSeats)}");
-            return false;
-        }
-        
-        // Check for seats that are not available (sold or reserved by another user)
-        var unavailableSeats = allSeats
-            .Where(s => s.Status != SeatStatus.Available && 
-                       !(s.Status == SeatStatus.Reserved && s.ReservedByUserId == userId))
-            .Select(s => new { s.Id, s.Status, s.ReservedByUserId })
-            .ToList();
-        
-        if (unavailableSeats.Any())
-        {
-            Console.WriteLine($"[SeatRepository] ReserveSeats: ❌ Unavailable seats:");
-            foreach (var seat in unavailableSeats)
-            {
-                Console.WriteLine($"[SeatRepository]   - Seat {seat.Id}: Status={seat.Status}, ReservedBy={seat.ReservedByUserId}");
-            }
-            return false;
-        }
-        
-        // All checks passed, get the seats that can be reserved
-        var seats = allSeats
-            .Where(s => s.Status == SeatStatus.Available || 
-                       (s.Status == SeatStatus.Reserved && s.ReservedByUserId == userId))
-            .ToList();
 
         var eventId = seats.FirstOrDefault()?.TicketType.EventId;
 
@@ -302,7 +270,7 @@ public class SeatRepository : ISeatRepository
 
         await _context.SaveChangesAsync();
         
-        Console.WriteLine($"[SeatRepository] ReserveSeats: ✅ Successfully reserved {seats.Count} seats for user {userId}");
+        Console.WriteLine($"[SeatRepository] AdminLockSeats: ✅ Successfully locked {seats.Count} seats by admin {adminId}");
 
         // Broadcast to all clients
         if (eventId.HasValue)
