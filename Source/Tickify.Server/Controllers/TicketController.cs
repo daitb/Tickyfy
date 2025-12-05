@@ -200,6 +200,7 @@ public class TicketController : ControllerBase
     }
 
     /// Accept ticket transfer (via GET with query params - for email links)
+    [AllowAnonymous]
     [HttpGet("transfers/accept")]
     [ProducesResponseType(typeof(ApiResponse<TicketDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]

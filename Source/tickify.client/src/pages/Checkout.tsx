@@ -146,7 +146,7 @@ export function Checkout({
             })
             .catch((err) => {
               console.error("Failed to load seat details:", err);
-              toast.error("Failed to load seat information");
+              toast.error(t("booking.checkout.failedToLoadSeatInfo"));
             });
         }
       } catch (e) {
@@ -639,9 +639,12 @@ export function Checkout({
             <div className="flex items-center gap-3">
               <Lock size={20} />
               <div>
-                <p className="font-medium">Your seats are reserved</p>
+                <p className="font-medium">
+                  {t("booking.checkout.yourSeatsAreReserved")}
+                </p>
                 <p className="text-sm opacity-90">
-                  Complete payment within {formatTime(timeRemaining)}
+                  {t("booking.checkout.completePaymentWithin")}{" "}
+                  {formatTime(timeRemaining)}
                 </p>
               </div>
             </div>
@@ -895,7 +898,7 @@ export function Checkout({
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <h4 className="mb-4">
                           {seatBookingMode
-                            ? "Selected Seats"
+                            ? t("booking.checkout.selectedSeats")
                             : t("booking.checkout.ticketSummary")}
                         </h4>
                         <div className="space-y-3">
@@ -907,7 +910,7 @@ export function Checkout({
                                     <div className="flex-1">
                                       <div className="text-neutral-900">
                                         {seat.isWheelchair && "♿ "}
-                                        Seat {seat.row}
+                                        {t("booking.checkout.seat")} {seat.row}
                                         {seat.seatNumber}
                                         {seat.zoneName && (
                                           <span className="text-sm text-neutral-600 ml-2">

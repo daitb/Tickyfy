@@ -7,9 +7,6 @@ public class TicketTransferValidator : AbstractValidator<TicketTransferDto>
 {
     public TicketTransferValidator()
     {
-        RuleFor(x => x.TicketId)
-            .GreaterThan(0).WithMessage("TicketId phải lớn hơn 0");
-
         RuleFor(x => x.RecipientEmail)
             .NotEmpty().WithMessage("Email người nhận là bắt buộc")
             .EmailAddress().WithMessage("Email không đúng định dạng")

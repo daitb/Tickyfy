@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import * as signalR from "@microsoft/signalr";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
@@ -46,6 +47,7 @@ export function SeatSelectionReal({
   onNavigate,
 }: SeatSelectionRealProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [seats, setSeats] = useState<SeatDto[]>([]);
   const [seatMap, setSeatMap] = useState<SeatMapDto | null>(null);
@@ -215,12 +217,12 @@ export function SeatSelectionReal({
       if (eventId) {
         loadSeatData(eventId);
       }
-      alert("Connection restored! Seat availability has been refreshed.");
+      alert(t("seat.selection.alerts.connectionRestored"));
     });
 
     connection.onreconnecting(() => {
       console.log("SignalR reconnecting...");
-      alert("Connection lost. Attempting to reconnect...");
+      alert(t("seat.selection.alerts.connectionLost"));
     });
 
     connection
@@ -275,9 +277,7 @@ export function SeatSelectionReal({
         event.data.type === "SEAT_SELECTED" &&
         event.data.eventId === eventId
       ) {
-        alert(
-          "⚠️ Warning: You have this event open in another tab! Please use only one tab to avoid conflicts."
-        );
+        alert(t("seat.selection.alerts.multipleTabsWarning"));
       }
     };
 
@@ -315,9 +315,7 @@ export function SeatSelectionReal({
           setSelectedSeats([]);
           sessionStorage.removeItem("selectedSeats");
           sessionStorage.removeItem("reservationExpiresAt");
-          alert(
-            "Time expired! Your seats have been released. Please select again."
-          );
+          alert(t("seat.selection.alerts.timeExpired"));
           return 600; // Reset to 10 minutes
         }
         return prev - 1;
@@ -480,8 +478,8 @@ export function SeatSelectionReal({
           (s) => s.status === "Available"
         );
         if (availableSeats.length === 0) {
-          setError("This event is sold out!");
-          alert("This event is sold out! Redirecting back to event details...");
+          setError(t("seat.selection.noSeatsAvailable"));
+          alert(t("seat.selection.alerts.soldOut"));
           setTimeout(() => {
             onNavigate("event-detail", id);
           }, 2000);
@@ -535,17 +533,14 @@ export function SeatSelectionReal({
           );
         }
 
-        alert("✅ Reservation extended by 5 minutes!");
+        alert(t("seat.selection.alerts.reservationExtended"));
       } else {
         const data = await response.json();
-        alert(
-          data.message ||
-            "Failed to extend reservation. You may have already extended once."
-        );
+        alert(data.message || t("seat.selection.alerts.failedToExtend"));
       }
     } catch (error) {
       console.error("Failed to extend reservation:", error);
-      alert("Failed to extend reservation. Please try again.");
+      alert(t("seat.selection.alerts.failedToExtend"));
     } finally {
       setIsExtending(false);
     }
@@ -591,7 +586,7 @@ export function SeatSelectionReal({
           console.error("Failed to release seat:", error);
           // Revert selection on error
           setSelectedSeats(selectedSeats);
-          alert("Failed to release seat. Please try again.");
+          alert(t("seat.selection.alerts.failedToRelease"));
         }
       }
       return;
@@ -603,7 +598,11 @@ export function SeatSelectionReal({
       (seat.status === "Reserved" && seat.reservedByUserId === currentUserId);
 
     if (!canSelect) {
-      alert(`This seat is ${seat.status.toLowerCase()} by another user.`);
+      alert(
+        t("seat.selection.alerts.seatTakenByOther", {
+          status: seat.status.toLowerCase(),
+        })
+      );
       return;
     }
 
@@ -636,9 +635,7 @@ export function SeatSelectionReal({
         console.error("Failed to reserve seat:", error);
         // Revert selection if reservation fails
         setSelectedSeats(selectedSeats);
-        alert(
-          "Unable to reserve seat. It may have been taken by another user."
-        );
+        alert(t("seat.selection.alerts.unableToReserve"));
       }
     }
   };
@@ -674,7 +671,7 @@ export function SeatSelectionReal({
 
   const handleProceedToCheckout = () => {
     if (selectedSeats.length === 0) {
-      alert("Please select at least one seat");
+      alert(t("seat.selection.alerts.selectAtLeastOne"));
       return;
     }
 
@@ -785,7 +782,7 @@ export function SeatSelectionReal({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-[#00C16A]" />
-          <p className="text-gray-600">Loading seat map...</p>
+          <p className="text-gray-600">{t("seat.selection.loadingSeatMap")}</p>
         </div>
       </div>
     );
@@ -796,8 +793,12 @@ export function SeatSelectionReal({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
-            <p className="text-red-600 mb-4">{error || "Event not found"}</p>
-            <Button onClick={() => onNavigate("home")}>Back to Home</Button>
+            <p className="text-red-600 mb-4">
+              {error || t("seat.selection.eventNotFound")}
+            </p>
+            <Button onClick={() => onNavigate("home")}>
+              {t("seat.selection.backToHome")}
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -834,7 +835,7 @@ export function SeatSelectionReal({
             onClick={handleBackClick}
           >
             <ArrowLeft size={20} className="mr-2" />
-            Back to Event
+            {t("seat.selection.backToEvent")}
           </Button>
 
           <div className="text-white">
@@ -865,7 +866,7 @@ export function SeatSelectionReal({
           <div className="flex items-center justify-center gap-3">
             <Clock size={20} />
             <span className="text-sm">
-              Time remaining:{" "}
+              {t("seat.selection.timeRemaining")}{" "}
               <strong className="text-lg">{formatTime(timeRemaining)}</strong>
             </span>
           </div>
@@ -878,7 +879,9 @@ export function SeatSelectionReal({
         <div className="w-80 bg-white border-r overflow-y-auto p-4 flex-shrink-0">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Available Zones</CardTitle>
+              <CardTitle className="text-sm">
+                {t("seat.selection.availableZones")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {zones && zones.length > 0 ? (
@@ -896,13 +899,17 @@ export function SeatSelectionReal({
                     </div>
                     <div className="space-y-1 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-neutral-500">Price:</span>
+                        <span className="text-neutral-500">
+                          {t("seat.selection.price")}:
+                        </span>
                         <span className="font-medium text-neutral-900">
                           {formatVND(zone.zonePrice)}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-neutral-500">Available:</span>
+                        <span className="text-neutral-500">
+                          {t("seat.selection.available")}:
+                        </span>
                         <span className="font-medium text-neutral-900">
                           {zone.availableSeats} / {zone.capacity}
                         </span>
@@ -911,7 +918,9 @@ export function SeatSelectionReal({
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-gray-500">No zones defined</p>
+                <p className="text-sm text-gray-500">
+                  {t("seat.selection.noZonesDefined")}
+                </p>
               )}
             </CardContent>
           </Card>
@@ -924,7 +933,9 @@ export function SeatSelectionReal({
             <div className="mb-8 text-center">
               <div className="inline-block bg-neutral-200 px-16 py-6 rounded-lg">
                 <div className="text-2xl mb-2">🎭</div>
-                <div className="text-sm text-neutral-700">STAGE</div>
+                <div className="text-sm text-neutral-700">
+                  {t("seat.selection.stage").toUpperCase()}
+                </div>
               </div>
             </div>
 
@@ -933,7 +944,7 @@ export function SeatSelectionReal({
               <div className="inline-block">{renderSeatGrid()}</div>
             ) : (
               <div className="text-center py-12 text-gray-500">
-                No seats available for this event
+                {t("seat.selection.noSeatsAvailable")}
               </div>
             )}
           </div>
@@ -943,32 +954,34 @@ export function SeatSelectionReal({
         <div className="w-80 bg-white border-l overflow-y-auto p-4 flex-shrink-0">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Booking Summary</CardTitle>
+              <CardTitle className="text-sm">
+                {t("seat.selection.bookingSummary")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Legend */}
               <div className="pb-3 border-b">
                 <div className="text-xs font-medium text-neutral-700 mb-2">
-                  Legend:
+                  {t("seat.selection.legend")}
                 </div>
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded bg-gray-200 border border-gray-300" />
-                    <span>Available</span>
+                    <span>{t("seat.selection.available")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded bg-[#00C16A]" />
-                    <span>Selected</span>
+                    <span>{t("seat.selection.selected")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded bg-red-600" />
-                    <span>Sold</span>
+                    <span>{t("seat.selection.sold")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded bg-blue-400 flex items-center justify-center text-xs text-white">
                       ♿
                     </div>
-                    <span>Wheelchair</span>
+                    <span>{t("seat.selection.wheelchair")}</span>
                   </div>
                 </div>
               </div>
@@ -976,11 +989,11 @@ export function SeatSelectionReal({
               {/* Selected Seats */}
               <div>
                 <div className="text-sm font-medium text-gray-900 mb-2">
-                  Selected Seats ({selectedSeats.length})
+                  {t("seat.selection.selectedSeats")} ({selectedSeats.length})
                 </div>
                 {selectedSeats.length === 0 ? (
                   <p className="text-xs text-gray-500 text-center py-4">
-                    No seats selected yet
+                    {t("seat.selection.noSeatsSelected")}
                   </p>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -1017,19 +1030,23 @@ export function SeatSelectionReal({
               {/* Pricing */}
               <div className="border-t pt-3">
                 <div className="flex justify-between text-xs mb-2">
-                  <span className="text-gray-600">Subtotal</span>
+                  <span className="text-gray-600">
+                    {t("seat.selection.subtotal")}
+                  </span>
                   <span className="font-medium">
                     {formatVND(getTotalPrice())}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs mb-2">
-                  <span className="text-gray-600">Service Fee (5%)</span>
+                  <span className="text-gray-600">
+                    {t("seat.selection.serviceFee")} (5%)
+                  </span>
                   <span className="font-medium">
                     {formatVND(getTotalPrice() * 0.05)}
                   </span>
                 </div>
                 <div className="flex justify-between text-base font-bold pt-2 border-t">
-                  <span>Total</span>
+                  <span>{t("seat.selection.total")}</span>
                   <span className="text-[#00C16A]">
                     {formatVND(getTotalPrice() * 1.05)}
                   </span>
@@ -1047,7 +1064,9 @@ export function SeatSelectionReal({
                     className="w-full mb-2 border-orange-500 text-orange-600 hover:bg-orange-50"
                   >
                     <Clock className="w-4 h-4 mr-2" />
-                    {isExtending ? "Extending..." : "Extend Time (+5 min)"}
+                    {isExtending
+                      ? t("seat.selection.extending")
+                      : t("seat.selection.extendTime") + " (+5 min)"}
                   </Button>
                 )}
 
@@ -1058,12 +1077,14 @@ export function SeatSelectionReal({
                 className="w-full bg-[#00C16A] hover:bg-[#00a859] h-11"
               >
                 <ShoppingCart className="w-4 h-4 mr-2" />
-                Proceed to Checkout
+                {t("seat.selection.proceedToCheckout")}
               </Button>
 
               <p className="text-xs text-gray-500 text-center">
-                Seats will be held for {formatTime(timeRemaining)}
-                {hasExtendedReservation && " (Extended)"}
+                {t("seat.selection.seatsWillBeHeld")}{" "}
+                {formatTime(timeRemaining)}
+                {hasExtendedReservation &&
+                  " (" + t("seat.selection.extended") + ")"}
               </p>
             </CardContent>
           </Card>
@@ -1076,29 +1097,28 @@ export function SeatSelectionReal({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-orange-600" />
-              Leave Page?
+              {t("seat.selection.dialog.leavePageTitle")}
             </DialogTitle>
             <DialogDescription>
-              You have {selectedSeats.length} seat
-              {selectedSeats.length > 1 ? "s" : ""} selected. If you leave now,
-              your seats will be released immediately and become available for
-              other users.
+              {t("seat.selection.dialog.leavePageMessage", {
+                count: selectedSeats.length,
+              })}
               <br />
               <br />
               <span className="font-medium text-red-600">
-                You will need to select seats again if you return.
+                {t("seat.selection.dialog.loseSeatsWarning")}
               </span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={handleStay}>
-              Stay on Page
+              {t("seat.selection.dialog.stayOnPage")}
             </Button>
             <Button
               onClick={handleConfirmLeave}
               className="bg-orange-600 hover:bg-orange-700"
             >
-              Leave Page
+              {t("seat.selection.dialog.leavePage")}
             </Button>
           </DialogFooter>
         </DialogContent>
