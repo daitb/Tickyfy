@@ -74,6 +74,9 @@ public class PromoCodeService : IPromoCodeService
                 throw new ConflictException($"Promo code '{createDto.Code}' already exists");
             }
 
+            // Check if user is admin
+            var isAdmin = user.UserRoles?.Any(ur => ur.Role?.Name == "Admin") ?? false;
+
             // Check permissions: only organizer of the event or admin can create promo codes for that event
             if (createDto.EventId.HasValue)
             {
@@ -84,12 +87,25 @@ public class PromoCodeService : IPromoCodeService
                 }
 
                 // Check if user is admin or the organizer of this event
-                var isAdmin = user.UserRoles?.Any(ur => ur.Role?.Name == "Admin") ?? false;
                 var isEventOrganizer = eventEntity.OrganizerId == createdByUserId;
 
                 if (!isAdmin && !isEventOrganizer)
                 {
                     throw new ForbiddenException("You can only create promo codes for events you organize, or you must be an admin");
+                }
+
+                // Set OrganizerId from event if not provided
+                if (!createDto.OrganizerId.HasValue && eventEntity.OrganizerId > 0)
+                {
+                    createDto.OrganizerId = eventEntity.OrganizerId;
+                }
+            }
+            else
+            {
+                // Global promo codes can only be created by admins
+                if (!isAdmin)
+                {
+                    throw new ForbiddenException("Only admins can create global promo codes (promo codes not tied to a specific event)");
                 }
             }
 
@@ -122,11 +138,20 @@ public class PromoCodeService : IPromoCodeService
                 MaxUsesPerUser = createDto.MaxUsesPerUser,
                 ValidFrom = createDto.ValidFrom.Value,
                 ValidTo = createDto.ValidTo.Value,
-                CreatedByUserId = createdByUserId
+                CreatedByUserId = createdByUserId,
+                IsActive = true // New promo codes are active by default
             };
 
             var created = await _promoCodeRepository.CreateAsync(promoCode);
-            return _mapper.Map<PromoCodeDto>(created);
+            
+            // Reload the entity with all navigation properties to ensure complete data
+            var reloaded = await _promoCodeRepository.GetByIdAsync(created.Id);
+            if (reloaded == null)
+            {
+                throw new NotFoundException($"Promo code with ID {created.Id} not found after creation");
+            }
+            
+            return _mapper.Map<PromoCodeDto>(reloaded);
         }
         catch (Exception ex)
         {
@@ -139,7 +164,7 @@ public class PromoCodeService : IPromoCodeService
         }
     }
 
-public async Task<PromoCodeDto> UpdateAsync(int id, UpdatePromoCodeDto updateDto)
+public async Task<PromoCodeDto> UpdateAsync(int id, UpdatePromoCodeDto updateDto, int currentUserId)
 {
     try
     {
@@ -197,31 +222,34 @@ public async Task<PromoCodeDto> UpdateAsync(int id, UpdatePromoCodeDto updateDto
             throw new BadRequestException("Valid to date must be after valid from date");
         }
 
-        // Get current user to check permissions
-        var currentUserIdClaim = System.Security.Claims.ClaimsPrincipal.Current?.FindFirst("userId") ??
-                                System.Security.Claims.ClaimsPrincipal.Current?.FindFirst("sub") ??
-                                System.Security.Claims.ClaimsPrincipal.Current?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-        
-        if (currentUserIdClaim != null && int.TryParse(currentUserIdClaim.Value, out var currentUserId))
+        // Check permissions
+        var currentUser = await _userRepository.GetUserByIdAsync(currentUserId);
+        if (currentUser == null)
         {
-            var currentUser = await _userRepository.GetUserByIdAsync(currentUserId);
-            var isAdmin = currentUser?.UserRoles?.Any(ur => ur.Role?.Name == "Admin") ?? false;
+            throw new NotFoundException($"User with ID {currentUserId} not found");
+        }
 
-            // Check permissions for event-specific promo codes
-            if (existing.EventId.HasValue)
-            {
-                var eventEntity = await _eventRepository.GetByIdAsync(existing.EventId.Value);
-                var isEventOrganizer = eventEntity?.OrganizerId == currentUserId;
+        var isAdmin = currentUser.UserRoles?.Any(ur => ur.Role?.Name == "Admin") ?? false;
 
-                if (!isAdmin && !isEventOrganizer)
-                {
-                    throw new ForbiddenException("You can only update promo codes for events you organize, or you must be an admin");
-                }
-            }
-            else if (!isAdmin)
+        // Check permissions for event-specific promo codes
+        if (existing.EventId.HasValue)
+        {
+            var eventEntity = await _eventRepository.GetByIdAsync(existing.EventId.Value);
+            if (eventEntity == null)
             {
-                throw new ForbiddenException("Only admins can update global promo codes");
+                throw new NotFoundException($"Event with ID {existing.EventId.Value} not found");
             }
+
+            var isEventOrganizer = eventEntity.OrganizerId == currentUserId;
+
+            if (!isAdmin && !isEventOrganizer)
+            {
+                throw new ForbiddenException("You can only update promo codes for events you organize, or you must be an admin");
+            }
+        }
+        else if (!isAdmin)
+        {
+            throw new ForbiddenException("Only admins can update global promo codes");
         }
 
         // Check for duplicate code if code is being changed
@@ -254,14 +282,43 @@ public async Task<PromoCodeDto> UpdateAsync(int id, UpdatePromoCodeDto updateDto
             existing.OrganizerId = updateDto.OrganizerId.Value;
 
         var updated = await _promoCodeRepository.UpdateAsync(existing);
-        return _mapper.Map<PromoCodeDto>(updated);
+        
+        // Reload the entity with all navigation properties to ensure complete data
+        var reloaded = await _promoCodeRepository.GetByIdAsync(updated.Id);
+        if (reloaded == null)
+        {
+            throw new NotFoundException($"Promo code with ID {updated.Id} not found after update");
+        }
+        
+        return _mapper.Map<PromoCodeDto>(reloaded);
+    }
+    catch (BadRequestException)
+    {
+        throw;
+    }
+    catch (NotFoundException)
+    {
+        throw;
+    }
+    catch (ForbiddenException)
+    {
+        throw;
+    }
+    catch (ConflictException)
+    {
+        throw;
     }
     catch (Exception ex)
     {
         // Log detailed error information
         Console.WriteLine($"[PromoCodeService.UpdateAsync] Error updating promo code ID {id}: {ex.Message}");
         Console.WriteLine($"[PromoCodeService.UpdateAsync] UpdateDto Code: {updateDto?.Code}");
+        Console.WriteLine($"[PromoCodeService.UpdateAsync] CurrentUserId: {currentUserId}");
         Console.WriteLine($"[PromoCodeService.UpdateAsync] StackTrace: {ex.StackTrace}");
+        if (ex.InnerException != null)
+        {
+            Console.WriteLine($"[PromoCodeService.UpdateAsync] InnerException: {ex.InnerException.Message}");
+        }
         throw;
     }
 }
@@ -329,14 +386,29 @@ public async Task<bool> DeleteAsync(int id)
         if (promoCode == null)
             throw new NotFoundException($"Promo code '{validateDto.Code}' not found");
 
-        // Check if promo code is valid for the event
-        var isValid = await _promoCodeRepository.IsPromoCodeValidAsync(validateDto.Code, validateDto.EventId);
-        if (!isValid)
-            throw new BadRequestException("Promo code is not valid for this event or has expired");
+        // Check if promo code is active
+        if (!promoCode.IsActive)
+            throw new BadRequestException($"Promo code '{validateDto.Code}' is not active");
+
+        // Check if promo code is valid for the event (if event-specific)
+        if (promoCode.EventId.HasValue && promoCode.EventId.Value != validateDto.EventId)
+            throw new BadRequestException($"Promo code '{validateDto.Code}' is not valid for this event");
+
+        // Check validity dates
+        var now = DateTime.UtcNow;
+        if (promoCode.ValidFrom.HasValue && now < promoCode.ValidFrom.Value)
+            throw new BadRequestException($"Promo code '{validateDto.Code}' is not yet valid. Valid from: {promoCode.ValidFrom.Value:dd/MM/yyyy HH:mm}");
+
+        if (promoCode.ValidTo.HasValue && now > promoCode.ValidTo.Value)
+            throw new BadRequestException($"Promo code '{validateDto.Code}' has expired. Expired on: {promoCode.ValidTo.Value:dd/MM/yyyy HH:mm}");
+
+        // Check maximum uses
+        if (promoCode.MaxUses.HasValue && promoCode.CurrentUses >= promoCode.MaxUses.Value)
+            throw new BadRequestException($"Promo code '{validateDto.Code}' has reached its maximum usage limit ({promoCode.MaxUses.Value} uses). This promo code is no longer available.");
 
         // Check minimum purchase requirement
         if (promoCode.MinimumPurchase.HasValue && validateDto.OrderTotal < promoCode.MinimumPurchase.Value)
-            throw new BadRequestException($"Minimum purchase of ${promoCode.MinimumPurchase.Value} required to use this promo code");
+            throw new BadRequestException($"Minimum purchase of {promoCode.MinimumPurchase.Value:N0}₫ required to use this promo code. Your order total is {validateDto.OrderTotal:N0}₫");
 
         return _mapper.Map<PromoCodeDto>(promoCode);
     }

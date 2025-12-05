@@ -27,14 +27,35 @@ public class SeatRepository : ISeatRepository
 
     public async Task<IEnumerable<Seat>> GetByEventIdAsync(int eventId)
     {
-        return await _context.Seats
-            .Include(s => s.TicketType)
-            .Include(s => s.SeatZone)
-            .Include(s => s.Tickets)
-            .Where(s => s.TicketType.EventId == eventId)
-            .OrderBy(s => s.Row)
-            .ThenBy(s => s.SeatNumber)
-            .ToListAsync();
+        try
+        {
+            var seats = await _context.Seats
+                .Include(s => s.TicketType)
+                    .ThenInclude(tt => tt.Event)
+                .Include(s => s.SeatZone)
+                .Include(s => s.Tickets)
+                .Where(s => s.TicketType.EventId == eventId)
+                .OrderBy(s => s.Row)
+                .ThenBy(s => s.SeatNumber)
+                .ToListAsync();
+            
+            Console.WriteLine($"[SeatRepository] GetByEventIdAsync: Event {eventId}, Found {seats.Count} seats");
+            
+            // Validate seats have required data
+            var invalidSeats = seats.Where(s => s.TicketType == null || s.TicketType.EventId != eventId).ToList();
+            if (invalidSeats.Any())
+            {
+                Console.WriteLine($"[SeatRepository] WARNING: Found {invalidSeats.Count} seats with invalid TicketType for event {eventId}");
+            }
+            
+            return seats;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SeatRepository] GetByEventIdAsync error for event {eventId}: {ex.Message}");
+            Console.WriteLine($"[SeatRepository] Stack trace: {ex.StackTrace}");
+            throw;
+        }
     }
 
     public async Task<IEnumerable<Seat>> GetAvailableSeatsAsync(int eventId)
@@ -86,7 +107,9 @@ public class SeatRepository : ISeatRepository
     public async Task<bool> IsSeatAvailableAsync(int seatId)
     {
         var seat = await _context.Seats.FindAsync(seatId);
-        return seat?.Status == SeatStatus.Available;
+        return seat != null && 
+               seat.Status == SeatStatus.Available && 
+               !seat.IsBlocked;
     }
 
     public async Task<bool> ReserveSeatsAsync(IEnumerable<int> seatIds, int userId)
@@ -246,6 +269,8 @@ public class SeatRepository : ISeatRepository
         }
 
         await _context.SaveChangesAsync();
+        
+        Console.WriteLine($"[SeatRepository] AdminLockSeats: ✅ Successfully locked {seats.Count} seats by admin {adminId}");
 
         // Broadcast to all clients
         if (eventId.HasValue)

@@ -360,8 +360,8 @@ public sealed class MoMoProvider : IPaymentProvider
         }
 
 
-        // MoMo không trả expire → set 10'
-        var expire = DateTime.UtcNow.AddMinutes(10);
+        // MoMo không trả expire → sử dụng cấu hình ExpireMinutes (mặc định 15 phút)
+        var expire = DateTime.UtcNow.AddMinutes(_opt.ExpireMinutes);
 
         return new PaymentIntentDto
         {

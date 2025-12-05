@@ -10,6 +10,14 @@ interface FeeBreakdownProps {
 export function FeeBreakdown({ subtotal, serviceFee, discount = 0, className = '' }: FeeBreakdownProps) {
   const total = subtotal + serviceFee - discount;
 
+  // Debug log
+  console.log('[FeeBreakdown] Rendering with:', {
+    subtotal,
+    serviceFee,
+    discount,
+    total
+  });
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
