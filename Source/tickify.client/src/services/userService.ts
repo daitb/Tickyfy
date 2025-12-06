@@ -78,10 +78,16 @@ class UserService {
   async getUsers(
     pageNumber: number = 1,
     pageSize: number = 10,
-    searchTerm?: string
+    searchTerm?: string,
+    role?: string,
+    isActive?: boolean,
+    emailVerified?: boolean
   ): Promise<PagedResult<UserListDto>> {
     const params: any = { pageNumber, pageSize };
     if (searchTerm) params.searchTerm = searchTerm;
+    if (role) params.role = role;
+    if (isActive !== undefined) params.isActive = isActive;
+    if (emailVerified !== undefined) params.emailVerified = emailVerified;
 
     const response = await apiClient.get<PagedResult<UserListDto>>("/users", {
       params,

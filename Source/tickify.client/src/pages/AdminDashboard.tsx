@@ -116,6 +116,9 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [users, setUsers] = useState<UserListDto[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [userStatusFilter, setUserStatusFilter] = useState('all');
+  const [userEmailVerifiedFilter, setUserEmailVerifiedFilter] = useState('all');
   const [userPageNumber, setUserPageNumber] = useState(1);
   const [userPageSize] = useState(10);
   const [userTotalPages, setUserTotalPages] = useState(1);
@@ -274,12 +277,12 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   }, [activeTab]);
 
-  // Reload users when page or search changes
+  // Reload users when page, search or filters change
   useEffect(() => {
     if (activeTab === 'users') {
       loadUsers();
     }
-  }, [userPageNumber, userSearchTerm]);
+  }, [userPageNumber, userSearchTerm, userRoleFilter, userStatusFilter, userEmailVerifiedFilter]);
 
   const loadOrganizerRequests = async () => {
     setIsLoadingRequests(true);
@@ -520,7 +523,36 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const loadUsers = async () => {
     setIsLoadingUsers(true);
     try {
-      const result = await userService.getUsers(userPageNumber, userPageSize, userSearchTerm || undefined);
+      // Build query params with filters
+      const params: any = {
+        PageNumber: userPageNumber,
+        PageSize: userPageSize,
+      };
+      
+      if (userSearchTerm) {
+        params.SearchTerm = userSearchTerm;
+      }
+      
+      if (userRoleFilter !== 'all') {
+        params.Role = userRoleFilter;
+      }
+      
+      if (userStatusFilter !== 'all') {
+        params.IsActive = userStatusFilter === 'active';
+      }
+      
+      if (userEmailVerifiedFilter !== 'all') {
+        params.EmailVerified = userEmailVerifiedFilter === 'verified';
+      }
+      
+      const result = await userService.getUsers(
+        params.PageNumber,
+        params.PageSize,
+        params.SearchTerm,
+        params.Role,
+        params.IsActive,
+        params.EmailVerified
+      );
       setUsers(result.items || []);
       setUserTotalPages(result.totalPages || 1);
       setUserTotalCount(result.totalCount || 0);
@@ -1396,17 +1428,96 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </div>
               </CardHeader>
               <CardContent>
-                {/* Search */}
-                <div className="mb-4">
-                  <div className="relative w-full sm:w-80">
+                {/* Search and Filters */}
+                <div className="mb-4 space-y-4">
+                  {/* Search bar */}
+                  <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                     <Input
-                      placeholder={t('admin.searchUsers', 'Tìm kiếm người dùng...')}
+                      placeholder={t('admin.searchUsers', 'Tìm kiếm người dùng theo tên, email...')}
                       value={userSearchTerm}
                       onChange={(e) => handleUserSearch(e.target.value)}
-                      className="pl-9"
+                      className="pl-9 w-full"
                     />
                   </div>
+                  {/* Filters row */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Select value={userRoleFilter} onValueChange={(value) => { setUserRoleFilter(value); setUserPageNumber(1); }}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder={t('admin.filterByRole', 'Lọc vai trò')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('admin.allRoles', 'Tất cả vai trò')}</SelectItem>
+                        <SelectItem value="Admin">Admin</SelectItem>
+                        <SelectItem value="Staff">Staff</SelectItem>
+                        <SelectItem value="Organizer">Organizer</SelectItem>
+                        <SelectItem value="Customer">Customer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={userStatusFilter} onValueChange={(value) => { setUserStatusFilter(value); setUserPageNumber(1); }}>
+                      <SelectTrigger className="w-full sm:w-[160px]">
+                        <SelectValue placeholder={t('admin.filterByStatus', 'Lọc trạng thái')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('admin.allStatus', 'Tất cả')}</SelectItem>
+                        <SelectItem value="active">{t('admin.active', 'Hoạt động')}</SelectItem>
+                        <SelectItem value="inactive">{t('admin.inactive', 'Vô hiệu')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={userEmailVerifiedFilter} onValueChange={(value) => { setUserEmailVerifiedFilter(value); setUserPageNumber(1); }}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder={t('admin.filterByEmail', 'Lọc email')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('admin.allEmails', 'Tất cả')}</SelectItem>
+                        <SelectItem value="verified">{t('admin.verified', 'Đã xác thực')}</SelectItem>
+                        <SelectItem value="unverified">{t('admin.unverified', 'Chưa xác thực')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Active Filters Display */}
+                  {(userRoleFilter !== 'all' || userStatusFilter !== 'all' || userEmailVerifiedFilter !== 'all') && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-neutral-500">{t('admin.filter', 'Bộ lọc')}:</span>
+                      {userRoleFilter !== 'all' && (
+                        <Badge variant="outline" className="gap-1">
+                          {t('admin.role', 'Vai trò')}: {userRoleFilter}
+                          <button onClick={() => setUserRoleFilter('all')} className="ml-1 hover:text-red-600">
+                            <XCircle size={14} />
+                          </button>
+                        </Badge>
+                      )}
+                      {userStatusFilter !== 'all' && (
+                        <Badge variant="outline" className="gap-1">
+                          {t('admin.status')}: {userStatusFilter === 'active' ? t('admin.active', 'Hoạt động') : t('admin.inactive', 'Vô hiệu')}
+                          <button onClick={() => setUserStatusFilter('all')} className="ml-1 hover:text-red-600">
+                            <XCircle size={14} />
+                          </button>
+                        </Badge>
+                      )}
+                      {userEmailVerifiedFilter !== 'all' && (
+                        <Badge variant="outline" className="gap-1">
+                          Email: {userEmailVerifiedFilter === 'verified' ? t('admin.verified', 'Đã xác thực') : t('admin.unverified', 'Chưa xác thực')}
+                          <button onClick={() => setUserEmailVerifiedFilter('all')} className="ml-1 hover:text-red-600">
+                            <XCircle size={14} />
+                          </button>
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setUserRoleFilter('all');
+                          setUserStatusFilter('all');
+                          setUserEmailVerifiedFilter('all');
+                          setUserPageNumber(1);
+                        }}
+                        className="text-orange-600 hover:text-orange-700"
+                      >
+                        {t('admin.clearFilters', 'Xóa tất cả')}
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 {isLoadingUsers ? (
@@ -1429,6 +1540,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           <TableHead>{t('admin.email')}</TableHead>
                           <TableHead>{t('admin.role', 'Vai trò')}</TableHead>
                           <TableHead>{t('admin.status')}</TableHead>
+                          <TableHead>{t('admin.emailVerified', 'Xác thực Email')}</TableHead>
                           <TableHead>{t('admin.joined')}</TableHead>
                           <TableHead className='text-center'>{t('admin.actions')}</TableHead>
                         </TableRow>
@@ -1437,19 +1549,23 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         {users.map((user) => (
                           <TableRow key={user.userId}>
                             <TableCell className="font-medium">#{user.userId}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-                                  <span className="text-orange-600 font-medium text-sm">
-                                    {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                                  </span>
-                                </div>
-                                <span className="text-neutral-900">{user.fullName}</span>
-                              </div>
-                            </TableCell>
+                            <TableCell className="text-neutral-900">{user.fullName}</TableCell>
                             <TableCell className="text-neutral-600">{user.email}</TableCell>
                             <TableCell>{getUserRoleBadge(user.roles || [user.role])}</TableCell>
                             <TableCell>{getUserStatusBadge(user.isActive)}</TableCell>
+                            <TableCell>
+                              {user.emailVerified ? (
+                                <Badge className="bg-green-100 text-green-700">
+                                  <CheckCircle size={12} className="mr-1" />
+                                  {t('admin.verified', 'Đã xác thực')}
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-yellow-100 text-yellow-700">
+                                  <Clock size={12} className="mr-1" />
+                                  {t('admin.unverified', 'Chưa xác thực')}
+                                </Badge>
+                              )}
+                            </TableCell>
                             <TableCell>
                               {new Date(user.createdAt).toLocaleDateString('vi-VN')}
                             </TableCell>

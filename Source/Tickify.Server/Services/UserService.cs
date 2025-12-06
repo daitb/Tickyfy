@@ -35,9 +35,9 @@ public class UserService : IUserService
         _logger = logger;
     }
 
-    public async Task<PagedResult<UserListDto>> GetUsersAsync(int pageNumber, int pageSize, string? searchTerm = null)
+    public async Task<PagedResult<UserListDto>> GetUsersAsync(int pageNumber, int pageSize, string? searchTerm = null, string? role = null, bool? isActive = null, bool? emailVerified = null)
     {
-        var (users, totalCount) = await _userRepository.GetUsersAsync(pageNumber, pageSize, searchTerm);
+        var (users, totalCount) = await _userRepository.GetUsersAsync(pageNumber, pageSize, searchTerm, role, isActive, emailVerified);
 
         var userListDtos = users.Select(u => new UserListDto
         {

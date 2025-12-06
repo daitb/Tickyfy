@@ -30,21 +30,39 @@ public class UserRepository : IUserRepository
         .FirstOrDefaultAsync(u => u.Id == userId);
     }
 
-    public async Task<(List<User> Users, int TotalCount)> GetUsersAsync(int pageNumber, int pageSize, string? searchTerm = null)
+    public async Task<(List<User> Users, int TotalCount)> GetUsersAsync(int pageNumber, int pageSize, string? searchTerm = null, string? role = null, bool? isActive = null, bool? emailVerified = null)
     {
         var query = _context.Users
             .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
             .AsQueryable();
 
+        // Search filter
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             searchTerm = searchTerm.ToLower();
             query = query.Where(u => 
                 u.Email.ToLower().Contains(searchTerm) || 
-                u.FullName.ToLower().Contains(searchTerm) ||
-                (u.PhoneNumber != null && u.PhoneNumber.Contains(searchTerm))
+                u.FullName.ToLower().Contains(searchTerm)
             );
+        }
+
+        // Role filter
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            query = query.Where(u => u.UserRoles.Any(ur => ur.Role.Name == role));
+        }
+
+        // Active status filter
+        if (isActive.HasValue)
+        {
+            query = query.Where(u => u.IsActive == isActive.Value);
+        }
+
+        // Email verified filter
+        if (emailVerified.HasValue)
+        {
+            query = query.Where(u => u.IsEmailVerified == emailVerified.Value);
         }
 
         var totalCount = await query.CountAsync();

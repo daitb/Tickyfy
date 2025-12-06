@@ -740,6 +740,15 @@
     "feedbackHelpful": "Phản hồi của bạn đã được gửi và sẽ giúp người khác khám phá các sự kiện tuyệt vời."
   },
   "admin": {
+    "activate":"Kích hoạt",
+    "allRoles": "Tất cả vai trò",
+    "allEmails": "Tất cả",
+    "unverified": "Chưa xác thực",
+    "filter": "Bộ lọc",
+    "clearFilters": "Xóa bộ lọc",
+    "noUsersFound": "Không tìm thấy người dùng",
+    "platformUsersDesc": "Quản lý người dùng và hoạt động của nền tảng",
+    "emailVerified": "Xác thực email",
     "userManagement": "Quản lý người dùng",
     "users": "Người dùng",
     "payouts": "Thanh toán",
