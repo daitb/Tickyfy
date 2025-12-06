@@ -17,6 +17,7 @@ public class AdminService : IAdminService
     private readonly IRoleRepository _roleRepository;
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<AdminService> _logger;
 
     public AdminService(
@@ -25,6 +26,7 @@ public class AdminService : IAdminService
         IRoleRepository roleRepository,
         IUserRoleRepository userRoleRepository,
         IEmailService emailService,
+        INotificationService notificationService,
         ILogger<AdminService> logger)
     {
         _context = context;
@@ -32,6 +34,7 @@ public class AdminService : IAdminService
         _roleRepository = roleRepository;
         _userRoleRepository = userRoleRepository;
         _emailService = emailService;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -189,6 +192,49 @@ public class AdminService : IAdminService
         if (eventEntity.Status != EventStatus.Pending)
             throw new BadRequestException($"Event is already {eventEntity.Status}");
 
+        // CHECK IF SEAT MAP EXISTS (Required for event approval)
+        var hasSeatMap = await _context.SeatMaps
+            .AnyAsync(sm => sm.EventId == eventId && sm.IsActive);
+        
+        if (!hasSeatMap)
+        {
+            throw new BadRequestException(
+                "Cannot approve event: Seat map is required. " +
+                "Please ensure the organizer has created a seat map for this event before approval."
+            );
+        }
+
+        // Verify seat map has seats configured
+        var seatMap = await _context.SeatMaps
+            .Include(sm => sm.Zones)
+            .FirstOrDefaultAsync(sm => sm.EventId == eventId && sm.IsActive);
+        
+        if (seatMap != null)
+        {
+            var hasSeatZones = seatMap.Zones != null && seatMap.Zones.Any();
+            if (!hasSeatZones)
+            {
+                throw new BadRequestException(
+                    "Cannot approve event: Seat map has no zones configured. " +
+                    "Please ensure the seat map has at least one zone with seats."
+                );
+            }
+
+            // Check if there are actual seats
+            var zoneIds = seatMap.Zones?.Select(z => z.Id).ToList() ?? new List<int>();
+            var seatCount = await _context.Seats
+                .Where(s => s.SeatZoneId.HasValue && zoneIds.Contains(s.SeatZoneId.Value))
+                .CountAsync();
+            
+            if (seatCount == 0)
+            {
+                throw new BadRequestException(
+                    "Cannot approve event: Seat map has no seats configured. " +
+                    "Please ensure the organizer has added seats to the seat map."
+                );
+            }
+        }
+
         // Update event status to Published
         eventEntity.Status = EventStatus.Published;
         eventEntity.ApprovedByStaffId = adminId;
@@ -213,6 +259,20 @@ public class AdminService : IAdminService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send event approval email for event {EventId}", eventId);
+        }
+
+        // Send in-app notification to organizer
+        try
+        {
+            await _notificationService.NotifyEventApprovedAsync(
+                eventEntity.OrganizerId,
+                eventEntity.Id,
+                eventEntity.Title
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send event approval notification for event {EventId}", eventId);
         }
 
         _logger.LogInformation("Event {EventId} approved by admin {AdminId}", eventId, adminId);
@@ -259,6 +319,21 @@ public class AdminService : IAdminService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send event rejection email for event {EventId}", eventId);
+        }
+
+        // Send in-app notification to organizer
+        try
+        {
+            await _notificationService.NotifyEventRejectedAsync(
+                eventEntity.OrganizerId,
+                eventEntity.Id,
+                eventEntity.Title,
+                eventEntity.RejectionReason ?? "Rejected by admin"
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send event rejection notification for event {EventId}", eventId);
         }
 
         _logger.LogInformation("Event {EventId} rejected by admin {AdminId}", eventId, adminId);

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AutoMapper;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Tickify.Common;
 using Tickify.Data;
 using Tickify.DTOs.Notification;
 using Tickify.Hubs;
@@ -78,6 +79,58 @@ public class NotificationService : INotificationService
         return _mapper.Map<IEnumerable<NotificationDto>>(notifications);
     }
 
+    public async Task<PagedResult<NotificationDto>> GetUserNotificationsPagedAsync(
+        ClaimsPrincipal user, 
+        int page = 1, 
+        int pageSize = 20, 
+        string? type = null, 
+        bool? isRead = null)
+    {
+        var userId = GetUserId(user);
+
+        // Validate pagination parameters
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 100) pageSize = 100; // Max page size
+
+        var query = _context.Notifications
+            .Where(n => n.UserId == userId);
+
+        // Apply filters
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            query = query.Where(n => n.Type == type);
+        }
+
+        if (isRead.HasValue)
+        {
+            query = query.Where(n => n.IsRead == isRead.Value);
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply pagination
+        var notifications = await query
+            .OrderByDescending(n => n.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var notificationDtos = _mapper.Map<List<NotificationDto>>(notifications);
+
+        return new PagedResult<NotificationDto>(notificationDtos, totalCount, page, pageSize);
+    }
+
+    public async Task<int> GetUnreadCountAsync(ClaimsPrincipal user)
+    {
+        var userId = GetUserId(user);
+
+        return await _context.Notifications
+            .Where(n => n.UserId == userId && !n.IsRead)
+            .CountAsync();
+    }
+
     public async Task<bool> MarkAsReadAsync(int notificationId, ClaimsPrincipal user)
     {
         var userId = GetUserId(user);
@@ -139,7 +192,7 @@ public class NotificationService : INotificationService
             Title = "Booking Confirmed",
             Message = $"Your booking for '{eventName}' has been confirmed. Your tickets are ready!",
             Type = "BookingConfirmed",
-            RelatedUrl = $"/orders/{bookingId}"
+            ActionUrl = $"/orders/{bookingId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -160,7 +213,7 @@ public class NotificationService : INotificationService
             Title = "Event Approved",
             Message = $"Your event '{eventName}' has been approved and is now live!",
             Type = "EventApproved",
-            RelatedUrl = $"/events/{eventId}"
+            ActionUrl = $"/events/{eventId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -180,7 +233,7 @@ public class NotificationService : INotificationService
             Title = "Event Rejected",
             Message = $"Your event '{eventName}' has been rejected. Reason: {reason}",
             Type = "EventRejected",
-            RelatedUrl = $"/events/{eventId}"
+            ActionUrl = $"/events/{eventId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -194,7 +247,7 @@ public class NotificationService : INotificationService
             Title = "Payment Successful",
             Message = $"Payment of {amount:C} has been processed successfully.",
             Type = "PaymentSuccess",
-            RelatedUrl = $"/orders/{bookingId}"
+            ActionUrl = $"/orders/{bookingId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -208,7 +261,7 @@ public class NotificationService : INotificationService
             Title = "Payment Failed",
             Message = "Your payment could not be processed. Please try again.",
             Type = "PaymentFailed",
-            RelatedUrl = $"/orders/{bookingId}"
+            ActionUrl = $"/orders/{bookingId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -222,7 +275,7 @@ public class NotificationService : INotificationService
             Title = "Ticket Transfer",
             Message = $"{senderName} has transferred a ticket for '{eventName}' to you.",
             Type = "TicketTransfer",
-            RelatedUrl = $"/tickets/{ticketId}"
+            ActionUrl = $"/tickets/{ticketId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -236,7 +289,7 @@ public class NotificationService : INotificationService
             Title = "Refund Approved",
             Message = $"Your refund request has been approved. Amount: {amount:C}",
             Type = "RefundApproved",
-            RelatedUrl = $"/refunds/{refundId}"
+            ActionUrl = $"/refunds/{refundId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -250,7 +303,7 @@ public class NotificationService : INotificationService
             Title = "Refund Rejected",
             Message = $"Your refund request has been rejected. Reason: {reason}",
             Type = "RefundRejected",
-            RelatedUrl = $"/refunds/{refundId}"
+            ActionUrl = $"/refunds/{refundId}"
         };
 
         await CreateNotificationAsync(dto);
@@ -264,7 +317,25 @@ public class NotificationService : INotificationService
             Title = "Tickets Available",
             Message = $"Good news! Tickets are now available for '{eventName}'. Book now before they're gone!",
             Type = "WaitlistAvailable",
-            RelatedUrl = $"/events/{eventId}"
+            ActionUrl = $"/events/{eventId}"
+        };
+
+        await CreateNotificationAsync(dto);
+    }
+
+    public async Task NotifyEventReminderAsync(int userId, int eventId, string eventName, DateTime eventStartDate)
+    {
+        var timeUntilEvent = eventStartDate - DateTime.UtcNow;
+        var hoursUntilEvent = (int)timeUntilEvent.TotalHours;
+        var timeText = hoursUntilEvent < 24 ? $"{hoursUntilEvent} hours" : "24 hours";
+
+        var dto = new CreateNotificationDto
+        {
+            UserId = userId,
+            Title = "Event Reminder",
+            Message = $"'{eventName}' starts in {timeText}. Don't forget to bring your tickets!",
+            Type = "EventReminder",
+            ActionUrl = $"/events/{eventId}"
         };
 
         await CreateNotificationAsync(dto);

@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { authService } from '../services/authService';
+import { toast } from 'sonner';
 
 interface ResetPasswordProps {
   token?: string;
@@ -138,13 +139,13 @@ export function ResetPassword({ token, onNavigate }: ResetPasswordProps) {
         onNavigate('login');
       }, 3000);
     } catch (err: any) {
-      console.error('Reset password error:', err);
       const errorMessage = err.response?.data?.message || 
                           err.response?.data?.errors?.[0] || 
                           err.message || 
                           t('auth.resetPasswordError') || 
-                          'Failed to reset password. Please try again.';
+                          'Không thể đặt lại mật khẩu. Vui lòng thử lại.';
       setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

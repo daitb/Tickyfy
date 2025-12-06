@@ -12,6 +12,7 @@ public class CreateEventDto
     public DateTime EndDate { get; set; }
     public int TotalSeats { get; set; }
     public bool IsFeatured { get; set; } = false;
+    public int? SeatMapId { get; set; } // ID của seat map có sẵn hoặc null nếu tạo mới
     public List<CreateTicketTypeDto>? TicketTypes { get; set; }
 }
 

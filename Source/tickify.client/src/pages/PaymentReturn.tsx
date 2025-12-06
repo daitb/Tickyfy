@@ -51,18 +51,15 @@ export default function PaymentReturn() {
       
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-          console.log(`[PaymentReturn] Verification attempt ${attempt + 1}/${maxRetries} for payment ${paymentId}`);
           const ok = await verifyPayment(paymentId);
           if (ok) {
             verified = true;
-            console.log(`[PaymentReturn] Payment ${paymentId} verified successfully`);
             break;
           }
           
           // Wait before retrying
           if (attempt < maxRetries - 1) {
             const delay = retryDelay * (attempt + 1);
-            console.log(`[PaymentReturn] Payment not verified yet, retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
           }
         } catch (err: any) {
@@ -87,9 +84,8 @@ export default function PaymentReturn() {
         try {
           const paymentData = await getPaymentById(paymentId);
           setPaymentDetails(paymentData);
-          console.log("[PaymentReturn] Payment details fetched:", paymentData);
         } catch (err) {
-          console.error("[PaymentReturn] Failed to fetch payment details:", err);
+          // Payment details fetch failed, but payment is verified so continue
           // Continue even if payment details fetch fails
         }
       } else {
@@ -121,7 +117,6 @@ export default function PaymentReturn() {
       query.forEach((value, key) => {
         allParams[key] = value;
       });
-      console.log("[PaymentReturn] Query parameters:", allParams);
       setDebugInfo(JSON.stringify(allParams, null, 2));
 
       // Check if this is a free booking (no payment required)
@@ -135,7 +130,6 @@ export default function PaymentReturn() {
           setPaymentId(parsedBookingId);
           setStatus("success");
           setMessage("Đặt chỗ miễn phí của bạn đã được xác nhận!");
-          console.log("[PaymentReturn] Free booking confirmed:", parsedBookingId);
           setTimeout(() => navigate("/my-tickets"), 2000);
           return;
         }
@@ -151,8 +145,6 @@ export default function PaymentReturn() {
       const errorCode = query.get("errorCode"); // MoMo error code: 0 means success
       const messageParam = query.get("message"); // MoMo message
 
-      console.log("[PaymentReturn] VNPay params:", { vnpTxnRef, vnpResponseCode, vnpTransactionStatus });
-      console.log("[PaymentReturn] MoMo params:", { orderId, resultCode, errorCode, message: messageParam });
 
       // Check for cancellation (user cancelled payment)
       if (vnpResponseCode === "24" || resultCode === "1006" || errorCode === "1006") {
@@ -171,12 +163,10 @@ export default function PaymentReturn() {
           const parts = orderId.split("_");
           if (parts.length > 0 && parts[0]) {
             paymentIdParam = parts[0];
-            console.log("[PaymentReturn] Extracted paymentId from MoMo orderId:", paymentIdParam);
           }
         } else {
           // Old format: orderId is just paymentId
           paymentIdParam = orderId;
-          console.log("[PaymentReturn] Using MoMo orderId as paymentId:", paymentIdParam);
         }
       }
 
@@ -196,7 +186,6 @@ export default function PaymentReturn() {
       }
 
       setPaymentId(parsedPaymentId);
-      console.log("[PaymentReturn] Using payment ID:", parsedPaymentId);
 
       // Check response codes first
       // VNPay: vnp_ResponseCode = "00" means success, vnp_TransactionStatus = "00" also means success
@@ -209,16 +198,6 @@ export default function PaymentReturn() {
         (vnpResponseCode === "00" || vnpTransactionStatus === "00") || 
         (errorCode === "0") ||
         (resultCode === "0" || resultCode === "00");
-
-      console.log("[PaymentReturn] Provider response check:", {
-        hasVnPayResponse,
-        hasMomoResponse,
-        isProviderSuccess,
-        vnpResponseCode,
-        vnpTransactionStatus,
-        resultCode,
-        errorCode
-      });
 
       // If we have explicit error codes and they indicate failure, fail immediately
       // Otherwise, proceed to backend verification (MoMo may not send resultCode in ReturnUrl)
@@ -262,8 +241,6 @@ export default function PaymentReturn() {
               console.error("[PaymentReturn] Failed to fetch payment details:", err);
             }
             return; // Success, exit early
-          } else {
-            console.log("[PaymentReturn] Return URL verification returned false, falling back to standard verification");
           }
         } catch (err: any) {
           console.error("[PaymentReturn] Return URL verification failed, falling back to standard verification:", err);

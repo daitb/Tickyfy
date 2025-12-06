@@ -1,17 +1,22 @@
 using System.Security.Claims;
+using Tickify.Common;
 using Tickify.DTOs.Notification;
 using Tickify.Models;
 
 namespace Tickify.Interfaces.Services;
 
-/// <summary>
-/// Interface for Notification Service
-/// Handles: Create notifications, Mark as read, Real-time push via SignalR
-/// </summary>
+
 public interface INotificationService
 {
     Task<NotificationDto> CreateNotificationAsync(CreateNotificationDto dto);
     Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(ClaimsPrincipal user);
+    Task<PagedResult<NotificationDto>> GetUserNotificationsPagedAsync(
+        ClaimsPrincipal user, 
+        int page = 1, 
+        int pageSize = 20, 
+        string? type = null, 
+        bool? isRead = null);
+    Task<int> GetUnreadCountAsync(ClaimsPrincipal user);
     Task<bool> MarkAsReadAsync(int notificationId, ClaimsPrincipal user);
     Task<bool> MarkAllAsReadAsync(ClaimsPrincipal user);
     Task<bool> DeleteNotificationAsync(int notificationId, ClaimsPrincipal user);
@@ -26,4 +31,5 @@ public interface INotificationService
     Task NotifyRefundApprovedAsync(int userId, int refundId, decimal amount);
     Task NotifyRefundRejectedAsync(int userId, int refundId, string reason);
     Task NotifyWaitlistAvailableAsync(int userId, int eventId, string eventName);
+    Task NotifyEventReminderAsync(int userId, int eventId, string eventName, DateTime eventStartDate);
 }

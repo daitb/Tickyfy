@@ -1,4 +1,5 @@
 import apiClient from "./apiClient";
+import { toast } from "sonner";
 
 // ===== INTERFACES =====
 export interface LoginDto {
@@ -49,19 +50,15 @@ class AuthService {
    * Login user and save token + user info to localStorage
    */
   async login(data: LoginDto): Promise<LoginResponse> {
-    console.log("AuthService.login - Sending request:", data);
-
     const response = await apiClient.post<LoginResponse>("/auth/login", data);
-
-    console.log("AuthService.login - Raw response:", response);
-    console.log("AuthService.login - Response data:", response.data);
 
     const loginResponse = response.data;
 
     // Check if loginResponse is valid (backend returns flat structure)
     if (!loginResponse || !loginResponse.accessToken || !loginResponse.email) {
-      console.error("Invalid login response structure:", loginResponse);
-      throw new Error("Invalid response from server");
+      const errorMsg = "Phản hồi từ máy chủ không hợp lệ. Vui lòng thử lại.";
+      toast.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     // Save to localStorage (backend uses accessToken, not token)
@@ -78,9 +75,6 @@ class AuthService {
     };
 
     localStorage.setItem("user", JSON.stringify(user));
-
-    console.log("AuthService.login - Token saved:", loginResponse.accessToken);
-    console.log("AuthService.login - User saved:", user);
 
     // Dispatch custom event to notify app of auth change
     window.dispatchEvent(new Event("auth-change"));
@@ -111,7 +105,6 @@ class AuthService {
         await apiClient.post("/auth/logout", { refreshToken });
       }
     } catch (error) {
-      console.error("Logout API call failed:", error);
       // Continue with logout even if API call fails
     } finally {
       // Clear all auth data from localStorage
@@ -238,8 +231,6 @@ class AuthService {
  * Google Login - External authentication
  */
   async googleLogin(credential: string): Promise<LoginResponse> {
-    console.log("AuthService.googleLogin - Sending Google credential");
-
     // Decode JWT token to get user info with proper UTF-8 support
     const base64Url = credential.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -265,14 +256,13 @@ class AuthService {
       externalLoginDto
     );
 
-    console.log("AuthService.googleLogin - Response:", response.data);
-
     const loginResponse = response.data;
 
     // Check if loginResponse is valid
     if (!loginResponse || !loginResponse.accessToken || !loginResponse.email) {
-      console.error("Invalid login response structure:", loginResponse);
-      throw new Error("Invalid response from server");
+      const errorMsg = "Phản hồi từ máy chủ không hợp lệ. Vui lòng thử lại.";
+      toast.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     // Save to localStorage
@@ -289,8 +279,6 @@ class AuthService {
     };
 
     localStorage.setItem("user", JSON.stringify(user));
-
-    console.log("AuthService.googleLogin - Login successful");
 
     // Dispatch custom event to notify app of auth change
     window.dispatchEvent(new Event("auth-change"));

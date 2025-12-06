@@ -76,9 +76,7 @@ export function PromoCodeManagement() {
   const loadPromoCodes = useCallback(async () => {
     try {
       setLoading(true);
-      console.log("Loading promo codes...");
       const codes = await promoCodeService.getAll();
-      console.log("Promo codes loaded:", codes);
       setPromoCodes(codes || []);
     } catch (error) {
       console.error("Failed to load promo codes:", error);
@@ -219,7 +217,6 @@ export function PromoCodeManagement() {
 
       setSubmitting(true);
       const created = await promoCodeService.create(formData);
-      console.log("Created promo code:", created);
       toast.success(t("promoCode.notifications.createdSuccessfully"));
       setShowCreateDialog(false);
       resetForm();
@@ -275,7 +272,6 @@ export function PromoCodeManagement() {
         organizerId: code.organizerId,
       };
 
-      console.log("Toggle active - Update data:", updateData);
       await promoCodeService.update(code.promoCodeId, updateData);
       toast.success(
         code.isActive
@@ -359,7 +355,6 @@ export function PromoCodeManagement() {
         selectedCode.promoCodeId,
         updateData
       );
-      console.log("Updated promo code:", updated);
       toast.success(t("promoCode.notifications.updatedSuccessfully"));
       setShowEditDialog(false);
       resetForm();

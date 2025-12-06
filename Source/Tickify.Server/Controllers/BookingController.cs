@@ -49,7 +49,7 @@ public class BookingController : ControllerBase
         
         return Ok(ApiResponse<BookingConfirmationDto>.SuccessResponse(
             booking,
-            "Booking created successfully. Payment must be completed within 15 minutes."
+            "Booking created successfully. Payment must be completed within 10 minutes."
         ));
     }
 

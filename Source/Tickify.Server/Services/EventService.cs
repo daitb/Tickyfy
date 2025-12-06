@@ -17,17 +17,20 @@ public class EventService : IEventService
     private readonly IEventRepository _eventRepository;
     private readonly ApplicationDbContext _context;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<EventService> _logger;
 
     public EventService(
         IEventRepository eventRepository,
         ApplicationDbContext context,
         IEmailService emailService,
+        INotificationService notificationService,
         ILogger<EventService> logger)
     {
         _eventRepository = eventRepository;
         _context = context;
         _emailService = emailService;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -467,7 +470,7 @@ public class EventService : IEventService
 
         await _eventRepository.UpdateAsync(eventEntity);
 
-        // Send approval email to organizer
+        // Send approval email and notification to organizer
         try
         {
             var organizer = await _context.Organizers
@@ -484,11 +487,19 @@ public class EventService : IEventService
                     $"<p>It is now live and visible to users.</p>" +
                     $"<p>Event Date: {eventEntity.StartDate:MMMM dd, yyyy}</p>"
                 );
+
+                // Gửi notification cho organizer
+                await _notificationService.NotifyEventApprovedAsync(
+                    eventEntity.OrganizerId,
+                    eventEntity.Id,
+                    eventEntity.Title
+                );
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Email failure should not block approval
+            // Email/notification failure should not block approval
+            _logger.LogWarning(ex, $"[EventService] Failed to send email/notification for event approval {id}");
         }
 
         var approvedEvent = await _eventRepository.GetByIdAsync(id, includeRelated: true);

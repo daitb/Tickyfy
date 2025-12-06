@@ -1,5 +1,7 @@
-import { useState, useRef } from "react";
-import { useTranslation } from 'react-i18next';
+import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { seatMapService } from "../services/seatMapService";
+import { eventService } from "../services/eventService";
 import {
   Undo2,
   Redo2,
@@ -26,6 +28,7 @@ import {
   RotateCcw,
   Check,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
@@ -56,6 +59,7 @@ import { toast } from "sonner";
 
 interface SeatMapBuilderProps {
   onNavigate: (page: string) => void;
+  eventId?: string | null;
 }
 
 interface Zone {
@@ -116,28 +120,38 @@ const predefinedTemplates = [
   },
 ];
 
-const defaultZones: Zone[] = [
-  { id: "zone1", name: "Orchestra", color: "#00C16A", price: 120, capacity: 0 },
-  { id: "zone2", name: "Mezzanine", color: "#4F46E5", price: 80, capacity: 0 },
-  { id: "zone3", name: "Balcony", color: "#7C3AED", price: 50, capacity: 0 },
-];
+// No default zones - user must create zones matching their ticket types
 
-export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
+export function SeatMapBuilder({
+  onNavigate,
+  eventId: eventIdProp,
+}: SeatMapBuilderProps) {
   const { t } = useTranslation();
-  const [zones, setZones] = useState<Zone[]>(defaultZones);
+  // Extract numeric ID from eventId (could be "evt-1" or "1")
+  const eventId = eventIdProp
+    ? eventIdProp.includes("-")
+      ? eventIdProp.split("-")[1]
+      : eventIdProp
+    : null;
+
+  const [zones, setZones] = useState<Zone[]>([]); // Start with empty zones
+  const [seatMapId, setSeatMapId] = useState<number | null>(null);
+  const [eventTitle, setEventTitle] = useState("");
+  const [loading, setLoading] = useState(true);
   const [seats, setSeats] = useState<GridSeat[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>("seat");
-  const [selectedZone, setSelectedZone] = useState<string | null>(
-    zones[0]?.id || null
-  );
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
   const [gridSize, setGridSize] = useState({ rows: 15, cols: 20 });
   const [isDrawing, setIsDrawing] = useState(false);
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
+  const [availableSeatMaps, setAvailableSeatMaps] = useState<any[]>([]);
+  const [loadingSeatMaps, setLoadingSeatMaps] = useState(false);
   const [history, setHistory] = useState<GridSeat[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
@@ -148,6 +162,116 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     color: "#00C16A",
     price: 0,
   });
+
+  // Load existing seat map data on mount
+  useEffect(() => {
+    if (eventId) {
+      loadSeatMapData();
+    } else {
+      setLoading(false);
+    }
+  }, [eventId]);
+
+  const loadSeatMapData = async () => {
+    if (!eventId) return;
+
+    try {
+      setLoading(true);
+      console.log("[SeatMapBuilder] Loading data for event:", eventId);
+
+      // Load event info
+      const event = await eventService.getEventById(parseInt(eventId));
+      setEventTitle(event.title);
+
+      // Try to load existing seat map
+      try {
+        const seatMapData = await seatMapService.getSeatMapByEvent(eventId);
+        console.log("[SeatMapBuilder] Loaded existing seat map:", seatMapData);
+
+        setSeatMapId(parseInt(seatMapData.id.toString()));
+        setGridSize({
+          rows: seatMapData.totalRows,
+          cols: seatMapData.totalColumns,
+        });
+
+        // Load zones from seat map
+        if (seatMapData.zones && seatMapData.zones.length > 0) {
+          console.log(
+            "[SeatMapBuilder] Raw zones from API:",
+            seatMapData.zones
+          );
+          const loadedZones: Zone[] = seatMapData.zones.map((z) => ({
+            id: z.id.toString(),
+            name: z.name,
+            color: z.color || "#00C16A",
+            price: z.zonePrice,
+            capacity: z.capacity,
+          }));
+          console.log("[SeatMapBuilder] Mapped zones:", loadedZones);
+          setZones(loadedZones);
+          setSelectedZone(loadedZones[0]?.id || null);
+        }
+
+        // Load seats
+        const seatsData = await seatMapService.getEventSeats(eventId);
+        console.log("[SeatMapBuilder] Loaded seats:", seatsData.length);
+
+        const loadedSeats: GridSeat[] = seatsData.map((s) => ({
+          id: s.id.toString(),
+          row: s.gridRow || 0,
+          col: s.gridColumn || 0,
+          zoneId: s.seatZoneId?.toString() || null,
+          isBlocked: s.isBlocked,
+          isWheelchair: s.isWheelchair || false, // Load wheelchair status from database
+          label: s.fullSeatCode,
+        }));
+
+        setSeats(loadedSeats);
+        addToHistory(loadedSeats);
+
+        toast.success("Seat map loaded successfully");
+      } catch (err: any) {
+        // Handle 404 gracefully - this is expected for new seat maps
+        if (
+          err?.response?.status === 404 ||
+          err?.message?.includes("not found")
+        ) {
+          console.log(
+            "[SeatMapBuilder] No existing seat map, auto-creating zones from ticket types"
+          );
+
+          // AUTO-CREATE ZONES FROM TICKET TYPES
+          if (event.ticketTiers && event.ticketTiers.length > 0) {
+            const autoZones: Zone[] = event.ticketTiers.map((tt, index) => ({
+              id: `zone-${tt.id || index}`,
+              name: tt.name,
+              color: ["#00C16A", "#4F46E5", "#7C3AED", "#EF4444", "#F59E0B"][
+                index % 5
+              ],
+              price: tt.price || 0,
+              capacity: 0, // Will be set when seats are placed
+            }));
+            setZones(autoZones);
+            setSelectedZone(autoZones[0]?.id || null);
+            console.log("[SeatMapBuilder] Auto-created zones:", autoZones);
+            toast.success(
+              `Auto-created ${autoZones.length} zones from ticket types`
+            );
+          } else {
+            toast.info("Creating new seat map - add zones manually");
+          }
+        } else {
+          console.error("[SeatMapBuilder] Error loading seat map:", err);
+          toast.error("Failed to load seat map data");
+        }
+      }
+    } catch (error) {
+      console.error("Error loading seat map data:", error);
+      toast.error("Failed to load event data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const addToHistory = (newSeats: GridSeat[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -231,17 +355,36 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
       return;
     }
 
-    const zone: Zone = {
-      id: `zone${zones.length + 1}`,
-      ...newZone,
-      capacity: 0,
-    };
+    if (editingZone) {
+      // Update existing zone
+      setZones(
+        zones.map((z) =>
+          z.id === editingZone.id
+            ? {
+                ...z,
+                name: newZone.name,
+                color: newZone.color,
+                price: newZone.price,
+              }
+            : z
+        )
+      );
+      toast.success("Zone updated successfully");
+    } else {
+      // Create new zone
+      const zone: Zone = {
+        id: `zone${Date.now()}`,
+        ...newZone,
+        capacity: 0,
+      };
+      setZones([...zones, zone]);
+      setSelectedZone(zone.id);
+      toast.success("Zone created successfully");
+    }
 
-    setZones([...zones, zone]);
-    setSelectedZone(zone.id);
     setNewZone({ name: "", color: "#00C16A", price: 0 });
+    setEditingZone(null);
     setShowZoneModal(false);
-    toast.success("Zone created successfully");
   };
 
   const handleDeleteZone = (zoneId: string) => {
@@ -317,10 +460,33 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
   };
 
   const getSeatColor = (seat: GridSeat) => {
+    // Blocked seats - red
     if (seat.isBlocked) return "#EF5350";
+
+    // Wheelchair seats - distinct blue
+    if (seat.isWheelchair) return "#60A5FA";
+
+    // No zone assigned - gray
     if (!seat.zoneId) return "#E0E0E0";
+
+    // Use zone color
     const zone = zones.find((z) => z.id === seat.zoneId);
     return zone?.color || "#E0E0E0";
+  };
+
+  // Calculate contrasting text color based on background
+  const getTextColor = (bgColor: string) => {
+    // Convert hex to RGB
+    const hex = bgColor.replace("#", "");
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    // Return black for light backgrounds, white for dark backgrounds
+    return luminance > 0.5 ? "#000000" : "#FFFFFF";
   };
 
   const getTotalCapacity = () => {
@@ -331,15 +497,102 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     return seats.filter((s) => s.zoneId === zoneId && !s.isBlocked).length;
   };
 
-  const handleSave = () => {
-    toast.success("Seat map saved as draft");
+  const handleSave = async () => {
+    if (!eventId) {
+      toast.error("Event ID is missing");
+      return;
+    }
+
+    // Validate zones have proper names
+    if (zones.length === 0) {
+      toast.error("Please add at least one zone before saving");
+      return;
+    }
+
+    const emptyZoneNames = zones.filter((z) => !z.name || z.name.trim() === "");
+    if (emptyZoneNames.length > 0) {
+      toast.error("All zones must have names");
+      return;
+    }
+
+    try {
+      // AUTO-UPDATE ZONE CAPACITIES from actual seat counts
+      const updatedZones = zones.map((z) => ({
+        ...z,
+        capacity: getZoneCapacity(z.id), // Count actual seats assigned to this zone
+      }));
+
+      console.log(
+        "[SeatMapBuilder] Saving zones with updated capacities:",
+        updatedZones.map((z) => ({ name: z.name, capacity: z.capacity }))
+      );
+
+      // Include all seat properties including wheelchair status
+      const layoutData = {
+        zones: updatedZones.map((z) => ({
+          id: z.id,
+          name: z.name,
+          color: z.color,
+          price: z.price,
+          capacity: z.capacity, // Now contains actual seat count
+        })),
+        seats: seats.map((s) => ({
+          ...s,
+          isWheelchair: s.isWheelchair || false,
+          isBlocked: s.isBlocked || false,
+        })),
+      };
+      console.log("[SeatMapBuilder] Saving layout:", layoutData);
+
+      const payload = {
+        eventId: eventId,
+        name: `${eventTitle || "Event"} Seat Map`,
+        description: "Seat map created with builder",
+        totalRows: gridSize.rows,
+        totalColumns: gridSize.cols,
+        layoutConfig: JSON.stringify(layoutData),
+      };
+
+      if (seatMapId) {
+        // Update existing
+        await seatMapService.updateSeatMap(seatMapId.toString(), {
+          ...payload,
+          isActive: true,
+        });
+        toast.success("Seat map updated successfully");
+
+        // Reload data to get updated zones and seats with DB IDs
+        await loadSeatMapData();
+      } else {
+        // Create new
+        const created = await seatMapService.createSeatMap(payload);
+        const newSeatMapId = created.id;
+        setSeatMapId(newSeatMapId);
+
+        console.log(
+          "[SeatMapBuilder] Created new seat map with ID:",
+          newSeatMapId
+        );
+        toast.success("Seat map saved successfully");
+
+        // Reload data to get zones and seats with DB IDs
+        // Wait a bit for backend to finish processing
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await loadSeatMapData();
+      }
+    } catch (error) {
+      console.error("Error saving seat map:", error);
+      toast.error("Failed to save seat map");
+    }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (seats.length === 0) {
       toast.error("Please add seats before publishing");
       return;
     }
+
+    await handleSave();
     toast.success("Seat map published successfully!");
   };
 
@@ -433,7 +686,7 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
               </Button>
 
               <Button
-                className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
+                className="bg-teal-600 hover:bg-teal-700 text-white"
                 size="sm"
                 onClick={handlePublish}
               >
@@ -578,6 +831,26 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* Info Notice */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                  <div className="flex gap-2">
+                    <AlertCircle
+                      size={16}
+                      className="text-blue-600 flex-shrink-0 mt-0.5"
+                    />
+                    <div className="text-xs text-blue-800">
+                      <strong>Auto-Sync:</strong> Zones and ticket types are
+                      automatically synchronized.
+                      {eventTitle && (
+                        <div className="mt-1 text-blue-700">
+                          New zones will create matching ticket types
+                          automatically.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {zones.map((zone) => (
                   <div
                     key={zone.id}
@@ -586,7 +859,10 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                         ? "border-teal-500 bg-teal-50"
                         : "border-neutral-200 hover:border-neutral-300"
                     }`}
-                    onClick={() => setSelectedZone(zone.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedZone(zone.id);
+                    }}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -603,6 +879,11 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingZone(zone);
+                            setNewZone({
+                              name: zone.name,
+                              color: zone.color,
+                              price: zone.price,
+                            });
                             setShowZoneModal(true);
                           }}
                           className="text-neutral-400 hover:text-neutral-600"
@@ -642,7 +923,7 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
               <CardHeader>
                 <CardTitle className="text-sm">Templates</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -651,6 +932,35 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                 >
                   <Layout size={16} className="mr-2" />
                   Load Template
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={async () => {
+                    setShowCopyModal(true);
+                    setLoadingSeatMaps(true);
+                    try {
+                      // Get current user's organizer ID from auth service
+                      const user = JSON.parse(
+                        localStorage.getItem("user") || "{}"
+                      );
+                      if (user.organizerId) {
+                        const maps = await seatMapService.getOrganizerSeatMaps(
+                          user.organizerId
+                        );
+                        setAvailableSeatMaps(maps);
+                      }
+                    } catch (err) {
+                      console.error("Failed to load seat maps:", err);
+                      toast.error("Failed to load seat maps");
+                    } finally {
+                      setLoadingSeatMaps(false);
+                    }
+                  }}
+                >
+                  <Copy size={16} className="mr-2" />
+                  Copy from Event
                 </Button>
               </CardContent>
             </Card>
@@ -710,7 +1020,9 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                           backgroundColor: seat
                             ? getSeatColor(seat)
                             : undefined,
-                          color: seat ? "#fff" : "#999",
+                          color: seat
+                            ? getTextColor(getSeatColor(seat))
+                            : "#999",
                         }}
                       >
                         {seat && (
@@ -718,7 +1030,9 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                             {seat.isWheelchair ? (
                               <span className="text-xs">♿</span>
                             ) : seat.label ? (
-                              <span className="text-[8px]">{seat.label}</span>
+                              <span className="text-[8px] font-semibold">
+                                {seat.label}
+                              </span>
                             ) : (
                               <Armchair size={16} />
                             )}
@@ -979,6 +1293,110 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
 
           <DialogFooter>
             <Button onClick={() => setShowPreview(false)}>Close Preview</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Copy Seat Map Modal */}
+      <Dialog open={showCopyModal} onOpenChange={setShowCopyModal}>
+        <DialogContent className="max-w-2xl max-h-[600px]">
+          <DialogHeader>
+            <DialogTitle>Copy Seat Map from Another Event</DialogTitle>
+            <DialogDescription>
+              Select an existing seat map to copy its layout
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-y-auto max-h-[400px]">
+            {loadingSeatMaps ? (
+              <div className="text-center py-8 text-neutral-500">
+                Loading seat maps...
+              </div>
+            ) : availableSeatMaps.length === 0 ? (
+              <div className="text-center py-8 text-neutral-500">
+                No seat maps available to copy
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {availableSeatMaps.map((map) => (
+                  <button
+                    key={map.id}
+                    onClick={async () => {
+                      try {
+                        const fullMap = await seatMapService.getSeatMapById(
+                          map.id.toString()
+                        );
+
+                        // Load zones from the seat map
+                        if (fullMap.zones && fullMap.zones.length > 0) {
+                          const loadedZones: Zone[] = fullMap.zones.map(
+                            (z) => ({
+                              id: `zone${z.id}`,
+                              name: z.name,
+                              color: z.color || "#00C16A",
+                              price: z.zonePrice,
+                              capacity: z.capacity,
+                            })
+                          );
+                          setZones(loadedZones);
+                          setSelectedZone(loadedZones[0]?.id || null);
+                        }
+
+                        // Load seats from the full seat map
+                        const eventSeats = await seatMapService.getEventSeats(
+                          fullMap.eventId.toString()
+                        );
+
+                        // Convert backend seats to grid seats
+                        const loadedSeats: GridSeat[] = eventSeats.map((s) => ({
+                          id: `seat-${s.id}`,
+                          row: s.gridRow ?? 0,
+                          col: s.gridColumn ?? 0,
+                          zoneId: s.seatZoneId ? `zone${s.seatZoneId}` : null,
+                          isBlocked: s.isBlocked,
+                          isWheelchair: s.isWheelchair,
+                          label: `${s.row}${s.seatNumber}`,
+                        }));
+
+                        setSeats(loadedSeats);
+                        setGridSize({
+                          rows: fullMap.totalRows,
+                          cols: fullMap.totalColumns,
+                        });
+
+                        toast.success("Seat map copied successfully!");
+                        setShowCopyModal(false);
+                      } catch (error) {
+                        console.error("Failed to copy seat map:", error);
+                        toast.error("Failed to copy seat map");
+                      }
+                    }}
+                    className="w-full p-4 border-2 rounded-lg hover:border-teal-500 transition-colors text-left"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-medium text-neutral-900 mb-1">
+                          {map.name}
+                        </div>
+                        <div className="text-sm text-neutral-500">
+                          {map.description || "No description"}
+                        </div>
+                        <div className="text-xs text-neutral-400 mt-1">
+                          {map.totalRows} rows × {map.totalColumns} columns
+                        </div>
+                      </div>
+                      <Copy size={16} className="text-neutral-400" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCopyModal(false)}>
+              Cancel
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

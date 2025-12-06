@@ -9,6 +9,7 @@ namespace Tickify.Repositories
         Task<SeatMap?> GetByIdAsync(int id);
         Task<SeatMap?> GetByEventIdAsync(int eventId);
         Task<List<SeatMap>> GetAllByEventIdAsync(int eventId);
+        Task<List<SeatMap>> GetTemplatesAsync(); // Lấy các seat map templates (chưa gắn event)
         Task<SeatMap> CreateAsync(SeatMap seatMap);
         Task<SeatMap> UpdateAsync(SeatMap seatMap);
         Task<bool> DeleteAsync(int id);
@@ -47,6 +48,18 @@ namespace Tickify.Repositories
                 .Include(sm => sm.Zones)
                     .ThenInclude(z => z.TicketType)
                 .Where(sm => sm.EventId == eventId)
+                .ToListAsync();
+        }
+
+        public async Task<List<SeatMap>> GetTemplatesAsync()
+        {
+            // Lấy các seat map chưa gắn với event nào (EventId == 0 or null)
+            // hoặc là các seat map mẫu được đánh dấu để tái sử dụng
+            return await _context.SeatMaps
+                .Include(sm => sm.Zones)
+                    .ThenInclude(z => z.TicketType)
+                .Where(sm => sm.EventId == 0 && sm.IsActive)
+                .OrderByDescending(sm => sm.CreatedAt)
                 .ToListAsync();
         }
 

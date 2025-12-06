@@ -1,19 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Upload, Plus, Trash2, ArrowLeft, Loader2, X, CheckCircle, AlertCircle, Clock } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Switch } from '../components/ui/switch';
-import { ProgressSteps } from '../components/ProgressSteps';
-import { cities } from '../mockData';
-import { eventService, type CreateEventDto } from '../services/eventService';
-import { categoryService, type CategoryDto } from '../services/categoryService';
-import { authService } from '../services/authService';
-import { imageService } from '../services/imageService';
-import { toast } from 'sonner';
+import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Upload,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  Loader2,
+  X,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
+import { ProgressSteps } from "../components/ProgressSteps";
+import { cities } from "../mockData";
+import { eventService, type CreateEventDto } from "../services/eventService";
+import { categoryService, type CategoryDto } from "../services/categoryService";
+import { authService } from "../services/authService";
+import { imageService } from "../services/imageService";
+import { toast } from "sonner";
 import type { Category, Event, TicketTier } from "../types";
 
 interface OrganizerWizardProps {
@@ -58,18 +74,18 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
   const [isLoadingEvent, setIsLoadingEvent] = useState(false);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [eventData, setEventData] = useState<Partial<Event>>({
-    category: 'Music',
+    category: "Music",
     city: cities[0],
     ticketTiers: [],
     policies: {
       refundable: true,
-      transferable: true
-    }
+      transferable: true,
+    },
   });
   const isEditMode = Boolean(eventId);
 
   const [ticketTiers, setTicketTiers] = useState<Partial<TicketTier>[]>([
-    { name: '', price: 0, total: 100, description: '' }
+    { name: "", price: 0, total: 100, description: "" },
   ]);
 
   // Image upload states
@@ -102,7 +118,7 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
     return now.toTimeString().slice(0, 5);
   };
 
-  // Load categories on mount
+  // Load categories and seat map templates on mount
   useEffect(() => {
     const loadCategories = async () => {
       try {
@@ -110,12 +126,16 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
         setCategories(cats);
         // Set first category as default if available
         if (cats.length > 0 && !eventData.category) {
-          setEventData(prev => ({ ...prev, category: cats[0].categoryName as any }));
+          setEventData((prev) => ({
+            ...prev,
+            category: cats[0].categoryName as any,
+          }));
         }
       } catch (error) {
-        console.error('Error loading categories:', error);
+        console.error("Error loading categories:", error);
       }
     };
+
     loadCategories();
   }, []);
 
@@ -182,11 +202,11 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
   }, [eventId]);
 
   const steps = [
-    { number: 1, label: t('wizard.organizer.stepLabel1') },
-    { number: 2, label: t('wizard.organizer.stepLabel2') },
-    { number: 3, label: t('wizard.organizer.stepLabel3') },
-    { number: 4, label: t('wizard.organizer.stepLabel4') },
-    { number: 5, label: t('wizard.organizer.stepLabel5') }
+    { number: 1, label: "Basics" },
+    { number: 2, label: "Schedule & Venue" },
+    { number: 3, label: "Ticketing" },
+    { number: 4, label: "Policies" },
+    { number: 5, label: "Review" },
   ];
 
   const handleInputChange = (field: string, value: any) => {
@@ -194,7 +214,10 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
   };
 
   const handleAddTier = () => {
-    setTicketTiers([...ticketTiers, { name: '', price: 0, total: 100, description: '' }]);
+    setTicketTiers([
+      ...ticketTiers,
+      { name: "", price: 0, total: 100, description: "" },
+    ]);
   };
 
   const handleRemoveTier = (index: number) => {
@@ -208,33 +231,32 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
   };
 
   // Handle image file selection and auto-upload
-  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log('[OrganizerWizard] Image selected:', file.name);
     setUploadError(null);
 
     // Validate file
     const validationError = imageService.validateImageFile(file);
     if (validationError) {
-      console.error('[OrganizerWizard] Validation failed:', validationError);
       setUploadError(validationError);
-      alert(validationError);
+      toast.error(validationError);
       // Reset file input
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
       return;
     }
 
     setSelectedImage(file);
-    
+
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
-      console.log('[OrganizerWizard] Preview created');
     };
     reader.readAsDataURL(file);
 
@@ -245,42 +267,35 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
   // Upload image to Azure Storage
   const handleImageUpload = async (fileToUpload?: File) => {
     const imageToUpload = fileToUpload || selectedImage;
-    
+
     if (!imageToUpload) {
-      console.warn('[OrganizerWizard] No image to upload');
       return;
     }
 
     try {
       setIsUploadingImage(true);
       setUploadError(null);
-      console.log('[OrganizerWizard] Auto-uploading to Azure Storage...');
-      
+
       const response = await imageService.uploadImage(imageToUpload);
-      
+
       setUploadedImageUrl(response.imageUrl);
-      handleInputChange('image', response.imageUrl);
-      
-      console.log('[OrganizerWizard] Upload successful!', {
-        imageUrl: response.imageUrl,
-        blobName: response.blobName
-      });
-      
-      // Success notification (subtle, không dùng alert để không làm gián đoạn UX)
-      console.log('Image uploaded successfully to Azure Storage!');
+      handleInputChange("image", response.imageUrl);
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || error.message || 'Failed to upload image';
-      console.error('[OrganizerWizard] Upload error:', errorMsg);
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to upload image";
+      console.error("[OrganizerWizard] Upload error:", errorMsg);
       setUploadError(errorMsg);
-      
+
       // Reset on error
       setSelectedImage(null);
       setImagePreview(null);
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
-      
-      alert(`Upload failed: ${errorMsg}`);
+
+      toast.error(`Tải ảnh thất bại: ${errorMsg}`);
     } finally {
       setIsUploadingImage(false);
     }
@@ -288,14 +303,13 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
 
   // Remove selected image
   const handleRemoveImage = () => {
-    console.log('[OrganizerWizard] Removing image');
     setSelectedImage(null);
     setImagePreview(null);
     setUploadedImageUrl(null);
     setUploadError(null);
-    handleInputChange('image', undefined);
+    handleInputChange("image", undefined);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -431,95 +445,69 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
       }
 
       // Combine date and time
-      const eventDate = eventData.date || '';
-      const eventTime = eventData.time || '00:00';
+      const eventDate = eventData.date || "";
+      const eventTime = eventData.time || "00:00";
       const startDateTime = `${eventDate}T${eventTime}:00`;
       const endDateTime = `${eventDate}T23:59:00`; // Default end time
 
       // Map category name to categoryId
-      const selectedCategory = categories.find(c => c.categoryName === eventData.category);
+      const selectedCategory = categories.find(
+        (c) => c.categoryName === eventData.category
+      );
       const categoryId = selectedCategory?.categoryId || 1; // Fallback to 1 if not found
 
-      if (isEditMode && eventId) {
-        // UPDATE existing event - use UpdateEventDto
-        const updateEventDto = {
-          categoryId: categoryId,
-          title: eventData.title || '',
-          description: eventData.description || '',
-          venue: eventData.venue || '',
-          imageUrl: eventData.image,
-          startDate: startDateTime,
-          endDate: endDateTime,
-          totalSeats: ticketTiers.reduce((sum, tier) => sum + (tier.total || 0), 0),
-          isFeatured: false
-        };
+      // Prepare event data
+      const createEventDto: CreateEventDto = {
+        organizerId: organizerId!,
+        categoryId: categoryId,
+        title: eventData.title,
+        description: eventData.description,
+        venue: eventData.venue,
+        imageUrl: eventData.image,
+        startDate: startDateTime,
+        endDate: endDateTime,
+        totalSeats: ticketTiers.reduce(
+          (sum, tier) => sum + (tier.total || 0),
+          0
+        ),
+        isFeatured: false,
+        // Note: seatMapId is NOT sent during event creation
+        // User must create seat map separately after event is created
+        ticketTypes: ticketTiers.map((tier) => ({
+          typeName: tier.name || "General",
+          price: tier.price || 0,
+          quantity: tier.total || 0,
+          description: tier.description,
+        })),
+      };
 
-        console.log('Updating event with data:', updateEventDto);
+      // POST /api/events - Create event
+      const createdEvent = await eventService.createEvent(createEventDto);
 
-        // PUT /api/events/{id} - Update event (status will be reset to Pending by backend)
-        await eventService.updateEvent(Number(eventId), updateEventDto);
-      } else {
-        // CREATE new event - use CreateEventDto
-        const createEventDto: CreateEventDto = {
-          organizerId: organizerId!,
-          categoryId: categoryId,
-          title: eventData.title || '',
-          description: eventData.description || '',
-          venue: eventData.venue || '',
-          imageUrl: eventData.image,
-          startDate: startDateTime,
-          endDate: endDateTime,
-          totalSeats: ticketTiers.reduce((sum, tier) => sum + (tier.total || 0), 0),
-          isFeatured: false,
-          ticketTypes: ticketTiers.map(tier => ({
-            typeName: tier.name || 'General',
-            price: tier.price || 0,
-            quantity: tier.total || 0,
-            description: tier.description
-          }))
-        };
-
-        console.log('Creating event with data:', createEventDto);
-
-        // POST /api/events - Create event
-        await eventService.createEvent(createEventDto);
-      }
-
-      const successMessage = isEditMode 
-        ? (t('wizard.organizer.validation.updateSuccess') || 'Event updated successfully')
-        : t('wizard.organizer.validation.createSuccess');
-      
-      const successDesc = isEditMode
-        ? (t('wizard.organizer.validation.updateSuccessDesc') || 'Your changes have been submitted for admin review.')
-        : t('wizard.organizer.validation.createSuccessDesc');
-      
-      toast.success(successMessage, {
-        description: successDesc,
+      toast.success(`Event "${createdEvent.title}" created successfully!`, {
+        description: "It will be reviewed by admin.",
         duration: 2000,
         closeButton: false,
       });
-      onNavigate('event-management');
+      onNavigate("organizer-dashboard");
     } catch (error: any) {
-      console.error('Error creating event:', error);
-      console.error('Error response data:', error.response?.data);
-      
       // Extract detailed error messages from backend validation
-      let errorMessage = t('wizard.organizer.validation.checkInputs');
-      let errorTitle = t('wizard.organizer.validation.createFailed');
-      
+      let errorMessage = "Please check your inputs.";
+      let errorTitle = "Failed to create event";
+
       if (error.response?.data) {
         const data = error.response.data;
         // If backend returns validation errors array
         if (data.errors && Array.isArray(data.errors)) {
-          errorMessage = data.errors.join('\n');
-          errorTitle = t('wizard.organizer.validation.validationErrors');
+          errorMessage = data.errors.join("\n");
+          errorTitle = "Validation errors";
         } else if (data.message) {
           errorMessage = data.message;
         }
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast.error(errorTitle, {
         description: errorMessage,
         duration: 4000,
@@ -583,7 +571,7 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => onNavigate('home')}
+            onClick={() => onNavigate("home")}
             className="mb-4"
           >
             <ArrowLeft size={16} className="mr-2" />
@@ -629,13 +617,15 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                 <Label htmlFor="category">{t('wizard.organizer.category')}</Label>
                 <Select
                   value={eventData.category}
-                  onValueChange={(value) => handleInputChange('category', value as Category)}
+                  onValueChange={(value) =>
+                    handleInputChange("category", value as Category)
+                  }
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map(cat => (
+                    {categories.map((cat) => (
                       <SelectItem key={cat.categoryId} value={cat.categoryName}>
                         {getCategoryTranslation(cat.categoryName, i18n.language)}
                       </SelectItem>
@@ -668,13 +658,16 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                   className="hidden"
                   id="image-upload"
                 />
-                
+
                 {!imagePreview ? (
                   <label
                     htmlFor="image-upload"
                     className="mt-1 border-2 border-dashed border-neutral-300 rounded-xl p-8 text-center hover:border-orange-500 transition-colors cursor-pointer flex flex-col items-center block"
                   >
-                    <Upload className="mx-auto text-neutral-400 mb-2" size={32} />
+                    <Upload
+                      className="mx-auto text-neutral-400 mb-2"
+                      size={32}
+                    />
                     <p className="text-sm text-neutral-600">
                       {t('wizard.organizer.clickToUpload')}
                     </p>
@@ -693,11 +686,11 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="relative">
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
                         className="w-full h-64 object-cover rounded-lg"
                       />
                       {!isUploadingImage && (
@@ -711,17 +704,20 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                         </button>
                       )}
                     </div>
-                    
+
                     {uploadError && (
                       <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                        <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={16} />
+                        <AlertCircle
+                          className="text-red-500 flex-shrink-0 mt-0.5"
+                          size={16}
+                        />
                         <div className="flex-1">
                           <p className="text-sm text-red-700 font-medium">{t('wizard.organizer.uploadFailed')}</p>
                           <p className="text-xs text-red-600 mt-1">{uploadError}</p>
                         </div>
                       </div>
                     )}
-                    
+
                     {uploadedImageUrl && !isUploadingImage && (
                       <div className="mt-4">
                         <label
@@ -766,11 +762,16 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                     <Input
                       id="time"
                       type="time"
-                      value={eventData.time || ''}
-                      onChange={(e) => handleInputChange('time', e.target.value)}
+                      value={eventData.time || ""}
+                      onChange={(e) =>
+                        handleInputChange("time", e.target.value)
+                      }
                       className="pr-10"
                     />
-                    <Clock className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" size={16} />
+                    <Clock
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                      size={16}
+                    />
                   </div>
                   <p className="text-xs text-neutral-500 mt-1">
                     {t('wizard.organizer.startTimeHint')}
@@ -793,14 +794,16 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                 <Label htmlFor="city">{t('wizard.organizer.city')}</Label>
                 <Select
                   value={eventData.city}
-                  onValueChange={(value) => handleInputChange('city', value)}
+                  onValueChange={(value) => handleInputChange("city", value)}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {cities.map(city => (
-                      <SelectItem key={city} value={city}>{city}</SelectItem>
+                    {cities.map((city) => (
+                      <SelectItem key={city} value={city}>
+                        {city}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -812,12 +815,8 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
           {currentStep === 3 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3>{t('wizard.organizer.ticketTiers')}</h3>
-                <Button
-                  onClick={handleAddTier}
-                  variant="outline"
-                  size="sm"
-                >
+                <h3>Ticket Tiers</h3>
+                <Button onClick={handleAddTier} variant="outline" size="sm">
                   <Plus size={16} className="mr-2" />
                   {t('wizard.organizer.addTier')}
                 </Button>
@@ -825,7 +824,10 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
 
               <div className="space-y-4">
                 {ticketTiers.map((tier, index) => (
-                  <div key={index} className="border border-neutral-200 rounded-xl p-4">
+                  <div
+                    key={index}
+                    className="border border-neutral-200 rounded-xl p-4"
+                  >
                     <div className="flex items-start justify-between mb-4">
                       <h4>{t('wizard.organizer.tierNumber')} {index + 1}</h4>
                       {ticketTiers.length > 1 && (
@@ -886,6 +888,26 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                   </div>
                 ))}
               </div>
+
+              {/* Seat Map Info Message */}
+              <div className="mt-8 border-t pt-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-blue-900 mb-2">
+                    ℹ️ Seat Map Configuration
+                  </h4>
+                  <p className="text-sm text-blue-700">
+                    You can create a seat map for this event{" "}
+                    <strong>after publishing</strong>. Go to Event Management →
+                    Select your event → Create Seat Map.
+                  </p>
+                  <p className="text-sm text-blue-700 mt-2">
+                    <strong>Important:</strong> Make sure to create ticket types
+                    (above) that match your seat map zones. For example, if your
+                    seat map has "VIP" and "Standard" zones, create ticket types
+                    with those exact names.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -904,8 +926,11 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                   </div>
                   <Switch
                     checked={eventData.policies?.refundable || false}
-                    onCheckedChange={(checked) => 
-                      handleInputChange('policies', { ...eventData.policies, refundable: checked })
+                    onCheckedChange={(checked) =>
+                      handleInputChange("policies", {
+                        ...eventData.policies,
+                        refundable: checked,
+                      })
                     }
                   />
                 </div>
@@ -941,8 +966,11 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                   </div>
                   <Switch
                     checked={eventData.policies?.transferable || false}
-                    onCheckedChange={(checked) => 
-                      handleInputChange('policies', { ...eventData.policies, transferable: checked })
+                    onCheckedChange={(checked) =>
+                      handleInputChange("policies", {
+                        ...eventData.policies,
+                        transferable: checked,
+                      })
                     }
                   />
                 </div>
@@ -985,7 +1013,8 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                       <div key={index} className="text-sm flex justify-between">
                         <span className="text-neutral-900">{tier.name}</span>
                         <span className="text-neutral-600">
-                          {(tier.price || 0).toLocaleString()} VND × {tier.total}
+                          {(tier.price || 0).toLocaleString()} VND ×{" "}
+                          {tier.total}
                         </span>
                       </div>
                     ))}
@@ -996,13 +1025,25 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                   <h4 className="mb-3">{t('wizard.organizer.policies')}</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${eventData.policies?.refundable ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          eventData.policies?.refundable
+                            ? "bg-green-500"
+                            : "bg-red-500"
+                        }`}
+                      />
                       <span className="text-neutral-900">
                         {eventData.policies?.refundable ? t('wizard.organizer.refundable') : t('wizard.organizer.nonRefundable')}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${eventData.policies?.transferable ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          eventData.policies?.transferable
+                            ? "bg-green-500"
+                            : "bg-red-500"
+                        }`}
+                      />
                       <span className="text-neutral-900">
                         {eventData.policies?.transferable ? t('wizard.organizer.transferable') : t('wizard.organizer.nonTransferable')}
                       </span>

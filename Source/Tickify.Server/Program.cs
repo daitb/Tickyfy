@@ -116,6 +116,14 @@ namespace Tickify
             builder.Services.AddScoped<IChatRepository, EfChatRepository>();
             builder.Services.AddScoped<IChatService, ChatService>();
 
+            // Notification Services
+            builder.Services.AddScoped<INotificationService, Tickify.Services.Notifications.NotificationService>();
+
+            // ============================================
+            // Background Jobs
+            // ============================================
+            builder.Services.AddHostedService<Tickify.Jobs.SeatReservationCleanupJob>();
+
             // ============================================
             // 4. JWT AUTHENTICATION CONFIGURATION
             // Cấu hình xác thực JWT token
@@ -254,7 +262,7 @@ namespace Tickify
 
             // ============================================
             // 7.5. DATABASE INITIALIZATION
-            // Apply migrations và seed dữ liệu ban đầu
+            // Seed dữ liệu ban đầu
             // ============================================
             using (var scope = app.Services.CreateScope())
             {
@@ -264,13 +272,7 @@ namespace Tickify
 
                 try
                 {
-                    logger.LogInformation("Đang kiểm tra và apply database migrations...");
-                    
-                    // Apply pending migrations
-                    await context.Database.MigrateAsync();
-                    logger.LogInformation("✅ Database migrations đã được apply thành công");
-
-                    // Seed dữ liệu ban đầu (Roles, Categories, Admin user)
+                    // Seed dữ liệu ban đầu (Roles, Categories, Admin user, Promo codes)
                     logger.LogInformation("Đang seed dữ liệu ban đầu...");
                     await DbInitializer.SeedAsync(context);
                     logger.LogInformation("✅ Database seeding hoàn tất");
@@ -320,8 +322,10 @@ namespace Tickify
 
             app.MapControllers();
 
-            // Map SignalR hub
+            // Map SignalR hubs
             app.MapHub<Tickify.Hubs.ChatHub>("/hubs/chat");
+            app.MapHub<Tickify.Hubs.NotificationHub>("/hubs/notifications");
+            app.MapHub<Tickify.Hubs.SeatHub>("/hubs/seats");
 
             app.Run();
         }

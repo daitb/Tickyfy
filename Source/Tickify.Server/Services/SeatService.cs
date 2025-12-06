@@ -69,7 +69,7 @@ public class SeatService : ISeatService
         return _mapper.Map<IEnumerable<SeatDto>>(seats);
     }
 
-    public async Task<bool> ReserveSeatsAsync(IEnumerable<SeatSelectionDto> seatSelections)
+    public async Task<bool> ReserveSeatsAsync(IEnumerable<SeatSelectionDto> seatSelections, int userId)
     {
         var seatIds = seatSelections.Select(s => s.SeatId).ToList();
         
@@ -81,12 +81,12 @@ public class SeatService : ISeatService
                 throw new BadRequestException($"Seat with ID {seatId} is not available");
         }
 
-        return await _seatRepository.ReserveSeatsAsync(seatIds);
+        return await _seatRepository.ReserveSeatsAsync(seatIds, userId);
     }
 
     public async Task<bool> ReleaseSeatsAsync(IEnumerable<int> seatIds)
     {
-        return await _seatRepository.ReleaseSeatsAsync(seatIds);
+        return await _seatRepository.AdminReleaseSeatsAsync(seatIds);
     }
 
     public async Task<bool> CheckSeatAvailabilityAsync(int seatId)

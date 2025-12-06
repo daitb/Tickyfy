@@ -97,10 +97,10 @@ public class PromoCodeRepository : IPromoCodeRepository
         var now = DateTime.UtcNow;
         return await _context.PromoCodes
             .AnyAsync(p => p.Code == code
-                && p.EventId == eventId
+                && (p.EventId == null || p.EventId == eventId) // Allow global promo codes (EventId = null)
                 && p.IsActive
-                && p.ValidFrom <= now
-                && p.ValidTo >= now
+                && (!p.ValidFrom.HasValue || p.ValidFrom.Value <= now)
+                && (!p.ValidTo.HasValue || p.ValidTo.Value >= now)
                 && (p.MaxUses == null || p.CurrentUses < p.MaxUses));
     }
 
