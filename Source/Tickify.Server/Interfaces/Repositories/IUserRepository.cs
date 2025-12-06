@@ -6,7 +6,7 @@ public interface IUserRepository
 {
     Task<User?> GetUserByEmailAsync(string email);
     Task<User?> GetUserByIdAsync(int userId);
-    Task<(List<User> Users, int TotalCount)> GetUsersAsync(int pageNumber, int pageSize, string? searchTerm = null);
+    Task<(List<User> Users, int TotalCount)> GetUsersAsync(int pageNumber, int pageSize, string? searchTerm = null, string? role = null, bool? isActive = null, bool? emailVerified = null);
     Task LoadUserRolesAsync(User user);
     Task AddUserAsync(User user);
     void UpdateUser(User user);
