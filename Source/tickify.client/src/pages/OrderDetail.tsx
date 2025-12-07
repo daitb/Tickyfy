@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import {
   Calendar,
   MapPin,
@@ -48,7 +48,7 @@ interface PaymentInfo {
 }
 
 export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [tickets, setTickets] = useState<any[]>([]);
   const [event, setEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,15 +66,15 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         // Get tickets for this booking/order
         const userTickets = await ticketService.getMyTickets();
-        
-        const orderTickets = userTickets.filter((t: any) => 
-          t.bookingId?.toString() === orderId || 
-          t.bookingNumber === orderId
+
+        const orderTickets = userTickets.filter(
+          (t: any) =>
+            t.bookingId?.toString() === orderId || t.bookingNumber === orderId
         );
-        
+
         if (orderTickets.length === 0) {
           const errorMsg = `Không tìm thấy vé cho đơn hàng ${orderId}. Đơn hàng có thể chưa được xác nhận hoặc vé chưa được tạo.`;
           setError(errorMsg);
@@ -84,12 +84,14 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
         }
 
         setTickets(orderTickets);
-        
+
         // Load event details from first ticket
         const firstTicket = orderTickets[0];
         if (firstTicket?.eventId) {
           try {
-            const eventData = await eventService.getEventById(Number(firstTicket.eventId));
+            const eventData = await eventService.getEventById(
+              Number(firstTicket.eventId)
+            );
             setEvent(eventData);
           } catch (err) {
             // If event load fails, create a minimal event object from ticket data
@@ -127,7 +129,7 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
             available: 0,
           } as unknown as Event);
         }
-        
+
         // Load payment information
         try {
           const paymentData = await getPaymentsByBooking(Number(orderId));
@@ -140,7 +142,8 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
           // Payment info is optional, don't show error to user
         }
       } catch (err: any) {
-        const errorMsg = err.message || "Không thể tải thông tin đơn hàng. Vui lòng thử lại.";
+        const errorMsg =
+          err.message || "Không thể tải thông tin đơn hàng. Vui lòng thử lại.";
         setError(errorMsg);
         toast.error(errorMsg);
       } finally {
@@ -169,9 +172,13 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
       <div className="min-h-screen bg-neutral-50 py-8">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center py-16">
-            <h2 className="text-neutral-900 mb-4">{error || "Order not found"}</h2>
+            <h2 className="text-neutral-900 mb-4">
+              {error || "Order not found"}
+            </h2>
             <p className="text-neutral-600 mb-4">
-              {!tickets.length && !error && "No tickets found for this booking. Please ensure the booking is confirmed and tickets have been created."}
+              {!tickets.length &&
+                !error &&
+                "No tickets found for this booking. Please ensure the booking is confirmed and tickets have been created."}
             </p>
             <Button onClick={() => onNavigate("my-tickets")}>
               Back to My Tickets
@@ -214,12 +221,14 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
     serviceFee: 0,
     status: "completed" as const,
     createdAt: firstTicket.createdAt || new Date().toISOString(),
-    paymentMethod: payments[0]?.paymentMethod || payments[0]?.paymentGateway || undefined,
+    paymentMethod:
+      payments[0]?.paymentMethod || payments[0]?.paymentGateway || undefined,
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
+    return date.toLocaleDateString(locale, {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -229,7 +238,8 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
 
   const formatDateTime = (dateString: string, timeString?: string) => {
     const date = new Date(dateString);
-    const formattedDate = date.toLocaleDateString("en-US", {
+    const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
+    const formattedDate = date.toLocaleDateString(locale, {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -261,23 +271,23 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
 
   const timelineSteps = [
     {
-      title: t("pages.orderDetail.timeline.orderPlaced"),
+      title: t("booking.orderDetail.orderPlaced"),
       timestamp: formatDate(currentOrder.createdAt),
       completed: true,
     },
     {
-      title: t("pages.orderDetail.timeline.paymentConfirmed"),
+      title: t("booking.orderDetail.paymentConfirmed"),
       timestamp: formatDate(currentOrder.createdAt),
       completed: currentOrder.status === "completed",
     },
     {
-      title: t("pages.orderDetail.timeline.ticketsIssued"),
+      title: t("booking.orderDetail.ticketsIssued"),
       timestamp: formatDate(currentOrder.createdAt),
       completed: currentOrder.status === "completed",
     },
     {
-      title: t("pages.orderDetail.timeline.eventCheckIn"),
-      timestamp: t("common.notYet"),
+      title: t("booking.orderDetail.eventCheckin"),
+      timestamp: t("booking.orderDetail.notYet"),
       completed: false,
     },
   ];
@@ -291,17 +301,20 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
             onClick={() => onNavigate("home")}
             className="hover:text-teal-600"
           >
-            Home
+            {t("booking.orderDetail.home")}
           </button>
           <ChevronRight size={16} />
           <button
             onClick={() => onNavigate("my-tickets")}
             className="hover:text-teal-600"
           >
-            My Orders
+            {t("booking.orderDetail.myOrders")}
           </button>
           <ChevronRight size={16} />
-          <span className="text-neutral-900">Order #{currentOrder.id}</span>
+          <span className="text-neutral-900">
+            {t("booking.orderDetail.orderNumber")}
+            {currentOrder.id}
+          </span>
         </div>
 
         {/* Order Summary Card */}
@@ -357,10 +370,13 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary">Order #{currentOrder.id}</Badge>
+                  <Badge variant="secondary">
+                    {t("booking.orderDetail.orderNumber")}
+                    {currentOrder.id}
+                  </Badge>
                   <Badge className={getStatusColor(currentOrder.status)}>
                     {currentOrder.status === "completed"
-                      ? "Confirmed"
+                      ? t("booking.orderDetail.confirmed")
                       : currentOrder.status}
                   </Badge>
                   {currentOrder.paymentMethod && (
@@ -373,27 +389,33 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
                 <Separator />
 
                 <div>
-                  <div className="text-neutral-600 mb-1">Total Paid</div>
+                  <div className="text-neutral-600 mb-1">
+                    {t("booking.orderDetail.totalPaid")}
+                  </div>
                   <div className="text-teal-600">
                     {formatPrice(currentOrder.total)}
                   </div>
                 </div>
-                
+
                 {payments.length > 0 && (
                   <>
                     <Separator />
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-neutral-600 mb-2">
                         <CreditCard size={16} />
-                        <span className="text-sm font-medium">Payment Information</span>
+                        <span className="text-sm font-medium">
+                          {t("booking.orderDetail.paymentInformation")}
+                        </span>
                       </div>
                       {payments.map((payment) => (
                         <div key={payment.id} className="text-sm space-y-1">
                           <div className="flex items-center justify-between">
-                            <span className="text-neutral-600">Status:</span>
-                            <Badge 
+                            <span className="text-neutral-600">
+                              {t("booking.orderDetail.status")}
+                            </span>
+                            <Badge
                               className={
-                                payment.status === "Completed" 
+                                payment.status === "Completed"
                                   ? "bg-green-100 text-green-700"
                                   : payment.status === "Failed"
                                   ? "bg-red-100 text-red-700"
@@ -404,14 +426,20 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
                             </Badge>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-neutral-600">Method:</span>
+                            <span className="text-neutral-600">
+                              {t("booking.orderDetail.method")}
+                            </span>
                             <span className="text-neutral-900">
-                              {payment.paymentMethod || payment.paymentGateway || 'N/A'}
+                              {payment.paymentMethod ||
+                                payment.paymentGateway ||
+                                "N/A"}
                             </span>
                           </div>
                           {payment.transactionId && (
                             <div className="flex items-center justify-between">
-                              <span className="text-neutral-600">Transaction ID:</span>
+                              <span className="text-neutral-600">
+                                {t("booking.orderDetail.transactionId")}
+                              </span>
                               <span className="text-neutral-700 font-mono text-xs">
                                 {payment.transactionId}
                               </span>
@@ -419,15 +447,20 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
                           )}
                           {payment.paidAt && (
                             <div className="flex items-center justify-between">
-                              <span className="text-neutral-600">Paid At:</span>
+                              <span className="text-neutral-600">
+                                {t("booking.orderDetail.paidAt")}
+                              </span>
                               <span className="text-neutral-700 text-xs">
-                                {new Date(payment.paidAt).toLocaleString('en-US', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
+                                {new Date(payment.paidAt).toLocaleString(
+                                  i18n.language === "vi" ? "vi-VN" : "en-US",
+                                  {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
                               </span>
                             </div>
                           )}
@@ -444,10 +477,13 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
         {/* Tickets Grid */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2>Your Tickets ({currentOrder.tickets.length})</h2>
+            <h2>
+              {t("booking.orderDetail.yourTickets")} (
+              {currentOrder.tickets.length})
+            </h2>
             <Button variant="secondary" size="sm">
               <Download size={16} className="mr-2" />
-              Download All
+              {t("booking.orderDetail.downloadAll")}
             </Button>
           </div>
 
@@ -507,7 +543,7 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
                         // Handle view details
                       }}
                     >
-                      View Details
+                      {t("booking.orderDetail.viewDetails")}
                     </Button>
                     <Button
                       variant="outline"
@@ -530,7 +566,7 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
         {/* Order Timeline */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Order Timeline</CardTitle>
+            <CardTitle>{t("booking.orderDetail.orderTimeline")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -579,14 +615,14 @@ export function OrderDetail({ orderId, orders, onNavigate }: OrderDetailProps) {
             onClick={() => onNavigate("event-detail", event.id)}
           >
             <ExternalLink size={16} className="mr-2" />
-            View Event Details
+            {t("booking.orderDetail.viewEventDetails")}
           </Button>
           <Button variant="outline" className="flex-1 sm:flex-none">
-            Contact Support
+            {t("booking.orderDetail.contactSupport")}
           </Button>
           <Button variant="ghost" className="flex-1 sm:flex-none">
             <Printer size={16} className="mr-2" />
-            Print All Tickets
+            {t("booking.orderDetail.printAllTickets")}
           </Button>
         </div>
       </div>

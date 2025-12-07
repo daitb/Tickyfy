@@ -6,7 +6,7 @@ namespace Tickify.Interfaces.Services;
 
 public interface IUserService
 {
-    Task<PagedResult<UserListDto>> GetUsersAsync(int pageNumber, int pageSize, string? searchTerm = null);
+    Task<PagedResult<UserListDto>> GetUsersAsync(int pageNumber, int pageSize, string? searchTerm = null, string? role = null, bool? isActive = null, bool? emailVerified = null);
     Task<UserDetailDto> GetUserByIdAsync(int userId);
     Task<UserProfileDto> GetCurrentUserProfileAsync(int userId);
     Task<UserProfileDto> UpdateProfileAsync(int userId, UpdateProfileDto updateDto);

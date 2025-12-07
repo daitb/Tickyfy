@@ -39,7 +39,7 @@ export function TicketDetail({
   orders,
   onNavigate,
 }: TicketDetailProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [currentTicket, setCurrentTicket] = useState<TicketDto | null>(null);
   const [currentEvent, setCurrentEvent] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -120,7 +120,8 @@ export function TicketDetail({
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
+    return date.toLocaleDateString(locale, {
       weekday: "long",
       month: "long",
       day: "numeric",
@@ -162,17 +163,19 @@ export function TicketDetail({
             onClick={() => onNavigate("home")}
             className="hover:text-teal-600"
           >
-            Home
+            {t("booking.orderDetail.home")}
           </button>
           <ChevronRight size={16} />
           <button
             onClick={() => onNavigate("my-tickets")}
             className="hover:text-teal-600"
           >
-            My Tickets
+            {t("booking.ticketDetail.myTickets")}
           </button>
           <ChevronRight size={16} />
-          <span className="text-neutral-900">Ticket Details</span>
+          <span className="text-neutral-900">
+            {t("booking.ticketDetail.ticketDetails")}
+          </span>
         </div>
 
         {/* Ticket Visual Card */}
@@ -230,7 +233,9 @@ export function TicketDetail({
 
               {/* Ticket Info */}
               <div className="space-y-3">
-                <div className="text-white/90">Ticket Holder</div>
+                <div className="text-white/90">
+                  {t("booking.ticketDetail.ticketHolder")}
+                </div>
                 <div className="text-white">{name}</div>
 
                 <div className="flex items-center gap-3 flex-wrap">
@@ -239,7 +244,8 @@ export function TicketDetail({
                   </Badge>
                   {currentTicket.seatNumber && (
                     <span className="text-white/90">
-                      Seat: {currentTicket.seatNumber}
+                      {t("booking.ticketDetail.seat")}{" "}
+                      {currentTicket.seatNumber}
                     </span>
                   )}
                 </div>
@@ -270,18 +276,18 @@ export function TicketDetail({
                     </div>
                     <div className="text-sm text-neutral-600">
                       {currentTicket.eventEndDate
-                        ? `Valid until ${formatDate(
+                        ? `${t("booking.ticketDetail.validUntil")} ${formatDate(
                             currentTicket.eventEndDate
                           )} 11:59 PM`
                         : currentEvent?.date
-                        ? `Valid until ${formatDate(
+                        ? `${t("booking.ticketDetail.validUntil")} ${formatDate(
                             currentEvent.date
                           )} 11:59 PM`
-                        : "Valid ticket"}
+                        : t("booking.ticketDetail.valid")}
                     </div>
                     <div className="flex items-center justify-center gap-2 text-sm text-red-600 mt-4">
                       <AlertCircle size={16} />
-                      <span>Do not share this QR code</span>
+                      <span>{t("booking.ticketDetail.doNotShare")}</span>
                     </div>
                   </div>
                 </div>
@@ -309,7 +315,9 @@ export function TicketDetail({
                 </div>
                 <Separator />
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">Purchase Date</span>
+                  <span className="text-neutral-600">
+                    {t("booking.ticketDetail.purchaseDate")}
+                  </span>
                   <span className="text-neutral-900 font-medium">
                     {currentTicket.createdAt
                       ? formatDate(currentTicket.createdAt)
@@ -318,20 +326,24 @@ export function TicketDetail({
                 </div>
                 <Separator />
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">Price Paid</span>
+                  <span className="text-neutral-600">
+                    {t("booking.ticketDetail.pricePaid")}
+                  </span>
                   <span className="text-teal-600 font-medium">
                     {formatPrice(currentTicket.price)}
                   </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">Ticket Status</span>
+                  <span className="text-neutral-600">
+                    {t("booking.ticketDetail.ticketStatus")}
+                  </span>
                   <Badge
                     variant={currentTicket.isUsed ? "default" : "secondary"}
                   >
                     {currentTicket.isUsed
-                      ? "Used"
-                      : currentTicket.status || "Valid"}
+                      ? t("booking.ticketDetail.used")
+                      : currentTicket.status || t("booking.ticketDetail.valid")}
                   </Badge>
                 </div>
               </div>
@@ -339,30 +351,42 @@ export function TicketDetail({
               {/* Right Column */}
               <div className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">Entry Gate</span>
-                  <span className="text-neutral-900 font-medium">Gate 3</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <span className="text-neutral-600">Check-in Status</span>
-                  <Badge
-                    variant={currentTicket.isUsed ? "default" : "secondary"}
-                  >
-                    {currentTicket.isUsed && currentTicket.usedAt
-                      ? `Checked in at ${formatDate(currentTicket.usedAt)}`
-                      : "Not Checked In"}
-                  </Badge>
-                </div>
-                <Separator />
-                <div className="flex justify-between">
-                  <span className="text-neutral-600">Admission Type</span>
+                  <span className="text-neutral-600">
+                    {t("booking.ticketDetail.entryGate")}
+                  </span>
                   <span className="text-neutral-900 font-medium">
-                    General Admission
+                    {t("booking.ticketDetail.gate")} 3
                   </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between items-center">
-                  <span className="text-neutral-600">Category</span>
+                  <span className="text-neutral-600">
+                    {t("booking.ticketDetail.checkinStatus")}
+                  </span>
+                  <Badge
+                    variant={currentTicket.isUsed ? "default" : "secondary"}
+                  >
+                    {currentTicket.isUsed && currentTicket.usedAt
+                      ? `${t("booking.ticketDetail.checkedInAt")} ${formatDate(
+                          currentTicket.usedAt
+                        )}`
+                      : t("booking.ticketDetail.notCheckedIn")}
+                  </Badge>
+                </div>
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-neutral-600">
+                    {t("booking.ticketDetail.admissionType")}
+                  </span>
+                  <span className="text-neutral-900 font-medium">
+                    {t("booking.ticketDetail.generalAdmission")}
+                  </span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-600">
+                    {t("booking.ticketDetail.category")}
+                  </span>
                   <Badge variant="secondary">
                     {currentEvent?.category || "Event"}
                   </Badge>
@@ -371,7 +395,9 @@ export function TicketDetail({
                   <>
                     <Separator />
                     <div className="flex justify-between">
-                      <span className="text-neutral-600">Seat Number</span>
+                      <span className="text-neutral-600">
+                        {t("booking.ticketDetail.seatNumber")}
+                      </span>
                       <span className="text-neutral-900 font-medium">
                         {currentTicket.seatNumber}
                       </span>
@@ -392,19 +418,19 @@ export function TicketDetail({
             }
           >
             <Send size={16} className="mr-2" />
-            Transfer
+            {t("booking.ticketDetail.transfer")}
           </Button>
           <Button className="w-full">
             <Download size={16} className="mr-2" />
-            Download PDF
+            {t("booking.ticketDetail.downloadPdf")}
           </Button>
           <Button variant="outline" className="w-full">
             <Share2 size={16} className="mr-2" />
-            Share
+            {t("booking.ticketDetail.share")}
           </Button>
           <Button variant="outline" className="w-full">
             <Printer size={16} className="mr-2" />
-            Print
+            {t("booking.ticketDetail.print")}
           </Button>
         </div>
 
@@ -432,30 +458,17 @@ export function TicketDetail({
             value="terms"
             className="bg-white rounded-lg border px-6"
           >
-            <AccordionTrigger>Terms & Conditions</AccordionTrigger>
+            <AccordionTrigger>
+              {t("booking.ticketDetail.termsAndConditions")}
+            </AccordionTrigger>
             <AccordionContent className="text-neutral-600 space-y-2">
-              <p>• This ticket is valid for one-time entry only.</p>
-              <p>
-                • Ticket holder must present a valid ID matching the name on the
-                ticket.
-              </p>
-              <p>
-                • No refunds or exchanges after purchase unless the event is
-                cancelled.
-              </p>
-              <p>
-                • The organizer reserves the right to refuse entry without
-                refund.
-              </p>
-              <p>
-                • Photography and video recording may be prohibited during the
-                event.
-              </p>
-              <p>• Lost or stolen tickets cannot be replaced.</p>
-              <p>
-                • Ticket is non-transferable without authorization from the
-                organizer.
-              </p>
+              <p>• {t("booking.ticketDetail.terms.oneTimeEntry")}</p>
+              <p>• {t("booking.ticketDetail.terms.validId")}</p>
+              <p>• {t("booking.ticketDetail.terms.noRefunds")}</p>
+              <p>• {t("booking.ticketDetail.terms.refuseEntry")}</p>
+              <p>• {t("booking.ticketDetail.terms.noRecording")}</p>
+              <p>• {t("booking.ticketDetail.terms.lostTickets")}</p>
+              <p>• {t("booking.ticketDetail.terms.nonTransferable")}</p>
             </AccordionContent>
           </AccordionItem>
 
@@ -463,10 +476,14 @@ export function TicketDetail({
             value="event"
             className="bg-white rounded-lg border px-6"
           >
-            <AccordionTrigger>Event Details</AccordionTrigger>
+            <AccordionTrigger>
+              {t("booking.ticketDetail.eventDetails")}
+            </AccordionTrigger>
             <AccordionContent className="text-neutral-600 space-y-4">
               <div>
-                <h4 className="text-neutral-900 mb-2">About this event</h4>
+                <h4 className="text-neutral-900 mb-2">
+                  {t("booking.ticketDetail.aboutEvent")}
+                </h4>
                 <p>
                   {currentEvent?.description ||
                     "Event description not available."}
@@ -474,7 +491,9 @@ export function TicketDetail({
               </div>
               {currentEvent?.fullDescription && (
                 <div>
-                  <h4 className="text-neutral-900 mb-2">Full Description</h4>
+                  <h4 className="text-neutral-900 mb-2">
+                    {t("booking.ticketDetail.fullDescription")}
+                  </h4>
                   <p className="whitespace-pre-line">
                     {currentEvent.fullDescription}
                   </p>
@@ -487,10 +506,14 @@ export function TicketDetail({
             value="venue"
             className="bg-white rounded-lg border px-6"
           >
-            <AccordionTrigger>Venue Information</AccordionTrigger>
+            <AccordionTrigger>
+              {t("booking.ticketDetail.venueInformation")}
+            </AccordionTrigger>
             <AccordionContent className="text-neutral-600 space-y-4">
               <div>
-                <h4 className="text-neutral-900 mb-2">Location</h4>
+                <h4 className="text-neutral-900 mb-2">
+                  {t("booking.ticketDetail.location")}
+                </h4>
                 <p>
                   {currentEvent?.venueDetails?.fullAddress ||
                     `${currentEvent?.venue}, ${currentEvent?.city}`}
@@ -520,7 +543,8 @@ export function TicketDetail({
               /* Handle contact support */
             }}
           >
-            Need help? Contact Support →
+            {t("booking.ticketDetail.needHelp")}{" "}
+            {t("booking.ticketDetail.contactSupport")} →
           </button>
         </div>
       </div>

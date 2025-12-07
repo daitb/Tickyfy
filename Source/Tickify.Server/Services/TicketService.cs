@@ -18,7 +18,9 @@ public class TicketService : ITicketService
     private readonly ITicketTransferRepository _ticketTransferRepository;
     private readonly ITicketScanRepository _ticketScanRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IEventRepository _eventRepository;
     private readonly Email.IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly IMapper _mapper;
 
     public TicketService(
@@ -27,7 +29,9 @@ public class TicketService : ITicketService
         ITicketTransferRepository ticketTransferRepository,
         ITicketScanRepository ticketScanRepository,
         IUserRepository userRepository,
+        IEventRepository eventRepository,
         Email.IEmailService emailService,
+        INotificationService notificationService,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
@@ -35,7 +39,9 @@ public class TicketService : ITicketService
         _ticketTransferRepository = ticketTransferRepository;
         _ticketScanRepository = ticketScanRepository;
         _userRepository = userRepository;
+        _eventRepository = eventRepository;
         _emailService = emailService;
+        _notificationService = notificationService;
         _mapper = mapper;
     }
 
@@ -133,8 +139,18 @@ public class TicketService : ITicketService
         if (transfer == null)
             throw new NotFoundException($"Transfer not found");
 
+        // Get recipient user info for better error message
+        var recipientUser = await _userRepository.GetUserByIdAsync(transfer.ToUserId);
+        var currentUser = await _userRepository.GetUserByIdAsync(userId);
+        
         if (transfer.ToUserId != userId)
-            throw new UnauthorizedException("You are not authorized to accept this transfer");
+        {
+            var expectedEmail = recipientUser?.Email ?? "unknown";
+            var currentEmail = currentUser?.Email ?? "unknown";
+            throw new UnauthorizedException(
+                $"This transfer was sent to {expectedEmail}. You are currently logged in as {currentEmail}. Please login with the correct account to accept this transfer."
+            );
+        }
 
         if (transfer.IsApproved)
             throw new BadRequestException("This transfer has already been accepted");
@@ -210,6 +226,18 @@ public class TicketService : ITicketService
                     recipientEmail: recipient.Email,
                     recipientName: recipient.FullName ?? recipient.Email,
                     ticketCode: ticket.TicketCode
+                );
+            }
+
+            // Send in-app notification to recipient
+            var eventEntity = await _eventRepository.GetByIdAsync(oldBooking.EventId);
+            if (eventEntity != null && sender != null)
+            {
+                await _notificationService.NotifyTicketTransferAsync(
+                    userId,
+                    ticket.Id,
+                    eventEntity.Title,
+                    sender.FullName ?? sender.Email
                 );
             }
         }

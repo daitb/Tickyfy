@@ -63,6 +63,9 @@ const TicketDetail = lazy(() =>
 const TransferTicket = lazy(() =>
   import("./pages/TransferTicket").then((m) => ({ default: m.TransferTicket }))
 );
+const AcceptTransfer = lazy(() =>
+  import("./pages/AcceptTransfer").then((m) => ({ default: m.AcceptTransfer }))
+);
 const Wishlist = lazy(() =>
   import("./pages/Wishlist").then((m) => ({ default: m.Wishlist }))
 );
@@ -195,6 +198,7 @@ type Page =
   | "order-detail"
   | "ticket-detail"
   | "transfer-ticket"
+  | "accept-transfer"
   | "wishlist"
   | "waitlist"
   | "create-event"
@@ -255,6 +259,7 @@ export default function App() {
     if (path.startsWith("/order/")) return "order-detail";
     if (path.startsWith("/ticket/")) return "ticket-detail";
     if (path.startsWith("/transfer-ticket/")) return "transfer-ticket";
+    if (path.startsWith("/tickets/accept-transfer")) return "accept-transfer";
     if (path === "/wishlist") return "wishlist";
     if (path === "/waitlist") return "waitlist";
     if (path === "/create-event") return "create-event";
@@ -575,6 +580,9 @@ export default function App() {
           />
         );
       }
+
+      case "accept-transfer":
+        return <AcceptTransfer onNavigate={handleNavigate} />;
 
       case "wishlist":
         return <Wishlist onNavigate={handleNavigate} />;

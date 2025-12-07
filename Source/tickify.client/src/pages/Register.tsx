@@ -18,7 +18,7 @@ declare global {
         id: {
           initialize: (config: any) => void;
           renderButton: (element: HTMLElement, config: any) => void;
-          prompt: () => void;
+          prompt: (notificationCallback?: (notification: any) => void) => void;
         };
       };
     };
@@ -45,6 +45,8 @@ export function Register({ onNavigate }: RegisterProps) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
+  const hiddenGoogleButtonRef = useRef<HTMLDivElement>(null);
+  const [isGoogleInitialized, setIsGoogleInitialized] = useState(false);
 
   // Password requirements state
   const [requirements, setRequirements] = useState({
@@ -88,30 +90,38 @@ export function Register({ onNavigate }: RegisterProps) {
 
   // Initialize Google Sign-In
   useEffect(() => {
-    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 
+    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ||
       "177365327171-n3jfda9entg6u3h6mc9glsgbeob65qs9.apps.googleusercontent.com";
 
-    if (window.google && googleButtonRef.current) {
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleResponse,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
+    const checkGoogleLoaded = () => {
+      if (window.google && hiddenGoogleButtonRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
 
-      // Render Google button
-      window.google.accounts.id.renderButton(
-        googleButtonRef.current,
-        {
-          theme: "outline",
-          size: "large",
-          width: googleButtonRef.current.offsetWidth,
-          text: "signup_with",
-          shape: "rectangular",
-          locale: "en_US",
-        }
-      );
-    }
+        // Render Google button in hidden div
+        window.google.accounts.id.renderButton(
+          hiddenGoogleButtonRef.current,
+          {
+            theme: "outline",
+            size: "large",
+            text: "signin_with",
+            shape: "rectangular",
+            locale: "en_US",
+          }
+        );
+
+        setIsGoogleInitialized(true);
+      } else {
+        // Retry after a short delay if Google script hasn't loaded yet
+        setTimeout(checkGoogleLoaded, 100);
+      }
+    };
+
+    checkGoogleLoaded();
   }, []);
 
   const getStrengthColor = () => {
@@ -150,7 +160,7 @@ export function Register({ onNavigate }: RegisterProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (formData.password !== formData.confirmPassword) {
       setError(t('auth.passwordMismatch'));
       return;
@@ -162,7 +172,7 @@ export function Register({ onNavigate }: RegisterProps) {
     }
 
     setIsLoading(true);
-    
+
     try {
       await authService.register({
         fullName: formData.fullName,
@@ -170,16 +180,14 @@ export function Register({ onNavigate }: RegisterProps) {
         password: formData.password,
         confirmPassword: formData.confirmPassword
       });
-      
+
       setSuccess(true);
-      
-      // Do NOT auto-redirect - let user see the verification message
-      // User will click "Go to Login" after they verify their email
+
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.errors?.[0] || 
-                          err.message || 
-                          'Đăng ký thất bại. Vui lòng thử lại.';
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.errors?.[0] ||
+        err.message ||
+        'Đăng ký thất bại. Vui lòng thử lại.';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -197,7 +205,7 @@ export function Register({ onNavigate }: RegisterProps) {
 
       // Redirect based on role
       const userRole = loginResponse.roles[0];
-      
+
       if (userRole === "User") {
         onNavigate("home");
       } else if (userRole === "Organizer") {
@@ -221,15 +229,37 @@ export function Register({ onNavigate }: RegisterProps) {
     }
   };
 
-  const handleSocialSignup = (provider: string) => {
-    // Simulate social signup
-    setTimeout(() => {
-      onNavigate('home');
-    }, 500);
-  };
+
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleGoogleLogin = () => {
+    if (!isGoogleInitialized || !window.google) {
+      setError("Google Sign-In chưa sẵn sàng. Vui lòng thử lại sau.");
+      return;
+    }
+
+    if (hiddenGoogleButtonRef.current) {
+      // Find the Google button element (usually a div with role="button")
+      const googleButton = hiddenGoogleButtonRef.current.querySelector('div[role="button"]') as HTMLElement;
+
+      if (googleButton) {
+        // Programmatically click the Google button
+        googleButton.click();
+      } else {
+        // Fallback: use prompt method to show One Tap UI
+        window.google.accounts.id.prompt((notification: any) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            setError("Không thể hiển thị cửa sổ đăng nhập Google. Vui lòng thử lại.");
+          }
+        });
+      }
+    } else {
+      // Fallback: use prompt method
+      window.google.accounts.id.prompt();
+    }
   };
 
   return (
@@ -237,7 +267,7 @@ export function Register({ onNavigate }: RegisterProps) {
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <button 
+          <button
             onClick={() => onNavigate('home')}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
@@ -284,7 +314,7 @@ export function Register({ onNavigate }: RegisterProps) {
                       {t('auth.registerSuccess')}
                     </h3>
                     <p className="text-sm text-green-700 mb-3">
-                      {t('auth.verificationEmailSent')} <strong>{formData.email}</strong>. 
+                      {t('auth.verificationEmailSent')} <strong>{formData.email}</strong>.
                       {t('auth.checkEmailInbox')}
                     </p>
                     <div className="flex flex-col sm:flex-row gap-2">
@@ -316,233 +346,252 @@ export function Register({ onNavigate }: RegisterProps) {
             {!success && (
               <>
                 <div className="space-y-3 mb-6">
-              {/* Google Sign-In Button */}
-              <div ref={googleButtonRef} className="w-full" />
+                  {/* Hidden Google Button - used for programmatic click */}
+                  <div ref={hiddenGoogleButtonRef} className="hidden"></div>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => handleSocialSignup('facebook')}
-              >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="#1877F2">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-                {t('auth.continueWithFacebook')}
-              </Button>
-            </div>
-
-            <div className="relative mb-6">
-              <Separator />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="bg-white px-3 text-xs text-neutral-500">
-                  {t('auth.orRegisterWith')}
-                </span>
-              </div>
-            </div>
-
-            {/* Registration Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">{t('auth.fullName')}</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                  <Input
-                    id="fullName"
-                    type="text"
-                    placeholder={t('auth.fullNamePlaceholder')}
-                    value={formData.fullName}
-                    onChange={(e) => handleInputChange('fullName', e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">{t('auth.email')}</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder={t('auth.emailPlaceholder')}
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">{t('auth.password')}</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder={t('auth.passwordPlaceholder')}
-                    value={formData.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
-                    className="pl-10 pr-10"
-                    required
-                    minLength={8}
-                  />
-                  <button
+                  {/* Custom Google Sign-In Button */}
+                  <Button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleGoogleLogin}
+                    disabled={!isGoogleInitialized || isLoading}
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+                    <svg
+                      className="w-5 h-5 mr-2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      />
+                    </svg>
+                    {t('auth.continueWithGoogle')}
+                  </Button>
                 </div>
 
-                {/* Password Strength Indicator */}
-                {formData.password && (
-                  <div className="mt-2">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-600">{t('auth.passwordStrength')}</span>
-                      <span className={`capitalize font-medium ${
-                        passwordStrength === 'weak' ? 'text-red-500' :
-                        passwordStrength === 'medium' ? 'text-yellow-500' :
-                        'text-green-500'
-                      }`}>
-                        {getStrengthText()}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-300 ${getStrengthColor()}`}
-                        style={{ width: `${getStrengthWidth()}%` }}
+                <div className="relative mb-6">
+                  <Separator />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="bg-white px-3 text-xs text-neutral-500">
+                      {t('auth.orRegisterWith')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Registration Form */}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">{t('auth.fullName')}</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                      <Input
+                        id="fullName"
+                        type="text"
+                        placeholder={t('auth.fullNamePlaceholder')}
+                        value={formData.fullName}
+                        onChange={(e) => handleInputChange('fullName', e.target.value)}
+                        className="pl-10"
+                        required
                       />
                     </div>
                   </div>
-                )}
 
-                {/* Password Requirements */}
-                {formData.password && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs font-medium text-neutral-700">{t('auth.passwordRequirements')}</p>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs">
-                        {requirements.length ? (
-                          <Check className="text-green-500" size={14} />
-                        ) : (
-                          <X className="text-neutral-400" size={14} />
-                        )}
-                        <span className={requirements.length ? 'text-green-600' : 'text-neutral-500'}>
-                          {t('auth.minLength')}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        {requirements.uppercase ? (
-                          <Check className="text-green-500" size={14} />
-                        ) : (
-                          <X className="text-neutral-400" size={14} />
-                        )}
-                        <span className={requirements.uppercase ? 'text-green-600' : 'text-neutral-500'}>
-                          {t('auth.uppercase')}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        {requirements.lowercase ? (
-                          <Check className="text-green-500" size={14} />
-                        ) : (
-                          <X className="text-neutral-400" size={14} />
-                        )}
-                        <span className={requirements.lowercase ? 'text-green-600' : 'text-neutral-500'}>
-                          {t('auth.lowercase')}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        {requirements.number ? (
-                          <Check className="text-green-500" size={14} />
-                        ) : (
-                          <X className="text-neutral-400" size={14} />
-                        )}
-                        <span className={requirements.number ? 'text-green-600' : 'text-neutral-500'}>
-                          {t('auth.number')}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        {requirements.special ? (
-                          <Check className="text-green-500" size={14} />
-                        ) : (
-                          <X className="text-neutral-400" size={14} />
-                        )}
-                        <span className={requirements.special ? 'text-green-600' : 'text-neutral-500'}>
-                          {t('auth.specialChar')}
-                        </span>
-                      </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">{t('auth.email')}</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder={t('auth.emailPlaceholder')}
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        className="pl-10"
+                        required
+                      />
                     </div>
                   </div>
-                )}
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder={t('auth.confirmPasswordPlaceholder')}
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    className="pl-10 pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                  <div className="space-y-2">
+                    <Label htmlFor="password">{t('auth.password')}</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder={t('auth.passwordPlaceholder')}
+                        value={formData.password}
+                        onChange={(e) => handleInputChange('password', e.target.value)}
+                        className="pl-10 pr-10"
+                        required
+                        minLength={8}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+
+                    {/* Password Strength Indicator */}
+                    {formData.password && (
+                      <div className="mt-2">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-neutral-600">{t('auth.passwordStrength')}</span>
+                          <span className={`capitalize font-medium ${passwordStrength === 'weak' ? 'text-red-500' :
+                            passwordStrength === 'medium' ? 'text-yellow-500' :
+                              'text-green-500'
+                            }`}>
+                            {getStrengthText()}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${getStrengthColor()}`}
+                            style={{ width: `${getStrengthWidth()}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Password Requirements */}
+                    {formData.password && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs font-medium text-neutral-700">{t('auth.passwordRequirements')}</p>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-xs">
+                            {requirements.length ? (
+                              <Check className="text-green-500" size={14} />
+                            ) : (
+                              <X className="text-neutral-400" size={14} />
+                            )}
+                            <span className={requirements.length ? 'text-green-600' : 'text-neutral-500'}>
+                              {t('auth.minLength')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            {requirements.uppercase ? (
+                              <Check className="text-green-500" size={14} />
+                            ) : (
+                              <X className="text-neutral-400" size={14} />
+                            )}
+                            <span className={requirements.uppercase ? 'text-green-600' : 'text-neutral-500'}>
+                              {t('auth.uppercase')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            {requirements.lowercase ? (
+                              <Check className="text-green-500" size={14} />
+                            ) : (
+                              <X className="text-neutral-400" size={14} />
+                            )}
+                            <span className={requirements.lowercase ? 'text-green-600' : 'text-neutral-500'}>
+                              {t('auth.lowercase')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            {requirements.number ? (
+                              <Check className="text-green-500" size={14} />
+                            ) : (
+                              <X className="text-neutral-400" size={14} />
+                            )}
+                            <span className={requirements.number ? 'text-green-600' : 'text-neutral-500'}>
+                              {t('auth.number')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            {requirements.special ? (
+                              <Check className="text-green-500" size={14} />
+                            ) : (
+                              <X className="text-neutral-400" size={14} />
+                            )}
+                            <span className={requirements.special ? 'text-green-600' : 'text-neutral-500'}>
+                              {t('auth.specialChar')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        placeholder={t('auth.confirmPasswordPlaceholder')}
+                        value={formData.confirmPassword}
+                        onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                        className="pl-10 pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-start space-x-2">
+                      <Checkbox
+                        id="terms"
+                        checked={agreeToTerms}
+                        onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
+                        className="mt-1"
+                      />
+                      <label
+                        htmlFor="terms"
+                        className="text-sm text-neutral-700 leading-tight cursor-pointer"
+                      >
+                        {t('auth.agreeToTerms')}
+                      </label>
+                    </div>
+
+                    <div className="flex items-start space-x-2">
+                      <Checkbox
+                        id="updates"
+                        checked={receiveUpdates}
+                        onCheckedChange={(checked) => setReceiveUpdates(checked as boolean)}
+                        className="mt-1"
+                      />
+                      <label
+                        htmlFor="updates"
+                        className="text-sm text-neutral-700 leading-tight cursor-pointer"
+                      >
+                        {t('auth.receiveUpdates')}
+                      </label>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                    disabled={isLoading}
                   >
-                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-2">
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="terms"
-                    checked={agreeToTerms}
-                    onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
-                    className="mt-1"
-                  />
-                  <label
-                    htmlFor="terms"
-                    className="text-sm text-neutral-700 leading-tight cursor-pointer"
-                  >
-                    {t('auth.agreeToTerms')}
-                  </label>
-                </div>
-
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="updates"
-                    checked={receiveUpdates}
-                    onCheckedChange={(checked) => setReceiveUpdates(checked as boolean)}
-                    className="mt-1"
-                  />
-                  <label
-                    htmlFor="updates"
-                    className="text-sm text-neutral-700 leading-tight cursor-pointer"
-                  >
-                    {t('auth.receiveUpdates')}
-                  </label>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-                disabled={isLoading}
-              >
-                {isLoading ? t('auth.creatingAccount') : t('auth.createAccountButton')}
-              </Button>
-            </form>
+                    {isLoading ? t('auth.creatingAccount') : t('auth.createAccountButton')}
+                  </Button>
+                </form>
               </>
             )}
           </div>
