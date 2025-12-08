@@ -179,6 +179,66 @@ public sealed class PaymentController : ControllerBase
         }
     }
 
+    // POST /api/payment/create-credit-card-intent
+    [HttpPost("create-credit-card-intent")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<PaymentIntentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<PaymentIntentDto>>> CreateCreditCardIntent(
+        [FromBody] CreditCardPaymentDto dto, 
+        CancellationToken ct)
+    {
+        try
+        {
+            // Authorization check
+            var userId = GetCurrentUserId();
+            var ownsBooking = await UserOwnsBookingAsync(dto.BookingId, userId, ct);
+            if (!ownsBooking)
+            {
+                _logger.LogWarning($"[PaymentController] User {userId} attempted credit card payment for booking {dto.BookingId}");
+                return Forbid();
+            }
+
+            // Validate card number using Luhn algorithm
+            if (!ValidateLuhnAlgorithm(dto.CardNumber))
+            {
+                return BadRequest(ApiResponse<object>.FailureResponse("Số thẻ không hợp lệ"));
+            }
+
+            // Validate expiry date
+            var now = DateTime.Now;
+            if (dto.ExpiryYear < now.Year || (dto.ExpiryYear == now.Year && dto.ExpiryMonth < now.Month))
+            {
+                return BadRequest(ApiResponse<object>.FailureResponse("Thẻ đã hết hạn"));
+            }
+
+            // Get client IP
+            var ip = GetClientIp();
+            
+            // Create payment intent using standard flow
+            var createDto = new CreatePaymentDto
+            {
+                BookingId = dto.BookingId,
+                Provider = "creditcard"
+            };
+
+            var intent = await _payments.CreateAsync(createDto, ip, ct);
+            
+            _logger.LogInformation($"[PaymentController] Credit card payment created - PaymentId: {intent.PaymentId}");
+            return Ok(ApiResponse<PaymentIntentDto>.SuccessResponse(intent, "Thông tin thẻ hợp lệ, đang xử lý thanh toán..."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "[PaymentController] Credit card payment failed");
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[PaymentController] Credit card payment error");
+            return StatusCode(500, ApiResponse<object>.FailureResponse($"Lỗi xử lý thanh toán: {ex.Message}"));
+        }
+    }
+
     // POST /api/payment/webhook/{provider}  (provider: vnpay|momo)
     // Note: Webhooks must be AllowAnonymous as they come from external payment gateways
     // Security is handled by signature verification in the provider implementations
@@ -241,6 +301,26 @@ public sealed class PaymentController : ControllerBase
             OrderInfo  = q["orderInfo"],
             Message    = q["message"],
             ResultCode = int.TryParse(q["resultCode"], out var rc) ? rc : null
+        };
+        return Ok(model);
+    }
+
+    // GET /api/payments/vnpay-return
+    // FE có thể gọi endpoint này sau khi người dùng quay về từ VNPay (ReturnUrl)
+    [AllowAnonymous]
+    [HttpGet("vnpay-return")]
+    public IActionResult VNPayReturn()
+    {
+        var q = Request.Query;
+        var model = new
+        {
+            vnp_TxnRef = q["vnp_TxnRef"],
+            vnp_Amount = q["vnp_Amount"],
+            vnp_OrderInfo = q["vnp_OrderInfo"],
+            vnp_ResponseCode = q["vnp_ResponseCode"],
+            vnp_TransactionNo = q["vnp_TransactionNo"],
+            vnp_TransactionStatus = q["vnp_TransactionStatus"],
+            vnp_SecureHash = q["vnp_SecureHash"]
         };
         return Ok(model);
     }
@@ -345,5 +425,83 @@ public sealed class PaymentController : ControllerBase
             new { success },
             success ? "Payment verified successfully from return URL" : "Payment verification from return URL failed"
         ));
+    }
+
+    // Helper: Validate credit card number using Luhn algorithm
+    private bool ValidateLuhnAlgorithm(string cardNumber)
+    {
+        if (string.IsNullOrEmpty(cardNumber) || cardNumber.Length < 13 || cardNumber.Length > 19)
+            return false;
+
+        int sum = 0;
+        bool alternate = false;
+        
+        for (int i = cardNumber.Length - 1; i >= 0; i--)
+        {
+            if (!char.IsDigit(cardNumber[i]))
+                return false;
+
+            int digit = cardNumber[i] - '0';
+            
+            if (alternate)
+            {
+                digit *= 2;
+                if (digit > 9)
+                    digit -= 9;
+            }
+            
+            sum += digit;
+            alternate = !alternate;
+        }
+        
+        return sum % 10 == 0;
+    }
+
+    // Helper: Get client IP address
+    private string GetClientIp()
+    {
+        string? ip = null;
+        
+        var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
+        {
+            var forwardedIp = forwardedFor.Split(',').FirstOrDefault()?.Trim();
+            if (!string.IsNullOrEmpty(forwardedIp) && System.Net.IPAddress.TryParse(forwardedIp, out var parsedIp))
+            {
+                if (!parsedIp.ToString().Contains(":"))
+                    ip = parsedIp.ToString();
+            }
+        }
+        
+        if (string.IsNullOrEmpty(ip))
+        {
+            var realIp = Request.Headers["X-Real-IP"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(realIp) && System.Net.IPAddress.TryParse(realIp, out var parsedRealIp))
+            {
+                if (!parsedRealIp.ToString().Contains(":"))
+                    ip = parsedRealIp.ToString();
+            }
+        }
+        
+        if (string.IsNullOrEmpty(ip))
+        {
+            var remoteIp = HttpContext.Connection.RemoteIpAddress;
+            if (remoteIp != null)
+            {
+                var ipString = remoteIp.ToString();
+                if (ipString == "::1" || ipString == "0:0:0:0:0:0:0:1")
+                    ip = "127.0.0.1";
+                else if (!ipString.Contains(":"))
+                    ip = ipString;
+                else
+                    ip = "127.0.0.1";
+            }
+            else
+            {
+                ip = "127.0.0.1";
+            }
+        }
+        
+        return ip;
     }
 }

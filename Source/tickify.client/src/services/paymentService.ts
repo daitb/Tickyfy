@@ -8,7 +8,15 @@ export interface PaymentIntent {
   expiresAtUtc: string;
 }
 
-export type PaymentProvider = "momo" | "vnpay";
+export type PaymentProvider = "momo" | "vnpay" | "creditcard";
+
+export interface CreditCardDetails {
+  cardNumber: string;
+  cardholderName: string;
+  expiryMonth: number;
+  expiryYear: number;
+  cvv: string;
+}
 
 /**
  * Tạo Payment Intent – backend sẽ trả về redirectUrl để FE chuyển người dùng
@@ -21,6 +29,7 @@ export async function createPaymentIntent(body: {
   const providerMap: { [key in PaymentProvider]: string } = {
     momo: "MoMo",
     vnpay: "VNPay",
+    creditcard: "creditcard",
   };
 
   const res = await apiClient.post<PaymentIntent>("/payments/create-intent", {
@@ -29,6 +38,29 @@ export async function createPaymentIntent(body: {
   });
 
   return res.data; // đã unwrap từ ApiResponse
+}
+
+/**
+ * Tạo Credit Card Payment Intent với validation thông tin thẻ
+ */
+export async function createCreditCardPaymentIntent(body: {
+  bookingId: number;
+  cardDetails: CreditCardDetails;
+}) {
+  const res = await apiClient.post<PaymentIntent>(
+    "/payments/create-credit-card-intent",
+    {
+      bookingId: body.bookingId,
+      provider: "creditcard",
+      cardNumber: body.cardDetails.cardNumber.replace(/\s/g, ""), // Remove spaces
+      cardholderName: body.cardDetails.cardholderName,
+      expiryMonth: body.cardDetails.expiryMonth,
+      expiryYear: body.cardDetails.expiryYear,
+      cvv: body.cardDetails.cvv,
+    }
+  );
+
+  return res.data;
 }
 
 /**

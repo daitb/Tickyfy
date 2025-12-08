@@ -87,19 +87,30 @@ public sealed class PaymentService : IPaymentService
         if (!_providers.Any())
             throw new InvalidOperationException("No payment providers are configured");
 
+        Console.WriteLine($"[PaymentService] Looking for provider: '{dto.Provider}'");
+        Console.WriteLine($"[PaymentService] Available providers: {string.Join(", ", _providers.Select(p => p.Name))}");
+
         var provider = _providers.FirstOrDefault(p => p.Name.Equals(dto.Provider, StringComparison.OrdinalIgnoreCase))
                        ?? _providers.FirstOrDefault(p => p.Name.Equals(_cfg["Payments:DefaultProvider"], StringComparison.OrdinalIgnoreCase))
                        ?? _providers.First(); // Fallback to first available
+
+        Console.WriteLine($"[PaymentService] Selected provider: {provider?.Name ?? "NULL"}");
 
         if (provider is null)
             throw new InvalidOperationException($"Payment provider '{dto.Provider}' not found and no default provider available");
 
         // Create Payment record with the correct amount (must be > 0 due to database constraint)
+        PaymentMethod method = PaymentMethod.VNPay; // default
+        if (dto.Provider.Equals("MoMo", StringComparison.OrdinalIgnoreCase))
+            method = PaymentMethod.Momo;
+        else if (dto.Provider.Equals("creditcard", StringComparison.OrdinalIgnoreCase))
+            method = PaymentMethod.CreditCard;
+        
         var paymentRow = new Payment
         {
             BookingId = booking.Id,
             Amount = amount,
-            Method = dto.Provider.Equals("MoMo", StringComparison.OrdinalIgnoreCase) ? PaymentMethod.Momo : PaymentMethod.VNPay,
+            Method = method,
             Status = PaymentStatus.Pending,
             PaymentGateway = provider.Name
         };

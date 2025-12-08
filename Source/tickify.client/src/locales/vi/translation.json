@@ -293,7 +293,8 @@
       "subtotal": "Tạm tính",
       "serviceFee": "Phí dịch vụ",
       "discount": "Giảm giá",
-      "total": "Tổng cộng"
+      "total": "Tổng cộng",
+      "applying": "Đang kiểm tra..."
     },
     "summary": "Tóm tắt đơn hàng",
     "serviceFee": "Phí dịch vụ",
@@ -2733,6 +2734,91 @@
       "contact": "Liên hệ",
       "refund": "Chính sách hoàn tiền",
       "organizers": "Dành cho nhà tổ chức"
+    }
+  },
+  "payment": {
+    "selectMethod": "Chọn phương thức thanh toán",
+    "popular": "Phổ biến",
+    "methods": {
+      "momoWallet": "Ví điện tử MoMo",
+      "momoDescription": "Thanh toán an toàn với MoMo",
+      "vnpay": "VNPay",
+      "vnpayDescription": "Thanh toán qua cổng VNPay (Chuyển khoản ngân hàng, QR code)",
+      "creditCard": "Thẻ tín dụng/Thẻ ghi nợ",
+      "creditCardDescription": "Visa, Mastercard, JCB (Thanh toán qua cổng VNPay)"
+    },
+    "momo": {
+      "howToPay": "Cách thanh toán với MoMo",
+      "step1": "Nhập số điện thoại MoMo của bạn bên dưới",
+      "step2": "Nhấn \"Hoàn tất thanh toán\" để tiếp tục",
+      "step3": "Bạn sẽ nhận được thông báo trên ứng dụng MoMo",
+      "step4": "Mở ứng dụng và xác nhận thanh toán",
+      "phoneNumber": "Số điện thoại MoMo *",
+      "validPhone": "Số điện thoại MoMo hợp lệ",
+      "phoneNote": "Nhập số điện thoại đã liên kết với tài khoản MoMo của bạn"
+    },
+    "vnpay": {
+      "howToPay": "Cách thanh toán với VNPay",
+      "step1": "Nhấn \"Hoàn tất thanh toán\" để tiếp tục",
+      "step2": "Bạn sẽ được chuyển đến cổng thanh toán VNPay",
+      "step3": "Chọn ngân hàng và hoàn tất thanh toán",
+      "step4": "Quay lại Tickify để xem vé của bạn",
+      "supportedBanks": "Ngân hàng được hỗ trợ",
+      "banksNote": "VNPay hỗ trợ hơn 40 ngân hàng tại Việt Nam, bao gồm chuyển khoản ngân hàng, QR code và ví điện tử."
+    },
+    "creditCard": {
+      "securePayment": "Thanh toán an toàn với thẻ",
+      "instructions": "Chúng tôi chấp nhận thẻ Visa, Mastercard và JCB. Thông tin thẻ của bạn được mã hóa và bảo mật tuyệt đối. Bạn sẽ được chuyển đến cổng thanh toán VNPay để hoàn tất giao dịch.",
+      "cardNumber": "Số thẻ *",
+      "cardholderName": "Tên chủ thẻ *",
+      "expiryDate": "Ngày hết hạn *",
+      "cvv": "CVV *",
+      "validCardNumber": "Số thẻ hợp lệ",
+      "validCardholderName": "Tên chủ thẻ hợp lệ",
+      "valid": "Hợp lệ",
+      "enterFullInfo": "Vui lòng nhập đầy đủ thông tin thẻ",
+      "invalidExpiryFormat": "Định dạng ngày hết hạn không hợp lệ (MM/YY)",
+      "invalidExpiry": "Ngày hết hạn không hợp lệ",
+      "verifying": "Đang xác thực thông tin thẻ..."
+    },
+    "return": {
+      "verifying": "Đang xác minh thanh toán",
+      "pleaseWait": "Vui lòng đợi trong khi chúng tôi xác minh thanh toán của bạn...",
+      "retrying": "Đang thử lại lần {{count}}... Vui lòng đợi trong giây lát.",
+      "successTitle": "Thanh toán thành công!",
+      "successMessage": "Thanh toán đã được xác minh thành công! Đặt chỗ của bạn đã được xác nhận.",
+      "failedTitle": "Thanh toán thất bại",
+      "failedMessage": "Thanh toán thất bại.",
+      "cancelledTitle": "Thanh toán đã bị hủy",
+      "cancelledMessage": "Bạn đã hủy thanh toán. Vui lòng thử lại nếu bạn muốn hoàn tất đặt chỗ.",
+      "verificationFailed": "Xác minh thanh toán thất bại: {{error}}",
+      "verificationPending": "Xác minh thanh toán vẫn đang chờ xử lý. Thanh toán có thể vẫn đang được xử lý. Vui lòng thử kiểm tra lại sau một lúc hoặc liên hệ hỗ trợ nếu vấn đề vẫn tiếp tục.",
+      "verificationError": "Lỗi xác minh thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ nếu thanh toán đã thành công.",
+      "paymentIdNotFound": "Không tìm thấy ID thanh toán trong tham số trả về. Vui lòng liên hệ hỗ trợ.",
+      "invalidPaymentId": "ID thanh toán không hợp lệ từ nhà cung cấp: {{paymentId}}",
+      "vnpayFailed": "Thanh toán VNPay thất bại. Mã phản hồi: {{code}}",
+      "momoFailedResult": "Thanh toán MoMo thất bại. Mã kết quả: {{code}}",
+      "momoFailedError": "Thanh toán MoMo thất bại. Mã lỗi: {{code}}",
+      "message": "Thông báo",
+      "paymentFailed": "Thanh toán thất bại.",
+      "freeBookingConfirmed": "Đặt chỗ miễn phí của bạn đã được xác nhận!",
+      "amount": "Số tiền thanh toán",
+      "method": "Phương thức thanh toán",
+      "time": "Thời gian thanh toán",
+      "transactionId": "Mã giao dịch",
+      "status": "Trạng thái",
+      "completed": "Đã hoàn thành",
+      "paymentId": "Mã thanh toán",
+      "viewOrderDetails": "Xem chi tiết đơn hàng",
+      "checkAgain": "Kiểm tra lại trạng thái",
+      "checking": "Đang kiểm tra lại...",
+      "myTickets": "Vé của tôi",
+      "retryPayment": "Thử thanh toán lại",
+      "retryAttempts": "Số lần thử",
+      "returnHome": "Về trang chủ",
+      "viewTickets": "Xem vé của tôi",
+      "tryAgain": "Thử lại",
+      "contactSupport": "Liên hệ hỗ trợ"
     }
   }
 }

@@ -293,7 +293,8 @@
       "subtotal": "Subtotal",
       "serviceFee": "Service Fee",
       "discount": "Discount",
-      "total": "Total"
+      "total": "Total",
+      "applying": "Checking..."
     },
     "summary": "Order Summary",
     "serviceFee": "Service Fee",
@@ -2632,6 +2633,91 @@
       "contact": "Contact Us",
       "refund": "Refund Policy",
       "organizers": "For Organizers"
+    }
+  },
+  "payment": {
+    "selectMethod": "Select Payment Method",
+    "popular": "Popular",
+    "methods": {
+      "momoWallet": "MoMo E-Wallet",
+      "momoDescription": "Pay securely with MoMo",
+      "vnpay": "VNPay",
+      "vnpayDescription": "Pay via VNPay gateway (Bank transfer, QR code)",
+      "creditCard": "Credit/Debit Card",
+      "creditCardDescription": "Visa, Mastercard, JCB (Payment via VNPay gateway)"
+    },
+    "momo": {
+      "howToPay": "How to Pay with MoMo",
+      "step1": "Enter your MoMo phone number below",
+      "step2": "Click \"Complete Payment\" to proceed",
+      "step3": "You'll receive a notification on your MoMo app",
+      "step4": "Open the app and confirm the payment",
+      "phoneNumber": "MoMo Phone Number *",
+      "validPhone": "Valid MoMo phone number",
+      "phoneNote": "Enter the phone number linked to your MoMo account"
+    },
+    "vnpay": {
+      "howToPay": "How to Pay with VNPay",
+      "step1": "Click \"Complete Payment\" to continue",
+      "step2": "You will be redirected to VNPay payment gateway",
+      "step3": "Select your bank and complete the payment",
+      "step4": "Return to Tickify to view your tickets",
+      "supportedBanks": "Supported Banks",
+      "banksNote": "VNPay supports over 40 banks in Vietnam, including bank transfers, QR codes, and e-wallets."
+    },
+    "creditCard": {
+      "securePayment": "Secure Payment with Card",
+      "instructions": "We accept Visa, Mastercard, and JCB cards. Your card information is encrypted and fully secured. You will be redirected to VNPay payment gateway to complete the transaction.",
+      "cardNumber": "Card Number *",
+      "cardholderName": "Cardholder Name *",
+      "expiryDate": "Expiry Date *",
+      "cvv": "CVV *",
+      "validCardNumber": "Valid card number",
+      "validCardholderName": "Valid cardholder name",
+      "valid": "Valid",
+      "enterFullInfo": "Please enter complete card information",
+      "invalidExpiryFormat": "Invalid expiry date format (MM/YY)",
+      "invalidExpiry": "Invalid expiry date",
+      "verifying": "Verifying card information..."
+    },
+    "return": {
+      "verifying": "Verifying Payment",
+      "pleaseWait": "Please wait while we verify your payment...",
+      "retrying": "Retrying attempt {{count}}... Please wait a moment.",
+      "successTitle": "Payment Successful!",
+      "successMessage": "Payment has been verified successfully! Your booking is confirmed.",
+      "failedTitle": "Payment Failed",
+      "failedMessage": "Payment failed.",
+      "cancelledTitle": "Payment Cancelled",
+      "cancelledMessage": "You have cancelled the payment. Please try again if you wish to complete the booking.",
+      "verificationFailed": "Payment verification failed: {{error}}",
+      "verificationPending": "Payment verification is still pending. Payment may still be processing. Please check again after a while or contact support if the issue persists.",
+      "verificationError": "Payment verification error. Please try again or contact support if payment was successful.",
+      "paymentIdNotFound": "Payment ID not found in return parameters. Please contact support.",
+      "invalidPaymentId": "Invalid payment ID from provider: {{paymentId}}",
+      "vnpayFailed": "VNPay payment failed. Response code: {{code}}",
+      "momoFailedResult": "MoMo payment failed. Result code: {{code}}",
+      "momoFailedError": "MoMo payment failed. Error code: {{code}}",
+      "message": "Message",
+      "paymentFailed": "Payment failed.",
+      "freeBookingConfirmed": "Your free booking has been confirmed!",
+      "amount": "Payment Amount",
+      "method": "Payment Method",
+      "time": "Payment Time",
+      "transactionId": "Transaction ID",
+      "status": "Status",
+      "completed": "Completed",
+      "paymentId": "Payment ID",
+      "viewOrderDetails": "View Order Details",
+      "checkAgain": "Check Status Again",
+      "checking": "Checking again...",
+      "myTickets": "My Tickets",
+      "retryPayment": "Try Payment Again",
+      "retryAttempts": "Retry Attempts",
+      "returnHome": "Return Home",
+      "viewTickets": "View My Tickets",
+      "tryAgain": "Try Again",
+      "contactSupport": "Contact Support"
     }
   }
 }

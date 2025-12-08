@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Clock,
@@ -40,6 +41,7 @@ interface RefundHistoryProps {
 }
 
 export function RefundHistory({ onNavigate }: RefundHistoryProps) {
+  const { t } = useTranslation();
   const [refunds, setRefunds] = useState<RefundRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

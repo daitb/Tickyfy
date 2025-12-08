@@ -462,19 +462,64 @@ export function Checkout({
       const response = await bookingService.createBooking(bookingData);
 
       // Now create payment intent for the booking
-      const paymentProviderMap: { [key in PaymentMethod]: "momo" | "vnpay" } = {
+      const paymentProviderMap: { [key in PaymentMethod]: "momo" | "vnpay" | "creditcard" } = {
         momo: "momo",
         vnpay: "vnpay",
-        "credit-card": "vnpay", // fallback to VNPay for credit cards
+        "credit-card": "creditcard", // Direct credit card processing
       };
 
       const provider = paymentProviderMap[paymentMethod];
 
       try {
-        const paymentIntent = await createPaymentIntent({
-          bookingId: response.bookingId,
-          provider: provider,
-        });
+        let paymentIntent;
+
+        // Special handling for credit card - send card details for validation
+        if (paymentMethod === "credit-card") {
+          if (!paymentDetails?.number || !paymentDetails?.cvv || !paymentDetails?.expiry || !paymentDetails?.name) {
+            setError(t("payment.creditCard.enterFullInfo"));
+            setIsProcessing(false);
+            return;
+          }
+
+          // Parse expiry date from "MM/YY" format
+          const expiryParts = paymentDetails.expiry.split("/");
+          if (expiryParts.length !== 2) {
+            setError(t("payment.creditCard.invalidExpiryFormat"));
+            setIsProcessing(false);
+            return;
+          }
+
+          const expiryMonth = parseInt(expiryParts[0], 10);
+          const expiryYear = parseInt("20" + expiryParts[1], 10); // Convert YY to YYYY
+
+          if (isNaN(expiryMonth) || isNaN(expiryYear) || expiryMonth < 1 || expiryMonth > 12) {
+            setError(t("payment.creditCard.invalidExpiry"));
+            setIsProcessing(false);
+            return;
+          }
+
+          toast.info(t("payment.creditCard.verifying"));
+
+          // Import the new function
+          const { createCreditCardPaymentIntent } = await import("../services/paymentService");
+          
+          paymentIntent = await createCreditCardPaymentIntent({
+            bookingId: response.bookingId,
+            cardDetails: {
+              cardNumber: paymentDetails.number,
+              cardholderName: paymentDetails.name,
+              expiryMonth: expiryMonth,
+              expiryYear: expiryYear,
+              cvv: paymentDetails.cvv,
+            },
+          });
+        } else {
+          // Standard flow for MoMo and VNPay
+          paymentIntent = await createPaymentIntent({
+            bookingId: response.bookingId,
+            provider: provider,
+          });
+        }
 
         // Redirect to payment provider
         if (paymentIntent.redirectUrl) {
@@ -999,10 +1044,10 @@ export function Checkout({
                                 {isValidatingPromoCode ? (
                                   <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Đang kiểm tra...
+                                    {t("checkout.applying")}
                                   </>
                                 ) : (
-                                  "Áp dụng"
+                                  t("promoCode.apply")
                                 )}
                               </Button>
                             </div>

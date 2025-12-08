@@ -48,7 +48,6 @@ export function SeatSelectionReal({
 }: SeatSelectionRealProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [seats, setSeats] = useState<SeatDto[]>([]);
   const [seatMap, setSeatMap] = useState<SeatMapDto | null>(null);

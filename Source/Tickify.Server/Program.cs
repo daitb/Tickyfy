@@ -79,6 +79,7 @@ namespace Tickify
             builder.Services.AddScoped<Services.Payments.IPaymentService, PaymentService>();
             builder.Services.AddScoped<IPaymentProvider, VNPayProvider>();
             builder.Services.AddScoped<IPaymentProvider, MoMoProvider>();
+            builder.Services.AddScoped<IPaymentProvider, CreditCardProvider>();
             builder.Services.AddScoped<IRefundService, RefundService>();
 
             // Payout Services & Repositories
