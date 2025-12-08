@@ -1,4 +1,3 @@
-// Services/Payments/CreditCardProvider.cs
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Tickify.Data;

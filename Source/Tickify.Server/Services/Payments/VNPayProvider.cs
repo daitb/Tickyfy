@@ -1,4 +1,3 @@
-// Services/Payments/VNPayProvider.cs
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.SignalR;

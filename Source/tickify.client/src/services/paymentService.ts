@@ -1,4 +1,3 @@
-// services/paymentService.ts
 import apiClient from "./apiClient";
 
 export interface PaymentIntent {
@@ -18,14 +17,10 @@ export interface CreditCardDetails {
   cvv: string;
 }
 
-/**
- * Tạo Payment Intent – backend sẽ trả về redirectUrl để FE chuyển người dùng
- */
 export async function createPaymentIntent(body: {
   bookingId: number;
   provider: PaymentProvider;
 }) {
-  // Map frontend provider names to backend expected format
   const providerMap: { [key in PaymentProvider]: string } = {
     momo: "MoMo",
     vnpay: "VNPay",
@@ -37,12 +32,9 @@ export async function createPaymentIntent(body: {
     provider: providerMap[body.provider],
   });
 
-  return res.data; // đã unwrap từ ApiResponse
+  return res.data;
 }
 
-/**
- * Tạo Credit Card Payment Intent với validation thông tin thẻ
- */
 export async function createCreditCardPaymentIntent(body: {
   bookingId: number;
   cardDetails: CreditCardDetails;
@@ -52,7 +44,7 @@ export async function createCreditCardPaymentIntent(body: {
     {
       bookingId: body.bookingId,
       provider: "creditcard",
-      cardNumber: body.cardDetails.cardNumber.replace(/\s/g, ""), // Remove spaces
+      cardNumber: body.cardDetails.cardNumber.replace(/\s/g, ""),
       cardholderName: body.cardDetails.cardholderName,
       expiryMonth: body.cardDetails.expiryMonth,
       expiryYear: body.cardDetails.expiryYear,
@@ -63,23 +55,14 @@ export async function createCreditCardPaymentIntent(body: {
   return res.data;
 }
 
-/**
- * Gọi verify sau khi thanh toán (dành cho trường hợp ReturnUrl FE cần confirm)
- */
 export async function verifyPayment(paymentId: number) {
   const res = await apiClient.post<{ success: boolean }>(
     `/payments/${paymentId}/verify`
   );
-  // ApiResponse wrapper is already unwrapped by interceptor, so res.data is { success: boolean }
   return res.data.success;
 }
 
-/**
- * Verify payment from return URL parameters (when webhook is not received)
- * This is more reliable for localhost development where webhooks can't reach the server
- */
 export async function verifyPaymentFromReturnUrl(paymentId: number, queryParams: URLSearchParams) {
-  // Convert URLSearchParams to query string
   const queryString = queryParams.toString();
   const res = await apiClient.post<{ success: boolean }>(
     `/payments/${paymentId}/verify-return-url${queryString ? `?${queryString}` : ''}`
@@ -87,17 +70,11 @@ export async function verifyPaymentFromReturnUrl(paymentId: number, queryParams:
   return res.data.success;
 }
 
-/**
- * Lấy danh sách payment theo booking
- */
 export async function getPaymentsByBooking(bookingId: number) {
   const res = await apiClient.get(`/payments/booking/${bookingId}`);
   return res.data;
 }
 
-/**
- * Lấy thông tin 1 payment
- */
 export async function getPaymentById(paymentId: number) {
   const res = await apiClient.get(`/payments/${paymentId}`);
   return res.data;

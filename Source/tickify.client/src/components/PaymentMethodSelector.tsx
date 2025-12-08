@@ -156,7 +156,6 @@ export function PaymentMethodSelector({
     validateCardField(touchedField, value);
   };
 
-  // Validate all fields when method changes or component mounts
   useEffect(() => {
     if (method === 'momo' && momoPhone && touched.momoPhone) {
       validateMomoPhoneField(momoPhone);
@@ -167,8 +166,7 @@ export function PaymentMethodSelector({
       if (cardDetails.expiry && touched.cardExpiry) validateCardField('cardExpiry', cardDetails.expiry);
       if (cardDetails.cvv && touched.cardCvv) validateCardField('cardCvv', cardDetails.cvv);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [method]);
+  }, [method, momoPhone, cardDetails, touched]);
 
   const paymentMethods = [
     {

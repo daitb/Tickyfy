@@ -1,4 +1,3 @@
-// Controllers/PaymentController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -36,9 +35,6 @@ public sealed class PaymentController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Get current user ID from JWT token
-    /// </summary>
     private int GetCurrentUserId()
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -49,18 +45,12 @@ public sealed class PaymentController : ControllerBase
         return userId;
     }
 
-    /// <summary>
-    /// Check if user owns the booking
-    /// </summary>
     private async Task<bool> UserOwnsBookingAsync(int bookingId, int userId, CancellationToken ct)
     {
         var booking = await _bookingRepository.GetByIdAsync(bookingId);
         return booking != null && booking.UserId == userId;
     }
 
-    /// <summary>
-    /// Check if user owns the payment (through booking)
-    /// </summary>
     private async Task<bool> UserOwnsPaymentAsync(int paymentId, int userId, CancellationToken ct)
     {
         var payment = await _paymentRepository.GetAsync(paymentId, ct);
@@ -70,9 +60,8 @@ public sealed class PaymentController : ControllerBase
         return booking != null && booking.UserId == userId;
     }
 
-    // POST /api/payment/create-intent
     [HttpPost("create-intent")]
-    [Authorize] // Require authentication
+    [Authorize]
     [ProducesResponseType(typeof(ApiResponse<PaymentIntentDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
@@ -91,19 +80,13 @@ public sealed class PaymentController : ControllerBase
                 return Forbid();
             }
 
-            // Get client IP address - prioritize X-Forwarded-For or X-Real-IP headers (for proxies/load balancers)
-            // Then fall back to RemoteIpAddress
             string? ip = null;
-            
-            // Try X-Forwarded-For header first (most common for proxied requests)
             var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
             if (!string.IsNullOrEmpty(forwardedFor))
             {
-                // X-Forwarded-For can contain multiple IPs, take the first one
                 var forwardedIp = forwardedFor.Split(',').FirstOrDefault()?.Trim();
                 if (!string.IsNullOrEmpty(forwardedIp) && System.Net.IPAddress.TryParse(forwardedIp, out var parsedIp))
                 {
-                    // Only use IPv4 addresses (VNPAY doesn't accept IPv6)
                     if (!parsedIp.ToString().Contains(":"))
                     {
                         ip = parsedIp.ToString();
@@ -111,7 +94,6 @@ public sealed class PaymentController : ControllerBase
                 }
             }
             
-            // Try X-Real-IP header (alternative header)
             if (string.IsNullOrEmpty(ip))
             {
                 var realIp = Request.Headers["X-Real-IP"].FirstOrDefault();
@@ -124,19 +106,16 @@ public sealed class PaymentController : ControllerBase
                 }
             }
             
-            // Fall back to RemoteIpAddress
             if (string.IsNullOrEmpty(ip))
             {
                 var remoteIp = HttpContext.Connection.RemoteIpAddress;
                 if (remoteIp != null)
                 {
                     var ipString = remoteIp.ToString();
-                    // Convert IPv6 localhost to IPv4
                     if (ipString == "::1" || ipString == "0:0:0:0:0:0:0:1")
                     {
                         ip = "127.0.0.1";
                     }
-                    // If it's IPv6, use localhost as fallback
                     else if (ipString.Contains(":"))
                     {
                         ip = "127.0.0.1";
@@ -148,7 +127,6 @@ public sealed class PaymentController : ControllerBase
                 }
             }
             
-            // Final fallback to localhost
             if (string.IsNullOrEmpty(ip))
             {
                 ip = "127.0.0.1";
@@ -161,14 +139,12 @@ public sealed class PaymentController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            // Log the error for debugging
             Console.WriteLine($"[PaymentController] InvalidOperationException: {ex.Message}");
             Console.WriteLine($"[PaymentController] StackTrace: {ex.StackTrace}");
             return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
         }
         catch (Exception ex)
         {
-            // Log the full exception for debugging
             Console.WriteLine($"[PaymentController] Exception: {ex.Message}");
             Console.WriteLine($"[PaymentController] StackTrace: {ex.StackTrace}");
             if (ex.InnerException != null)
@@ -179,7 +155,6 @@ public sealed class PaymentController : ControllerBase
         }
     }
 
-    // POST /api/payment/create-credit-card-intent
     [HttpPost("create-credit-card-intent")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<PaymentIntentDto>), StatusCodes.Status200OK)]
@@ -239,9 +214,6 @@ public sealed class PaymentController : ControllerBase
         }
     }
 
-    // POST /api/payment/webhook/{provider}  (provider: vnpay|momo)
-    // Note: Webhooks must be AllowAnonymous as they come from external payment gateways
-    // Security is handled by signature verification in the provider implementations
     [AllowAnonymous]
     [HttpPost("webhook/{provider}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -263,8 +235,6 @@ public sealed class PaymentController : ControllerBase
         return ok ? Ok(new { RspCode = "00", Message = "success" }) : BadRequest(new { RspCode = "01", Message = "Webhook verification failed" });
     }
 
-    // GET /api/payment/webhook/{provider}
-    // Some payment gateways may use GET for webhooks
     [AllowAnonymous]
     [HttpGet("webhook/{provider}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -286,9 +256,6 @@ public sealed class PaymentController : ControllerBase
         return ok ? Ok(new { RspCode = "00", Message = "success" }) : BadRequest(new { RspCode = "01", Message = "Webhook verification failed" });
     }
 
-    // GET /api/payments/momo-return
-    // FE có thể gọi endpoint này sau khi người dùng quay về từ MoMo (ReturnUrl)
-
     [AllowAnonymous]
     [HttpGet("momo-return")]
     public IActionResult MomoReturn()
@@ -305,8 +272,6 @@ public sealed class PaymentController : ControllerBase
         return Ok(model);
     }
 
-    // GET /api/payments/vnpay-return
-    // FE có thể gọi endpoint này sau khi người dùng quay về từ VNPay (ReturnUrl)
     [AllowAnonymous]
     [HttpGet("vnpay-return")]
     public IActionResult VNPayReturn()
@@ -325,9 +290,8 @@ public sealed class PaymentController : ControllerBase
         return Ok(model);
     }
 
-    // GET /api/payment/{id}
     [HttpGet("{id:int}")]
-    [Authorize] // Require authentication
+    [Authorize]
     [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
@@ -352,9 +316,8 @@ public sealed class PaymentController : ControllerBase
         return Ok(ApiResponse<PaymentDto>.SuccessResponse(dto));
     }
 
-    // GET /api/payment/booking/{bookingId}
     [HttpGet("booking/{bookingId:int}")]
-    [Authorize] // Require authentication
+    [Authorize]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<PaymentDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
@@ -374,9 +337,8 @@ public sealed class PaymentController : ControllerBase
         return Ok(ApiResponse<IEnumerable<PaymentDto>>.SuccessResponse(dtos));
     }
 
-    // POST /api/payment/{id}/verify
     [HttpPost("{id:int}/verify")]
-    [Authorize] // Require authentication
+    [Authorize]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
@@ -398,12 +360,8 @@ public sealed class PaymentController : ControllerBase
         ));
     }
 
-    // POST /api/payment/{id}/verify-return-url
-    // Verify payment from return URL parameters (when webhook is not received)
-    // Note: This endpoint is AllowAnonymous because payment gateways redirect users here
-    // However, we validate the payment ID format and limit abuse through rate limiting
     [HttpPost("{id:int}/verify-return-url")]
-    [AllowAnonymous] // Payment gateways redirect here, so we can't require auth
+    [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<object>>> VerifyFromReturnUrl([FromRoute] int id, CancellationToken ct)
@@ -427,7 +385,6 @@ public sealed class PaymentController : ControllerBase
         ));
     }
 
-    // Helper: Validate credit card number using Luhn algorithm
     private bool ValidateLuhnAlgorithm(string cardNumber)
     {
         if (string.IsNullOrEmpty(cardNumber) || cardNumber.Length < 13 || cardNumber.Length > 19)
@@ -457,7 +414,6 @@ public sealed class PaymentController : ControllerBase
         return sum % 10 == 0;
     }
 
-    // Helper: Get client IP address
     private string GetClientIp()
     {
         string? ip = null;

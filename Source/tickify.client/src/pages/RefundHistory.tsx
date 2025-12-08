@@ -63,13 +63,11 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
       const data = await getMyRefundRequests();
       setRefunds(data);
 
-      // Load booking and event details
       const bookingMap = new Map<number, BookingDto>();
       const eventMap = new Map<string, any>();
 
       for (const refund of data) {
         try {
-          // Try to get booking details if available
           const booking = await bookingService.getBookingById(refund.bookingId);
           bookingMap.set(refund.bookingId, booking);
           

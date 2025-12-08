@@ -1,4 +1,3 @@
-// Validators/Refund/CreateRefundRequestValidator.cs
 using FluentValidation;
 using Tickify.DTOs.Refund;
 

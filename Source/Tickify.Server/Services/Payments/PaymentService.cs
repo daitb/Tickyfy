@@ -1,4 +1,3 @@
-// Services/Payments/PaymentService.cs
 using Tickify.DTOs.Payment;
 using Tickify.Extensions;
 using Tickify.Interfaces.Repositories;

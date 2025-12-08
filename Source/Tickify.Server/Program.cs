@@ -8,15 +8,13 @@ using Tickify.Middleware;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Tickify.Services.Auth;
-
-// [ADD] using cho DI của Payment/Refund/Repositories
-using Tickify.Services.Payments;              // PaymentService, VNPayProvider, MoMoProvider
-using Tickify.Services.Refunds;              // RefundService
-using Tickify.Services.Payouts;              // PayoutService
-using Tickify.Repositories;                  // EfPaymentRepository, EfRefundRequestRepository, EfPayoutRepository
+using Tickify.Services.Payments;
+using Tickify.Services.Refunds;
+using Tickify.Services.Payouts;
+using Tickify.Repositories;
 using Tickify.Interfaces.Repositories;
 using Tickify.Interfaces.Services;
-using Tickify.Services;       // IBookingRepository, IPaymentRepository, IRefundRequestRepository
+using Tickify.Services;
 
 namespace Tickify
 {

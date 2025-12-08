@@ -1,4 +1,3 @@
-// Repositories/EfReviewRepository.cs
 using Microsoft.EntityFrameworkCore;
 using Tickify.Data;
 using Tickify.Interfaces.Repositories;

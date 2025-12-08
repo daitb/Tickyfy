@@ -615,8 +615,4 @@ public sealed class MoMoProvider : IPaymentProvider
                           .Replace("-", "")
                           .ToLowerInvariant();
     }
-
-    // Không cần gửi notification cho payment success/booking confirmed
-    // vì user đã được redirect trực tiếp về Order Detail page
-    // và thấy kết quả ngay trên UI
 }
