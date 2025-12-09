@@ -108,23 +108,6 @@ namespace Tickify.Tests.Services
         {
             // Arrange
             var eventId = 1;
-            
-            // Create first zone
-            var zone1 = new SeatZone
-            {
-                Id = 1,
-                SeatMapId = 1,
-                TicketTypeId = 1,
-                Name = "Zone A",
-                StartRow = 1,
-                EndRow = 5,
-                StartColumn = 1,
-                EndColumn = 5,
-                ZonePrice = 100000,
-                Capacity = 25
-            };
-            _context.SeatZones.Add(zone1);
-            await _context.SaveChangesAsync();
 
             var createDto = new CreateSeatMapDto
             {
@@ -136,7 +119,10 @@ namespace Tickify.Tests.Services
                 {
                     Zones = new[]
                     {
-                        // This zone overlaps with existing zone1 (row 1-5, col 1-5)
+                        // First zone with specific row/column ranges
+                        new { Id = "zone1", Name = "Zone A", Color = "#0000FF", Price = 100000m, Capacity = 25,
+                              StartRow = 1, EndRow = 5, StartColumn = 1, EndColumn = 5 },
+                        // This zone overlaps with zone1 (row 3-7 overlaps with 1-5, col 3-7 overlaps with 1-5)
                         new { Id = "zone2", Name = "Zone B", Color = "#FF0000", Price = 200000m, Capacity = 20, 
                               StartRow = 3, EndRow = 7, StartColumn = 3, EndColumn = 7 }
                     },
@@ -149,23 +135,15 @@ namespace Tickify.Tests.Services
                 .Returns(seatMap);
             _mockSeatMapRepository.Setup(r => r.CreateAsync(It.IsAny<SeatMap>()))
                 .ReturnsAsync(seatMap);
-            _mockMapper.Setup(m => m.Map<SeatMapResponseDto>(It.IsAny<SeatMap>()))
-                .Returns(new SeatMapResponseDto { Id = 1, Name = "Test Venue" });
 
-            // Note: Current implementation doesn't validate overlap in CreateZonesAndSeatsFromLayoutAsync
-            // This test documents expected behavior - should be implemented for production
+            // Act & Assert
+            // Verify that InvalidOperationException is thrown when zones overlap
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
+                _seatMapService.CreateSeatMapAsync(createDto));
             
-            // Act
-            // For now, verify that multiple zones can be created without overlap validation
-            var result = await _seatMapService.CreateSeatMapAsync(createDto);
-            
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal(1, result.Id);
-            
-            // TODO: Implement zone overlap validation in CreateZonesAndSeatsFromLayoutAsync
-            // Expected behavior: await Assert.ThrowsAsync<InvalidOperationException>(() => 
-            //     _seatMapService.CreateSeatMapAsync(createDto));
+            Assert.Contains("Zone overlap detected", exception.Message);
+            Assert.Contains("Zone A", exception.Message);
+            Assert.Contains("Zone B", exception.Message);
         }
 
         #endregion

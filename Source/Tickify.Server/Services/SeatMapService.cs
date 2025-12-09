@@ -392,10 +392,10 @@ namespace Tickify.Services
                         Name = zone.Name,
                         Color = zone.Color,
                         ZonePrice = zone.Price,
-                        StartRow = 0,
-                        EndRow = 0,
-                        StartColumn = 0,
-                        EndColumn = 0,
+                        StartRow = zone.StartRow,
+                        EndRow = zone.EndRow,
+                        StartColumn = zone.StartColumn,
+                        EndColumn = zone.EndColumn,
                         Capacity = zone.Capacity,
                         AvailableSeats = zone.Capacity,
                         CreatedAt = DateTime.UtcNow
@@ -413,6 +413,37 @@ namespace Tickify.Services
                 }
 
                 Console.WriteLine($"[SeatMapService] All zones created successfully. Zone mapping: {string.Join(", ", zoneIdMap.Select(kvp => $"{kvp.Key}→{kvp.Value}"))}");
+
+                // Validate zone overlaps (check if any zones have overlapping row/column ranges)
+                var createdZones = await _dbContext.SeatZones
+                    .Where(z => z.SeatMapId == seatMapId)
+                    .ToListAsync();
+                
+                for (int i = 0; i < createdZones.Count; i++)
+                {
+                    for (int j = i + 1; j < createdZones.Count; j++)
+                    {
+                        var zone1 = createdZones[i];
+                        var zone2 = createdZones[j];
+                        
+                        // Skip zones with zero ranges (dynamically positioned zones)
+                        if (zone1.StartRow == 0 && zone1.EndRow == 0 && zone1.StartColumn == 0 && zone1.EndColumn == 0)
+                            continue;
+                        if (zone2.StartRow == 0 && zone2.EndRow == 0 && zone2.StartColumn == 0 && zone2.EndColumn == 0)
+                            continue;
+                        
+                        // Check for overlap: zones overlap if their ranges intersect
+                        bool rowsOverlap = zone1.StartRow <= zone2.EndRow && zone2.StartRow <= zone1.EndRow;
+                        bool colsOverlap = zone1.StartColumn <= zone2.EndColumn && zone2.StartColumn <= zone1.EndColumn;
+                        
+                        if (rowsOverlap && colsOverlap)
+                        {
+                            throw new InvalidOperationException(
+                                $"Zone overlap detected: Zone '{zone1.Name}' (rows {zone1.StartRow}-{zone1.EndRow}, cols {zone1.StartColumn}-{zone1.EndColumn}) " +
+                                $"overlaps with zone '{zone2.Name}' (rows {zone2.StartRow}-{zone2.EndRow}, cols {zone2.StartColumn}-{zone2.EndColumn}).");
+                        }
+                    }
+                }
 
                 // Create seats using direct zone ID mapping
                 var seatsCreated = 0;
@@ -503,6 +534,10 @@ namespace Tickify.Services
             public string Color { get; set; } = string.Empty;
             public decimal Price { get; set; }
             public int Capacity { get; set; }
+            public int StartRow { get; set; }
+            public int EndRow { get; set; }
+            public int StartColumn { get; set; }
+            public int EndColumn { get; set; }
         }
 
         private class SeatData

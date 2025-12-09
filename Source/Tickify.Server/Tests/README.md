@@ -9,20 +9,26 @@ This directory contains comprehensive unit tests for the Tickify backend service
 ```
 Tests/
 ├── Services/
-│   ├── BookingServiceTests.cs     # BookingService unit tests (14 tests)
-│   ├── SeatMapServiceTests.cs     # SeatMapService unit tests (16 tests)
-│   ├── TicketServiceTests.cs      # TicketService unit tests (18 tests)
-│   └── PromoCodeServiceTests.cs   # PromoCodeService unit tests (17 tests)
-├── README.md                       # This file
-└── TEST_SUMMARY.md                 # Detailed test results and coverage
+│   ├── BookingServiceTests.cs         # BookingService unit tests (14 tests)
+│   ├── SeatMapServiceTests.cs         # SeatMapService unit tests (16 tests)
+│   ├── TicketServiceTests.cs          # TicketService unit tests (18 tests)
+│   └── PromoCodeServiceTests.cs       # PromoCodeService unit tests (17 tests)
+├── Validators/
+│   ├── CreateBookingValidatorTests.cs        # CreateBookingValidator tests (10 tests)
+│   ├── TicketTransferValidatorTests.cs       # TicketTransferValidator tests (10 tests)
+│   ├── CreateSeatMapValidatorTests.cs        # CreateSeatMapValidator tests (12 tests)
+│   ├── CreateSeatZoneValidatorTests.cs       # CreateSeatZoneValidator tests (15 tests)
+│   └── ValidatePromoCodeValidatorTests.cs    # ValidatePromoCodeValidator tests (12 tests)
+├── README.md                           # This file
+└── TEST_SUMMARY.md                     # Detailed test results and coverage
 ```
 
 ## Test Statistics
 
-- **Total Test Files:** 4
-- **Total Tests:** 65
+- **Total Test Files:** 9 (4 Services + 5 Validators)
+- **Total Tests:** 124 (65 Service Tests + 59 Validator Tests)
 - **Pass Rate:** 100% ✅
-- **Execution Time:** ~7 seconds
+- **Execution Time:** ~2.5 seconds
 
 ## Prerequisites
 
@@ -48,17 +54,25 @@ The following packages are already installed in the project:
 # Run all tests
 dotnet test
 
+# Run only service tests
+dotnet test --filter "FullyQualifiedName~Services"
+
+# Run only validator tests
+dotnet test --filter "FullyQualifiedName~Validators"
+
 # Run specific test class
 dotnet test --filter "FullyQualifiedName~BookingServiceTests"
 dotnet test --filter "FullyQualifiedName~SeatMapServiceTests"
 dotnet test --filter "FullyQualifiedName~TicketServiceTests"
 dotnet test --filter "FullyQualifiedName~PromoCodeServiceTests"
+dotnet test --filter "FullyQualifiedName~CreateBookingValidatorTests"
 
 # Run specific test method
 dotnet test --filter "FullyQualifiedName~CreateBooking_WithValidSeats_ReturnsSuccess"
 dotnet test --filter "FullyQualifiedName~ReserveSeats_WithAvailableSeats_LocksSeatsFor10Minutes"
 dotnet test --filter "FullyQualifiedName~TransferTicket_ToAnotherUser_CreatesTransferRequest"
 dotnet test --filter "FullyQualifiedName~ValidatePromoCodeAsync_WithValidCode_ReturnsPromoCodeDto"
+dotnet test --filter "FullyQualifiedName~Valid_CreateBookingDto_PassesValidation"
 
 # Run tests with detailed output
 dotnet test --logger "console;verbosity=detailed"
@@ -383,6 +397,57 @@ The `PromoCodeServiceTests.cs` file contains **17 comprehensive test cases** cov
 - ✅ Discount capping (never exceed order total)
 - ✅ Currency formatting validation (500,000₫)
 - ✅ Error message content verification
+
+## ValidatePromoCodeValidatorTests
+
+### Test Coverage
+
+The `ValidatePromoCodeValidatorTests.cs` file contains **12 comprehensive test cases** covering:
+
+#### Promo Code Validation
+
+1. ✅ **Valid_PromoCodeDto_PassesValidation**
+   - Tests valid promo code DTO with all required fields
+2. ✅ **EmptyCode_FailsValidation**
+   - Tests empty promo code rejection
+3. ✅ **NullCode_FailsValidation**
+   - Tests null promo code rejection
+4. ✅ **TooLongCode_FailsValidation**
+   - Tests promo code exceeding 50 characters
+5. ✅ **CodeAtMaxLength_PassesValidation**
+   - Tests promo code at exactly 50 characters
+
+#### Event Validation
+
+6. ✅ **ZeroEventId_FailsValidation**
+   - Tests EventId = 0 rejection
+7. ✅ **NegativeEventId_FailsValidation**
+   - Tests negative EventId rejection
+
+#### Order Total Validation
+
+8. ✅ **NegativeOrderTotal_FailsValidation**
+   - Tests negative order total rejection
+9. ✅ **ZeroOrderTotal_PassesValidation**
+   - Tests OrderTotal = 0 acceptance
+10. ✅ **LargeOrderTotal_PassesValidation**
+    - Tests very large order total acceptance
+
+#### Edge Cases
+
+11. ✅ **WhitespaceCode_FailsValidation**
+    - Tests whitespace-only promo code rejection
+12. ✅ **MultipleValidationErrors_ReturnsAllErrors**
+    - Tests multiple validation errors at once
+
+### Test Features
+
+- ✅ FluentValidation.TestHelper usage
+- ✅ Empty/null value validation
+- ✅ Length constraints validation
+- ✅ Range validation for numeric fields
+- ✅ Error message verification
+- ✅ Edge case testing
 
 ## Future Test Enhancements
 
