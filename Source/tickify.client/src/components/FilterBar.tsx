@@ -3,6 +3,7 @@ import { CategoryFilterDropdown } from './CategoryFilterDropdown';
 import { Badge } from './ui/badge';
 import { X } from 'lucide-react';
 import type { Category } from '../types';
+import { useTranslation } from 'react-i18next';
 
 export interface FilterBarState {
   dateRange?: { from?: Date; to?: Date };
@@ -18,6 +19,7 @@ interface FilterBarProps {
 }
 
 export function FilterBar({ filters, onFiltersChange, resultCount }: FilterBarProps) {
+  const { t } = useTranslation();
   const handleDateChange = (dates: { from?: Date; to?: Date }) => {
     onFiltersChange({
       ...filters,
@@ -105,7 +107,7 @@ export function FilterBar({ filters, onFiltersChange, resultCount }: FilterBarPr
           <div className="h-6 w-px bg-neutral-200" />
 
           <span className="text-sm text-neutral-600">
-            {resultCount} event{resultCount !== 1 ? 's' : ''} found
+            {resultCount} {t('filterBar.eventsFound', resultCount === 1 ? 'event found' : 'events found')}
           </span>
 
           {hasActiveFilters && (
@@ -115,7 +117,7 @@ export function FilterBar({ filters, onFiltersChange, resultCount }: FilterBarPr
                 onClick={clearAllFilters}
                 className="text-sm text-teal-600 hover:text-teal-700 transition-colors"
               >
-                Clear all
+                {t('filterBar.clearAll', 'Clear all')}
               </button>
             </>
           )}
