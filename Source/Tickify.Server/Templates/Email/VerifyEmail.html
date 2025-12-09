@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xác thực tài khoản Tickify</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f4f4;
+      }
+
+      .email-container {
+        max-width: 600px;
+        margin: 40px auto;
+        background-color: #ffffff;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .email-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px 30px;
+        text-align: center;
+        color: #ffffff;
+      }
+
+      .email-header h1 {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 600;
+      }
+
+      .logo {
+        font-size: 48px;
+        margin-bottom: 10px;
+      }
+
+      .email-body {
+        padding: 40px 30px;
+        color: #333333;
+        line-height: 1.6;
+      }
+
+      .email-body h2 {
+        color: #667eea;
+        font-size: 24px;
+        margin-top: 0;
+      }
+
+      .email-body p {
+        font-size: 16px;
+        margin: 15px 0;
+      }
+
+      .verification-box {
+        background-color: #f8f9fa;
+        border-left: 4px solid #667eea;
+        padding: 20px;
+        margin: 30px 0;
+        border-radius: 5px;
+      }
+
+      .verification-box p {
+        margin: 10px 0;
+        font-size: 14px;
+        color: #555555;
+      }
+
+      .verify-button {
+        display: inline-block;
+        margin: 30px 0;
+        padding: 15px 40px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #ffffff;
+        text-decoration: none;
+        border-radius: 25px;
+        font-weight: 600;
+        font-size: 16px;
+        transition: transform 0.2s;
+      }
+
+      .verify-button:hover {
+        transform: translateY(-2px);
+      }
+
+      .alternative-link {
+        margin: 20px 0;
+        padding: 15px;
+        background-color: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 5px;
+        font-size: 14px;
+        word-break: break-all;
+      }
+
+      .alternative-link p {
+        margin: 5px 0;
+        color: #856404;
+      }
+
+      .alternative-link a {
+        color: #667eea;
+        text-decoration: none;
+      }
+
+      .warning-box {
+        margin: 30px 0;
+        padding: 15px;
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        border-radius: 5px;
+      }
+
+      .warning-box p {
+        margin: 5px 0;
+        font-size: 14px;
+        color: #856404;
+      }
+
+      .email-footer {
+        background-color: #f8f9fa;
+        padding: 30px;
+        text-align: center;
+        color: #666666;
+        font-size: 14px;
+      }
+
+      .security-tips {
+        margin: 30px 0;
+        padding: 20px;
+        background-color: #e7f3ff;
+        border-radius: 5px;
+      }
+
+      .security-tips h3 {
+        margin-top: 0;
+        color: #667eea;
+        font-size: 18px;
+      }
+
+      .security-tips ul {
+        margin: 10px 0;
+        padding-left: 20px;
+      }
+
+      .security-tips li {
+        margin: 8px 0;
+        font-size: 14px;
+        color: #555555;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <!-- Header -->
+      <div class="email-header">
+        <div class="logo">🔐</div>
+        <h1>Xác thực tài khoản</h1>
+      </div>
+
+      <!-- Body -->
+      <div class="email-body">
+        <h2>Xin chào {UserName}!</h2>
+        <p>Cảm ơn bạn đã đăng ký tài khoản tại <strong>Tickify</strong>.</p>
+
+        <p>
+          Để hoàn tất quá trình đăng ký và bắt đầu sử dụng dịch vụ, vui lòng xác
+          thực địa chỉ email của bạn bằng cách nhấn vào nút bên dưới:
+        </p>
+
+        <center>
+          <a href="{VerificationUrl}" class="verify-button">Xác thực email</a>
+        </center>
+
+        <div class="verification-box">
+          <p>⏱️ <strong>Link xác thực có hiệu lực trong 24 giờ</strong></p>
+          <p>🔒 Link này chỉ có thể sử dụng một lần</p>
+        </div>
+
+        <div class="alternative-link">
+          <p>
+            <strong
+              >Nếu nút bên trên không hoạt động, hãy copy và paste link sau vào
+              trình duyệt:</strong
+            >
+          </p>
+          <p><a href="{VerificationUrl}">{VerificationUrl}</a></p>
+        </div>
+
+        <div class="warning-box">
+          <p>
+            ⚠️ <strong>Lưu ý:</strong> Nếu bạn không thực hiện đăng ký này, vui
+            lòng bỏ qua email này hoặc liên hệ với chúng tôi ngay lập tức.
+          </p>
+        </div>
+
+        <div class="security-tips">
+          <h3>💡 Mẹo bảo mật</h3>
+          <ul>
+            <li>Không chia sẻ link xác thực với bất kỳ ai</li>
+            <li>Tickify sẽ không bao giờ yêu cầu mật khẩu qua email</li>
+            <li>Kiểm tra kỹ URL trước khi nhấn vào (phải là tickify.com)</li>
+            <li>Sử dụng mật khẩu mạnh và duy nhất cho tài khoản</li>
+          </ul>
+        </div>
+
+        <p style="margin-top: 30px; font-size: 14px; color: #666666">
+          Nếu bạn cần hỗ trợ, vui lòng liên hệ:
+          <a href="mailto:support@tickify.com" style="color: #667eea"
+            >support@tickify.com</a
+          >
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div class="email-footer">
+        <p>© 2024 Tickify. All rights reserved.</p>
+        <p style="font-size: 12px; color: #999999">
+          Email này được gửi tự động, vui lòng không reply.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
