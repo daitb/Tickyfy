@@ -1,0 +1,180 @@
+using Microsoft.EntityFrameworkCore;
+using Tickify.Data;
+using Tickify.Interfaces.Repositories;
+using Tickify.Models;
+
+namespace Tickify.Repositories;
+
+public class UserRepository : IUserRepository
+{
+    private readonly ApplicationDbContext _context;
+
+    public UserRepository(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<User?> GetUserByEmailAsync(string email)
+    {
+        return await _context.Users
+        .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+        .FirstOrDefaultAsync(u => u.Email == email);
+    }
+
+    public async Task<User?> GetUserByIdAsync(int userId)
+    {
+        return await _context.Users
+        .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+        .FirstOrDefaultAsync(u => u.Id == userId);
+    }
+
+    public async Task<(List<User> Users, int TotalCount)> GetUsersAsync(int pageNumber, int pageSize, string? searchTerm = null, string? role = null, bool? isActive = null, bool? emailVerified = null)
+    {
+        var query = _context.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .AsQueryable();
+
+        // Search filter
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            searchTerm = searchTerm.ToLower();
+            query = query.Where(u => 
+                u.Email.ToLower().Contains(searchTerm) || 
+                u.FullName.ToLower().Contains(searchTerm)
+            );
+        }
+
+        // Role filter
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            query = query.Where(u => u.UserRoles.Any(ur => ur.Role.Name == role));
+        }
+
+        // Active status filter
+        if (isActive.HasValue)
+        {
+            query = query.Where(u => u.IsActive == isActive.Value);
+        }
+
+        // Email verified filter
+        if (emailVerified.HasValue)
+        {
+            query = query.Where(u => u.IsEmailVerified == emailVerified.Value);
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var users = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (users, totalCount);
+    }
+
+    public async Task LoadUserRolesAsync(User user)
+    {
+        await _context.Entry(user)
+            .Collection(u => u.UserRoles)
+            .Query()
+            .Include(ur => ur.Role)
+            .LoadAsync();
+    }
+
+    public async Task AddUserAsync(User user)
+    {
+        await _context.Users.AddAsync(user);
+    }
+
+    public void UpdateUser(User user)
+    {
+        _context.Users.Update(user);
+    }
+
+    public async Task SaveChangesAsync()
+    {
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<User?> GetUserByEmailVerificationTokenAsync(string token)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.EmailVerificationToken == token);
+    }
+
+    public async Task<User?> GetUserByPasswordResetTokenAsync(string token)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.PasswordResetToken == token);
+    }
+
+    public async Task<User?> GetUserByProviderAsync(string provider, string providerId)
+    {
+        return await _context.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.AuthProvider == provider && u.ProviderId == providerId);
+    }
+
+    public async Task<int> GetTotalBookingsCountAsync(int userId)
+    {
+        return await _context.Bookings
+            .Where(b => b.UserId == userId)
+            .CountAsync();
+    }
+
+    public async Task<int> GetTotalEventsAttendedCountAsync(int userId)
+    {
+        return await _context.Bookings
+            .Where(b => b.UserId == userId && b.Status == BookingStatus.Confirmed)
+            .Select(b => b.EventId)
+            .Distinct()
+            .CountAsync();
+    }
+
+    public async Task<OrganizerRequest?> GetPendingOrganizerRequestAsync(int userId)
+    {
+        return await _context.OrganizerRequests
+            .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == "Pending");
+    }
+
+    public async Task AddOrganizerRequestAsync(OrganizerRequest request)
+    {
+        await _context.OrganizerRequests.AddAsync(request);
+    }
+
+    public async Task<List<User>> GetUsersByRoleAsync(string roleName)
+    {
+        return await _context.Users
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+            .Where(u => u.UserRoles.Any(ur => ur.Role.Name == roleName))
+            .ToListAsync();
+    }
+
+    public async Task<Organizer?> GetOrganizerByUserIdAsync(int userId)
+    {
+        return await _context.Organizers
+            .FirstOrDefaultAsync(o => o.UserId == userId);
+    }
+
+    public async Task<User> GetByIdAsync(int id)
+    {
+        var user = await GetUserByIdAsync(id);
+        if (user == null)
+            throw new KeyNotFoundException($"User with ID {id} not found");
+        return user;
+    }
+
+    public async Task<User> GetByEmailAsync(string email)
+    {
+        var user = await GetUserByEmailAsync(email);
+        if (user == null)
+            throw new KeyNotFoundException($"User with email {email} not found");
+        return user;
+    }
+}
