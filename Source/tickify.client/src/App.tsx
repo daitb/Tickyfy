@@ -12,6 +12,7 @@ import { LoadingFallback } from "./components/LoadingFallback";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ChatbotWidget } from "./components/chatbot"; // RAG Chatbot
 import type { CartItem, Order } from "./types";
 import { mockOrders } from "./mockData";
 import { authService } from "./services/authService";
@@ -779,6 +780,7 @@ export default function App() {
             <Suspense fallback={<LoadingFallback />}>{renderPage()}</Suspense>
           </main>
           {!isStandalonePage && <Footer />}
+          <ChatbotWidget position="bottom-right" enableStreaming={true} />
           <Toaster />
         </div>
       </ProtectedRoute>

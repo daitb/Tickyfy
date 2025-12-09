@@ -8,6 +8,7 @@ using Tickify.Middleware;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Tickify.Services.Auth;
+using Tickify.Server.AI; // RAG Services
 
 // [ADD] using cho DI của Payment/Refund/Repositories
 using Tickify.Services.Payments;              // PaymentService, VNPayProvider, MoMoProvider
@@ -119,6 +120,11 @@ namespace Tickify
 
             // Notification Services
             builder.Services.AddScoped<INotificationService, Tickify.Services.Notifications.NotificationService>();
+
+            // ============================================
+            // RAG AI CHATBOT SERVICES
+            // ============================================
+            builder.Services.AddRagServices(builder.Configuration);
 
             // ============================================
             // Background Jobs
@@ -265,30 +271,30 @@ namespace Tickify
             // 7.5. DATABASE INITIALIZATION
             // Seed dữ liệu ban đầu
             // ============================================
-            using (var scope = app.Services.CreateScope())
-            {
-                var services = scope.ServiceProvider;
-                var logger = services.GetRequiredService<ILogger<Program>>();
-                var context = services.GetRequiredService<ApplicationDbContext>();
+            // using (var scope = app.Services.CreateScope())
+            // {
+            //     var services = scope.ServiceProvider;
+            //     var logger = services.GetRequiredService<ILogger<Program>>();
+            //     var context = services.GetRequiredService<ApplicationDbContext>();
 
-                try
-                {
-                    // Seed dữ liệu ban đầu (Roles, Categories, Admin user, Promo codes)
-                    logger.LogInformation("Đang seed dữ liệu ban đầu...");
-                    await DbInitializer.SeedAsync(context);
-                    logger.LogInformation("✅ Database seeding hoàn tất");
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "❌ Lỗi khi khởi tạo database: {Message}", ex.Message);
-                    // Không throw để app vẫn có thể start, nhưng log lỗi rõ ràng
-                    // Trong production có thể muốn throw để fail fast
-                    if (app.Environment.IsDevelopment())
-                    {
-                        throw; // Trong dev, throw để dễ debug
-                    }
-                }
-            }
+            //     try
+            //     {
+            //         // Seed dữ liệu ban đầu (Roles, Categories, Admin user, Promo codes)
+            //         logger.LogInformation("Đang seed dữ liệu ban đầu...");
+            //         await DbInitializer.SeedAsync(context);
+            //         logger.LogInformation("✅ Database seeding hoàn tất");
+            //     }
+            //     catch (Exception ex)
+            //     {
+            //         logger.LogError(ex, "❌ Lỗi khi khởi tạo database: {Message}", ex.Message);
+            //         // Không throw để app vẫn có thể start, nhưng log lỗi rõ ràng
+            //         // Trong production có thể muốn throw để fail fast
+            //         if (app.Environment.IsDevelopment())
+            //         {
+            //             throw; // Trong dev, throw để dễ debug
+            //         }
+            //     }
+            // }
 
             // ============================================
             // 8. MIDDLEWARE PIPELINE
@@ -328,7 +334,7 @@ namespace Tickify
             app.MapHub<Tickify.Hubs.NotificationHub>("/hubs/notifications");
             app.MapHub<Tickify.Hubs.SeatHub>("/hubs/seats");
 
-            app.Run();
+            await app.RunAsync();
         }
     }
 }
