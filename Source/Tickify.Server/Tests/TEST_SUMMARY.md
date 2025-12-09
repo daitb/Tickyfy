@@ -3,10 +3,11 @@
 ## 📊 Overall Test Results
 
 **Test Services:** 4  
-**Total Tests:** 65 (14 BookingService + 16 SeatMapService + 18 TicketService + 17 PromoCodeService)  
-**Passed:** ✅ 65 (100%)  
+**Test Validators:** 5  
+**Total Tests:** 124 (65 Service Tests + 59 Validator Tests)  
+**Passed:** ✅ 124 (100%)  
 **Failed:** ❌ 0  
-**Total Duration:** ~7 seconds
+**Total Duration:** ~2.5 seconds
 
 ---
 
@@ -1149,6 +1150,523 @@ Same as other services:
 
 ---
 
-**Last Updated:** December 8, 2025  
+**Last Updated:** December 9, 2025  
 **Test Framework:** xUnit 2.9.3  
+**Target Framework:** .NET 9.0
+
+---
+
+# 🔍 Validator Unit Tests
+
+## 📊 Overall Validator Test Results
+
+**Total Validators:** 5  
+**Total Tests:** 59  
+**Passed:** ✅ 59 (100%)  
+**Failed:** ❌ 0  
+**Duration:** ~0.2 seconds
+
+---
+
+# 📝 CreateBookingValidator Unit Tests
+
+## 📊 Test Results
+
+**Total Tests:** 10  
+**Passed:** ✅ 10 (100%)  
+**Failed:** ❌ 0  
+**Duration:** ~20 ms
+
+---
+
+## 📋 Test Cases Implemented
+
+### ✅ 1. Valid_CreateBookingDto_PassesValidation
+
+- **Purpose:** Test that properly formed DTO passes all validation rules
+- **Test Data:** EventId=1, TicketTypeId=1, Quantity=2, PromoCode="SUMMER2024", SeatIds=[1,2]
+- **Verifies:** No validation errors
+- **Status:** ✅ PASSED
+
+### ✅ 2. EmptyEventId_FailsValidation
+
+- **Purpose:** Test that EventId = 0 fails validation
+- **Error Message:** "EventId phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 3. EmptySeatIds_FailsValidation
+
+- **Purpose:** Test that empty SeatIds list fails validation
+- **Error Message:** "Danh sách ghế không được rỗng nếu có chọn ghế"
+- **Status:** ✅ PASSED
+
+### ✅ 4. InvalidTicketTypeId_FailsValidation
+
+- **Purpose:** Test that TicketTypeId = 0 fails validation
+- **Error Message:** "TicketTypeId phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 5. ZeroQuantity_FailsValidation
+
+- **Purpose:** Test that Quantity = 0 fails validation
+- **Error Message:** "Số lượng phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 6. ExcessiveQuantity_FailsValidation
+
+- **Purpose:** Test that Quantity > 50 fails validation
+- **Test Case:** Quantity = 51
+- **Error Message:** "Không được đặt quá 50 vé trong 1 lần"
+- **Status:** ✅ PASSED
+
+### ✅ 7. TooLongPromoCode_FailsValidation
+
+- **Purpose:** Test that PromoCode > 50 characters fails validation
+- **Test Case:** PromoCode with 51 characters
+- **Error Message:** "Mã giảm giá không được dài quá 50 ký tự"
+- **Status:** ✅ PASSED
+
+### ✅ 8. SeatCountMismatch_FailsValidation
+
+- **Purpose:** Test that seat count not matching quantity fails validation
+- **Test Case:** Quantity=3, SeatIds=[1,2] (only 2 seats)
+- **Error Message:** "Số lượng ghế phải khớp với số lượng vé"
+- **Status:** ✅ PASSED
+
+### ✅ 9. NullSeatIds_PassesValidation
+
+- **Purpose:** Test that null SeatIds passes validation (non-seated event)
+- **Verifies:** No validation errors for SeatIds
+- **Status:** ✅ PASSED
+
+### ✅ 10. NullPromoCode_PassesValidation
+
+- **Purpose:** Test that null/empty PromoCode passes validation (optional)
+- **Verifies:** No validation errors for PromoCode
+- **Status:** ✅ PASSED
+
+---
+
+# 🎫 TicketTransferValidator Unit Tests
+
+## 📊 Test Results
+
+**Total Tests:** 10  
+**Passed:** ✅ 10 (100%)  
+**Failed:** ❌ 0  
+**Duration:** ~18 ms
+
+---
+
+## 📋 Test Cases Implemented
+
+### ✅ 1. Valid_TransferDto_PassesValidation
+
+- **Purpose:** Test that properly formed DTO passes all validation rules
+- **Test Data:** RecipientEmail="recipient@example.com", Message="Here's your ticket!"
+- **Status:** ✅ PASSED
+
+### ✅ 2. EmptyRecipientEmail_FailsValidation
+
+- **Purpose:** Test that empty email fails validation
+- **Error Message:** "Email người nhận là bắt buộc"
+- **Status:** ✅ PASSED
+
+### ✅ 3. InvalidEmail_FailsValidation
+
+- **Purpose:** Test that invalid email format fails validation
+- **Test Case:** "invalid-email-format"
+- **Error Message:** "Email không đúng định dạng"
+- **Status:** ✅ PASSED
+
+### ✅ 4. TooLongEmail_FailsValidation
+
+- **Purpose:** Test that email > 255 characters fails validation
+- **Test Case:** 256 character email
+- **Error Message:** "Email không được dài quá 255 ký tự"
+- **Status:** ✅ PASSED
+
+### ✅ 5. TooLongMessage_FailsValidation
+
+- **Purpose:** Test that message > 500 characters fails validation
+- **Test Case:** 501 character message
+- **Error Message:** "Tin nhắn không được dài quá 500 ký tự"
+- **Status:** ✅ PASSED
+
+### ✅ 6. NullMessage_PassesValidation
+
+- **Purpose:** Test that null message passes validation (optional field)
+- **Status:** ✅ PASSED
+
+### ✅ 7. EmptyMessage_PassesValidation
+
+- **Purpose:** Test that empty message passes validation (optional field)
+- **Status:** ✅ PASSED
+
+### ✅ 8. MessageAtMaxLength_PassesValidation
+
+- **Purpose:** Test that message at exactly 500 characters passes
+- **Test Case:** Exactly 500 characters
+- **Status:** ✅ PASSED
+
+### ✅ 9. NullEmail_FailsValidation
+
+- **Purpose:** Test that null email fails validation
+- **Error Message:** "Email người nhận là bắt buộc"
+- **Status:** ✅ PASSED
+
+### ✅ 10. EmailAtMaxLength_PassesValidation
+
+- **Purpose:** Test that email at exactly 255 characters passes
+- **Test Case:** Exactly 255 characters
+- **Status:** ✅ PASSED
+
+---
+
+# 🗺️ CreateSeatMapValidator Unit Tests
+
+## 📊 Test Results
+
+**Total Tests:** 12  
+**Passed:** ✅ 12 (100%)  
+**Failed:** ❌ 0  
+**Duration:** ~22 ms
+
+---
+
+## 📋 Test Cases Implemented
+
+### ✅ 1. Valid_SeatMapDto_PassesValidation
+
+- **Purpose:** Test that properly formed DTO passes all validation rules
+- **Test Data:** EventId=1, Name="Main Hall Seating", TotalRows=20, TotalColumns=30
+- **Status:** ✅ PASSED
+
+### ✅ 2. EmptyEventId_FailsValidation
+
+- **Purpose:** Test that EventId = 0 fails validation
+- **Error Message:** "EventId phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 3. NegativeEventId_FailsValidation
+
+- **Purpose:** Test that negative EventId fails validation
+- **Test Case:** EventId = -1
+- **Status:** ✅ PASSED
+
+### ✅ 4. InvalidRowCount_FailsValidation
+
+- **Purpose:** Test that TotalRows = 0 fails validation
+- **Error Message:** "Số hàng phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 5. InvalidColumnCount_FailsValidation
+
+- **Purpose:** Test that TotalColumns = 0 fails validation
+- **Error Message:** "Số cột phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 6. NegativeRowCount_FailsValidation
+
+- **Purpose:** Test that negative TotalRows fails validation
+- **Test Case:** TotalRows = -5
+- **Status:** ✅ PASSED
+
+### ✅ 7. NegativeColumnCount_FailsValidation
+
+- **Purpose:** Test that negative TotalColumns fails validation
+- **Test Case:** TotalColumns = -10
+- **Status:** ✅ PASSED
+
+### ✅ 8. EmptyName_FailsValidation
+
+- **Purpose:** Test that empty Name fails validation
+- **Error Message:** "Tên sơ đồ chỗ ngồi là bắt buộc"
+- **Status:** ✅ PASSED
+
+### ✅ 9. TooLongName_FailsValidation
+
+- **Purpose:** Test that Name > 200 characters fails validation
+- **Test Case:** 201 character name
+- **Error Message:** "Tên sơ đồ chỗ ngồi không được dài quá 200 ký tự"
+- **Status:** ✅ PASSED
+
+### ✅ 10. EmptyLayoutConfig_FailsValidation
+
+- **Purpose:** Test that empty LayoutConfig fails validation
+- **Error Message:** "Cấu hình layout là bắt buộc"
+- **Status:** ✅ PASSED
+
+### ✅ 11. ExcessiveRowCount_FailsValidation
+
+- **Purpose:** Test that TotalRows > 100 fails validation
+- **Test Case:** TotalRows = 101
+- **Error Message:** "Số hàng không được vượt quá 100"
+- **Status:** ✅ PASSED
+
+### ✅ 12. ExcessiveColumnCount_FailsValidation
+
+- **Purpose:** Test that TotalColumns > 100 fails validation
+- **Test Case:** TotalColumns = 101
+- **Error Message:** "Số cột không được vượt quá 100"
+- **Status:** ✅ PASSED
+
+---
+
+# 📍 CreateSeatZoneValidator Unit Tests
+
+## 📊 Test Results
+
+**Total Tests:** 15  
+**Passed:** ✅ 15 (100%)  
+**Failed:** ❌ 0  
+**Duration:** ~28 ms
+
+---
+
+## 📋 Test Cases Implemented
+
+### ✅ 1. Valid_SeatZoneDto_PassesValidation
+
+- **Purpose:** Test that properly formed DTO passes all validation rules
+- **Test Data:** SeatMapId=1, TicketTypeId=1, Name="VIP Section", StartRow=1, EndRow=5, etc.
+- **Status:** ✅ PASSED
+
+### ✅ 2. EmptySeatMapId_FailsValidation
+
+- **Purpose:** Test that SeatMapId = 0 fails validation
+- **Error Message:** "SeatMapId phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 3. EmptyTicketTypeId_FailsValidation
+
+- **Purpose:** Test that TicketTypeId = 0 fails validation
+- **Error Message:** "TicketTypeId phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 4. EmptyZoneName_FailsValidation
+
+- **Purpose:** Test that empty Name fails validation
+- **Error Message:** "Tên khu vực là bắt buộc"
+- **Status:** ✅ PASSED
+
+### ✅ 5. TooLongZoneName_FailsValidation
+
+- **Purpose:** Test that Name > 100 characters fails validation
+- **Test Case:** 101 character name
+- **Error Message:** "Tên khu vực không được dài quá 100 ký tự"
+- **Status:** ✅ PASSED
+
+### ✅ 6. InvalidRowRange_FailsValidation
+
+- **Purpose:** Test that StartRow > EndRow fails validation
+- **Test Case:** StartRow=10, EndRow=5
+- **Error Message:** "Hàng kết thúc phải lớn hơn hoặc bằng hàng bắt đầu"
+- **Status:** ✅ PASSED
+
+### ✅ 7. InvalidColumnRange_FailsValidation
+
+- **Purpose:** Test that StartColumn > EndColumn fails validation
+- **Test Case:** StartColumn=20, EndColumn=10
+- **Error Message:** "Cột kết thúc phải lớn hơn hoặc bằng cột bắt đầu"
+- **Status:** ✅ PASSED
+
+### ✅ 8. ZeroStartRow_FailsValidation
+
+- **Purpose:** Test that StartRow = 0 fails validation
+- **Error Message:** "Hàng bắt đầu phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 9. ZeroEndRow_FailsValidation
+
+- **Purpose:** Test that EndRow = 0 fails validation
+- **Error Message:** "Hàng kết thúc phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 10. ZeroStartColumn_FailsValidation
+
+- **Purpose:** Test that StartColumn = 0 fails validation
+- **Error Message:** "Cột bắt đầu phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 11. ZeroEndColumn_FailsValidation
+
+- **Purpose:** Test that EndColumn = 0 fails validation
+- **Error Message:** "Cột kết thúc phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 12. NegativeZonePrice_FailsValidation
+
+- **Purpose:** Test that negative ZonePrice fails validation
+- **Test Case:** ZonePrice = -100
+- **Error Message:** "Giá khu vực phải lớn hơn hoặc bằng 0"
+- **Status:** ✅ PASSED
+
+### ✅ 13. ZeroZonePrice_PassesValidation
+
+- **Purpose:** Test that ZonePrice = 0 passes validation (free zone)
+- **Status:** ✅ PASSED
+
+### ✅ 14. SingleRowZone_PassesValidation
+
+- **Purpose:** Test that StartRow = EndRow passes validation (single row)
+- **Test Case:** StartRow=5, EndRow=5
+- **Status:** ✅ PASSED
+
+### ✅ 15. SingleColumnZone_PassesValidation
+
+- **Purpose:** Test that StartColumn = EndColumn passes validation (single column)
+- **Test Case:** StartColumn=10, EndColumn=10
+- **Status:** ✅ PASSED
+
+---
+
+# 🎟️ ValidatePromoCodeValidator Unit Tests
+
+## 📊 Test Results
+
+**Total Tests:** 12  
+**Passed:** ✅ 12 (100%)  
+**Failed:** ❌ 0  
+**Duration:** ~22 ms
+
+---
+
+## 📋 Test Cases Implemented
+
+### ✅ 1. Valid_PromoCodeDto_PassesValidation
+
+- **Purpose:** Test that properly formed DTO passes all validation rules
+- **Test Data:** Code="SUMMER2024", EventId=1, OrderTotal=500000
+- **Status:** ✅ PASSED
+
+### ✅ 2. EmptyCode_FailsValidation
+
+- **Purpose:** Test that empty Code fails validation
+- **Error Message:** "Mã giảm giá là bắt buộc"
+- **Status:** ✅ PASSED
+
+### ✅ 3. NullCode_FailsValidation
+
+- **Purpose:** Test that null Code fails validation
+- **Error Message:** "Mã giảm giá là bắt buộc"
+- **Status:** ✅ PASSED
+
+### ✅ 4. TooLongCode_FailsValidation
+
+- **Purpose:** Test that Code > 50 characters fails validation
+- **Test Case:** 51 character code
+- **Error Message:** "Mã giảm giá không được dài quá 50 ký tự"
+- **Status:** ✅ PASSED
+
+### ✅ 5. CodeAtMaxLength_PassesValidation
+
+- **Purpose:** Test that Code at exactly 50 characters passes
+- **Test Case:** Exactly 50 characters
+- **Status:** ✅ PASSED
+
+### ✅ 6. ZeroEventId_FailsValidation
+
+- **Purpose:** Test that EventId = 0 fails validation
+- **Error Message:** "EventId phải lớn hơn 0"
+- **Status:** ✅ PASSED
+
+### ✅ 7. NegativeEventId_FailsValidation
+
+- **Purpose:** Test that negative EventId fails validation
+- **Test Case:** EventId = -1
+- **Status:** ✅ PASSED
+
+### ✅ 8. NegativeOrderTotal_FailsValidation
+
+- **Purpose:** Test that negative OrderTotal fails validation
+- **Test Case:** OrderTotal = -100
+- **Error Message:** "Tổng giá trị đơn hàng phải lớn hơn hoặc bằng 0"
+- **Status:** ✅ PASSED
+
+### ✅ 9. ZeroOrderTotal_PassesValidation
+
+- **Purpose:** Test that OrderTotal = 0 passes validation
+- **Status:** ✅ PASSED
+
+### ✅ 10. LargeOrderTotal_PassesValidation
+
+- **Purpose:** Test that very large OrderTotal passes validation
+- **Test Case:** OrderTotal = 999999999
+- **Status:** ✅ PASSED
+
+### ✅ 11. WhitespaceCode_FailsValidation
+
+- **Purpose:** Test that whitespace-only Code fails validation
+- **Test Case:** Code = " "
+- **Error Message:** "Mã giảm giá là bắt buộc"
+- **Status:** ✅ PASSED
+
+### ✅ 12. MultipleValidationErrors_ReturnsAllErrors
+
+- **Purpose:** Test that multiple validation errors are returned at once
+- **Test Case:** Empty Code, EventId=0, OrderTotal=-100
+- **Verifies:** All three validation errors returned
+- **Status:** ✅ PASSED
+
+---
+
+## 📦 Validator Test Coverage Summary
+
+### Overall Coverage
+
+✅ **CreateBookingValidator (10 tests):**
+
+- Required field validation
+- Numeric range validation (Quantity 1-50)
+- Seat count matching
+- Optional field handling
+- String length constraints
+
+✅ **TicketTransferValidator (10 tests):**
+
+- Email format validation
+- Email length constraints (max 255)
+- Message length constraints (max 500)
+- Optional message field
+- Null/empty handling
+
+✅ **CreateSeatMapValidator (12 tests):**
+
+- Positive integer validation
+- Range constraints (rows/columns 1-100)
+- Required string fields
+- String length constraints (max 200)
+- Configuration validation
+
+✅ **CreateSeatZoneValidator (15 tests):**
+
+- Range validation (StartRow ≤ EndRow, StartColumn ≤ EndColumn)
+- Positive integer validation
+- String length constraints (max 100)
+- Price validation (≥ 0)
+- Single row/column zone support
+
+✅ **ValidatePromoCodeValidator (12 tests):**
+
+- Required field validation
+- String length constraints (max 50)
+- Positive integer validation
+- Decimal validation (≥ 0)
+- Multiple error handling
+
+### Test Patterns
+
+- ✅ FluentValidation.TestHelper usage
+- ✅ Positive and negative test cases
+- ✅ Boundary value testing
+- ✅ Error message verification
+- ✅ Optional field handling
+- ✅ Multiple validation error testing
+- ✅ Edge case coverage
+
+---
+
+**Last Updated:** December 9, 2025  
+**Test Framework:** xUnit 2.9.3 + FluentValidation.TestHelper  
 **Target Framework:** .NET 9.0
