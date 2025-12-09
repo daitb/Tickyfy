@@ -31,9 +31,9 @@
 - Backend: Events (14) + Categories (4) + Organizers (7) + Support (8) = 33 endpoints
 - Frontend: Event pages (3) + Organizer pages (6) + Support (3) = 12 pages
 
-**Developer 3:** Bookings & Tickets & SeatMaps ⭐
+**Developer 3:** Bookings & Tickets
 
-- Backend: Bookings (6) + Tickets (8) + SeatMaps (14) + PromoCode (5) + Scan (3) = 36 endpoints
+- Backend: Bookings (6) + Tickets (8) + Seats (5) + PromoCode (5) + Scan (3) = 27 endpoints
 - Frontend: Booking flow (5) + Tickets (3) + Seat selection (1) + Wishlist/Waitlist (2) = 11 pages
 
 **Developer 4:** Payments & Reviews
@@ -220,9 +220,17 @@ dotnet add package Moq
 
 ---
 
+<<<<<<< HEAD
+
 ### **Developer 3: Booking/Ticket/SeatMap Backend + Booking Frontend Pages**
 
-**Backend DTOs (22):**
+# **Backend DTOs (22):**
+
+### **Developer 3: Booking/Ticket Backend + Booking Frontend Pages**
+
+**Backend DTOs (16):**
+
+> > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 **Booking DTOs:**
 
@@ -241,6 +249,7 @@ dotnet add package Moq
 - `DTOs/Ticket/AcceptTransferDto.cs`
 - `DTOs/Ticket/TicketScanDto.cs`
 
+<<<<<<< HEAD
 **SeatMap DTOs:**
 
 - `DTOs/SeatMap/CreateSeatMapDto.cs` - Create seat map for event
@@ -251,7 +260,15 @@ dotnet add package Moq
 - `DTOs/SeatMap/CreateSeatsDto.cs` - Bulk create seats
 - `DTOs/SeatMap/SeatDto.cs` - Single seat info
 - `DTOs/SeatMap/SeatResponseDto.cs` - Seat with status
-- `DTOs/SeatMap/AdminLockSeatsDto.cs` - Admin lock seats
+- # `DTOs/SeatMap/AdminLockSeatsDto.cs` - Admin lock seats
+
+  **Seat DTOs:**
+
+- `DTOs/Seat/SeatDto.cs`
+- `DTOs/Seat/CreateSeatDto.cs`
+- `DTOs/Seat/SeatSelectionDto.cs`
+- `DTOs/Seat/SeatMapDto.cs`
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 **PromoCode DTOs:**
 
@@ -262,8 +279,11 @@ dotnet add package Moq
 
 - `Validators/Booking/CreateBookingValidator.cs`
 - `Validators/Ticket/TicketTransferValidator.cs`
+  <<<<<<< HEAD
 - `Validators/SeatMap/CreateSeatMapValidator.cs`
-- `Validators/SeatMap/CreateSeatZoneValidator.cs`
+- # `Validators/SeatMap/CreateSeatZoneValidator.cs`
+- `Validators/Seat/CreateSeatValidator.cs`
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 - `Validators/PromoCode/ValidatePromoCodeValidator.cs`
 
 **Services Foundation:**
@@ -272,7 +292,11 @@ dotnet add package Moq
 
 **Mapping:**
 
-- Update `Mappings/MappingProfile.cs` cho Booking, Ticket, SeatMap, SeatZone, Seat, PromoCode
+<<<<<<< HEAD
+
+- # Update `Mappings/MappingProfile.cs` cho Booking, Ticket, SeatMap, SeatZone, Seat, PromoCode
+- Update `Mappings/MappingProfile.cs` cho Booking, Ticket, Seat, PromoCode
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 **Frontend Pages (5):**
 
@@ -540,7 +564,15 @@ dotnet add package Moq
 
 ---
 
+<<<<<<< HEAD
+
 ## **Developer 3: Booking & Ticket & SeatMap APIs (30 endpoints) ⭐ CRITICAL**
+
+=======
+
+## **Developer 3: Booking & Ticket APIs (21 endpoints) ⭐ CRITICAL**
+
+> > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 ### **Booking Controller (6 endpoints)**
 
@@ -590,6 +622,8 @@ await transaction.CommitAsync();
 - QR code generation
 - Transfer workflow
 
+<<<<<<< HEAD
+
 ### **SeatMap Controller (14 endpoints) ⭐ ADVANCED**
 
 **Basic CRUD (5 endpoints):**
@@ -633,7 +667,22 @@ await transaction.CommitAsync();
 - **Zones & Pricing:**
   - SeatZones link to TicketTypes
   - Each zone has startRow/endRow, startCol/endCol
-  - Seats inherit price from zone's TicketType
+  - # Seats inherit price from zone's TicketType
+
+### **Seat Controller (5 endpoints)**
+
+- `GET /api/seats/event/{eventId}` - Seat map
+- `GET /api/seats/ticket-type/{ticketTypeId}` - Available seats
+- `POST /api/seats/bulk-create` - Create seats (Organizer)
+- `PUT /api/seats/{id}/block` - Block seat (Admin)
+- `PUT /api/seats/{id}/unblock` - Unblock seat (Admin)
+
+**Implementation:**
+
+- `Controllers/SeatController.cs`
+- `Services/SeatService.cs`
+- Bulk seat creation
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 ### **PromoCode Controller (5 endpoints)**
 
@@ -649,7 +698,12 @@ await transaction.CommitAsync();
 - `Services/PromoCodeService.cs`
 - Validation logic (dates, uses, minimum purchase)
 
+<<<<<<< HEAD
 **Deliverable:** ✅ 30 Booking, Ticket, SeatMap & PromoCode APIs
+=======
+**Deliverable:** ✅ 21 Booking, Ticket, Seat & PromoCode APIs
+
+> > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 **Frontend Pages (4):**
 
@@ -658,9 +712,16 @@ await transaction.CommitAsync();
 🆕 `pages/Wishlist.tsx` - User's wishlist
 🆕 `pages/Waitlist.tsx` - User's waitlist entries
 
+<<<<<<< HEAD
 **Week 2 Deliverable (Dev 3):** 30 APIs + 4 Frontend Pages
 **Độ khó:** 9.5/10 - 🔴 CỰC KHÓ - SeatMap system phức tạp + Reservation timeout + Transaction locking
 **Điểm chấm:** 10/10 - Advanced SeatMap với zones + Reservation system + Race condition handling (PHỨC TẠP NHẤT!)
+=======
+**Week 2 Deliverable (Dev 3):** 21 APIs + 4 Frontend Pages
+**Độ khó:** 9/10 - 🔴 RẤT KHÓ - Transaction locking là CRITICAL
+**Điểm chấm:** 9.5/10 - Booking system + Race condition handling (QUAN TRỌNG NHẤT!)
+
+> > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 ---
 
@@ -737,9 +798,16 @@ await transaction.CommitAsync();
 **Week 2 Deliverables:**
 ✅ 22 Auth/User/Notification APIs + 4 Profile Pages (Dev 1)
 ✅ 29 Event/Category/Organizer/Support APIs + 4 Organizer Pages (Dev 2)
+<<<<<<< HEAD
 ✅ 30 Booking/Ticket/SeatMap APIs + 4 Order Pages (Dev 3) ⭐ ADVANCED
 ✅ 23 Payment/Review/Refund APIs + 4 Review/Refund Pages (Dev 4)
 ✅ **Total: 104 APIs + 30 Frontend pages (12 existing + 18 new)**
+=======
+✅ 21 Booking/Ticket/Seat APIs + 4 Order Pages (Dev 3)
+✅ 23 Payment/Review/Refund APIs + 4 Review/Refund Pages (Dev 4)
+✅ **Total: 95 APIs + 30 Frontend pages (12 existing + 18 new)**
+
+> > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 ---
 
@@ -920,7 +988,10 @@ var organizerEarnings = totalRevenue - platformFee;
 
 - Developer 1: 27 endpoints + 6 pages (22+5 APIs, 4+2 pages)
 - Developer 2: 43 endpoints + 7 pages (29+14 APIs, 4+3 pages)
-- Developer 3: 35 endpoints + 7 pages (30+5 APIs, 4+3 pages) ⭐ MOST COMPLEX
+  <<<<<<< HEAD
+- # Developer 3: 35 endpoints + 7 pages (30+5 APIs, 4+3 pages) ⭐ MOST COMPLEX
+- Developer 3: 26 endpoints + 7 pages (21+5 APIs, 4+3 pages)
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 - Developer 4: 29 endpoints + 7 pages (23+6 APIs, 4+3 pages)
 
 ---
@@ -1123,9 +1194,14 @@ public async Task SendEventRemindersAsync()
 
 - Developer 1: 27 endpoints + 10 pages (22+5 APIs, 4+2+4 pages) + Tests
 - Developer 2: 48 endpoints + 9 pages (29+14+5 APIs, 4+3+2 pages)
+  <<<<<<< HEAD
 - Developer 3: 40 endpoints + 9 pages (30+5+5 APIs, 4+3+2 pages) ⭐ MOST COMPLEX
 - Developer 4: 34 endpoints + 9 pages (23+6+5 APIs, 4+3+2 pages)
-- **TOTAL: 149 APIs + 51 Frontend Pages**
+- # **TOTAL: 149 APIs + 51 Frontend Pages**
+- Developer 3: 31 endpoints + 9 pages (21+5+5 APIs, 4+3+2 pages)
+- Developer 4: 34 endpoints + 9 pages (23+6+5 APIs, 4+3+2 pages)
+- **TOTAL: 140 APIs + 51 Frontend Pages**
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 ---
 
@@ -1147,6 +1223,8 @@ public async Task SendEventRemindersAsync()
 - Test event approval process
 - Test category and organizer management
 
+<<<<<<< HEAD
+
 ### **Developer 3: Booking Flow Testing** ⭐ CRITICAL
 
 - Test full booking flow (cart → checkout → payment → tickets)
@@ -1156,7 +1234,14 @@ public async Task SendEventRemindersAsync()
   - Admin lock/unlock seats
   - Zone pricing calculation
 - Test seat selection and availability locks ⭐ RACE CONDITIONS
-- Test concurrent booking scenarios (multiple users)
+- # Test concurrent booking scenarios (multiple users)
+
+### **Developer 3: Booking Flow Testing**
+
+- Test full booking flow (cart → checkout → payment → tickets)
+- Test seat selection and availability locks
+- Test concurrent booking scenarios (race conditions)
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 - Test ticket transfer functionality
 - Test wishlist and waitlist features
 
@@ -1340,13 +1425,21 @@ export const bookingService = {
 
 2. **SeatSelection.tsx** - Chọn chỗ ngồi
 
-   - Seat map visualization with zones
-   - Click to select/deselect
-   - Show available/reserved/sold/blocked
-   - Real-time reservation (15 min timeout)
-   - Integrate với Checkout
-   - API: `GET /seatmaps/event/{eventId}/seats`
-   - Reserve API: `POST /seatmaps/{seatMapId}/reserve`
+<<<<<<< HEAD
+
+- Seat map visualization with zones
+- Click to select/deselect
+- Show available/reserved/sold/blocked
+- Real-time reservation (15 min timeout)
+- Integrate với Checkout
+- API: `GET /seatmaps/event/{eventId}/seats`
+- # Reserve API: `POST /seatmaps/{seatMapId}/reserve`
+- Seat map visualization
+- Click to select/deselect
+- Show available/booked/selected
+- Integrate với Checkout
+- API: `GET /seats/ticket-type/{ticketTypeId}`
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 3. **Waitlist.tsx** - Danh sách chờ
    - List events trong waitlist
@@ -1635,15 +1728,31 @@ dotnet test Tests/Validators/CreateEventValidatorTests.cs
 
 **Target:** 20+ unit tests
 
+<<<<<<< HEAD
+
 ### **Developer 3: Booking & Ticket & SeatMap Tests**
+
+=======
+
+### **Developer 3: Booking & Ticket Tests**
+
+> > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 ```bash
 dotnet test Tests/Services/BookingServiceTests.cs
 dotnet test Tests/Services/TicketServiceTests.cs
+<<<<<<< HEAD
 dotnet test Tests/Services/SeatMapServiceTests.cs
 ```
 
-**Target:** 30+ unit tests (phức tạp nhất)
+# **Target:** 30+ unit tests (phức tạp nhất)
+
+dotnet test Tests/Services/SeatServiceTests.cs
+
+````
+
+**Target:** 25+ unit tests
+>>>>>>> 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 ### **Developer 4: Payment & Advanced Tests**
 
@@ -1651,7 +1760,7 @@ dotnet test Tests/Services/SeatMapServiceTests.cs
 dotnet test Tests/Services/PaymentServiceTests.cs
 dotnet test Tests/Services/ReviewServiceTests.cs
 dotnet test Tests/Services/NotificationServiceTests.cs
-```
+````
 
 **Target:** 20+ unit tests
 
@@ -1683,9 +1792,17 @@ dotnet test Tests/Services/NotificationServiceTests.cs
 
 # **📊 Final Statistics**
 
+<<<<<<< HEAD
+
 ## **Backend: 149+ API Endpoints**
 
-**Week 1-2 Core APIs (104 endpoints):**
+# **Week 1-2 Core APIs (104 endpoints):**
+
+## **Backend: 140+ API Endpoints**
+
+**Week 1-2 Core APIs (95 endpoints):**
+
+> > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 - Authentication: 7
 - Users: 8
@@ -1694,7 +1811,10 @@ dotnet test Tests/Services/NotificationServiceTests.cs
 - Organizers: 7
 - Bookings: 6
 - Tickets: 8
-- SeatMaps: 14 ⭐ ADVANCED (was 5 simple Seats)
+  <<<<<<< HEAD
+- # SeatMaps: 14 ⭐ ADVANCED (was 5 simple Seats)
+- Seats: 5
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 - PromoCodes: 5
 - TicketScans: 3
 - Payments: 5
@@ -1721,8 +1841,13 @@ dotnet test Tests/Services/NotificationServiceTests.cs
 
 ## **Backend Components:**
 
+<<<<<<< HEAD
+
 - DTOs: 85+ (76 original + 9 SeatMap DTOs)
-- Validators: 34+ (32 original + 2 SeatMap)
+- # Validators: 34+ (32 original + 2 SeatMap)
+- DTOs: 76+
+- Validators: 32+
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 - Services: 25+
 - Controllers: 24+
 - Background Jobs: 4 (Hangfire)
@@ -1802,12 +1927,20 @@ dotnet test Tests/Services/NotificationServiceTests.cs
 - Frontend: 9 pages (Event + Organizer + Admin)
 - Total: 48 APIs + 9 pages
 
+<<<<<<< HEAD
 **Developer 3 (Full Stack):** ⭐ MOST COMPLEX
 
 - Backend: 40 endpoints (Booking, Ticket, SeatMap, PromoCode, Statistics)
 - Frontend: 10 pages (Booking flow + Orders + Support + Admin)
 - Total: 40 APIs + 10 pages
-- Complexity: Advanced SeatMap system với zones, reservation timeout, admin controls
+- # Complexity: Advanced SeatMap system với zones, reservation timeout, admin controls
+
+  **Developer 3 (Full Stack):**
+
+- Backend: 31 endpoints (Booking, Ticket, Seat, PromoCode, Statistics)
+- Frontend: 10 pages (Booking flow + Orders + Support + Admin)
+- Total: 31 APIs + 10 pages
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 **Developer 4 (Full Stack):**
 
@@ -1817,7 +1950,11 @@ dotnet test Tests/Services/NotificationServiceTests.cs
 
 ## **Total Project Size:**
 
-- Backend: 149+ APIs, 85+ DTOs (76 + 9 SeatMap DTOs), 34+ Validators (32 + 2 SeatMap)
+<<<<<<< HEAD
+
+- # Backend: 149+ APIs, 85+ DTOs (76 + 9 SeatMap DTOs), 34+ Validators (32 + 2 SeatMap)
+- Backend: 140+ APIs, 76+ DTOs, 32+ Validators
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 - Frontend: 51 Pages, 40+ Components, 8 Hooks
 - Infrastructure: 4 Background Jobs, SignalR Real-time, Stripe Payment
 - Testing: 100+ unit tests, Integration tests, Race condition tests
@@ -1839,7 +1976,12 @@ dotnet test Tests/Services/NotificationServiceTests.cs
 ✅ Email notifications
 ✅ Real-time notifications (SignalR)
 ✅ Background jobs running
+<<<<<<< HEAD
 ✅ All 149+ endpoints tested
+=======
+✅ All 95+ endpoints tested
+
+> > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 
 ### **Non-Functional:**
 
@@ -1859,7 +2001,10 @@ dotnet test Tests/Services/NotificationServiceTests.cs
 
 - 4 developers
 - 5 weeks coding + 1 day testing
-- 149+ API endpoints
+  <<<<<<< HEAD
+- # 149+ API endpoints
+- 95+ API endpoints
+  > > > > > > > 24aa510bbd9d0da633fc670619590112f9a2b80c
 - 76+ DTOs
 - 32+ Validators
 - 100+ Tests

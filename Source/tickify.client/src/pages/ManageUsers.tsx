@@ -1,9 +1,22 @@
-import { useState, useEffect } from 'react';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Badge } from '../components/ui/badge';
-import { Input } from '../components/ui/input';
+import { useState, useEffect } from "react";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import { Badge } from "../components/ui/badge";
+import { Input } from "../components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -11,10 +24,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/ui/dialog';
-import { Label } from '../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Alert, AlertDescription } from '../components/ui/alert';
+} from "../components/ui/dialog";
+import { Label } from "../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { Alert, AlertDescription } from "../components/ui/alert";
 import {
   Users,
   Search,
@@ -26,8 +45,8 @@ import {
   ArrowLeft,
   Mail,
   Calendar,
-} from 'lucide-react';
-import apiClient from '../services/apiClient';
+} from "lucide-react";
+import apiClient from "../services/apiClient";
 
 interface ManageUsersProps {
   onNavigate: (page: string, userId?: string) => void;
@@ -47,7 +66,7 @@ interface UserDto {
 export function ManageUsers({ onNavigate }: ManageUsersProps) {
   const [users, setUsers] = useState<UserDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserDto | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -62,10 +81,10 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
     try {
       setLoading(true);
       // Assuming there's a users endpoint - adjust based on your API
-      const response = await apiClient.get<UserDto[]>('/Users');
+      const response = await apiClient.get<UserDto[]>("/Users");
       setUsers(response.data);
     } catch (err: any) {
-      setError(err.message || 'Failed to load users');
+      setError(err.message || "Failed to load users");
     } finally {
       setLoading(false);
     }
@@ -77,23 +96,12 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
       await apiClient.put(`/users/${user.userId}/toggle-active`, {
         isActive: !user.isActive,
       });
-      setSuccess(`User ${user.isActive ? 'deactivated' : 'activated'} successfully`);
+      setSuccess(
+        `User ${user.isActive ? "deactivated" : "activated"} successfully`
+      );
       await loadUsers();
     } catch (err: any) {
-      setError(err.message || 'Failed to update user status');
-    }
-  };
-
-  const handleDeleteUser = async () => {
-    if (!selectedUser) return;
-    try {
-      await apiClient.delete(`/users/${selectedUser.userId}`);
-      setSuccess('User deleted successfully');
-      setShowDeleteDialog(false);
-      setSelectedUser(null);
-      await loadUsers();
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete user');
+      setError(err.message || "Failed to update user status");
     }
   };
 
@@ -104,13 +112,13 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
   );
 
   const getRoleBadge = (roles: string[]) => {
-    if (roles.includes('Admin')) {
+    if (roles.includes("Admin")) {
       return <Badge className="bg-red-100 text-red-700">Admin</Badge>;
     }
-    if (roles.includes('Organizer')) {
+    if (roles.includes("Organizer")) {
       return <Badge className="bg-blue-100 text-blue-700">Organizer</Badge>;
     }
-    if (roles.includes('Staff')) {
+    if (roles.includes("Staff")) {
       return <Badge className="bg-green-100 text-green-700">Staff</Badge>;
     }
     return <Badge className="bg-neutral-100 text-neutral-700">Customer</Badge>;
@@ -136,7 +144,7 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onNavigate('admin-dashboard')}
+                onClick={() => onNavigate("admin-dashboard")}
               >
                 <ArrowLeft size={16} className="mr-2" />
                 Back
@@ -146,7 +154,9 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
                 <h1>User Management</h1>
               </div>
             </div>
-            <p className="text-neutral-600">Manage platform users and permissions</p>
+            <p className="text-neutral-600">
+              Manage platform users and permissions
+            </p>
           </div>
         </div>
 
@@ -154,13 +164,17 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
         {error && (
           <Alert className="mb-6 bg-red-50 border-red-200">
             <UserX className="text-red-600" size={16} />
-            <AlertDescription className="text-red-800">{error}</AlertDescription>
+            <AlertDescription className="text-red-800">
+              {error}
+            </AlertDescription>
           </Alert>
         )}
         {success && (
           <Alert className="mb-6 bg-green-50 border-green-200">
             <UserCheck className="text-green-600" size={16} />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
+            <AlertDescription className="text-green-800">
+              {success}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -169,7 +183,10 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                  size={16}
+                />
                 <Input
                   placeholder="Search users by name or email..."
                   value={searchTerm}
@@ -185,7 +202,9 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
         <Card>
           <CardHeader>
             <CardTitle>All Users ({filteredUsers.length})</CardTitle>
-            <CardDescription>Manage user accounts, roles, and permissions</CardDescription>
+            <CardDescription>
+              Manage user accounts, roles, and permissions
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {filteredUsers.length === 0 ? (
@@ -201,7 +220,6 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Joined</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -209,9 +227,13 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
                     <TableRow key={user.userId}>
                       <TableCell>
                         <div>
-                          <div className="text-neutral-900 font-medium">{user.fullName}</div>
+                          <div className="text-neutral-900 font-medium">
+                            {user.fullName}
+                          </div>
                           {user.phoneNumber && (
-                            <div className="text-sm text-neutral-500">{user.phoneNumber}</div>
+                            <div className="text-sm text-neutral-500">
+                              {user.phoneNumber}
+                            </div>
                           )}
                         </div>
                       </TableCell>
@@ -248,7 +270,7 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
                             size="sm"
                             onClick={() => handleToggleActive(user)}
                           >
-                            {user.isActive ? 'Deactivate' : 'Activate'}
+                            {user.isActive ? "Deactivate" : "Activate"}
                           </Button>
                           <Button
                             variant="ghost"
@@ -270,31 +292,7 @@ export function ManageUsers({ onNavigate }: ManageUsersProps) {
             )}
           </CardContent>
         </Card>
-
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete User</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete user "{selectedUser?.fullName}"? This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleDeleteUser}
-                className="bg-red-500 hover:bg-red-600"
-              >
-                Delete
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
 }
-

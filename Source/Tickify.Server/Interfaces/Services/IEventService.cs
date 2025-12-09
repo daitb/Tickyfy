@@ -30,7 +30,7 @@ public interface IEventService
 
     Task<EventDetailDto> RejectEventAsync(int id, int adminId, string reason);
 
-    Task<bool> DeleteEventAsync(int id);
+    Task<bool> DeleteEventAsync(int id, int userId, bool isAdmin);
 
     Task<EventStatsDto> GetEventStatisticsAsync(int id, int userId, bool isAdmin);
 

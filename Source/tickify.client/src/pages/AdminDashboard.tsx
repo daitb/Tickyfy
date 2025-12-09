@@ -58,6 +58,8 @@ import {
   CheckCircle,
   XCircle,
   Search,
+  ChevronLeft,
+  ChevronRight,
   Filter,
   Download,
   Settings,
@@ -71,6 +73,7 @@ import {
   type ApprovePayoutDto,
   type RejectPayoutDto,
 } from "../services/payoutService";
+import { adminService, type PendingEventDto, type OrganizerRequestDto, type AdminStatsDto, type MonthlyRevenueDto, type CategoryDistributionDto, type RecentUserDto, type OrganizerListDto } from "../services/adminService";
 import {
   Dialog,
   DialogContent,
@@ -83,13 +86,18 @@ import { Textarea } from "../components/ui/textarea";
 import { Label } from "../components/ui/label";
 import apiClient from "../services/apiClient";
 import { toast } from "sonner";
+import { userService, type UserDetailDto, type UserListDto } from "../services/userService";
+import { authService } from "../services/authService";
+
+// Colors for pie chart
+const COLORS = ['#00C16A', '#FF6B6B', '#4ECDC4', '#FFE66D', '#A8E6CF', '#FF8B94', '#C7CEEA', '#FFDAC1'];
 
 interface AdminDashboardProps {
   onNavigate: (page: string, eventId?: string) => void;
 }
 
 export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -101,6 +109,8 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [pendingEvents, setPendingEvents] = useState<any[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [showEventRejectDialog, setShowEventRejectDialog] = useState(false);
+  const [eventRejectReason, setEventRejectReason] = useState('');
   const [isApprovingEvent, setIsApprovingEvent] = useState<number | null>(null);
   const [isRejectingEvent, setIsRejectingEvent] = useState<number | null>(null);
   const [isApprovingRequest, setIsApprovingRequest] = useState<number | null>(
@@ -110,156 +120,245 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     Record<number, boolean>
   >({});
 
-  // Calculate platform statistics
-  const totalRevenue = mockOrders.reduce((sum, order) => sum + order.total, 0);
-  const totalTicketsSold = mockOrders.reduce(
-    (sum, order) => sum + order.tickets.length,
-    0
-  );
-  const totalEvents = mockEvents.length;
-  const activeEvents = mockEvents.filter(
-    (e) => e.status === "published"
-  ).length;
-  const totalOrganizers = 12; // Mock number
-  const platformFees = totalRevenue * 0.05; // 5% platform fee
+  // Event filters
+  const [eventSearchTerm, setEventSearchTerm] = useState('');
+  const [eventStatusFilter, setEventStatusFilter] = useState('all');
+  const [eventDateFilter, setEventDateFilter] = useState('all');
+  const [allEvents, setAllEvents] = useState<any[]>([]);
+  const [eventPage, setEventPage] = useState(1);
+  const eventPageSize = 10;
 
-  // Revenue trend data
-  const revenueTrend = [
-    { month: "Jul", revenue: 45000000, users: 120 },
-    { month: "Aug", revenue: 52000000, users: 145 },
-    { month: "Sep", revenue: 48000000, users: 138 },
-    { month: "Oct", revenue: 67000000, users: 189 },
-    { month: "Nov", revenue: 89000000, users: 234 },
-    { month: "Dec", revenue: 95000000, users: 267 },
-  ];
+  // Organizer filters
+  const [organizerDateFilter, setOrganizerDateFilter] = useState('all');
+  const [organizerPage, setOrganizerPage] = useState(1);
+  const organizerPageSize = 10;
+  const [organizerSearchTerm, setOrganizerSearchTerm] = useState('');
+  const [organizerStatusFilter, setOrganizerStatusFilter] = useState('all');
 
-  // Category distribution
-  const categoryData = [
-    { name: "Music", value: 35, color: "#f97316" },
-    { name: "Sports", value: 25, color: "#3b82f6" },
-    { name: "Arts", value: 20, color: "#8b5cf6" },
-    { name: "Business", value: 12, color: "#10b981" },
-    { name: "Other", value: 8, color: "#6b7280" },
-  ];
+  // User management state
+  const [users, setUsers] = useState<UserListDto[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [userStatusFilter, setUserStatusFilter] = useState('all');
+  const [userEmailVerifiedFilter, setUserEmailVerifiedFilter] = useState('all');
+  const [userPageNumber, setUserPageNumber] = useState(1);
+  const [userPageSize] = useState(10);
+  const [userTotalPages, setUserTotalPages] = useState(1);
+  const [userTotalCount, setUserTotalCount] = useState(0);
+  const [selectedUser, setSelectedUser] = useState<UserDetailDto | null>(null);
+  const [showUserDetailDialog, setShowUserDetailDialog] = useState(false);
+  const [showDeleteUserDialog, setShowDeleteUserDialog] = useState(false);
+  const [showAssignRoleDialog, setShowAssignRoleDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserListDto | null>(null);
+  const [userToAssignRole, setUserToAssignRole] = useState<UserListDto | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState<number>(4);
+  const [isTogglingStatus, setIsTogglingStatus] = useState<number | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [isAssigningRole, setIsAssigningRole] = useState(false);
+  const [isLoadingUserDetail, setIsLoadingUserDetail] = useState(false);
 
-  // Mock user data
-  const recentUsers = [
-    {
-      id: 1,
-      name: "Nguyen Van A",
-      email: "nguyenvana@email.com",
-      joined: "2024-11-10",
-      orders: 5,
-      spent: 2500000,
-    },
-    {
-      id: 2,
-      name: "Tran Thi B",
-      email: "tranthib@email.com",
-      joined: "2024-11-09",
-      orders: 3,
-      spent: 1800000,
-    },
-    {
-      id: 3,
-      name: "Le Van C",
-      email: "levanc@email.com",
-      joined: "2024-11-08",
-      orders: 7,
-      spent: 4200000,
-    },
-    {
-      id: 4,
-      name: "Pham Thi D",
-      email: "phamthid@email.com",
-      joined: "2024-11-07",
-      orders: 2,
-      spent: 1200000,
-    },
-    {
-      id: 5,
-      name: "Hoang Van E",
-      email: "hoangvane@email.com",
-      joined: "2024-11-06",
-      orders: 4,
-      spent: 2800000,
-    },
-  ];
+  // Get current admin user ID to prevent self-modification
+  const currentUser = authService.getCurrentUser();
+  const currentAdminId = currentUser ? parseInt(currentUser.userId, 10) : null;
 
-  // Mock organizer data
-  const organizers = [
-    {
-      id: 1,
-      name: "LiveNation Vietnam",
-      email: "contact@livenation.vn",
-      events: 12,
-      revenue: 45000000,
-      status: "verified",
-    },
-    {
-      id: 2,
-      name: "Music Hub",
-      email: "info@musichub.vn",
-      events: 8,
-      revenue: 28000000,
-      status: "verified",
-    },
-    {
-      id: 3,
-      name: "Sports Events Pro",
-      email: "hello@sportsevents.vn",
-      events: 5,
-      revenue: 15000000,
-      status: "pending",
-    },
-    {
-      id: 4,
-      name: "Art Gallery VN",
-      email: "contact@artgallery.vn",
-      events: 3,
-      revenue: 8500000,
-      status: "verified",
-    },
-    {
-      id: 5,
-      name: "Conference Hub",
-      email: "info@conferencehub.vn",
-      events: 6,
-      revenue: 22000000,
-      status: "verified",
-    },
-  ];
+  // Dashboard statistics state
+  const [dashboardStats, setDashboardStats] = useState<AdminStatsDto | null>(null);
+  const [revenueTrend, setRevenueTrend] = useState<MonthlyRevenueDto[]>([]);
+  const [categoryData, setCategoryData] = useState<CategoryDistributionDto[]>([]);
+  const [recentUsers, setRecentUsers] = useState<RecentUserDto[]>([]);
+  const [organizers, setOrganizers] = useState<OrganizerListDto[]>([]);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
+  const [chartDateFilter, setChartDateFilter] = useState("all"); // For charts filtering
+
+  // Analytics state (for Analytics tab)
+  const [analyticsEvents, setAnalyticsEvents] = useState<any[]>([]);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
+    const isVietnamese = i18n.language === 'vi';
+    
+    if (isVietnamese) {
+      // Tiếng Việt: 10.000 ₫
+      return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+      }).format(price);
+    } else {
+      // Tiếng Anh: 10,000 VND
+      return new Intl.NumberFormat('en-US', {
+        style: 'decimal',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(price) + ' VND';
+    }
   };
 
-  // Load organizer requests
+  // Format month labels based on language
+  const formatMonthLabel = (monthStr: string): string => {
+    const isVietnamese = i18n.language === 'vi';
+    
+    // Parse "Jan" or "Feb" format (backend returns "MMM" without year)
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthIndex = monthNames.findIndex(m => m === monthStr);
+    
+    if (monthIndex === -1) return monthStr;
+    
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    
+    if (isVietnamese) {
+      // Format as T1-2025, T2-2025, etc.
+      return `T${monthIndex + 1}-${currentYear}`;
+    } else {
+      // Format as Jan 2025, Feb 2025, etc.
+      return `${monthStr} ${currentYear}`;
+    }
+  };
+
+  // Filter revenue trend data based on chartDateFilter
+  const getFilteredRevenueTrend = () => {
+    if (chartDateFilter === "all") return revenueTrend;
+    
+    const today = new Date();
+    const currentMonth = today.getMonth(); // 0-11
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    return revenueTrend.filter((item) => {
+      const monthIndex = monthNames.findIndex(m => m === item.month);
+      if (monthIndex === -1) return false;
+      
+      switch (chartDateFilter) {
+        case "thisMonth":
+          return monthIndex === currentMonth;
+        case "lastMonth":
+          const lastMonthIndex = currentMonth === 0 ? 11 : currentMonth - 1;
+          return monthIndex === lastMonthIndex;
+        default:
+          return true;
+      }
+    });
+  };
+
+  const filteredRevenueTrend = getFilteredRevenueTrend().map(item => ({
+    ...item,
+    month: formatMonthLabel(item.month)
+  }));
+
+  // Load data on component mount - only load minimal data for badges
   useEffect(() => {
-    if (activeTab === "requests") {
-      loadOrganizerRequests();
-    } else if (activeTab === "event-approvals") {
-      loadPendingEvents();
+    // Load only badge counts initially
+    loadBadgeCounts();
+    // Load dashboard data only if on overview tab
+    if (activeTab === "overview") {
+      loadDashboardData();
+    }
+  }, []);
+
+  // Optimized badge count loading
+  const loadBadgeCounts = async () => {
+    try {
+      // Load minimal data for badge counts in parallel
+      const [events, requests] = await Promise.all([
+        adminService.getAllEvents(),
+        adminService.getOrganizerRequests()
+      ]);
+      setAllEvents(events);
+      setOrganizerRequests(requests);
+    } catch (error) {
+      console.error('Failed to load badge counts:', error);
+    }
+  };
+
+  const loadDashboardData = async () => {
+    if (activeTab !== "overview") return;
+    
+    setIsLoadingDashboard(true);
+    try {
+      const [stats, revenue, categories, users, orgs] = await Promise.all([
+        adminService.getDashboardStats(),
+        adminService.getMonthlyRevenue(6),
+        adminService.getCategoryDistribution(),
+        adminService.getRecentUsers(5),
+        adminService.getOrganizersList()
+      ]);
+      setDashboardStats(stats);
+      setRevenueTrend(revenue);
+      setCategoryData(categories);
+      setRecentUsers(users);
+      setOrganizers(orgs);
+    } catch (error: any) {
+      console.error("Failed to load dashboard data:", error);
+      toast.error("Không thể tải dữ liệu dashboard", {
+        description: error.response?.data?.message || "Vui lòng thử lại sau",
+        duration: 2000,
+        closeButton: false,
+      });
+    } finally {
+      setIsLoadingDashboard(false);
+    }
+  };
+
+  const loadAnalyticsEvents = async () => {
+    setIsLoadingAnalytics(true);
+    try {
+      const events = await adminService.getAllEventsWithAnalytics();
+      setAnalyticsEvents(events);
+    } catch (error: any) {
+      console.error("Failed to load analytics events:", error);
+      toast.error("Không thể tải dữ liệu phân tích", {
+        description: error.response?.data?.message || "Vui lòng thử lại sau",
+        duration: 2000,
+        closeButton: false,
+      });
+    } finally {
+      setIsLoadingAnalytics(false);
+    }
+  };
+
+  // Reload dashboard data when switching to overview tab
+  useEffect(() => {
+    if (activeTab === "overview") {
+      loadDashboardData();
+    } else if (activeTab === "analytics") {
+      loadAnalyticsEvents();
     }
   }, [activeTab]);
+
+  // Reset event page when filters change
+  useEffect(() => {
+    setEventPage(1);
+  }, [searchTerm, statusFilter, eventDateFilter]);
+
+  // Reset organizer page when filter changes
+  useEffect(() => {
+    setOrganizerPage(1);
+  }, [organizerDateFilter, organizerSearchTerm, organizerStatusFilter]);
+
+  // Load data based on active tab - optimized to avoid redundant loads
+  useEffect(() => {
+    if (activeTab === "requests" && organizerRequests.length === 0) {
+      loadOrganizerRequests();
+    } else if ((activeTab === "event-approvals" || activeTab === "events") && allEvents.length === 0) {
+      loadAllEvents(true); // Skip seat map check on initial load
+    } else if (activeTab === 'users') {
+      loadUsers();
+    } else if (activeTab === "overview") {
+      loadDashboardData();
+    }
+  }, [activeTab]);
+
+  // Reload users when page, search or filters change
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadUsers();
+    }
+  }, [userPageNumber, userSearchTerm, userRoleFilter, userStatusFilter, userEmailVerifiedFilter]);
 
   const loadOrganizerRequests = async () => {
     setIsLoadingRequests(true);
     try {
-      const response = await apiClient.get("/admin/organizer-requests");
-      let requests = [];
-
-      if (response.data) {
-        if (Array.isArray(response.data)) {
-          requests = response.data;
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          requests = response.data.data;
-        }
-      }
-
+      const requests = await adminService.getOrganizerRequests();
       setOrganizerRequests(requests);
     } catch (error: any) {
       console.error("Failed to load organizer requests:", error);
@@ -277,7 +376,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const handleApproveRequest = async (requestId: number) => {
     try {
       setIsApprovingRequest(requestId);
-      await apiClient.post(`/admin/organizer-requests/${requestId}/approve`);
+      await adminService.approveOrganizerRequest(requestId);
       toast.success("Đã phê duyệt yêu cầu thành công!", {
         duration: 2000,
         closeButton: false,
@@ -298,14 +397,14 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const handleRejectRequest = async () => {
     if (!selectedRequest) return;
 
+    console.log('Rejecting request:', selectedRequest.requestId, 'Reason:', rejectReason);
+
     try {
-      await apiClient.post(
-        `/admin/organizer-requests/${selectedRequest.requestId}/reject`,
-        {
-          reviewNotes: rejectReason,
-        }
+      await adminService.rejectOrganizerRequest(
+        selectedRequest.requestId,
+        rejectReason
       );
-      toast.success("Đã từ chối yêu cầu", {
+      toast.success(t('admin.requestRejected', 'Đã từ chối yêu cầu'), {
         duration: 2000,
         closeButton: false,
       });
@@ -329,21 +428,21 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         return (
           <Badge className="bg-yellow-100 text-yellow-700">
             <Clock size={12} className="mr-1" />
-            Pending
+            {t('admin.pending', 'Pending')}
           </Badge>
         );
       case "approved":
         return (
           <Badge className="bg-green-100 text-green-700">
             <CheckCircle size={12} className="mr-1" />
-            Approved
+            {t('admin.approved', 'Approved')}
           </Badge>
         );
       case "rejected":
         return (
           <Badge className="bg-red-100 text-red-700">
             <XCircle size={12} className="mr-1" />
-            Rejected
+            {t('admin.rejected', 'Rejected')}
           </Badge>
         );
       default:
@@ -354,34 +453,27 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const loadPendingEvents = async () => {
     setIsLoadingEvents(true);
     try {
-      const response = await apiClient.get("/admin/events/pending");
-      let events = [];
-
-      if (response.data) {
-        if (Array.isArray(response.data)) {
-          events = response.data;
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          events = response.data.data;
-        }
-      }
-
+      const events = await adminService.getPendingEvents();
       setPendingEvents(events);
 
       // Check seat map status for each event
       const seatMapStatusMap: Record<number, boolean> = {};
       for (const event of events) {
-        try {
-          await apiClient.get(`/seatmaps/event/${event.id}`);
-          seatMapStatusMap[event.id] = true; // Seat map exists
-        } catch (error: any) {
-          // 404 means no seat map
-          seatMapStatusMap[event.id] = false;
+        if (event.id) {
+          const eventId = event.id;
+          try {
+            await apiClient.get(`/seatmaps/event/${eventId}`);
+            seatMapStatusMap[eventId] = true; // Seat map exists
+          } catch (error: any) {
+            // 404 means no seat map
+            seatMapStatusMap[eventId] = false;
+          }
         }
       }
       setEventSeatMapStatus(seatMapStatusMap);
     } catch (error: any) {
       console.error("Failed to load pending events:", error);
-      toast.error("Кхông thể tải danh sách sự kiện chờ duyệt", {
+      toast.error("Không thể tải danh sách sự kiện chờ duyệt", {
         description: error.response?.data?.message || "Vui lòng thử lại sau",
         duration: 2000,
         closeButton: false,
@@ -392,15 +484,58 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
+  const loadAllEvents = async (skipSeatMapCheck = true) => {
+    setIsLoadingEvents(true);
+    try {
+      const events = await adminService.getAllEvents();
+      setAllEvents(events);
+      setPendingEvents(events); // Keep for backward compatibility
+
+      // Only check seat map status when explicitly needed (not on initial load)
+      if (!skipSeatMapCheck) {
+        const seatMapStatusMap: Record<number, boolean> = {};
+        // Load seat maps in batches to avoid overwhelming the server
+        const batchSize = 5;
+        for (let i = 0; i < events.length; i += batchSize) {
+          const batch = events.slice(i, i + batchSize);
+          await Promise.all(
+            batch.map(async (event) => {
+              if (event.eventId) {
+                try {
+                  await apiClient.get(`/seatmaps/event/${event.eventId}`);
+                  seatMapStatusMap[event.eventId] = true;
+                } catch (error: any) {
+                  seatMapStatusMap[event.eventId] = false;
+                }
+              }
+            })
+          );
+        }
+        setEventSeatMapStatus(seatMapStatusMap);
+      }
+    } catch (error: any) {
+      console.error("Failed to load events:", error);
+      toast.error("Không thể tải danh sách sự kiện", {
+        description: error.response?.data?.message || "Vui lòng thử lại sau",
+        duration: 2000,
+        closeButton: false,
+      });
+      setAllEvents([]);
+      setPendingEvents([]);
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  };
+
   const handleApproveEvent = async (eventId: number) => {
     try {
       setIsApprovingEvent(eventId);
-      await apiClient.post(`/admin/events/${eventId}/approve`);
+      await adminService.approveEvent(eventId);
       toast.success("Đã phê duyệt sự kiện thành công!", {
         duration: 2000,
         closeButton: false,
       });
-      await loadPendingEvents();
+      await loadAllEvents();
     } catch (error: any) {
       console.error("Failed to approve event:", error);
       toast.error("Không thể phê duyệt sự kiện", {
@@ -413,15 +548,52 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
-  const handleRejectEvent = async (eventId: number) => {
-    try {
-      setIsRejectingEvent(eventId);
-      await apiClient.post(`/admin/events/${eventId}/reject`);
-      toast.success("Đã từ chối sự kiện", {
+  const handleRejectEvent = (eventId: number) => {
+    // Try to find in allEvents first, then pendingEvents
+    let event = allEvents.find(e => e.id === eventId);
+    if (!event) {
+      event = pendingEvents.find(e => e.id === eventId);
+    }
+    
+    console.log('handleRejectEvent - eventId:', eventId, 'found event:', event);
+    setSelectedEvent(event);
+    setEventRejectReason('');
+    setShowEventRejectDialog(true);
+  };
+
+  const confirmRejectEvent = async () => {
+    console.log('confirmRejectEvent - selectedEvent:', selectedEvent);
+    
+    if (!selectedEvent || !eventRejectReason.trim()) {
+      toast.error(t('admin.rejectReasonRequired', 'Rejection reason is required'), {
         duration: 2000,
         closeButton: false,
       });
-      await loadPendingEvents();
+      return;
+    }
+
+    if (!selectedEvent.id) {
+      console.error('Event ID is missing!', selectedEvent);
+      toast.error('Event ID is missing', {
+        duration: 2000,
+        closeButton: false,
+      });
+      return;
+    }
+
+    try {
+      const eventId = selectedEvent.id;
+      console.log('Rejecting event with ID:', eventId);
+      setIsRejectingEvent(eventId);
+      await adminService.rejectEvent(eventId, eventRejectReason);
+      toast.success(t('admin.eventRejected', 'Đã từ chối sự kiện'), {
+        duration: 2000,
+        closeButton: false,
+      });
+      setShowEventRejectDialog(false);
+      setEventRejectReason('');
+      setSelectedEvent(null);
+      await loadAllEvents();
     } catch (error: any) {
       console.error("Failed to reject event:", error);
       toast.error("Không thể từ chối sự kiện", {
@@ -441,44 +613,234 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         return (
           <Badge className="bg-yellow-100 text-yellow-700">
             <Clock size={12} className="mr-1" />
-            Pending
+            {t('admin.pending', 'Pending')}
           </Badge>
         );
       case 1:
         return (
           <Badge className="bg-blue-100 text-blue-700">
             <CheckCircle size={12} className="mr-1" />
-            Approved
+            {t('admin.approved', 'Approved')}
           </Badge>
         );
       case 2:
         return (
           <Badge className="bg-red-100 text-red-700">
             <XCircle size={12} className="mr-1" />
-            Rejected
+            {t('admin.rejected', 'Rejected')}
           </Badge>
         );
       case 3:
         return (
           <Badge className="bg-green-100 text-green-700">
             <CheckCircle size={12} className="mr-1" />
-            Published
+            {t('admin.published', 'Published')}
           </Badge>
         );
       case 4:
         return (
           <Badge className="bg-gray-100 text-gray-700">
             <XCircle size={12} className="mr-1" />
-            Cancelled
+            {t('admin.cancelled', 'Cancelled')}
           </Badge>
         );
       case 5:
         return (
-          <Badge className="bg-purple-100 text-purple-700">Completed</Badge>
+          <Badge className="bg-purple-100 text-purple-700">{t('admin.completed', 'Completed')}</Badge>
         );
       default:
-        return <Badge>Unknown</Badge>;
+        return <Badge>{t('admin.unknown', 'Unknown')}</Badge>;
     }
+  };
+
+  // User management functions
+  const loadUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      // Build query params with filters
+      const params: any = {
+        PageNumber: userPageNumber,
+        PageSize: userPageSize,
+      };
+      
+      if (userSearchTerm) {
+        params.SearchTerm = userSearchTerm;
+      }
+      
+      if (userRoleFilter !== 'all') {
+        params.Role = userRoleFilter;
+      }
+      
+      if (userStatusFilter !== 'all') {
+        params.IsActive = userStatusFilter === 'active';
+      }
+      
+      if (userEmailVerifiedFilter !== 'all') {
+        params.EmailVerified = userEmailVerifiedFilter === 'verified';
+      }
+      
+      const result = await userService.getUsers(
+        params.PageNumber,
+        params.PageSize,
+        params.SearchTerm,
+        params.Role,
+        params.IsActive,
+        params.EmailVerified
+      );
+      setUsers(result.items || []);
+      setUserTotalPages(result.totalPages || 1);
+      setUserTotalCount(result.totalCount || 0);
+    } catch (error: any) {
+      console.error('Failed to load users:', error);
+      toast.error('Không thể tải danh sách người dùng', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+      setUsers([]);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const handleViewUserDetail = async (userId: number) => {
+    setIsLoadingUserDetail(true);
+    setShowUserDetailDialog(true);
+    try {
+      const user = await userService.getUserById(userId);
+      setSelectedUser(user);
+    } catch (error: any) {
+      console.error('Failed to load user detail:', error);
+      toast.error('Không thể tải thông tin người dùng', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+      setShowUserDetailDialog(false);
+    } finally {
+      setIsLoadingUserDetail(false);
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: number) => {
+    try {
+      setIsTogglingStatus(userId);
+      await userService.toggleActiveStatus(userId);
+      toast.success('Đã cập nhật trạng thái người dùng', {
+        duration: 2000,
+        closeButton: false,
+      });
+      await loadUsers();
+    } catch (error: any) {
+      console.error('Failed to toggle user status:', error);
+      toast.error('Không thể cập nhật trạng thái', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+    } finally {
+      setIsTogglingStatus(null);
+    }
+  };
+
+  const handleAssignRole = async () => {
+    if (!userToAssignRole) return;
+    try {
+      setIsAssigningRole(true);
+      await userService.assignRole(userToAssignRole.userId, selectedRoleId);
+      toast.success('Đã gán vai trò thành công', {
+        duration: 2000,
+        closeButton: false,
+      });
+      setShowAssignRoleDialog(false);
+      setUserToAssignRole(null);
+      setSelectedRoleId(4);
+      await loadUsers();
+    } catch (error: any) {
+      console.error('Failed to assign role:', error);
+      toast.error('Không thể gán vai trò', {
+        description: error.response?.data?.message || 'Vui lòng thử lại sau',
+        duration: 2000,
+        closeButton: false,
+      });
+    } finally {
+      setIsAssigningRole(false);
+    }
+  };
+
+  const handleUserSearch = (value: string) => {
+    setUserSearchTerm(value);
+    setUserPageNumber(1); // Reset to first page when searching
+  };
+
+  const getUserRoleBadge = (roles: string[]) => {
+    if (roles.includes('Admin')) {
+      return (
+        <Badge className="bg-purple-100 text-purple-700">
+          <Shield size={12} className="mr-1" />
+          Admin
+        </Badge>
+      );
+    }
+    if (roles.includes('Staff')) {
+      return (
+        <Badge className="bg-yellow-100 text-yellow-700">
+          <Users size={12} className="mr-1" />
+          Staff
+        </Badge>
+      );
+    }
+    if (roles.includes('Organizer')) {
+      return (
+        <Badge className="bg-blue-100 text-blue-700">
+          <Users size={12} className="mr-1" />
+          Organizer
+        </Badge>
+      );
+    }
+    if (roles.includes('Customer')) {
+      return (
+        <Badge className="bg-green-100 text-green-700">
+          <Users size={12} className="mr-1" />
+          Customer
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-gray-100 text-gray-700">
+        User
+      </Badge>
+    );
+  };
+
+  const getUserStatusBadge = (isActive: boolean) => {
+    return isActive ? (
+      <Badge className="bg-green-100 text-green-700">
+        <CheckCircle size={12} className="mr-1" />
+        {t('admin.active', 'Active')}
+      </Badge>
+    ) : (
+      <Badge className="bg-red-100 text-red-700">
+        <XCircle size={12} className="mr-1" />
+        {t('admin.inactive', 'Inactive')}
+      </Badge>
+    );
+  };
+
+  const translateCategory = (categoryName: string) => {
+    const categoryMap: { [key: string]: string } = {
+      'Music & Concerts': t('events.categoryMusic', 'Âm nhạc'),
+      'Sports & Fitness': t('events.categorySports', 'Thể thao'),
+      'Arts & Culture': t('events.categoryArts', 'Nghệ thuật & Văn hóa'),
+      'Technology & Innovation': t('events.categoryTechnology', 'Công nghệ'),
+      'Entertainment': t('events.entertainment', 'Giải trí'),
+      'Food & Drink': t('events.categoryFood', 'Ẩm thực'),
+      'Business & Professional': t('events.categoryBusiness', 'Kinh doanh'),
+      'Health & Wellness': t('events.categoryHealth', 'Sức khỏe'),
+      'Education': t('events.categoryEducation', 'Giáo dục'),
+      'Fashion & Beauty': t('events.categoryFashion', 'Thời trang'),
+    };
+    return categoryMap[categoryName] || categoryName;
   };
 
   return (
@@ -508,18 +870,26 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-8">
             <TabsTrigger value="overview">{t("admin.overview")}</TabsTrigger>
-            <TabsTrigger value="events">{t("header.events")}</TabsTrigger>
             <TabsTrigger value="event-approvals">
-              {t("admin.eventApprovals", "Event Approvals")}
+              {t("admin.events")}
+              {allEvents.filter(e => e.status === 0).length > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-orange-500 text-white rounded-full">
+                  {allEvents.filter(e => e.status === 0).length}
+                </span>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="organizers">{t("admin.organizer")}</TabsTrigger>
             <TabsTrigger value="requests">
-              {t("admin.organizerRequests", "Organizer Requests")}
+              {t("admin.organizers")}
+              {organizerRequests.filter(r => r.status?.toLowerCase() === 'pending').length > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-orange-500 text-white rounded-full">
+                  {organizerRequests.filter(r => r.status?.toLowerCase() === 'pending').length}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="users">{t("admin.users")}</TabsTrigger>
             <TabsTrigger value="payouts">{t("admin.payouts")}</TabsTrigger>
             <TabsTrigger value="analytics">
-              {t("organizer.analytics")}
+              {t("admin.analytics")}
             </TabsTrigger>
           </TabsList>
 
@@ -535,10 +905,21 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   <DollarSign className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl">{formatPrice(totalRevenue)}</div>
+                  <div className="text-2xl">
+                    {isLoadingDashboard ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      formatPrice(dashboardStats?.totalRevenue || 0)
+                    )}
+                  </div>
                   <p className="text-xs text-green-600 mt-1">
-                    <TrendingUp size={12} className="inline mr-1" />
-                    +23.5% from last month
+                    {dashboardStats?.revenueGrowthPercentage !== undefined && (
+                      <>
+                        <TrendingUp size={12} className="inline mr-1" />
+                        {dashboardStats.revenueGrowthPercentage >= 0 ? '+' : ''}
+                        {dashboardStats.revenueGrowthPercentage.toFixed(1)}% {t('admin.fromLastMonth', 'from last month')}
+                      </>
+                    )}
                   </p>
                 </CardContent>
               </Card>
@@ -551,7 +932,13 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   <DollarSign className="text-green-500" size={20} />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl">{formatPrice(platformFees)}</div>
+                  <div className="text-2xl">
+                    {isLoadingDashboard ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      formatPrice(dashboardStats?.platformFees || 0)
+                    )}
+                  </div>
                   <p className="text-xs text-neutral-500 mt-1">
                     {t("admin.commissionRate")}
                   </p>
@@ -566,9 +953,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   <Calendar className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl">{totalEvents}</div>
+                  <div className="text-2xl">
+                    {isLoadingDashboard ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      dashboardStats?.totalEvents || 0
+                    )}
+                  </div>
                   <p className="text-xs text-neutral-500 mt-1">
-                    {activeEvents} {t("admin.active")}
+                    {dashboardStats?.activeEvents || 0} {t("admin.active")}
                   </p>
                 </CardContent>
               </Card>
@@ -581,10 +974,21 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   <Users className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl">1,247</div>
+                  <div className="text-2xl">
+                    {isLoadingDashboard ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      dashboardStats?.totalUsers.toLocaleString() || '0'
+                    )}
+                  </div>
                   <p className="text-xs text-green-600 mt-1">
-                    <TrendingUp size={12} className="inline mr-1" />
-                    +12.3% this month
+                    {dashboardStats?.userGrowthPercentage !== undefined && (
+                      <>
+                        <TrendingUp size={12} className="inline mr-1" />
+                        {dashboardStats.userGrowthPercentage >= 0 ? '+' : ''}
+                        {dashboardStats.userGrowthPercentage.toFixed(1)}% {t('admin.thisMonth', 'this month')}
+                      </>
+                    )}
                   </p>
                 </CardContent>
               </Card>
@@ -594,25 +998,90 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>{t("admin.revenueTrend")}</CardTitle>
-                  <CardDescription>{t("admin.monthlyRevenue")}</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>{t("admin.revenueTrend")}</CardTitle>
+                      <CardDescription>{t("admin.monthlyRevenue")}</CardDescription>
+                    </div>
+                    <Select value={chartDateFilter} onValueChange={setChartDateFilter}>
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          {t("admin.allTime", "All Time")}
+                        </SelectItem>
+                        <SelectItem value="thisMonth">
+                          {t("admin.thisMonth", "This Month")}
+                        </SelectItem>
+                        <SelectItem value="lastMonth">
+                          {t("admin.lastMonth", "Last Month")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={revenueTrend}>
+                  {isLoadingDashboard ? (
+                    <div className="flex items-center justify-center h-[300px]">
+                      <Loader2 className="animate-spin text-orange-500" size={32} />
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart 
+                        data={filteredRevenueTrend}
+                        margin={{ top: 5, right: 30, left: -10, bottom: -5 }}
+                      >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip formatter={(value: any) => formatPrice(value)} />
+                      <YAxis 
+                        width={80}
+                        tickFormatter={(value) => {
+                          const isVietnamese = i18n.language === 'vi';
+                          if (isVietnamese) {
+                            // Tiếng Việt: 380tr ₫
+                            if (value < 1000) {
+                              return value + "₫";
+                            } else if (value < 1000000) {
+                              return (value / 1000).toFixed(0) + "k ₫";
+                            } else if (value < 1000000000) {
+                              return (value / 1000000).toFixed(1).replace(".0", "") + "tr ₫";
+                            } else {
+                              return (value / 1000000000).toFixed(1).replace(".0", "") + "tỷ ₫";
+                            }
+                          } else {
+                            // Tiếng Anh: 380M
+                            if (value < 1000) {
+                              return value + "VND";
+                            } else if (value < 1000000) {
+                              return (value / 1000).toFixed(0) + "K";
+                            } else if (value < 1000000000) {
+                              return (value / 1000000).toFixed(1).replace(".0", "") + "M";
+                            } else {
+                              return (value / 1000000000).toFixed(1).replace(".0", "") + "B";
+                            }
+                          }
+                        }}
+                      />
+                      <Tooltip 
+                        formatter={(value: any) => formatPrice(value)}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          padding: '8px 12px'
+                        }}
+                      />
                       <Line
                         type="monotone"
                         dataKey="revenue"
                         stroke="#f97316"
                         strokeWidth={2}
-                        name="Revenue"
+                        name={t("admin.revenue", "Doanh thu")}
                       />
                     </LineChart>
                   </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
 
@@ -624,10 +1093,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
+                  {isLoadingDashboard ? (
+                    <div className="flex items-center justify-center h-[300px]">
+                      <Loader2 className="animate-spin text-orange-500" size={32} />
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart margin={{ top: 20, right: 30, left: 40, bottom: 20 }}>
+                        <Pie
+                          data={categoryData as any}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -643,6 +1117,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       <Tooltip />
                     </PieChart>
                   </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -669,23 +1144,37 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {recentUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="text-neutral-900">
-                          {user.name}
-                        </TableCell>
-                        <TableCell className="text-neutral-600">
-                          {user.email}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(user.joined).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>{user.orders}</TableCell>
-                        <TableCell className="text-right">
-                          {formatPrice(user.spent)}
+                    {isLoadingDashboard ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8">
+                          <Loader2 className="animate-spin text-orange-500 mx-auto" size={24} />
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : recentUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-neutral-500">
+                          {t('admin.noRecentUsers', 'No recent users')}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      recentUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="text-neutral-900">
+                            {user.name}
+                          </TableCell>
+                          <TableCell className="text-neutral-600">
+                            {user.email}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(user.joined).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>{user.orders}</TableCell>
+                          <TableCell className="text-right">
+                            {formatPrice(user.spent)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -696,105 +1185,269 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <TabsContent value="events">
             <Card>
               <CardHeader>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
-                    <CardTitle>{t("admin.allEvents")}</CardTitle>
-                    <CardDescription>{t("admin.manageEvents")}</CardDescription>
-                  </div>
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <div className="relative flex-1 sm:w-64">
-                      <Search
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                        size={16}
-                      />
-                      <Input
-                        placeholder={t("admin.searchEvents")}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
-                    <Select
-                      value={statusFilter}
-                      onValueChange={setStatusFilter}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">
-                          {t("admin.allStatus")}
-                        </SelectItem>
-                        <SelectItem value="active">
-                          {t("admin.active")}
-                        </SelectItem>
-                        <SelectItem value="pending">
-                          {t("admin.pending")}
-                        </SelectItem>
-                        <SelectItem value="suspended">
-                          {t("admin.suspended")}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                <CardTitle>{t("admin.allEvents")}</CardTitle>
+                <CardDescription>{t("admin.manageEvents")}</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("admin.event")}</TableHead>
-                      <TableHead>{t("admin.organizer")}</TableHead>
-                      <TableHead>{t("events.date")}</TableHead>
-                      <TableHead>{t("events.category")}</TableHead>
-                      <TableHead>{t("admin.status")}</TableHead>
-                      <TableHead className="text-right">
-                        {t("admin.actions")}
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockEvents.map((event) => (
-                      <TableRow key={event.id}>
-                        <TableCell>
-                          <div>
-                            <div className="text-neutral-900">
-                              {event.title}
-                            </div>
-                            <div className="text-sm text-neutral-500">
-                              {event.venue}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>LiveNation VN</TableCell>
-                        <TableCell>
-                          {new Date(event.date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{event.category}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className="bg-green-100 text-green-700">
-                            {event.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onNavigate("event-detail", event.id)}
-                          >
-                            {t("common.view")}
-                          </Button>
-                        </TableCell>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <Search
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                      size={16}
+                    />
+                    <Input
+                      placeholder={t("admin.searchEvents")}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select
+                    value={eventDateFilter}
+                    onValueChange={setEventDateFilter}
+                  >
+                    <SelectTrigger className="w-36">
+                      <SelectValue placeholder={t("admin.filterByDate", "Lọc theo ngày")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {t("admin.allDates", "Tất cả ngày")}
+                      </SelectItem>
+                      <SelectItem value="today">
+                        {t("admin.today", "Hôm nay")}
+                      </SelectItem>
+                      <SelectItem value="thisWeek">
+                        {t("admin.thisWeek", "Tuần này")}
+                      </SelectItem>
+                      <SelectItem value="thisMonth">
+                        {t("admin.thisMonth", "Tháng này")}
+                      </SelectItem>
+                      <SelectItem value="upcoming">
+                        {t("admin.upcoming", "Sắp diễn ra")}
+                      </SelectItem>
+                      <SelectItem value="past">
+                        {t("admin.past", "Đã qua")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={setStatusFilter}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {t("admin.allStatus")}
+                      </SelectItem>
+                      <SelectItem value="active">
+                        {t("admin.active")}
+                      </SelectItem>
+                      <SelectItem value="pending">
+                        {t("admin.pending")}
+                      </SelectItem>
+                      <SelectItem value="suspended">
+                        {t("admin.suspended")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="text-sm text-neutral-600 whitespace-nowrap">
+                    Total: {pendingEvents.length} {t("admin.events", "Events")}
+                  </div>
+                </div>
+                {isLoadingEvents ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-orange-500" />
+                    <p className="text-neutral-600 mt-2">{t('common.loading', 'Đang tải...')}</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("admin.event")}</TableHead>
+                        <TableHead>{t("admin.organizer")}</TableHead>
+                        <TableHead>{t("events.date")}</TableHead>
+                        <TableHead className="text-center">{t("events.category")}</TableHead>
+                        <TableHead className="text-center">{t("admin.status")}</TableHead>
+                        <TableHead className="text-center">
+                          {t("admin.actions")}
+                        </TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingEvents.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-neutral-500">
+                            {t('admin.noEventsFound', 'Không tìm thấy sự kiện')}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        pendingEvents
+                          .filter((event: any) => {
+                            const matchesSearch = !searchTerm || 
+                              event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                              event.location?.toLowerCase().includes(searchTerm.toLowerCase());
+                            const matchesStatus = statusFilter === "all" || 
+                              (statusFilter === "pending" && event.status === 0) ||
+                              (statusFilter === "active" && (event.status === 1 || event.status === 3));
+                            
+                            // Date filter logic
+                            let matchesDate = true;
+                            if (eventDateFilter !== "all" && event.date) {
+                              const eventDate = new Date(event.date);
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              
+                              switch (eventDateFilter) {
+                                case "today":
+                                  const todayEnd = new Date(today);
+                                  todayEnd.setHours(23, 59, 59, 999);
+                                  matchesDate = eventDate >= today && eventDate <= todayEnd;
+                                  break;
+                                case "thisWeek":
+                                  const weekStart = new Date(today);
+                                  weekStart.setDate(today.getDate() - today.getDay());
+                                  const weekEnd = new Date(weekStart);
+                                  weekEnd.setDate(weekStart.getDate() + 6);
+                                  weekEnd.setHours(23, 59, 59, 999);
+                                  matchesDate = eventDate >= weekStart && eventDate <= weekEnd;
+                                  break;
+                                case "thisMonth":
+                                  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                                  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                                  monthEnd.setHours(23, 59, 59, 999);
+                                  matchesDate = eventDate >= monthStart && eventDate <= monthEnd;
+                                  break;
+                                case "upcoming":
+                                  matchesDate = eventDate >= today;
+                                  break;
+                                case "past":
+                                  matchesDate = eventDate < today;
+                                  break;
+                              }
+                            }
+                            
+                            return matchesSearch && matchesStatus && matchesDate;
+                          })
+                          .slice((eventPage - 1) * eventPageSize, eventPage * eventPageSize)
+                          .map((event: any, index: number) => (
+                            <TableRow key={event.id || `pending-event-${index}`}>
+                              <TableCell>
+                                <div>
+                                  <div className="text-neutral-900">
+                                    {event.title}
+                                  </div>
+                                  <div className="text-sm text-neutral-500">
+                                    {event.location}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {event.organizer?.companyName || event.organizer?.user?.fullName || "N/A"}
+                              </TableCell>
+                              <TableCell>
+                                {new Date(event.startDate).toLocaleDateString("vi-VN", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge className="bg-purple-50 text-purple-700 border-purple-200">{event.category?.name ? translateCategory(event.category.name) : "N/A"}</Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {getEventStatusBadge(event.status)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onNavigate("event-detail", event.id.toString())}
+                                >
+                                  <Eye size={16} className="mr-1" />
+                                  {t("common.view")}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+                {!isLoadingEvents && pendingEvents.length > 0 && (() => {
+                  const filteredEvents = pendingEvents.filter((event: any) => {
+                    const matchesSearch = !searchTerm || 
+                      event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      event.location?.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchesStatus = statusFilter === "all" || 
+                      (statusFilter === "pending" && event.status === 0) ||
+                      (statusFilter === "active" && (event.status === 1 || event.status === 3));
+                    
+                    let matchesDate = true;
+                    if (eventDateFilter !== "all" && event.date) {
+                      const eventDate = new Date(event.date);
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      
+                      switch (eventDateFilter) {
+                        case "today":
+                          const todayEnd = new Date(today);
+                          todayEnd.setHours(23, 59, 59, 999);
+                          matchesDate = eventDate >= today && eventDate <= todayEnd;
+                          break;
+                        case "thisWeek":
+                          const weekStart = new Date(today);
+                          weekStart.setDate(today.getDate() - today.getDay());
+                          const weekEnd = new Date(weekStart);
+                          weekEnd.setDate(weekStart.getDate() + 6);
+                          weekEnd.setHours(23, 59, 59, 999);
+                          matchesDate = eventDate >= weekStart && eventDate <= weekEnd;
+                          break;
+                        case "thisMonth":
+                          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                          const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                          monthEnd.setHours(23, 59, 59, 999);
+                          matchesDate = eventDate >= monthStart && eventDate <= monthEnd;
+                          break;
+                        case "upcoming":
+                          matchesDate = eventDate >= today;
+                          break;
+                        case "past":
+                          matchesDate = eventDate < today;
+                          break;
+                      }
+                    }
+                    
+                    return matchesSearch && matchesStatus && matchesDate;
+                  });
+                  
+                  const totalPages = Math.ceil(filteredEvents.length / eventPageSize);
+                  
+                  return totalPages >= 1 ? (
+                    <div className="flex items-center justify-center gap-2 mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEventPage(p => Math.max(1, p - 1))}
+                        disabled={eventPage === 1}
+                      >
+                        <ChevronLeft size={16} />
+                      </Button>
+                      <span className="text-sm text-neutral-600">
+                        {eventPage} / {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEventPage(p => Math.min(totalPages, p + 1))}
+                        disabled={eventPage === totalPages}
+                      >
+                        <ChevronRight size={16} />
+                      </Button>
+                    </div>
+                  ) : null;
+                })()}
               </CardContent>
             </Card>
           </TabsContent>
@@ -817,19 +1470,118 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 {isLoadingEvents ? (
                   <div className="text-center py-8">
                     <p className="text-neutral-600">
-                      Loading pending events...
+                      {t('admin.loadingPendingEvents', 'Loading pending events...')}
                     </p>
                   </div>
-                ) : pendingEvents.length === 0 ? (
+                ) : !allEvents || allEvents.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-neutral-600">No pending events found</p>
+                    <p className="text-neutral-600">{t('admin.noPendingEvents', 'No pending events found')}</p>
                   </div>
                 ) : (
                   <>
-                    <div className="mb-4">
-                      <p className="text-sm text-neutral-600">
-                        Total: {pendingEvents.length} pending events
-                      </p>
+                    {/* Search and Filter Bar */}
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <Search
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                          size={16}
+                        />
+                        <Input
+                          placeholder={t('admin.searchEvents', 'Tìm kiếm sự kiện...')}
+                          value={eventSearchTerm}
+                          onChange={(e) => setEventSearchTerm(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                      <Select
+                        value={eventDateFilter}
+                        onValueChange={setEventDateFilter}
+                      >
+                        <SelectTrigger className="w-36">
+                          <SelectValue placeholder={t("admin.filterByDate", "Lọc theo ngày")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            {t("admin.allDates", "Tất cả ngày")}
+                          </SelectItem>
+                          <SelectItem value="today">
+                            {t("admin.today", "Hôm nay")}
+                          </SelectItem>
+                          <SelectItem value="thisWeek">
+                            {t("admin.thisWeek", "Tuần này")}
+                          </SelectItem>
+                          <SelectItem value="thisMonth">
+                            {t("admin.thisMonth", "Tháng này")}
+                          </SelectItem>
+                          <SelectItem value="upcoming">
+                            {t("admin.upcoming", "Sắp diễn ra")}
+                          </SelectItem>
+                          <SelectItem value="past">
+                            {t("admin.past", "Đã qua")}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={eventStatusFilter} onValueChange={setEventStatusFilter}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder={t('admin.status')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">{t('common.all', 'Tất cả')}</SelectItem>
+                          <SelectItem value="0">{t('admin.pending', 'Pending')}</SelectItem>
+                          <SelectItem value="1">{t('admin.approved', 'Approved')}</SelectItem>
+                          <SelectItem value="2">{t('admin.rejected', 'Rejected')}</SelectItem>
+                          <SelectItem value="3">{t('admin.published', 'Published')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="text-sm text-neutral-600 whitespace-nowrap">
+                        {t('admin.total')}: {
+                          allEvents.filter(event => {
+                            const matchesSearch = !eventSearchTerm || 
+                              event.title?.toLowerCase().includes(eventSearchTerm.toLowerCase()) ||
+                              event.location?.toLowerCase().includes(eventSearchTerm.toLowerCase());
+                            const matchesStatus = eventStatusFilter === 'all' || 
+                              event.status?.toString() === eventStatusFilter;
+                            
+                            // Date filter
+                            let matchesDate = true;
+                            if (eventDateFilter !== 'all' && event.startDate) {
+                              const eventDate = new Date(event.startDate);
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              
+                              switch (eventDateFilter) {
+                                case 'today':
+                                  const todayEnd = new Date(today);
+                                  todayEnd.setHours(23, 59, 59, 999);
+                                  matchesDate = eventDate >= today && eventDate <= todayEnd;
+                                  break;
+                                case 'thisWeek':
+                                  const weekStart = new Date(today);
+                                  weekStart.setDate(today.getDate() - today.getDay());
+                                  const weekEnd = new Date(weekStart);
+                                  weekEnd.setDate(weekStart.getDate() + 6);
+                                  weekEnd.setHours(23, 59, 59, 999);
+                                  matchesDate = eventDate >= weekStart && eventDate <= weekEnd;
+                                  break;
+                                case 'thisMonth':
+                                  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                                  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                                  monthEnd.setHours(23, 59, 59, 999);
+                                  matchesDate = eventDate >= monthStart && eventDate <= monthEnd;
+                                  break;
+                                case 'upcoming':
+                                  matchesDate = eventDate >= today;
+                                  break;
+                                case 'past':
+                                  matchesDate = eventDate < today;
+                                  break;
+                              }
+                            }
+                            
+                            return matchesSearch && matchesStatus && matchesDate;
+                          }).length
+                        } {t('admin.events')}
+                      </div>
                     </div>
                     <Table>
                       <TableHeader>
@@ -838,22 +1590,69 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           <TableHead>{t("admin.event", "Event")}</TableHead>
                           <TableHead>{t("admin.organizer")}</TableHead>
                           <TableHead>{t("events.date")}</TableHead>
-                          <TableHead>{t("events.category")}</TableHead>
-                          <TableHead>Seat Map</TableHead>
-                          <TableHead>{t("admin.status")}</TableHead>
-                          <TableHead className="text-right">
+                          <TableHead className="text-center">{t("events.category")}</TableHead>
+                          <TableHead className="text-center">{t('admin.seatMap')}</TableHead>
+                          <TableHead className="text-center">{t("admin.status")}</TableHead>
+                          <TableHead className="text-center">
                             {t("admin.actions")}
                           </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {pendingEvents.map((event: any) => {
+                        {allEvents
+                          .filter(event => {
+                            const matchesSearch = !eventSearchTerm || 
+                              event.title?.toLowerCase().includes(eventSearchTerm.toLowerCase()) ||
+                              event.location?.toLowerCase().includes(eventSearchTerm.toLowerCase());
+                            const matchesStatus = eventStatusFilter === 'all' || 
+                              event.status?.toString() === eventStatusFilter;
+                            
+                            // Date filter
+                            let matchesDate = true;
+                            if (eventDateFilter !== 'all' && event.startDate) {
+                              const eventDate = new Date(event.startDate);
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              
+                              switch (eventDateFilter) {
+                                case 'today':
+                                  const todayEnd = new Date(today);
+                                  todayEnd.setHours(23, 59, 59, 999);
+                                  matchesDate = eventDate >= today && eventDate <= todayEnd;
+                                  break;
+                                case 'thisWeek':
+                                  const weekStart = new Date(today);
+                                  weekStart.setDate(today.getDate() - today.getDay());
+                                  const weekEnd = new Date(weekStart);
+                                  weekEnd.setDate(weekStart.getDate() + 6);
+                                  weekEnd.setHours(23, 59, 59, 999);
+                                  matchesDate = eventDate >= weekStart && eventDate <= weekEnd;
+                                  break;
+                                case 'thisMonth':
+                                  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                                  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                                  monthEnd.setHours(23, 59, 59, 999);
+                                  matchesDate = eventDate >= monthStart && eventDate <= monthEnd;
+                                  break;
+                                case 'upcoming':
+                                  matchesDate = eventDate >= today;
+                                  break;
+                                case 'past':
+                                  matchesDate = eventDate < today;
+                                  break;
+                              }
+                            }
+                            
+                            return matchesSearch && matchesStatus && matchesDate;
+                          })
+                          .slice((eventPage - 1) * eventPageSize, eventPage * eventPageSize)
+                          .map((event: any, index: number) => {
                           const hasSeatMap =
                             eventSeatMapStatus[event.id] === true;
                           return (
-                            <TableRow key={event.id}>
+                            <TableRow key={event.id || `event-${index}`}>
                               <TableCell className="font-medium">
-                                #{event.id}
+                                {event.id}
                               </TableCell>
                               <TableCell>
                                 <div>
@@ -875,92 +1674,170 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                                   "vi-VN"
                                 )}
                               </TableCell>
-                              <TableCell>
-                                <Badge variant="outline">
-                                  {event.category?.name || "N/A"}
+                              <TableCell className="text-center">
+                                <Badge className="bg-purple-50 text-purple-700 border-purple-200">
+                                  {event.category?.name ? translateCategory(event.category.name) : "N/A"}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="text-center">
                                 {hasSeatMap ? (
-                                  <Badge className="bg-green-100 text-green-700">
+                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">
                                     <CheckCircle size={12} className="mr-1" />
-                                    Created
+                                    {t('admin.created', 'Created')}
                                   </Badge>
                                 ) : (
-                                  <Badge className="bg-red-100 text-red-700">
+                                  <Badge className="bg-orange-50 text-orange-700 border-orange-200">
                                     <AlertCircle size={12} className="mr-1" />
-                                    Missing
+                                    {t('admin.missing')}
                                   </Badge>
                                 )}
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="text-center">
                                 {getEventStatusBadge(event.status)}
                               </TableCell>
-                              <TableCell className="text-right">
-                                {event.status === 0 && ( // Pending status
-                                  <div className="flex gap-2 justify-end">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="text-green-600 border-green-600 hover:bg-green-50"
-                                      onClick={() =>
-                                        handleApproveEvent(event.id)
-                                      }
-                                      disabled={
-                                        !hasSeatMap ||
-                                        isApprovingEvent === event.id ||
-                                        isRejectingEvent === event.id
-                                      }
-                                      title={
-                                        !hasSeatMap
-                                          ? "Seat map is required before approval"
-                                          : ""
-                                      }
-                                    >
-                                      {isApprovingEvent === event.id ? (
-                                        <>
-                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                          {t(
-                                            "admin.approving",
-                                            "Đang duyệt..."
-                                          )}
-                                        </>
-                                      ) : (
-                                        t("admin.approve")
-                                      )}
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="text-red-600 border-red-600 hover:bg-red-50"
-                                      onClick={() =>
-                                        handleRejectEvent(event.id)
-                                      }
-                                      disabled={
-                                        isApprovingEvent === event.id ||
-                                        isRejectingEvent === event.id
-                                      }
-                                    >
-                                      {isRejectingEvent === event.id ? (
-                                        <>
-                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                          {t(
-                                            "admin.rejecting",
-                                            "Đang từ chối..."
-                                          )}
-                                        </>
-                                      ) : (
-                                        t("admin.reject")
-                                      )}
-                                    </Button>
-                                  </div>
-                                )}
+                              <TableCell className="text-center">
+                                <div className="flex gap-2 justify-center">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => event.id && onNavigate("event-detail", event.id.toString())}
+                                    disabled={!event.id}
+                                  >
+                                    <Eye size={14} className="mr-1" />
+                                    {t("common.view")}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-600 border-green-600 hover:bg-green-50"
+                                    onClick={() => handleApproveEvent(event.id)}
+                                    disabled={
+                                      event.status !== 0 ||
+                                      !hasSeatMap ||
+                                      isApprovingEvent === event.id ||
+                                      isRejectingEvent === event.id
+                                    }
+                                    title={
+                                      event.status !== 0
+                                        ? t("admin.alreadyProcessed", "Đã xử lý")
+                                        : !hasSeatMap
+                                        ? t("admin.seatMapRequired", "Cần có sơ đồ chỗ ngồi")
+                                        : ""
+                                    }
+                                  >
+                                    {isApprovingEvent === event.id ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        {t("admin.approving", "Đang duyệt...")}
+                                      </>
+                                    ) : (
+                                      t("admin.approve")
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600 border-red-600 hover:bg-red-50"
+                                    onClick={() => handleRejectEvent(event.id)}
+                                    disabled={
+                                      event.status !== 0 ||
+                                      isApprovingEvent === event.id ||
+                                      isRejectingEvent === event.id
+                                    }
+                                    title={
+                                      event.status !== 0
+                                        ? t("admin.alreadyProcessed", "Đã xử lý")
+                                        : ""
+                                    }
+                                  >
+                                    {isRejectingEvent === event.id ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        {t("admin.rejecting", "Đang từ chối...")}
+                                      </>
+                                    ) : (
+                                      t("admin.reject")
+                                    )}
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
                         })}
                       </TableBody>
                     </Table>
+                    {(() => {
+                      const filteredEvents = allEvents.filter(event => {
+                        const matchesSearch = !eventSearchTerm || 
+                          event.title?.toLowerCase().includes(eventSearchTerm.toLowerCase()) ||
+                          event.location?.toLowerCase().includes(eventSearchTerm.toLowerCase());
+                        const matchesStatus = eventStatusFilter === 'all' || 
+                          event.status?.toString() === eventStatusFilter;
+                        
+                        let matchesDate = true;
+                        if (eventDateFilter !== 'all' && event.startDate) {
+                          const eventDate = new Date(event.startDate);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          
+                          switch (eventDateFilter) {
+                            case 'today':
+                              const todayEnd = new Date(today);
+                              todayEnd.setHours(23, 59, 59, 999);
+                              matchesDate = eventDate >= today && eventDate <= todayEnd;
+                              break;
+                            case 'thisWeek':
+                              const weekStart = new Date(today);
+                              weekStart.setDate(today.getDate() - today.getDay());
+                              const weekEnd = new Date(weekStart);
+                              weekEnd.setDate(weekStart.getDate() + 6);
+                              weekEnd.setHours(23, 59, 59, 999);
+                              matchesDate = eventDate >= weekStart && eventDate <= weekEnd;
+                              break;
+                            case 'thisMonth':
+                              const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                              const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                              monthEnd.setHours(23, 59, 59, 999);
+                              matchesDate = eventDate >= monthStart && eventDate <= monthEnd;
+                              break;
+                            case 'upcoming':
+                              matchesDate = eventDate >= today;
+                              break;
+                            case 'past':
+                              matchesDate = eventDate < today;
+                              break;
+                          }
+                        }
+                        
+                        return matchesSearch && matchesStatus && matchesDate;
+                      });
+                      
+                      const totalPages = Math.ceil(filteredEvents.length / eventPageSize);
+                      
+                      return totalPages >= 1 ? (
+                        <div className="flex items-center justify-center gap-2 mt-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEventPage(p => Math.max(1, p - 1))}
+                            disabled={eventPage === 1}
+                          >
+                            <ChevronLeft size={16} />
+                          </Button>
+                          <span className="text-sm text-neutral-600">
+                            {eventPage} / {totalPages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEventPage(p => Math.min(totalPages, p + 1))}
+                            disabled={eventPage === totalPages}
+                          >
+                            <ChevronRight size={16} />
+                          </Button>
+                        </div>
+                      ) : null;
+                    })()}
                   </>
                 )}
               </CardContent>
@@ -1052,27 +1929,84 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               <CardContent>
                 {isLoadingRequests ? (
                   <div className="text-center py-8">
-                    <p className="text-neutral-600">Loading requests...</p>
+                    <p className="text-neutral-600">{t('admin.loadingRequests', 'Loading requests...')}</p>
                   </div>
-                ) : organizerRequests.length === 0 ? (
+                ) : !organizerRequests || organizerRequests.length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-neutral-600">
-                      No organizer requests found
+                      {t('admin.noOrganizerRequests', 'No organizer requests found')}
                     </p>
                   </div>
                 ) : (
                   <>
-                    <div className="mb-4 flex items-center justify-between">
-                      <p className="text-sm text-neutral-600">
-                        Total: {organizerRequests.length} requests
-                        {" | "}
-                        Pending:{" "}
-                        {
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <Search
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                          size={16}
+                        />
+                        <Input
+                          placeholder={t("admin.searchOrganizers", "Tìm kiếm...")}
+                          value={organizerSearchTerm}
+                          onChange={(e) => setOrganizerSearchTerm(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                      <Select
+                        value={organizerDateFilter}
+                        onValueChange={setOrganizerDateFilter}
+                      >
+                        <SelectTrigger className="w-36">
+                          <SelectValue placeholder={t("admin.filterByDate", "Lọc theo ngày")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            {t("admin.allDates", "Tất cả ngày")}
+                          </SelectItem>
+                          <SelectItem value="today">
+                            {t("admin.today", "Hôm nay")}
+                          </SelectItem>
+                          <SelectItem value="thisWeek">
+                            {t("admin.thisWeek", "Tuần này")}
+                          </SelectItem>
+                          <SelectItem value="thisMonth">
+                            {t("admin.thisMonth", "Tháng này")}
+                          </SelectItem>
+                          <SelectItem value="past">
+                            {t("admin.past", "Đã qua")}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={organizerStatusFilter}
+                        onValueChange={setOrganizerStatusFilter}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder={t("admin.status", "Status")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            {t("admin.allStatus", "Tất cả")}
+                          </SelectItem>
+                          <SelectItem value="pending">
+                            {t("admin.pending", "Pending")}
+                          </SelectItem>
+                          <SelectItem value="approved">
+                            {t("admin.approved", "Approved")}
+                          </SelectItem>
+                          <SelectItem value="rejected">
+                            {t("admin.rejected", "Rejected")}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="text-sm text-neutral-600 whitespace-nowrap">
+                        {t('admin.total')}: {organizerRequests.length} | 
+                        {t('admin.pending')}: {
                           organizerRequests.filter(
                             (r) => r.status.toLowerCase() === "pending"
                           ).length
                         }
-                      </p>
+                      </div>
                     </div>
                     <Table>
                       <TableHeader>
@@ -1097,7 +2031,62 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {organizerRequests.map((request) => (
+                        {organizerRequests.filter((request) => {
+                          // Search filter
+                          const matchesSearch = !organizerSearchTerm || 
+                            request.user?.fullName?.toLowerCase().includes(organizerSearchTerm.toLowerCase()) ||
+                            request.user?.email?.toLowerCase().includes(organizerSearchTerm.toLowerCase()) ||
+                            request.organizationName?.toLowerCase().includes(organizerSearchTerm.toLowerCase());
+                          
+                          // Status filter
+                          const matchesStatus = organizerStatusFilter === 'all' || 
+                            request.status.toLowerCase() === organizerStatusFilter.toLowerCase();
+                          
+                          // Date filter
+                          let matchesDate = true;
+                          if (organizerDateFilter !== 'all') {
+                            const requestDate = new Date(request.requestedAt);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+
+                            switch (organizerDateFilter) {
+                              case 'today':
+                                const todayEnd = new Date(today);
+                                todayEnd.setHours(23, 59, 59, 999);
+                                if (requestDate < today || requestDate > todayEnd) {
+                                  return false;
+                                }
+                                break;
+                              case 'thisWeek':
+                                const weekStart = new Date(today);
+                                weekStart.setDate(today.getDate() - today.getDay());
+                                const weekEnd = new Date(weekStart);
+                                weekEnd.setDate(weekStart.getDate() + 6);
+                                weekEnd.setHours(23, 59, 59, 999);
+                                if (requestDate < weekStart || requestDate > weekEnd) {
+                                  return false;
+                                }
+                                break;
+                              case 'thisMonth':
+                                const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                                const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                                monthEnd.setHours(23, 59, 59, 999);
+                                if (requestDate < monthStart || requestDate > monthEnd) {
+                                  return false;
+                                }
+                                break;
+                              case 'past':
+                                if (requestDate >= today) {
+                                  return false;
+                                }
+                                break;
+                            }
+                          }
+                          
+                          return matchesSearch && matchesStatus && matchesDate;
+                        })
+                        .slice((organizerPage - 1) * organizerPageSize, organizerPage * organizerPageSize)
+                        .map((request) => (
                           <TableRow key={request.requestId}>
                             <TableCell className="font-medium">
                               #{request.requestId}
@@ -1193,6 +2182,80 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         ))}
                       </TableBody>
                     </Table>
+                    {(() => {
+                      const filteredRequests = organizerRequests.filter((request) => {
+                        // Search filter
+                        const matchesSearch = !organizerSearchTerm || 
+                          request.user?.fullName?.toLowerCase().includes(organizerSearchTerm.toLowerCase()) ||
+                          request.user?.email?.toLowerCase().includes(organizerSearchTerm.toLowerCase()) ||
+                          request.organizationName?.toLowerCase().includes(organizerSearchTerm.toLowerCase());
+                        
+                        // Status filter
+                        const matchesStatus = organizerStatusFilter === 'all' || 
+                          request.status.toLowerCase() === organizerStatusFilter.toLowerCase();
+                        
+                        // Date filter
+                        let matchesDate = true;
+                        if (organizerDateFilter !== 'all') {
+                          const requestDate = new Date(request.requestedAt);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+
+                          switch (organizerDateFilter) {
+                            case 'today':
+                              const todayEnd = new Date(today);
+                              todayEnd.setHours(23, 59, 59, 999);
+                              matchesDate = requestDate >= today && requestDate <= todayEnd;
+                              break;
+                            case 'thisWeek':
+                              const weekStart = new Date(today);
+                              weekStart.setDate(today.getDate() - today.getDay());
+                              const weekEnd = new Date(weekStart);
+                              weekEnd.setDate(weekStart.getDate() + 6);
+                              weekEnd.setHours(23, 59, 59, 999);
+                              matchesDate = requestDate >= weekStart && requestDate <= weekEnd;
+                              break;
+                            case 'thisMonth':
+                              const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                              const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                              monthEnd.setHours(23, 59, 59, 999);
+                              matchesDate = requestDate >= monthStart && requestDate <= monthEnd;
+                              break;
+                            case 'past':
+                              matchesDate = requestDate < today;
+                              break;
+                          }
+                        }
+                        
+                        return matchesSearch && matchesStatus && matchesDate;
+                      });
+                      
+                      const totalPages = Math.ceil(filteredRequests.length / organizerPageSize);
+                      
+                      return totalPages >= 1 ? (
+                        <div className="flex items-center justify-center gap-2 mt-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setOrganizerPage(p => Math.max(1, p - 1))}
+                            disabled={organizerPage === 1}
+                          >
+                            <ChevronLeft size={16} />
+                          </Button>
+                          <span className="text-sm text-neutral-600">
+                            {organizerPage} / {totalPages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setOrganizerPage(p => Math.min(totalPages, p + 1))}
+                            disabled={organizerPage === totalPages}
+                          >
+                            <ChevronRight size={16} />
+                          </Button>
+                        </div>
+                      ) : null;
+                    })()}
                   </>
                 )}
               </CardContent>
@@ -1203,63 +2266,243 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <TabsContent value="users">
             <Card>
               <CardHeader>
-                <CardTitle>{t("admin.platformUsers")}</CardTitle>
-                <CardDescription>
-                  {t(
-                    "admin.platformUsersDesc",
-                    "Manage platform users and activity"
-                  )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4">
-                  <div className="relative">
-                    <Search
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                      size={16}
-                    />
-                    <Input
-                      placeholder={t("admin.searchUsers")}
-                      className="pl-9"
-                    />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle>{t('admin.platformUsers')}</CardTitle>
+                    <CardDescription>{t('admin.platformUsersDesc', 'Manage platform users and activity')}</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-neutral-500">
+                      {t('admin.totalUsers')}: {userTotalCount}
+                    </span>
                   </div>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("admin.user")}</TableHead>
-                      <TableHead>{t("admin.email")}</TableHead>
-                      <TableHead>{t("admin.joined")}</TableHead>
-                      <TableHead>{t("admin.orders")}</TableHead>
-                      <TableHead>{t("admin.totalSpent")}</TableHead>
-                      <TableHead className="text-right">
-                        {t("admin.actions")}
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="text-neutral-900">
-                          {user.name}
-                        </TableCell>
-                        <TableCell className="text-neutral-600">
-                          {user.email}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(user.joined).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>{user.orders}</TableCell>
-                        <TableCell>{formatPrice(user.spent)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">
-                            {t("common.view")}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              </CardHeader>
+              <CardContent>
+                {/* Search and Filters */}
+                <div className="mb-4 space-y-4">
+                  {/* Search bar */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                    <Input
+                      placeholder={t('admin.searchUsers', 'Tìm kiếm người dùng theo tên, email...')}
+                      value={userSearchTerm}
+                      onChange={(e) => handleUserSearch(e.target.value)}
+                      className="pl-9 w-full"
+                    />
+                  </div>
+                  {/* Filters row */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Select value={userRoleFilter} onValueChange={(value) => { setUserRoleFilter(value); setUserPageNumber(1); }}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder={t('admin.filterByRole', 'Lọc vai trò')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('admin.allRoles', 'Tất cả vai trò')}</SelectItem>
+                        <SelectItem value="Admin">Admin</SelectItem>
+                        <SelectItem value="Staff">Staff</SelectItem>
+                        <SelectItem value="Organizer">Organizer</SelectItem>
+                        <SelectItem value="Customer">Customer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={userStatusFilter} onValueChange={(value) => { setUserStatusFilter(value); setUserPageNumber(1); }}>
+                      <SelectTrigger className="w-full sm:w-[160px]">
+                        <SelectValue placeholder={t('admin.filterByStatus', 'Lọc trạng thái')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('admin.allStatus', 'Tất cả')}</SelectItem>
+                        <SelectItem value="active">{t('admin.active', 'Hoạt động')}</SelectItem>
+                        <SelectItem value="inactive">{t('admin.inactive', 'Vô hiệu')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={userEmailVerifiedFilter} onValueChange={(value) => { setUserEmailVerifiedFilter(value); setUserPageNumber(1); }}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder={t('admin.filterByEmail', 'Lọc email')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('admin.allEmails', 'Tất cả')}</SelectItem>
+                        <SelectItem value="verified">{t('admin.verified', 'Đã xác thực')}</SelectItem>
+                        <SelectItem value="unverified">{t('admin.unverified', 'Chưa xác thực')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Active Filters Display */}
+                  {(userRoleFilter !== 'all' || userStatusFilter !== 'all' || userEmailVerifiedFilter !== 'all') && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-neutral-500">{t('admin.filter', 'Bộ lọc')}:</span>
+                      {userRoleFilter !== 'all' && (
+                        <Badge variant="outline" className="gap-1">
+                          {t('admin.role', 'Vai trò')}: {userRoleFilter}
+                          <button onClick={() => setUserRoleFilter('all')} className="ml-1 hover:text-red-600">
+                            <XCircle size={14} />
+                          </button>
+                        </Badge>
+                      )}
+                      {userStatusFilter !== 'all' && (
+                        <Badge variant="outline" className="gap-1">
+                          {t('admin.status')}: {userStatusFilter === 'active' ? t('admin.active', 'Hoạt động') : t('admin.inactive', 'Vô hiệu')}
+                          <button onClick={() => setUserStatusFilter('all')} className="ml-1 hover:text-red-600">
+                            <XCircle size={14} />
+                          </button>
+                        </Badge>
+                      )}
+                      {userEmailVerifiedFilter !== 'all' && (
+                        <Badge variant="outline" className="gap-1">
+                          Email: {userEmailVerifiedFilter === 'verified' ? t('admin.verified', 'Đã xác thực') : t('admin.unverified', 'Chưa xác thực')}
+                          <button onClick={() => setUserEmailVerifiedFilter('all')} className="ml-1 hover:text-red-600">
+                            <XCircle size={14} />
+                          </button>
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setUserRoleFilter('all');
+                          setUserStatusFilter('all');
+                          setUserEmailVerifiedFilter('all');
+                          setUserPageNumber(1);
+                        }}
+                        className="text-orange-600 hover:text-orange-700"
+                      >
+                        {t('admin.clearFilters', 'Xóa tất cả')}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {isLoadingUsers ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-orange-500" />
+                    <p className="text-neutral-600 mt-2">{t('common.loading', 'Đang tải...')}</p>
+                  </div>
+                ) : users.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="mx-auto h-12 w-12 text-neutral-400" />
+                    <p className="text-neutral-600 mt-2">{t('admin.noUsersFound', 'Không tìm thấy người dùng')}</p>
+                  </div>
+                ) : (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>{t('admin.user')}</TableHead>
+                          <TableHead>{t('admin.email')}</TableHead>
+                          <TableHead>{t('admin.role', 'Vai trò')}</TableHead>
+                          <TableHead>{t('admin.status')}</TableHead>
+                          <TableHead>{t('admin.emailVerified', 'Xác thực Email')}</TableHead>
+                          <TableHead>{t('admin.joined')}</TableHead>
+                          <TableHead className='text-center'>{t('admin.actions')}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map((user) => (
+                          <TableRow key={user.userId}>
+                            <TableCell className="font-medium">#{user.userId}</TableCell>
+                            <TableCell className="text-neutral-900">{user.fullName}</TableCell>
+                            <TableCell className="text-neutral-600">{user.email}</TableCell>
+                            <TableCell>{getUserRoleBadge(user.roles || [user.role])}</TableCell>
+                            <TableCell>{getUserStatusBadge(user.isActive)}</TableCell>
+                            <TableCell>
+                              {user.emailVerified ? (
+                                <Badge className="bg-green-100 text-green-700">
+                                  <CheckCircle size={12} className="mr-1" />
+                                  {t('admin.verified', 'Đã xác thực')}
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-yellow-100 text-yellow-700">
+                                  <Clock size={12} className="mr-1" />
+                                  {t('admin.unverified', 'Chưa xác thực')}
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(user.createdAt).toLocaleDateString('vi-VN')}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {(() => {
+                                const isCurrentUser = currentAdminId === user.userId;
+                                return (
+                                  <div className="flex gap-2 justify-end">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleViewUserDetail(user.userId)}
+                                    >
+                                      <Eye size={16} className="mr-1" />
+                                      {t('common.view')}
+                                    </Button>
+                                    {!isCurrentUser && (
+                                      <>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleToggleUserStatus(user.userId)}
+                                          disabled={isTogglingStatus === user.userId}
+                                          className={user.isActive ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'}
+                                        >
+                                          {isTogglingStatus === user.userId ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <>
+                                              {user.isActive ? t('admin.deactivate', 'Vô hiệu hóa') : t('admin.activate', 'Kích hoạt')}
+                                            </>
+                                          )}
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            setUserToAssignRole(user);
+                                            setShowAssignRoleDialog(true);
+                                          }}
+                                          className="text-blue-600 hover:text-blue-700"
+                                        >
+                                          {t('admin.assignRole', 'Gán vai trò')}
+                                        </Button>
+                                      </>
+                                    )}
+                                    {isCurrentUser && (
+                                      <Badge className="bg-blue-100 text-blue-700">
+                                        {t('admin.you', 'Bạn')}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    {userTotalPages >= 1 && (
+                      <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setUserPageNumber((prev) => Math.max(1, prev - 1))}
+                          disabled={userPageNumber === 1}
+                        >
+                          <ChevronLeft size={16} />
+                        </Button>
+                        <span className="text-sm text-neutral-600">
+                          {userPageNumber} / {userTotalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setUserPageNumber((prev) => Math.min(userTotalPages, prev + 1))}
+                          disabled={userPageNumber === userTotalPages}
+                        >
+                          <ChevronRight size={16} />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1268,9 +2511,9 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <TabsContent value="payouts">
             <Card>
               <CardHeader>
-                <CardTitle>Payout Management</CardTitle>
+                <CardTitle>{t('admin.payoutManagement', 'Payout Management')}</CardTitle>
                 <CardDescription>
-                  Review and approve organizer payout requests
+                  {t('admin.reviewPayoutRequests', 'Review and approve organizer payout requests')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1280,70 +2523,178 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </TabsContent>
 
           {/* Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t("admin.userGrowth")}</CardTitle>
-                  <CardDescription>
-                    {t("admin.monthlyRegistrations")}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={revenueTrend}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="users" fill="#f97316" />
-                    </BarChart>
-                  </ResponsiveContainer>
+          <TabsContent value="analytics">
+            {isLoadingAnalytics ? (
+              <div className="flex items-center justify-center h-96">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+                  <p className="text-neutral-500">{t("admin.loadingAnalytics", "Đang tải dữ liệu phân tích...")}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Revenue by Event - Bar Chart */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      {t("admin.revenueByEvent", "Doanh thu theo sự kiện")}
+                    </CardTitle>
+                    <CardDescription>
+                      {t("admin.eventComparison", "So sánh hiệu suất sự kiện")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {analyticsEvents && analyticsEvents.filter(e => e.revenue && e.revenue > 0).length > 0 ? (
+                      <ResponsiveContainer width="100%" height={350}>
+                        <BarChart 
+                          data={
+                            analyticsEvents
+                              .filter(e => e.revenue && e.revenue > 0)
+                              .sort((a, b) => (b.revenue || 0) - (a.revenue || 0))
+                              .slice(0, 5)
+                              .map(e => ({
+                                eventId: e.eventId,
+                                title: e.title && e.title.length > 20 ? e.title.substring(0, 20) + '...' : e.title,
+                                revenue: e.revenue || 0,
+                              ticketsSold: e.soldTickets || 0
+                            }))
+                        } 
+                        margin={{ top: 20, right: 30, left: -15, bottom: 25 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="title" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          interval={0}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <YAxis 
+                          width={80}
+                          tickFormatter={(value) => {
+                            const isVietnamese = i18n.language === 'vi';
+                            if (isVietnamese) {
+                              if (value < 1000) {
+                                return value + "₫";
+                              } else if (value < 1000000) {
+                                return (value / 1000).toFixed(0) + "k ₫";
+                              } else if (value < 1000000000) {
+                                return (value / 1000000).toFixed(1).replace(".0", "") + "tr ₫";
+                              } else {
+                                return (value / 1000000000).toFixed(1).replace(".0", "") + "tỷ ₫";
+                              }
+                            } else {
+                              if (value < 1000) {
+                                return value + "VND";
+                              } else if (value < 1000000) {
+                                return (value / 1000).toFixed(0) + "K";
+                              } else if (value < 1000000000) {
+                                return (value / 1000000).toFixed(1).replace(".0", "") + "M";
+                              } else {
+                                return (value / 1000000000).toFixed(1).replace(".0", "") + "B";
+                              }
+                            }
+                          }}
+                        />
+                        <Tooltip
+                          formatter={(value: number) => formatPrice(value)}
+                        />
+                        <Bar dataKey="revenue" fill="#f97316" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[350px] text-neutral-500">
+                      <div className="text-center">
+                        <Calendar className="mx-auto mb-2 text-neutral-300" size={48} />
+                        <p>{t("admin.noRevenueData", "Không có dữ liệu doanh thu")}</p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
+              {/* Ticket Sales Rate */}
               <Card>
                 <CardHeader>
-                  <CardTitle>{t("admin.platformHealth")}</CardTitle>
-                  <CardDescription>{t("admin.keyMetrics")}</CardDescription>
+                  <CardTitle>
+                    {t("admin.salesRate", "Tỷ lệ bán vé")}
+                  </CardTitle>
+                  <CardDescription>
+                    {t("admin.percentageSold", "Phần trăm vé đã bán")}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center p-4 bg-green-50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="text-green-600" size={24} />
-                      <div>
-                        <div className="text-sm text-neutral-600">
-                          {t("admin.uptime")}
-                        </div>
-                        <div className="text-neutral-900">99.9%</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center p-4 bg-blue-50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <Eye className="text-blue-600" size={24} />
-                      <div>
-                        <div className="text-sm text-neutral-600">
-                          {t("admin.pageViews")}
-                        </div>
-                        <div className="text-neutral-900">124.5K</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center p-4 bg-purple-50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <Users className="text-purple-600" size={24} />
-                      <div>
-                        <div className="text-sm text-neutral-600">
-                          {t("admin.conversionRate")}
-                        </div>
-                        <div className="text-neutral-900">3.8%</div>
-                      </div>
-                    </div>
+                <CardContent>
+                  <div className="space-y-3">
+                    {(() => {
+                      // Get events that have sold at least 1 ticket
+                      const eventsWithSales = analyticsEvents.filter(e => e.soldTickets && e.soldTickets > 0);
+
+                      if (eventsWithSales.length === 0) {
+                        return (
+                          <div className="flex items-center justify-center py-12 text-neutral-500">
+                            <div className="text-center">
+                              <Calendar className="mx-auto mb-3 text-neutral-300" size={48} />
+                              <p className="text-base font-medium text-neutral-600">
+                                {t("admin.noTicketsSold", "Chưa có vé nào được bán")}
+                              </p>
+                              <p className="text-sm text-neutral-400 mt-1">
+                                {t("admin.ticketSalesHint", "Dữ liệu bán vé sẽ xuất hiện ở đây khi khách hàng mua vé")}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return eventsWithSales
+                        .sort((a, b) => {
+                          // Sort by tickets sold descending
+                          return (b.soldTickets || 0) - (a.soldTickets || 0);
+                        })
+                        .slice(0, 5)
+                        .map((event) => {
+                          const soldTickets = event.soldTickets || 0;
+                          const totalSeats = event.capacity || 0;
+                          const salesRate = totalSeats > 0
+                            ? ((soldTickets / totalSeats) * 100).toFixed(1)
+                            : "0";
+
+                          return (
+                            <div 
+                              key={event.eventId}
+                              className="hover:bg-neutral-50 p-2.5 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-orange-200"
+                            >
+                              <div className="flex justify-between items-start mb-1.5">
+                                <div className="flex-1 pr-3">
+                                  <span className="text-sm text-neutral-900 font-medium block truncate">
+                                    {event.title}
+                                  </span>
+                                  <span className="text-xs text-neutral-500 mt-0.5 block">
+                                    {soldTickets.toLocaleString()} {t("admin.ticketsSoldLabel", "vé đã bán")}
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-sm font-semibold text-orange-600 whitespace-nowrap">{salesRate}%</span>
+                                  <span className="text-xs text-neutral-500 block mt-0.5 whitespace-nowrap">
+                                    {soldTickets}/{totalSeats}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="w-full bg-neutral-200 rounded-full h-2">
+                                <div
+                                  className="bg-orange-500 h-2 rounded-full transition-all"
+                                  style={{ width: `${salesRate}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        });
+                    })()}
                   </div>
                 </CardContent>
               </Card>
-            </div>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -1396,12 +2747,230 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* User Detail Dialog */}
+      <Dialog open={showUserDetailDialog} onOpenChange={setShowUserDetailDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('admin.userDetail', 'Chi tiết người dùng')}</DialogTitle>
+            <DialogDescription>
+              {t('admin.userDetailDesc', 'Thông tin chi tiết về người dùng')}
+            </DialogDescription>
+          </DialogHeader>
+          {isLoadingUserDetail ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+            </div>
+          ) : selectedUser ? (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-4 pb-4 border-b">
+                <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
+                  <span className="text-orange-600 font-bold text-2xl">
+                    {selectedUser.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">{selectedUser.fullName}</h3>
+                  <p className="text-neutral-500">{selectedUser.email}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-neutral-500">{t('admin.userId', 'ID người dùng')}</Label>
+                  <p className="font-medium">#{selectedUser.userId}</p>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.phoneNumber', 'Số điện thoại')}</Label>
+                  <p className="font-medium">{selectedUser.phoneNumber || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.dateOfBirth', 'Ngày sinh')}</Label>
+                  <p className="font-medium">
+                    {selectedUser.dateOfBirth 
+                      ? new Date(selectedUser.dateOfBirth).toLocaleDateString('vi-VN') 
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.address', 'Địa chỉ')}</Label>
+                  <p className="font-medium">{selectedUser.address || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.role', 'Vai trò')}</Label>
+                  <div className="mt-1">
+                    {getUserRoleBadge(selectedUser.roles || [])}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.status')}</Label>
+                  <div className="mt-1">
+                    {getUserStatusBadge(selectedUser.isActive)}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.emailVerified', 'Email đã xác thực')}</Label>
+                  <div className="mt-1">
+                    {selectedUser.emailVerified ? (
+                      <Badge className="bg-green-100 text-green-700">
+                        <CheckCircle size={12} className="mr-1" />
+                        {t('common.yes', 'Có')}
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-yellow-100 text-yellow-700">
+                        <Clock size={12} className="mr-1" />
+                        {t('common.no', 'Chưa')}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-neutral-500">{t('admin.createdAt', 'Ngày tạo')}</Label>
+                  <p className="font-medium">
+                    {new Date(selectedUser.createdAt).toLocaleDateString('vi-VN', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUserDetailDialog(false)}>
+              {t('common.close', 'Đóng')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Role Dialog */}
+      <Dialog open={showAssignRoleDialog} onOpenChange={setShowAssignRoleDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('admin.assignRole', 'Gán vai trò')}</DialogTitle>
+            <DialogDescription>
+              {t('admin.assignRoleDesc', 'Chọn vai trò mới cho người dùng này')}
+            </DialogDescription>
+          </DialogHeader>
+          {userToAssignRole && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg">
+                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                  <span className="text-orange-600 font-medium">
+                    {userToAssignRole.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-medium">{userToAssignRole.fullName}</p>
+                  <p className="text-sm text-neutral-500">{userToAssignRole.email}</p>
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="roleSelect">{t('admin.selectRole', 'Chọn vai trò')} *</Label>
+                <Select 
+                  value={selectedRoleId.toString()} 
+                  onValueChange={(value) => setSelectedRoleId(parseInt(value))}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder={t('admin.selectRolePlaceholder', 'Chọn vai trò...')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="4">Customer</SelectItem>
+                    <SelectItem value="3">Organizer</SelectItem>
+                    <SelectItem value="2">Staff</SelectItem>
+                    <SelectItem value="1">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAssignRoleDialog(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={handleAssignRole}
+              className="bg-orange-500 hover:bg-orange-600"
+              disabled={isAssigningRole}
+            >
+              {isAssigningRole ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('admin.assigning', 'Đang gán...')}
+                </>
+              ) : (
+                t('admin.assign', 'Gán vai trò')
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Event Reject Dialog */}
+      <Dialog open={showEventRejectDialog} onOpenChange={setShowEventRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('admin.rejectEvent')}</DialogTitle>
+            <DialogDescription>
+              {t('admin.rejectEventDesc')}: {selectedEvent?.title}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="eventRejectReason">{t('admin.rejectionReason')} *</Label>
+              <Textarea
+                id="eventRejectReason"
+                value={eventRejectReason}
+                onChange={(e) => setEventRejectReason(e.target.value)}
+                placeholder={t('admin.rejectionReasonPlaceholder')}
+                className="min-h-[100px]"
+                required
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEventRejectDialog(false);
+                setEventRejectReason('');
+                setSelectedEvent(null);
+              }}
+              disabled={isRejectingEvent !== null}
+            >
+              {t('admin.cancel')}
+            </Button>
+            <Button
+              onClick={confirmRejectEvent}
+              className="bg-red-500 hover:bg-red-600"
+              disabled={!eventRejectReason.trim() || isRejectingEvent !== null}
+            >
+              {isRejectingEvent !== null ? (
+                <>
+                  <Loader2 className="animate-spin mr-2" size={16} />
+                  {t('admin.rejecting')}
+                </>
+              ) : (
+                t('admin.reject')
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
     </div>
   );
 }
 
 // Admin Payouts Management Component
 function AdminPayoutsManagement() {
+  const { t, i18n } = useTranslation();
   const [payouts, setPayouts] = useState<PayoutDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPayout, setSelectedPayout] = useState<PayoutDto | null>(null);
@@ -1410,6 +2979,25 @@ function AdminPayoutsManagement() {
   const [approveNotes, setApproveNotes] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [transactionId, setTransactionId] = useState("");
+
+  const formatPrice = (price: number) => {
+    const isVietnamese = i18n.language === 'vi';
+    
+    if (isVietnamese) {
+      // Tiếng Việt: 10.000 ₫
+      return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+      }).format(price);
+    } else {
+      // Tiếng Anh: 10,000 VND
+      return new Intl.NumberFormat('en-US', {
+        style: 'decimal',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(price) + ' VND';
+    }
+  };
 
   useEffect(() => {
     loadPayouts();
@@ -1464,41 +3052,34 @@ function AdminPayoutsManagement() {
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case "pending":
         return (
           <Badge className="bg-yellow-100 text-yellow-700">
             <Clock size={12} className="mr-1" />
-            Pending
+            {t('admin.pending', 'Pending')}
           </Badge>
         );
       case "approved":
         return (
           <Badge className="bg-blue-100 text-blue-700">
             <CheckCircle size={12} className="mr-1" />
-            Approved
+            {t('admin.approved', 'Approved')}
           </Badge>
         );
       case "processed":
         return (
           <Badge className="bg-green-100 text-green-700">
             <CheckCircle size={12} className="mr-1" />
-            Processed
+            {t('common.processed', 'Processed')}
           </Badge>
         );
       case "rejected":
         return (
           <Badge className="bg-red-100 text-red-700">
             <XCircle size={12} className="mr-1" />
-            Rejected
+            {t('admin.rejected', 'Rejected')}
           </Badge>
         );
       default:
@@ -1507,7 +3088,7 @@ function AdminPayoutsManagement() {
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading payouts...</div>;
+    return <div className="text-center py-8">{t('admin.loadingPayouts', 'Loading payouts...')}</div>;
   }
 
   const pendingPayouts = payouts.filter(
@@ -1521,7 +3102,7 @@ function AdminPayoutsManagement() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-neutral-600">
-              Total Payouts
+              {t('admin.totalPayouts', 'Total Payouts')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1530,7 +3111,7 @@ function AdminPayoutsManagement() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-neutral-600">Pending</CardTitle>
+            <CardTitle className="text-sm text-neutral-600">{t('admin.pending', 'Pending')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl text-yellow-600">
@@ -1541,7 +3122,7 @@ function AdminPayoutsManagement() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-neutral-600">
-              Total Amount
+              {t('admin.totalAmount', 'Total Amount')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1557,11 +3138,11 @@ function AdminPayoutsManagement() {
         <TableHeader>
           <TableRow>
             <TableHead>ID</TableHead>
-            <TableHead>Organizer</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Requested</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t('admin.organizerName', 'Organizer')}</TableHead>
+            <TableHead>{t('admin.amount', 'Amount')}</TableHead>
+            <TableHead>{t('admin.status', 'Status')}</TableHead>
+            <TableHead>{t('admin.requested', 'Requested')}</TableHead>
+            <TableHead className="text-right">{t('admin.actions', 'Actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1571,7 +3152,7 @@ function AdminPayoutsManagement() {
                 colSpan={6}
                 className="text-center py-8 text-neutral-500"
               >
-                No payout requests
+                {t('admin.noPayoutRequests', 'No payout requests')}
               </TableCell>
             </TableRow>
           ) : (
@@ -1598,7 +3179,7 @@ function AdminPayoutsManagement() {
                           setShowApproveDialog(true);
                         }}
                       >
-                        Approve
+                        {t('admin.approve', 'Approve')}
                       </Button>
                       <Button
                         size="sm"
@@ -1609,7 +3190,7 @@ function AdminPayoutsManagement() {
                           setShowRejectDialog(true);
                         }}
                       >
-                        Reject
+                        {t('admin.reject', 'Reject')}
                       </Button>
                     </div>
                   )}
@@ -1624,29 +3205,29 @@ function AdminPayoutsManagement() {
       <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Approve Payout</DialogTitle>
+            <DialogTitle>{t('admin.approvePayout', 'Approve Payout')}</DialogTitle>
             <DialogDescription>
-              Approve payout request #{selectedPayout?.payoutId} for{" "}
+              {t('admin.approvePayoutDesc', 'Approve payout request')} #{selectedPayout?.payoutId} {t('admin.for', 'for')}{" "}
               {formatPrice(selectedPayout?.amount || 0)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="transactionId">Transaction ID (Optional)</Label>
+              <Label htmlFor="transactionId">{t('admin.transactionIdOptional', 'Transaction ID (Optional)')}</Label>
               <Input
                 id="transactionId"
                 value={transactionId}
                 onChange={(e) => setTransactionId(e.target.value)}
-                placeholder="Bank transfer transaction ID"
+                placeholder={t('admin.transactionIdPlaceholder', 'Bank transfer transaction ID')}
               />
             </div>
             <div>
-              <Label htmlFor="approveNotes">Notes (Optional)</Label>
+              <Label htmlFor="approveNotes">{t('admin.notesOptional', 'Notes (Optional)')}</Label>
               <Textarea
                 id="approveNotes"
                 value={approveNotes}
                 onChange={(e) => setApproveNotes(e.target.value)}
-                placeholder="Additional notes..."
+                placeholder={t('admin.additionalNotes', 'Additional notes...')}
               />
             </div>
           </div>
@@ -1655,13 +3236,13 @@ function AdminPayoutsManagement() {
               variant="outline"
               onClick={() => setShowApproveDialog(false)}
             >
-              Cancel
+              {t('admin.cancel', 'Cancel')}
             </Button>
             <Button
               onClick={handleApprove}
               className="bg-green-500 hover:bg-green-600"
             >
-              Approve
+              {t('admin.approve', 'Approve')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1671,20 +3252,20 @@ function AdminPayoutsManagement() {
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Payout</DialogTitle>
+            <DialogTitle>{t('admin.rejectPayout', 'Reject Payout')}</DialogTitle>
             <DialogDescription>
-              Reject payout request #{selectedPayout?.payoutId} for{" "}
+              {t('admin.rejectPayoutDesc', 'Reject payout request')} #{selectedPayout?.payoutId} {t('admin.for', 'for')}{" "}
               {formatPrice(selectedPayout?.amount || 0)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="rejectReason">Reason *</Label>
+              <Label htmlFor="rejectReason">{t('admin.reasonRequired', 'Reason *')}</Label>
               <Textarea
                 id="rejectReason"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Reason for rejection..."
+                placeholder={t('admin.reasonForRejection', 'Reason for rejection...')}
                 required
               />
             </div>
@@ -1694,14 +3275,14 @@ function AdminPayoutsManagement() {
               variant="outline"
               onClick={() => setShowRejectDialog(false)}
             >
-              Cancel
+              {t('admin.cancel', 'Cancel')}
             </Button>
             <Button
               onClick={handleReject}
               className="bg-red-500 hover:bg-red-600"
               disabled={!rejectReason}
             >
-              Reject
+              {t('admin.reject', 'Reject')}
             </Button>
           </DialogFooter>
         </DialogContent>

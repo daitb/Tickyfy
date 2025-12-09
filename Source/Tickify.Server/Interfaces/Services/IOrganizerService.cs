@@ -30,6 +30,9 @@ public interface IOrganizerService
     /// Get organizer earnings dashboard
     Task<OrganizerEarningsDto> GetOrganizerEarningsAsync(int organizerId, int userId);
 
+    /// Get organizer bookings
+    Task<List<OrganizerBookingDto>> GetOrganizerBookingsAsync(int organizerId, int userId);
+
     /// Verify organizer (Admin only)
     Task<OrganizerDto> VerifyOrganizerAsync(int organizerId, int adminId);
 

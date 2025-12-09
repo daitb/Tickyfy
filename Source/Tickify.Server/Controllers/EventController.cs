@@ -360,20 +360,22 @@ public class EventController : ControllerBase
         ));
     }
 
-    /// Delete event (Admin only) - Soft delete
+    /// Delete event (Organizer can delete Pending/Rejected, Admin can delete any) - Soft delete
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Organizer,Admin")]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteEvent(int id)
     {
-        var adminId = GetUserIdFromClaims();
+        var userId = GetUserIdFromClaims();
+        var isAdmin = User.IsInRole("Admin");
 
-        _logger.LogInformation("Admin {AdminId} deleting event {EventId}", adminId, id);
+        _logger.LogInformation("User {UserId} deleting event {EventId}", userId, id);
 
-        var result = await _eventService.DeleteEventAsync(id);
+        var result = await _eventService.DeleteEventAsync(id, userId, isAdmin);
 
         return Ok(ApiResponse<bool>.SuccessResponse(
             result,
