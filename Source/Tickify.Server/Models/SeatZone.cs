@@ -30,5 +30,6 @@ namespace Tickify.Models
         // Navigation properties
         public SeatMap? SeatMap { get; set; }
         public TicketType? TicketType { get; set; }
+        public ICollection<Seat> Seats { get; set; } = new List<Seat>();
     }
 }
