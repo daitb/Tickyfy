@@ -948,6 +948,9 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                         <SelectItem value="approved">
                           {t("organizer.dashboard.approved", "Approved")}
                         </SelectItem>
+                        <SelectItem value="published">
+                          {t("organizer.dashboard.published", "Published")}
+                        </SelectItem>
                         <SelectItem value="rejected">
                           {t("organizer.dashboard.rejected", "Rejected")}
                         </SelectItem>
@@ -1026,6 +1029,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                     </TableHeader>
                     <TableBody>
                       {filteredEvents
+                        .sort((a, b) => b.eventId - a.eventId) // Sort by ID descending (newest first)
                         .slice((eventsPage - 1) * itemsPerPage, eventsPage * itemsPerPage)
                         .map((event) => {
                           const salesRate =
