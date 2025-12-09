@@ -6,9 +6,12 @@ export interface UserListDto {
   fullName: string;
   email: string;
   phoneNumber?: string;
+  avatarUrl?: string;
   role: string;
+  roles: string[];
   isActive: boolean;
   isEmailVerified: boolean;
+  emailVerified: boolean;
   createdAt: string;
 }
 
@@ -18,6 +21,7 @@ export interface UserDetailDto {
   email: string;
   phoneNumber?: string;
   profilePictureUrl?: string;
+  avatarUrl?: string;
   bio?: string;
   dateOfBirth?: string;
   gender?: string;
@@ -25,9 +29,12 @@ export interface UserDetailDto {
   city?: string;
   country?: string;
   role: string;
+  roles: string[];
   isActive: boolean;
   isEmailVerified: boolean;
+  emailVerified: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface UserProfileDto {
@@ -71,10 +78,16 @@ class UserService {
   async getUsers(
     pageNumber: number = 1,
     pageSize: number = 10,
-    searchTerm?: string
+    searchTerm?: string,
+    role?: string,
+    isActive?: boolean,
+    emailVerified?: boolean
   ): Promise<PagedResult<UserListDto>> {
     const params: any = { pageNumber, pageSize };
     if (searchTerm) params.searchTerm = searchTerm;
+    if (role) params.role = role;
+    if (isActive !== undefined) params.isActive = isActive;
+    if (emailVerified !== undefined) params.emailVerified = emailVerified;
 
     const response = await apiClient.get<PagedResult<UserListDto>>("/users", {
       params,
@@ -102,7 +115,10 @@ class UserService {
    * Update current user profile
    */
   async updateProfile(data: UpdateProfileDto): Promise<UserProfileDto> {
-    const response = await apiClient.put<UserProfileDto>("/users/profile", data);
+    const response = await apiClient.put<UserProfileDto>(
+      "/users/profile",
+      data
+    );
     return response.data;
   }
 
@@ -113,11 +129,15 @@ class UserService {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await apiClient.post<string>("/users/profile/avatar", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await apiClient.post<string>(
+      "/users/profile/avatar",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
     return response.data;
   }
 

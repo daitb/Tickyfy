@@ -246,7 +246,17 @@ public class EventService : IEventService
 
         // Check if event can be edited
         if (!await CanEditEventAsync(id))
-            throw new BadRequestException("This event cannot be edited (already published or completed)");
+        {
+            var currentEvent = await _eventRepository.GetByIdAsync(id);
+            if (currentEvent?.Status == EventStatus.Completed)
+                throw new BadRequestException("This event cannot be edited (already completed)");
+            else if (currentEvent?.Status == EventStatus.Cancelled)
+                throw new BadRequestException("This event cannot be edited (already cancelled)");
+            else if (currentEvent?.Status == EventStatus.Published)
+                throw new BadRequestException("This event cannot be edited (already published)");
+            else
+                throw new BadRequestException("This event cannot be edited");
+        }
 
         // Validate category exists
         var category = await _context.Categories.FindAsync(dto.CategoryId);
@@ -267,6 +277,10 @@ public class EventService : IEventService
         eventEntity.MaxCapacity = dto.TotalSeats;
         eventEntity.CategoryId = dto.CategoryId;
         eventEntity.UpdatedAt = DateTime.UtcNow;
+
+        // Note: Keep the current status - allow editing of Approved/Published events
+        // Organizer can update details even after approval, but significant changes
+        // may require re-submission for approval if needed
 
         await _eventRepository.UpdateAsync(eventEntity);
 
@@ -543,13 +557,28 @@ public class EventService : IEventService
         return MapToEventDetailDto(rejectedEvent!);
     }
 
-    /// Delete event (Admin only) - soft delete
-    public async Task<bool> DeleteEventAsync(int id)
+    /// Delete event (Organizer can delete Pending/Rejected, Admin can delete any) - soft delete
+    public async Task<bool> DeleteEventAsync(int id, int userId, bool isAdmin)
     {
-        var eventEntity = await _eventRepository.GetByIdAsync(id);
+        var eventEntity = await _eventRepository.GetByIdAsync(id, includeRelated: true);
 
         if (eventEntity == null)
             throw new NotFoundException($"Event with ID {id} not found");
+
+        // Authorization check - Organizer can only delete their own Pending/Rejected events
+        if (!isAdmin)
+        {
+            var user = await _context.Users
+                .Include(u => u.OrganizerProfile)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user?.OrganizerProfile == null || user.OrganizerProfile.Id != eventEntity.OrganizerId)
+                throw new ForbiddenException("You are not authorized to delete this event");
+
+            // Organizers can only delete Pending or Rejected events
+            if (eventEntity.Status != EventStatus.Pending && eventEntity.Status != EventStatus.Rejected)
+                throw new BadRequestException("You can only delete events that are Pending or Rejected. Please cancel the event instead.");
+        }
 
         // Check if event has confirmed bookings
         var hasConfirmedBookings = await _context.Bookings
@@ -643,6 +672,53 @@ public class EventService : IEventService
             })
             .ToList() ?? new List<TicketTypeSalesDto>();
 
+        // Sales by date (group bookings by date)
+        var salesByDate = confirmedBookings
+            .GroupBy(b => b.BookingDate.Date)
+            .Select(g => new SalesByDateDto
+            {
+                Date = g.Key,
+                Revenue = g.Sum(b => b.TotalAmount),
+                TicketsSold = g.Sum(b => b.Tickets?.Count ?? 0)
+            })
+            .OrderBy(s => s.Date)
+            .ToList();
+
+        // Top buyers
+        var topBuyers = confirmedBookings
+            .Where(b => b.User != null)
+            .GroupBy(b => b.User!)
+            .Select(g => new TopBuyerDto
+            {
+                UserId = g.Key.Id,
+                UserName = g.Key.FullName,
+                Email = g.Key.Email,
+                TicketsPurchased = g.Sum(b => b.Tickets?.Count ?? 0),
+                TotalSpent = g.Sum(b => b.TotalAmount),
+                LastPurchaseDate = g.Max(b => b.BookingDate)
+            })
+            .OrderByDescending(tb => tb.TotalSpent)
+            .Take(10)
+            .ToList();
+
+        // Recent transactions
+        var recentTransactions = confirmedBookings
+            .OrderByDescending(b => b.BookingDate)
+            .Take(10)
+            .Select(b => new RecentTransactionDto
+            {
+                TransactionId = b.BookingCode,
+                BuyerName = b.User?.FullName ?? "Unknown",
+                Amount = b.TotalAmount,
+                TransactionDate = b.BookingDate,
+                Status = b.Status.ToString()
+            })
+            .ToList();
+
+        // Calculate sold seats - use actual tickets sold count instead of totalSeats - availableSeats
+        // This ensures accuracy even if AvailableQuantity isn't updated correctly
+        var soldSeats = totalTicketsSold;
+
         return new EventStatsDto
         {
             EventId = eventEntity.Id,
@@ -664,7 +740,12 @@ public class EventService : IEventService
                 : null,
             LastSaleDate = confirmedBookings.Any()
                 ? confirmedBookings.Max(b => b.BookingDate)
-                : null
+                : null,
+            SalesByDate = salesByDate,
+            TopBuyers = topBuyers,
+            RecentTransactions = recentTransactions,
+            PageViews = 0, // TODO: Implement page view tracking
+            SoldSeats = soldSeats
         };
     }
 
@@ -679,6 +760,8 @@ public class EventService : IEventService
     }
 
     /// Check if event can be edited
+    /// Organizer can edit events with status: Pending, Approved, Rejected
+    /// Cannot edit: Cancelled, Completed, Published
     public async Task<bool> CanEditEventAsync(int eventId)
     {
         var eventEntity = await _eventRepository.GetByIdAsync(eventId);
@@ -686,8 +769,9 @@ public class EventService : IEventService
         if (eventEntity == null)
             return false;
 
-        // Can only edit Pending or Rejected events
+        // Can edit only if status is Pending, Approved, or Rejected
         return eventEntity.Status == EventStatus.Pending ||
+               eventEntity.Status == EventStatus.Approved ||
                eventEntity.Status == EventStatus.Rejected;
     }
 
@@ -748,29 +832,10 @@ public class EventService : IEventService
         if (ticketTypes == null || !ticketTypes.Any())
             return; // Ticket types are optional during creation
 
-        const decimal MAX_TICKET_PRICE = 50_000_000m; // 50 triệu VND - giới hạn thanh toán MoMo
-        const decimal SAFE_MAX_PRICE = 10_000_000m; // 10 triệu VND - khuyến nghị an toàn
-
         foreach (var tt in ticketTypes)
         {
             if (tt.Price < 0)
                 throw new BadRequestException($"Ticket type '{tt.TypeName}' has invalid price");
-
-            // Validate giá vé không vượt quá giới hạn thanh toán
-            if (tt.Price > MAX_TICKET_PRICE)
-                throw new BadRequestException(
-                    $"Ticket type '{tt.TypeName}' price ({tt.Price:N0} VND) exceeds maximum limit of {MAX_TICKET_PRICE:N0} VND. " +
-                    $"This is due to payment gateway limitations (MoMo: 50M VND max per transaction).");
-
-            // Cảnh báo nếu giá quá cao (có thể gây vấn đề với booking nhiều vé)
-            if (tt.Price > SAFE_MAX_PRICE)
-            {
-                _logger.LogWarning(
-                    "Ticket type '{TypeName}' has high price: {Price} VND. " +
-                    "Users may face payment limits when booking multiple tickets. " +
-                    "Consider splitting into smaller ticket types or events.",
-                    tt.TypeName, tt.Price);
-            }
 
             if (tt.Quantity <= 0)
                 throw new BadRequestException($"Ticket type '{tt.TypeName}' must have at least 1 ticket");

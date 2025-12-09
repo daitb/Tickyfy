@@ -47,11 +47,14 @@ export function WishlistButton({
       // Toast only after successful API call
       toast.success(
         wasInWishlist
-          ? t("wishlist.removedFromWishlist")
-          : t("wishlist.addedToWishlist")
+          ? t("wishlist.removedFromWishlist", "Đã xóa khỏi yêu thích")
+          : t("wishlist.addedToWishlist", "Đã thêm vào yêu thích")
       );
     } catch (err: any) {
-      const message = err?.response?.data?.message || err.message || t("wishlist.errorToggle");
+      const message =
+        err?.response?.data?.message ||
+        err.message ||
+        t("wishlist.errorToggle", "Không thể cập nhật yêu thích");
       toast.error(message);
     }
   };
@@ -62,7 +65,11 @@ export function WishlistButton({
         type="button"
         onClick={handleClick}
         disabled={isLoading}
-        aria-label={isInWishlistState ? t("wishlist.removeFromWishlist") : t("wishlist.addToWishlist")}
+        aria-label={
+          isInWishlistState
+            ? t("wishlist.removeFromWishlist")
+            : t("wishlist.addToWishlist")
+        }
         className={cn(
           "inline-flex items-center justify-center rounded-full transition-all duration-200",
           "hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed",
@@ -70,7 +77,10 @@ export function WishlistButton({
         )}
       >
         {isLoading ? (
-          <Loader2 size={iconSizes[size]} className="animate-spin text-neutral-400" />
+          <Loader2
+            size={iconSizes[size]}
+            className="animate-spin text-neutral-400"
+          />
         ) : (
           <Heart
             size={iconSizes[size]}
@@ -91,7 +101,11 @@ export function WishlistButton({
       type="button"
       onClick={handleClick}
       disabled={isLoading}
-      aria-label={isInWishlistState ? t("wishlist.removeFromWishlist") : t("wishlist.addToWishlist")}
+      aria-label={
+        isInWishlistState
+          ? t("wishlist.removeFromWishlist")
+          : t("wishlist.addToWishlist")
+      }
       className={cn(
         sizeClasses[size],
         "inline-flex items-center justify-center rounded-full bg-white shadow-md",
@@ -109,7 +123,9 @@ export function WishlistButton({
           size={iconSizes[size]}
           className={cn(
             "transition-colors",
-            isInWishlistState ? "text-red-500 fill-red-500" : "text-neutral-600 hover:text-red-500"
+            isInWishlistState
+              ? "text-red-500 fill-red-500"
+              : "text-neutral-600 hover:text-red-500"
           )}
         />
       )}

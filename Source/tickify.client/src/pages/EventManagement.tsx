@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Calendar,
@@ -57,14 +57,27 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-import { mockEvents } from "../mockData";
+import {
+  organizerService,
+  type OrganizerEventDto,
+} from "../services/organizerService";
+import { authService } from "../services/authService";
+import apiClient from "../services/apiClient";
+import { toast } from "sonner";
 
 interface EventManagementProps {
   onNavigate: (page: string, eventId?: string) => void;
 }
 
 type ViewMode = "grid" | "list";
-type StatusFilter = "all" | "published" | "draft" | "cancelled";
+type StatusFilter =
+  | "all"
+  | "Pending"
+  | "Approved"
+  | "Rejected"
+  | "Published"
+  | "Cancelled"
+  | "Completed";
 type DateFilter = "all" | "upcoming" | "past";
 
 interface EventWithStats {
@@ -79,6 +92,8 @@ interface EventWithStats {
   status: "published" | "draft" | "cancelled";
   ticketsSold: number;
   totalTickets: number;
+  soldSeats: number;
+  totalSeats: number;
   revenue: number;
 }
 
@@ -90,46 +105,65 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [eventToCancel, setEventToCancel] = useState<string | null>(null);
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
+  const [events, setEvents] = useState<OrganizerEventDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Mock event data with stats
-  const eventsWithStats: EventWithStats[] = mockEvents.map((event, index) => ({
-    id: event.id,
-    title: event.title,
-    date: event.date,
-    time: event.time,
-    venue: event.venue,
-    city: event.city,
-    category: event.category,
-    image: event.image,
-    status:
-      index % 5 === 0 ? "draft" : index % 7 === 0 ? "cancelled" : "published",
-    ticketsSold: Math.floor(Math.random() * 500),
-    totalTickets: 500,
-    revenue: Math.floor(Math.random() * 50000000) + 10000000,
-  }));
+  // Load events from API
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        setIsLoading(true);
+        const currentUser = authService.getCurrentUser();
+        if (!currentUser?.organizerId) {
+          throw new Error("Organizer ID not found");
+        }
+        const data = await organizerService.getOrganizerEvents(
+          currentUser.organizerId
+        );
+        setEvents(data);
+        setError("");
+      } catch (err: any) {
+        console.error("Failed to load events:", err);
+        setError(err.response?.data?.message || "Failed to load events");
+        toast.error("Không thể tải danh sách sự kiện", {
+          description: err.response?.data?.message || "Vui lòng thử lại sau",
+          duration: 2000,
+          closeButton: false,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Calculate stats
-  const totalEvents = eventsWithStats.length;
-  const activeEvents = eventsWithStats.filter(
-    (e) => e.status === "published"
+    loadEvents();
+  }, []);
+
+  // Check if event can be edited
+  const canEditEvent = (status: string): boolean => {
+    return (
+      status === "Pending" || status === "Approved" || status === "Rejected"
+    );
+  };
+
+  // Calculate stats from real events
+  const totalEvents = events.length;
+  const activeEvents = events.filter(
+    (e) => e.status === "Published" || e.status === "Approved"
   ).length;
-  const totalTicketsSold = eventsWithStats.reduce(
-    (sum, e) => sum + e.ticketsSold,
-    0
-  );
-  const totalRevenue = eventsWithStats.reduce((sum, e) => sum + e.revenue, 0);
+  const totalTicketsSold = events.reduce((sum, e) => sum + e.soldSeats, 0);
+  const totalRevenue = events.reduce((sum, e) => sum + e.revenue, 0);
 
   // Filter events
-  const filteredEvents = eventsWithStats.filter((event) => {
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.venue.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.city.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredEvents = events.filter((event) => {
+    const matchesSearch = event.title
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
 
     const matchesStatus =
       statusFilter === "all" || event.status === statusFilter;
 
-    const eventDate = new Date(event.date);
+    const eventDate = new Date(event.startDate);
     const today = new Date();
     const matchesDate =
       dateFilter === "all" ||
@@ -157,30 +191,50 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "published":
+      case "Pending":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-700">
+            {t("eventManagement.pending", "Pending")}
+          </Badge>
+        );
+      case "Approved":
         return (
           <Badge className="bg-green-100 text-green-700">
-            {t("eventManagement.published")}
+            {t("eventManagement.approved", "Approved")}
           </Badge>
         );
-      case "draft":
-        return (
-          <Badge className="bg-amber-100 text-amber-700">
-            {t("eventManagement.draft")}
-          </Badge>
-        );
-      case "cancelled":
+      case "Rejected":
         return (
           <Badge className="bg-red-100 text-red-700">
-            {t("eventManagement.cancelled")}
+            {t("eventManagement.rejected", "Rejected")}
+          </Badge>
+        );
+      case "Published":
+        return (
+          <Badge className="bg-blue-100 text-blue-700">
+            {t("eventManagement.published", "Published")}
+          </Badge>
+        );
+      case "Cancelled":
+        return (
+          <Badge className="bg-red-100 text-red-700">
+            {t("eventManagement.cancelled", "Cancelled")}
+          </Badge>
+        );
+      case "Completed":
+        return (
+          <Badge className="bg-gray-100 text-gray-700">
+            {t("eventManagement.completed", "Completed")}
           </Badge>
         );
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge className="bg-gray-100 text-gray-700">{status}</Badge>;
     }
   };
 
   const handleEventAction = (action: string, eventId: string) => {
+    const event = events.find((e) => e.eventId === Number(eventId));
+
     switch (action) {
       case "view":
         onNavigate("event-detail", eventId);
@@ -341,16 +395,25 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">
-                    {t("eventManagement.allStatus")}
+                    {t("eventManagement.allStatus", "All Status")}
                   </SelectItem>
-                  <SelectItem value="published">
-                    {t("eventManagement.published")}
+                  <SelectItem value="Pending">
+                    {t("eventManagement.pending", "Pending")}
                   </SelectItem>
-                  <SelectItem value="draft">
-                    {t("eventManagement.draft")}
+                  <SelectItem value="Approved">
+                    {t("eventManagement.approved", "Approved")}
                   </SelectItem>
-                  <SelectItem value="cancelled">
-                    {t("eventManagement.cancelled")}
+                  <SelectItem value="Rejected">
+                    {t("eventManagement.rejected", "Rejected")}
+                  </SelectItem>
+                  <SelectItem value="Published">
+                    {t("eventManagement.published", "Published")}
+                  </SelectItem>
+                  <SelectItem value="Cancelled">
+                    {t("eventManagement.cancelled", "Cancelled")}
+                  </SelectItem>
+                  <SelectItem value="Completed">
+                    {t("eventManagement.completed", "Completed")}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -380,7 +443,15 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
         {/* Events Grid View */}
         {viewMode === "grid" && (
           <>
-            {filteredEvents.length === 0 ? (
+            {isLoading ? (
+              <Card className="p-16">
+                <div className="text-center">
+                  <div className="text-neutral-600">
+                    {t("eventManagement.loading", "Loading events...")}
+                  </div>
+                </div>
+              </Card>
+            ) : filteredEvents.length === 0 ? (
               <Card className="p-16">
                 <div className="text-center">
                   <Calendar
@@ -416,135 +487,151 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredEvents.map((event) => (
-                  <Card
-                    key={event.id}
-                    className="overflow-hidden hover:shadow-lg transition-shadow"
-                  >
-                    <div className="relative">
-                      <div className="aspect-video bg-neutral-200 overflow-hidden">
-                        <img
-                          src={event.image}
-                          alt={event.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="absolute top-3 right-3">
-                        {getStatusBadge(event.status)}
-                      </div>
-                    </div>
-                    <CardContent className="p-4">
-                      <h3 className="text-neutral-900 mb-2 line-clamp-1">
-                        {event.title}
-                      </h3>
-                      <div className="space-y-1 text-sm text-neutral-600 mb-4">
-                        <div className="flex items-center gap-2">
-                          <Calendar size={14} />
-                          <span>
-                            {formatDate(event.date)} • {event.time}
-                          </span>
+                {filteredEvents.map((event) => {
+                  const eventIdStr = event.eventId.toString();
+                  const canEdit = canEditEvent(event.status);
+                  return (
+                    <Card
+                      key={event.eventId}
+                      className="overflow-hidden hover:shadow-lg transition-shadow"
+                    >
+                      <div className="relative">
+                        <div className="aspect-video bg-neutral-200 overflow-hidden">
+                          <img
+                            src={event.bannerImage || "/placeholder-event.jpg"}
+                            alt={event.title}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
-                        <div className="truncate">
-                          {event.venue}, {event.city}
+                        <div className="absolute top-3 right-3">
+                          {getStatusBadge(event.status)}
                         </div>
                       </div>
+                      <CardContent className="p-4">
+                        <h3 className="text-neutral-900 mb-2 line-clamp-1">
+                          {event.title}
+                        </h3>
+                        <div className="space-y-1 text-sm text-neutral-600 mb-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar size={14} />
+                            <span>{formatDate(event.startDate)}</span>
+                          </div>
+                        </div>
 
-                      {/* Quick Stats */}
-                      <div className="flex items-center justify-between py-3 border-t">
-                        <div>
-                          <div className="text-xs text-neutral-600">
-                            {t("eventManagement.ticketsSold")}
+                        {/* Quick Stats */}
+                        <div className="flex items-center justify-between py-3 border-t">
+                          <div>
+                            <div className="text-xs text-neutral-600">
+                              {t("eventManagement.ticketsSold")}
+                            </div>
+                            <div className="text-neutral-900">
+                              {event.soldSeats}/{event.totalSeats}
+                            </div>
                           </div>
-                          <div className="text-neutral-900">
-                            {event.ticketsSold}/{event.totalTickets}
+                          <div className="text-right">
+                            <div className="text-xs text-neutral-600">
+                              {t("eventManagement.revenue")}
+                            </div>
+                            <div className="text-teal-600">
+                              {formatPrice(event.revenue)}
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-xs text-neutral-600">
-                            {t("eventManagement.revenue")}
-                          </div>
-                          <div className="text-teal-600">
-                            {formatPrice(event.revenue)}
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Actions */}
-                      <div className="flex gap-2 pt-3 border-t">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleEventAction("view", event.id)}
-                        >
-                          <Eye size={14} className="mr-1" />
-                          {t("eventManagement.viewDetails")}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleEventAction("edit", event.id)}
-                        >
-                          <Edit size={14} className="mr-1" />
-                          {t("eventManagement.editEvent")}
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <MoreVertical size={14} />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleEventAction("analytics", event.id)
-                              }
-                            >
-                              <TrendingUp size={14} className="mr-2" />
-                              {t("eventManagement.viewDetails")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleEventAction("edit-seat-map", event.id)
-                              }
-                            >
-                              <Grid3x3 size={14} className="mr-2" />
-                              Manage Seat Map
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleEventAction("duplicate", event.id)
-                              }
-                            >
-                              <Copy size={14} className="mr-2" />
-                              {t("eventManagement.duplicate")}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleEventAction("cancel", event.id)
-                              }
-                              className="text-red-600"
-                            >
-                              <XCircle size={14} className="mr-2" />
-                              {t("eventManagement.cancelEvent")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleEventAction("delete", event.id)
-                              }
-                              className="text-red-600"
-                            >
-                              <Trash2 size={14} className="mr-2" />
-                              {t("eventManagement.deleteEvent")}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        {/* Actions */}
+                        <div className="flex gap-2 pt-3 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() =>
+                              handleEventAction("view", eventIdStr)
+                            }
+                          >
+                            <Eye size={14} className="mr-1" />
+                            {t("eventManagement.viewDetails")}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            disabled={!canEdit}
+                            onClick={() =>
+                              handleEventAction("edit", eventIdStr)
+                            }
+                            title={
+                              !canEdit
+                                ? t(
+                                    "eventManagement.cannotEdit",
+                                    "Cannot edit this event"
+                                  )
+                                : ""
+                            }
+                          >
+                            <Edit size={14} className="mr-1" />
+                            {t("eventManagement.editEvent")}
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-shrink-0 px-2"
+                              >
+                                <MoreVertical size={14} />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleEventAction("analytics", eventIdStr)
+                                }
+                              >
+                                <TrendingUp size={14} className="mr-2" />
+                                {t("eventManagement.viewDetails")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleEventAction("edit-seat-map", eventIdStr)
+                                }
+                              >
+                                <Grid3x3 size={14} className="mr-2" />
+                                Manage Seat Map
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleEventAction("duplicate", eventIdStr)
+                                }
+                              >
+                                <Copy size={14} className="mr-2" />
+                                {t("eventManagement.duplicate")}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleEventAction("cancel", eventIdStr)
+                                }
+                                className="text-red-600"
+                              >
+                                <XCircle size={14} className="mr-2" />
+                                {t("eventManagement.cancelEvent")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleEventAction("delete", eventIdStr)
+                                }
+                                className="text-red-600"
+                              >
+                                <Trash2 size={14} className="mr-2" />
+                                {t("eventManagement.deleteEvent")}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </>
@@ -554,7 +641,13 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
         {viewMode === "list" && (
           <Card>
             <CardContent className="p-0">
-              {filteredEvents.length === 0 ? (
+              {isLoading ? (
+                <div className="text-center py-16">
+                  <div className="text-neutral-600">
+                    {t("eventManagement.loading", "Loading events...")}
+                  </div>
+                </div>
+              ) : filteredEvents.length === 0 ? (
                 <div className="text-center py-16">
                   <Calendar
                     className="mx-auto text-neutral-400 mb-4"
@@ -609,116 +702,130 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredEvents.map((event) => (
-                      <TableRow key={event.id} className="hover:bg-neutral-50">
-                        <TableCell>
-                          <div className="w-16 h-16 bg-neutral-200 rounded overflow-hidden">
-                            <img
-                              src={event.image}
-                              alt={event.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-neutral-900">{event.title}</div>
-                          <div className="text-sm text-neutral-500">
-                            {event.category}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>{formatDate(event.date)}</div>
-                          <div className="text-sm text-neutral-500">
-                            {event.time}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-[200px]">
-                            <div className="truncate">{event.venue}</div>
-                            <div className="text-sm text-neutral-500">
-                              {event.city}
+                    {filteredEvents.map((event) => {
+                      const eventIdStr = event.eventId.toString();
+                      const canEdit = canEditEvent(event.status);
+                      return (
+                        <TableRow
+                          key={event.eventId}
+                          className="hover:bg-neutral-50"
+                        >
+                          <TableCell>
+                            <div className="w-16 h-16 bg-neutral-200 rounded overflow-hidden">
+                              <img
+                                src={
+                                  event.bannerImage || "/placeholder-event.jpg"
+                                }
+                                alt={event.title}
+                                className="w-full h-full object-cover"
+                              />
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(event.status)}</TableCell>
-                        <TableCell className="text-right">
-                          {event.ticketsSold}/{event.totalTickets}
-                        </TableCell>
-                        <TableCell className="text-right text-teal-600">
-                          {formatPrice(event.revenue)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical size={16} />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  handleEventAction("view", event.id)
-                                }
-                              >
-                                <Eye size={14} className="mr-2" />
-                                {t("eventManagement.viewDetails")}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  handleEventAction("edit", event.id)
-                                }
-                              >
-                                <Edit size={14} className="mr-2" />
-                                {t("eventManagement.editEvent")}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  handleEventAction("edit-seat-map", event.id)
-                                }
-                              >
-                                <Grid3x3 size={14} className="mr-2" />
-                                Manage Seat Map
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  handleEventAction("analytics", event.id)
-                                }
-                              >
-                                <TrendingUp size={14} className="mr-2" />
-                                {t("eventManagement.viewDetails")}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  handleEventAction("duplicate", event.id)
-                                }
-                              >
-                                <Copy size={14} className="mr-2" />
-                                {t("eventManagement.duplicate")}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  handleEventAction("cancel", event.id)
-                                }
-                                className="text-red-600"
-                              >
-                                <XCircle size={14} className="mr-2" />
-                                {t("eventManagement.cancelEvent")}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  handleEventAction("delete", event.id)
-                                }
-                                className="text-red-600"
-                              >
-                                <Trash2 size={14} className="mr-2" />
-                                {t("eventManagement.deleteEvent")}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-neutral-900">
+                              {event.title}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>{formatDate(event.startDate)}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="max-w-[200px]">
+                              <div className="truncate">-</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(event.status)}</TableCell>
+                          <TableCell className="text-right">
+                            {event.soldSeats}/{event.totalSeats}
+                          </TableCell>
+                          <TableCell className="text-right text-teal-600">
+                            {formatPrice(event.revenue)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical size={16} />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleEventAction("view", eventIdStr)
+                                  }
+                                >
+                                  <Eye size={14} className="mr-2" />
+                                  {t("eventManagement.viewDetails")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleEventAction("edit", eventIdStr)
+                                  }
+                                  disabled={!canEdit}
+                                  title={
+                                    !canEdit
+                                      ? t(
+                                          "eventManagement.cannotEdit",
+                                          "Cannot edit this event"
+                                        )
+                                      : ""
+                                  }
+                                >
+                                  <Edit size={14} className="mr-2" />
+                                  {t("eventManagement.editEvent")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleEventAction(
+                                      "edit-seat-map",
+                                      eventIdStr
+                                    )
+                                  }
+                                >
+                                  <Grid3x3 size={14} className="mr-2" />
+                                  Manage Seat Map
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleEventAction("analytics", eventIdStr)
+                                  }
+                                >
+                                  <TrendingUp size={14} className="mr-2" />
+                                  {t("eventManagement.viewDetails")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleEventAction("duplicate", eventIdStr)
+                                  }
+                                >
+                                  <Copy size={14} className="mr-2" />
+                                  {t("eventManagement.duplicate")}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleEventAction("cancel", eventIdStr)
+                                  }
+                                  className="text-red-600"
+                                >
+                                  <XCircle size={14} className="mr-2" />
+                                  {t("eventManagement.cancelEvent")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleEventAction("delete", eventIdStr)
+                                  }
+                                  className="text-red-600"
+                                >
+                                  <Trash2 size={14} className="mr-2" />
+                                  {t("eventManagement.deleteEvent")}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}

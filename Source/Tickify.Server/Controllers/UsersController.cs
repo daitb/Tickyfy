@@ -33,12 +33,15 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetUsers(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
-        [FromQuery] string? searchTerm = null)
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] string? role = null,
+        [FromQuery] bool? isActive = null,
+        [FromQuery] bool? emailVerified = null)
     {
-        var result = await _userService.GetUsersAsync(pageNumber, pageSize, searchTerm);
+        var result = await _userService.GetUsersAsync(pageNumber, pageSize, searchTerm, role, isActive, emailVerified);
 
-        _logger.LogInformation("Admin retrieved users list. Page: {PageNumber}, Size: {PageSize}, Search: {SearchTerm}",
-            pageNumber, pageSize, searchTerm);
+        _logger.LogInformation("Admin retrieved users list. Page: {PageNumber}, Size: {PageSize}, Search: {SearchTerm}, Role: {Role}, IsActive: {IsActive}, EmailVerified: {EmailVerified}",
+            pageNumber, pageSize, searchTerm, role, isActive, emailVerified);
 
         return Ok(ApiResponse<PagedResult<UserListDto>>.SuccessResponse(
             result,
