@@ -36,6 +36,7 @@ namespace Tickify.Models
         public Organizer? Organizer { get; set; }
         public Category? Category { get; set; }
         public User? ApprovedByStaff { get; set; }
+        public SeatMap? SeatMap { get; set; }
         public ICollection<TicketType>? TicketTypes { get; set; }
         public ICollection<Booking>? Bookings { get; set; }
         public ICollection<Review>? Reviews { get; set; }
