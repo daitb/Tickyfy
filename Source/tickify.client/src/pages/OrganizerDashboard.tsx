@@ -760,10 +760,12 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                 </ResponsiveContainer>
                 </div>
                 ) : (
-                  <div className="flex items-center justify-center h-[300px] text-neutral-500">
+                  <div className="flex items-center justify-center h-[300px]">
                     <div className="text-center">
-                      <TrendingUp className="mx-auto mb-2 text-neutral-300" size={48} />
-                      <p>{t("organizer.dashboard.noSalesData", "No sales data available yet")}</p>
+                      <TrendingUp className="mx-auto mb-3 text-neutral-300" size={48} />
+                      <p className="text-base font-medium text-neutral-600">
+                        {t("organizer.dashboard.noSalesData", "No sales data available yet")}
+                      </p>
                       <p className="text-sm text-neutral-400 mt-1">
                         {t("organizer.dashboard.salesDataHint", "Sales data will appear here once you have bookings")}
                       </p>
@@ -1480,10 +1482,15 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                     </BarChart>
                   </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-[300px] text-neutral-500">
+                    <div className="flex items-center justify-center h-[300px]">
                       <div className="text-center">
-                        <Calendar className="mx-auto mb-2 text-neutral-300" size={48} />
-                        <p>{t("organizer.dashboard.noRevenueData", "No revenue data available")}</p>
+                        <Calendar className="mx-auto mb-3 text-neutral-300" size={48} />
+                        <p className="text-base font-medium text-neutral-600">
+                          {t("organizer.dashboard.noRevenueData", "No revenue data available")}
+                        </p>
+                        <p className="text-sm text-neutral-400 mt-1">
+                          {t("organizer.dashboard.revenueDataHint", "Revenue data will appear here when tickets are purchased")}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -1510,7 +1517,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
 
                       if (eventsWithSales.length === 0) {
                         return (
-                          <div className="flex items-center justify-center py-12 text-neutral-500">
+                          <div className="flex items-center justify-center py-12">
                             <div className="text-center">
                               <Ticket className="mx-auto mb-3 text-neutral-300" size={48} />
                               <p className="text-base font-medium text-neutral-600">

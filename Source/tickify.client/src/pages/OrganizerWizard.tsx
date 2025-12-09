@@ -202,11 +202,11 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
   }, [eventId]);
 
   const steps = [
-    { number: 1, label: "Basics" },
-    { number: 2, label: "Schedule & Venue" },
-    { number: 3, label: "Ticketing" },
-    { number: 4, label: "Policies" },
-    { number: 5, label: "Review" },
+    { number: 1, label: t('wizard.organizer.stepLabel1') },
+    { number: 2, label: t('wizard.organizer.stepLabel2') },
+    { number: 3, label: t('wizard.organizer.stepLabel3') },
+    { number: 4, label: t('wizard.organizer.stepLabel4') },
+    { number: 5, label: t('wizard.organizer.stepLabel5') },
   ];
 
   const handleInputChange = (field: string, value: any) => {
@@ -351,14 +351,6 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
       if (eventData.description.length < 50) {
         toast.error(t('wizard.organizer.validation.descriptionTooShort'), {
           description: t('wizard.organizer.validation.descriptionTooShortDesc'),
-          duration: 2000,
-          closeButton: false,
-        });
-        return;
-      }
-      if (eventData.venue.length < 5) {
-        toast.error(t('wizard.organizer.validation.venueTooShort'), {
-          description: t('wizard.organizer.validation.venueTooShortDesc'),
           duration: 2000,
           closeButton: false,
         });

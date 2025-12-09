@@ -465,6 +465,20 @@
     "addressPlaceholder": "VD: 123 Đường ABC, Quận 1, TP.HCM",
     "descriptionPlaceholder": "Giới thiệu về tổ chức của bạn và loại sự kiện bạn muốn tổ chức...",
     "requiredNote": "* Thông tin bắt buộc. Yêu cầu sẽ được xem xét trong vòng 24-48 giờ.",
+    "validation": {
+      "companyNameRequired": "Tên tổ chức là bắt buộc",
+      "companyNameTooShort": "Tên tổ chức phải có ít nhất 3 ký tự",
+      "phoneRequired": "Số điện thoại là bắt buộc",
+      "phoneInvalid": "Số điện thoại phải có 10-11 chữ số",
+      "emailInvalid": "Định dạng email không hợp lệ",
+      "websiteInvalid": "URL website không hợp lệ (VD: https://example.com)",
+      "addressRequired": "Địa chỉ là bắt buộc",
+      "addressTooShort": "Địa chỉ phải có ít nhất 10 ký tự",
+      "taxCodeInvalid": "Mã số thuế không hợp lệ (VD: 0123456789 hoặc 0123456789-001)",
+      "businessRegInvalid": "Số đăng ký kinh doanh phải có 10-13 chữ số",
+      "descriptionTooShort": "Mô tả phải có ít nhất 20 ký tự",
+      "formHasErrors": "Vui lòng kiểm tra lại thông tin đã nhập"
+    },
     "alreadyOrganizer": "Bạn đã là Organizer",
     "alreadyOrganizerDesc": "Tài khoản của bạn đã có quyền tạo và quản lý sự kiện.",
     "goToDashboard": "Đi tới Organizer Dashboard",
@@ -518,9 +532,11 @@
       "createFirstEvent": "Tạo sự kiện đầu tiên để bắt đầu",
       "noSalesData": "Chưa có dữ liệu doanh số",
       "salesDataHint": "Dữ liệu doanh số sẽ xuất hiện khi có đơn đặt vé",
-      "revenueData": "Chưa có dữ liệu doanh thu",
+      "noRevenueData": "Không có dữ liệu doanh thu",
+      "revenueDataHint": "Dữ liệu doanh thu sẽ xuất hiện khi khách hàng mua vé",
       "noTicketsSold": "Chưa bán được vé nào",
       "ticketSalesHint": "Dữ liệu bán hàng sẽ xuất hiện khi khách hàng mua vé",
+      "salesRate": "Tỉ lệ bán vé",
       "noPublishedEvents": "Chưa có sự kiện",
       "searchEvents": "Tìm kiếm sự kiện...",
       "availableBalance": "Số dư khả dụng",
@@ -559,8 +575,8 @@
       "unknownEvent": "Sự kiện không xác định",
       "revenueByEvent": "Doanh thu theo sự kiện",
       "eventComparison": "So sánh hiệu suất sự kiện",
-      "salesRate": "Tỷ lệ bán vé",
-      "percentageSold": "Phần trăm vé đã bán"
+      "percentageSold": "Phần trăm vé đã bán",
+      "noRevenueData": "Không có dữ liệu doanh thu"
     }
   },
   "editEvent": {
