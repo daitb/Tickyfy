@@ -75,7 +75,7 @@ export default function EventDetailPage() {
         const onWaitlist = await waitlistService.checkWaitlist(parseInt(id));
         setIsOnWaitlist(onWaitlist);
       } catch (error) {
-        console.error('Error checking waitlist status:', error);
+        console.error("Error checking waitlist status:", error);
       } finally {
         setCheckingWaitlist(false);
       }
@@ -86,7 +86,7 @@ export default function EventDetailPage() {
   const handleJoinWaitlist = async () => {
     const isAuthenticated = authService.isAuthenticated();
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
     if (!id) return;
@@ -97,10 +97,18 @@ export default function EventDetailPage() {
         eventId: parseInt(id),
       });
       setIsOnWaitlist(true);
-      alert(t('event.waitlistJoined', 'Successfully joined the waitlist! We\'ll notify you when tickets become available.'));
+      alert(
+        t(
+          "event.waitlistJoined",
+          "Successfully joined the waitlist! We'll notify you when tickets become available."
+        )
+      );
     } catch (error: any) {
-      console.error('Error joining waitlist:', error);
-      alert(error.response?.data?.message || t('event.waitlistError', 'Failed to join waitlist. Please try again.'));
+      console.error("Error joining waitlist:", error);
+      alert(
+        error.response?.data?.message ||
+          t("event.waitlistError", "Failed to join waitlist. Please try again.")
+      );
     } finally {
       setIsJoiningWaitlist(false);
     }
@@ -232,7 +240,9 @@ export default function EventDetailPage() {
             {/* Booking Card */}
             <div className="lg:w-[350px] bg-gray-50 rounded-lg p-6 border border-gray-200">
               <div className="text-2xl text-gray-900 mb-4">
-                {mockEvent.isSoldOut ? t('event.soldOut', 'Sold Out') : t('event.ticketsAvailable', 'Tickets Available')}
+                {mockEvent.isSoldOut
+                  ? t("event.soldOut", "Sold Out")
+                  : t("event.ticketsAvailable", "Tickets Available")}
               </div>
               {!mockEvent.isSoldOut ? (
                 <>
@@ -244,26 +254,34 @@ export default function EventDetailPage() {
                     onClick={() => navigate(`/seat-selection/${id}`)}
                     className="w-full bg-[#00C16A] hover:bg-[#00a859] text-white h-12"
                   >
-                    {t('event.bookEvent', 'Book Event')}
+                    {t("event.bookEvent", "Book Event")}
                   </Button>
                   <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <div className="flex items-center gap-2 text-yellow-800 text-sm">
                       <Clock className="w-4 h-4" />
-                      <span>{t('event.limitedTickets', 'Limited tickets remaining!')}</span>
+                      <span>
+                        {t(
+                          "event.limitedTickets",
+                          "Limited tickets remaining!"
+                        )}
+                      </span>
                     </div>
                   </div>
                 </>
               ) : (
                 <>
                   <div className="text-sm text-gray-600 mb-6">
-                    {t('event.noTicketsAvailable', 'All tickets have been sold for this event.')}
+                    {t(
+                      "event.noTicketsAvailable",
+                      "All tickets have been sold for this event."
+                    )}
                   </div>
                   {checkingWaitlist ? (
                     <Button
                       disabled
                       className="w-full bg-gray-400 text-white h-12"
                     >
-                      {t('event.checking', 'Checking...')}
+                      {t("event.checking", "Checking...")}
                     </Button>
                   ) : isOnWaitlist ? (
                     <>
@@ -271,12 +289,17 @@ export default function EventDetailPage() {
                         disabled
                         className="w-full bg-emerald-500 text-white h-12 cursor-default"
                       >
-                        ✓ {t('event.onWaitlist', 'You\'re on the Waitlist')}
+                        ✓ {t("event.onWaitlist", "You're on the Waitlist")}
                       </Button>
                       <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
                         <div className="flex items-center gap-2 text-emerald-800 text-sm">
                           <Clock className="w-4 h-4" />
-                          <span>{t('event.waitlistNotification', 'We\'ll notify you when tickets are available')}</span>
+                          <span>
+                            {t(
+                              "event.waitlistNotification",
+                              "We'll notify you when tickets are available"
+                            )}
+                          </span>
                         </div>
                       </div>
                     </>
@@ -287,12 +310,19 @@ export default function EventDetailPage() {
                         disabled={isJoiningWaitlist}
                         className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12"
                       >
-                        {isJoiningWaitlist ? t('event.joining', 'Joining...') : t('event.addToWaitlist', 'Join Waitlist')}
+                        {isJoiningWaitlist
+                          ? t("event.joining", "Joining...")
+                          : t("event.addToWaitlist", "Join Waitlist")}
                       </Button>
                       <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                         <div className="flex items-center gap-2 text-orange-800 text-sm">
                           <Clock className="w-4 h-4" />
-                          <span>{t('event.waitlistInfo', 'Get notified when tickets become available')}</span>
+                          <span>
+                            {t(
+                              "event.waitlistInfo",
+                              "Get notified when tickets become available"
+                            )}
+                          </span>
                         </div>
                       </div>
                     </>

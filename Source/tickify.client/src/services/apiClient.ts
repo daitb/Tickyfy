@@ -177,7 +177,6 @@ apiClient.interceptors.response.use(
     } else if (error.response?.status && error.response.status >= 500) {
       toast.error("Lỗi máy chủ. Vui lòng thử lại sau.");
     }
-
     return Promise.reject(error);
   }
 );
