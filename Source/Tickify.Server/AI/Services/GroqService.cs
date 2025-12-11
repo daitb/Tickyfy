@@ -46,7 +46,8 @@ public class GroqService : IGroqService
         _config = config;
         _logger = logger;
 
-        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.GroqApiKey}");
+        // Authorization header được thêm trong RagServiceExtensions
+        // Chỉ set timeout ở đây
         _httpClient.Timeout = TimeSpan.FromMinutes(2);
 
         _jsonOptions = new JsonSerializerOptions

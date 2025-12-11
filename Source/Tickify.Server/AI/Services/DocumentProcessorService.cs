@@ -164,13 +164,17 @@ public class DocumentProcessorService : IDocumentProcessorService
         int index,
         Dictionary<string, object>? metadata)
     {
+        // Qdrant yêu cầu ID phải là UUID hoặc unsigned integer
         return new DocumentChunk
         {
-            Id = $"{source}_{index}_{Guid.NewGuid():N}".Replace(" ", "_"),
+            Id = Guid.NewGuid().ToString(),
             Content = content,
             Source = source,
             SourceType = sourceType,
-            Metadata = metadata ?? new Dictionary<string, object>(),
+            Metadata = new Dictionary<string, object>(metadata ?? new Dictionary<string, object>())
+            {
+                ["chunk_index"] = index  // Lưu index vào metadata thay vì ID
+            },
             CreatedAt = DateTime.UtcNow
         };
     }

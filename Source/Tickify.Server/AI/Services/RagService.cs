@@ -124,16 +124,28 @@ public class RagService : IRagService
             
             // 1. Create embedding for query
             var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Message);
+            _logger.LogInformation("Created embedding with {Dims} dimensions", queryEmbedding.Length);
 
-            // 2. Search for relevant documents
+            // 2. Search for relevant documents - dùng minScore thấp cho simple embedding
+            var minScore = 0.0; // Không lọc theo score, lấy tất cả
             var searchResults = await _qdrantService.SearchAsync(
                 queryEmbedding, 
                 _config.TopK, 
-                _config.MinRelevanceScore);
+                minScore);
+
+            _logger.LogInformation("Found {Count} relevant documents from Qdrant", searchResults.Count);
+            foreach (var r in searchResults)
+            {
+                _logger.LogInformation("  - Score: {Score:F4}, Source: {Source}", 
+                    r.Score, r.Payload.GetValueOrDefault("source", "unknown"));
+            }
 
             // 3. Build context
             var context = BuildContext(searchResults);
             var sources = ExtractSources(searchResults);
+            
+            _logger.LogInformation("Built context: {ContextPreview}...", 
+                context.Length > 200 ? context[..200] : context);
 
             // 4. Create prompt with context
             var promptWithContext = SystemPrompt.Replace("{context}", context);
@@ -167,14 +179,29 @@ public class RagService : IRagService
 
     public async IAsyncEnumerable<string> StreamQueryAsync(Models.ChatRequest request)
     {
+        _logger.LogInformation("StreamQuery: Processing query '{Query}'", request.Message);
+        
         var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Message);
+        _logger.LogInformation("StreamQuery: Created embedding with {Dims} dimensions", queryEmbedding.Length);
 
+        // Dùng minScore = 0 để lấy tất cả documents (không lọc)
+        var minScore = 0.0;
         var searchResults = await _qdrantService.SearchAsync(
             queryEmbedding, 
             _config.TopK, 
-            _config.MinRelevanceScore);
+            minScore);
+
+        _logger.LogInformation("StreamQuery: Found {Count} relevant documents", searchResults.Count);
+        
+        foreach (var result in searchResults)
+        {
+            _logger.LogInformation("StreamQuery: Doc score={Score:F4}, source={Source}", 
+                result.Score, result.Payload.GetValueOrDefault("source", "unknown"));
+        }
 
         var context = BuildContext(searchResults);
+        _logger.LogInformation("StreamQuery: Context length = {Len} chars", context.Length);
+        
         var promptWithContext = SystemPrompt.Replace("{context}", context);
 
         await foreach (var chunk in StreamChatWithLlmAsync(
