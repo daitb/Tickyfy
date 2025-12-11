@@ -1,4 +1,3 @@
-// Controllers/RefundController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -27,9 +26,6 @@ public sealed class RefundController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Get current user ID from JWT token
-    /// </summary>
     private int GetCurrentUserId()
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -40,9 +36,6 @@ public sealed class RefundController : ControllerBase
         return userId;
     }
 
-    /// <summary>
-    /// POST /api/refund/request - Create refund request (requires authentication)
-    /// </summary>
     [HttpPost("request")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<RefundRequestDto>), StatusCodes.Status200OK)]
@@ -68,9 +61,6 @@ public sealed class RefundController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// GET /api/refund - Get all refund requests (Admin/Staff only)
-    /// </summary>
     [HttpGet]
     [Authorize(Roles = "Admin,Staff")]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<RefundRequestDto>>), StatusCodes.Status200OK)]
@@ -91,9 +81,6 @@ public sealed class RefundController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// GET /api/refund/{id} - Get refund request by ID (requires authentication)
-    /// </summary>
     [HttpGet("{id:int}")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<RefundRequestDto>), StatusCodes.Status200OK)]
@@ -108,7 +95,6 @@ public sealed class RefundController : ControllerBase
             if (refundRequest == null)
                 return NotFound(ApiResponse<object>.FailureResponse("Refund request not found"));
 
-            // Authorization: User can only view their own refund requests, unless they are Admin/Staff
             var userId = GetCurrentUserId();
             var isAdmin = User.IsInRole("Admin") || User.IsInRole("Staff");
             
@@ -132,9 +118,6 @@ public sealed class RefundController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// GET /api/refund/my-refunds - Get current user's refund requests (requires authentication)
-    /// </summary>
     [HttpGet("my-refunds")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<RefundRequestDto>>), StatusCodes.Status200OK)]
@@ -154,9 +137,6 @@ public sealed class RefundController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// POST /api/refund/{id}/approve - Approve refund request (Admin/Staff only)
-    /// </summary>
     [HttpPost("{id:int}/approve")]
     [Authorize(Roles = "Admin,Staff")]
     [ProducesResponseType(typeof(ApiResponse<RefundRequestDto>), StatusCodes.Status200OK)]
@@ -183,9 +163,6 @@ public sealed class RefundController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// POST /api/refund/{id}/reject - Reject refund request (Admin/Staff only)
-    /// </summary>
     [HttpPost("{id:int}/reject")]
     [Authorize(Roles = "Admin,Staff")]
     [ProducesResponseType(typeof(ApiResponse<RefundRequestDto>), StatusCodes.Status200OK)]

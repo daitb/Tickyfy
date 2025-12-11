@@ -1,4 +1,3 @@
-// Controllers/ReviewController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -27,9 +26,6 @@ public sealed class ReviewController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// POST /api/review - Create a new review (requires authentication)
-    /// </summary>
     [HttpPost]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<ReviewDto>), StatusCodes.Status200OK)]
@@ -55,9 +51,6 @@ public sealed class ReviewController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// GET /api/review/event/{eventId} - Get reviews for an event (public)
-    /// </summary>
     [HttpGet("event/{eventId:int}")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<ReviewDto>>), StatusCodes.Status200OK)]
@@ -76,9 +69,6 @@ public sealed class ReviewController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// GET /api/review/{id} - Get review by ID (public)
-    /// </summary>
     [HttpGet("{id:int}")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<ReviewDto>), StatusCodes.Status200OK)]
@@ -101,9 +91,6 @@ public sealed class ReviewController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// GET /api/review/my-reviews - Get current user's reviews (requires authentication)
-    /// </summary>
     [HttpGet("my-reviews")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<ReviewDto>>), StatusCodes.Status200OK)]
@@ -123,9 +110,6 @@ public sealed class ReviewController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// PUT /api/review/{id} - Update user's own review (requires authentication)
-    /// </summary>
     [HttpPut("{id:int}")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<ReviewDto>), StatusCodes.Status200OK)]
@@ -152,9 +136,6 @@ public sealed class ReviewController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// DELETE /api/review/{id} - Delete user's own review (requires authentication)
-    /// </summary>
     [HttpDelete("{id:int}")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]

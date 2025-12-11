@@ -202,7 +202,7 @@ export function HelpCenter() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="text-xs text-muted-foreground mb-1">
-                          {article.category}
+                          {t(`helpCenter.categories.${categories.findIndex(c => c.title === article.category)}.title`, article.category)}
                         </div>
                         <CardTitle className="text-lg mb-2">
                           {t(`helpCenter.articles.${index}.title`, article.title)}

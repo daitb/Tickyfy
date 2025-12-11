@@ -1,4 +1,3 @@
-// Services/Payments/IPaymentService.cs
 using Microsoft.AspNetCore.Http;
 using Tickify.DTOs.Payment;
 

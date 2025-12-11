@@ -59,17 +59,14 @@ export function Login({ onNavigate }: LoginProps) {
         });
 
         // Render Google button in hidden div
-        window.google.accounts.id.renderButton(
-          hiddenGoogleButtonRef.current,
-          {
-            theme: "outline",
-            size: "large",
-            text: "signin_with",
-            shape: "rectangular",
-            locale: "en_US",
-          }
-        );
-        
+        window.google.accounts.id.renderButton(hiddenGoogleButtonRef.current, {
+          theme: "outline",
+          size: "large",
+          text: "signin_with",
+          shape: "rectangular",
+          locale: "en_US",
+        });
+
         setIsGoogleInitialized(true);
       } else {
         // Retry after a short delay if Google script hasn't loaded yet
@@ -118,9 +115,10 @@ export function Login({ onNavigate }: LoginProps) {
       setError(errorMessage);
       toast.error(errorMessage, {
         duration: 5000,
-        description: err.response?.status === 401
-          ? "Vui lòng liên hệ quản trị viên nếu bạn cho rằng đây là lỗi."
-          : undefined
+        description:
+          err.response?.status === 401
+            ? "Vui lòng liên hệ quản trị viên nếu bạn cho rằng đây là lỗi."
+            : undefined,
       });
     } finally {
       setIsLoading(false);
@@ -168,15 +166,18 @@ export function Login({ onNavigate }: LoginProps) {
       setError(errorMessage);
       toast.error(errorMessage, {
         duration: 5000,
-        description: err.response?.status === 401
-          ? "Vui lòng liên hệ quản trị viên nếu bạn cho rằng đây là lỗi."
-          : undefined
+        description:
+          err.response?.status === 401
+            ? "Vui lòng liên hệ quản trị viên nếu bạn cho rằng đây là lỗi."
+            : undefined,
       });
 
       // Check if error is about email verification
-      if (errorMessage.toLowerCase().includes("xác thực email") ||
+      if (
+        errorMessage.toLowerCase().includes("xác thực email") ||
         errorMessage.toLowerCase().includes("verify") ||
-        errorMessage.toLowerCase().includes("verification")) {
+        errorMessage.toLowerCase().includes("verification")
+      ) {
         setIsEmailNotVerified(true);
       }
     } finally {
@@ -192,8 +193,10 @@ export function Login({ onNavigate }: LoginProps) {
 
     if (hiddenGoogleButtonRef.current) {
       // Find the Google button element (usually a div with role="button")
-      const googleButton = hiddenGoogleButtonRef.current.querySelector('div[role="button"]') as HTMLElement;
-      
+      const googleButton = hiddenGoogleButtonRef.current.querySelector(
+        'div[role="button"]'
+      ) as HTMLElement;
+
       if (googleButton) {
         // Programmatically click the Google button
         googleButton.click();
@@ -201,7 +204,9 @@ export function Login({ onNavigate }: LoginProps) {
         // Fallback: use prompt method to show One Tap UI
         window.google.accounts.id.prompt((notification: any) => {
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            setError("Không thể hiển thị cửa sổ đăng nhập Google. Vui lòng thử lại.");
+            setError(
+              "Không thể hiển thị cửa sổ đăng nhập Google. Vui lòng thử lại."
+            );
           }
         });
       }
@@ -246,7 +251,7 @@ export function Login({ onNavigate }: LoginProps) {
             <div className="space-y-3 mb-6">
               {/* Hidden Google Button - used for programmatic click */}
               <div ref={hiddenGoogleButtonRef} className="hidden"></div>
-              
+
               {/* Custom Google Sign-In Button */}
               <Button
                 type="button"
@@ -255,10 +260,7 @@ export function Login({ onNavigate }: LoginProps) {
                 onClick={handleGoogleLogin}
                 disabled={!isGoogleInitialized || isLoading}
               >
-                <svg
-                  className="w-5 h-5 mr-2"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -276,7 +278,7 @@ export function Login({ onNavigate }: LoginProps) {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                {t('auth.continueWithGoogle')}
+                {t("auth.continueWithGoogle")}
               </Button>
             </div>
 

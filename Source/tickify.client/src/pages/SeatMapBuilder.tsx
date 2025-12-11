@@ -58,7 +58,7 @@ import {
 import { toast } from "sonner";
 
 interface SeatMapBuilderProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, eventId?: string) => void;
   eventId?: string | null;
 }
 
@@ -89,34 +89,35 @@ type Tool =
   | "stage"
   | "eraser";
 
+// Templates will be translated in the component
 const predefinedTemplates = [
   {
     id: "theater",
-    name: "Theater Style",
+    nameKey: "management.seat.builder.templates.theaterStyle",
     rows: 15,
     cols: 20,
-    description: "Traditional theater seating",
+    descriptionKey: "management.seat.builder.templates.theaterDescription",
   },
   {
     id: "stadium",
-    name: "Stadium",
+    nameKey: "management.seat.builder.templates.stadium",
     rows: 20,
     cols: 30,
-    description: "Curved stadium layout",
+    descriptionKey: "management.seat.builder.templates.stadiumDescription",
   },
   {
     id: "conference",
-    name: "Conference",
+    nameKey: "management.seat.builder.templates.conference",
     rows: 10,
     cols: 15,
-    description: "Tables and chairs",
+    descriptionKey: "management.seat.builder.templates.conferenceDescription",
   },
   {
     id: "concert",
-    name: "Concert Hall",
+    nameKey: "management.seat.builder.templates.concertHall",
     rows: 12,
     cols: 25,
-    description: "Mix of seated and standing",
+    descriptionKey: "management.seat.builder.templates.concertDescription",
   },
 ];
 
@@ -355,6 +356,15 @@ export function SeatMapBuilder({
       return;
     }
 
+    // Validate maximum price (50 million VND for payment gateway limit)
+    const MAX_ZONE_PRICE = 50_000_000;
+    if (newZone.price > MAX_ZONE_PRICE) {
+      toast.error(
+        `Zone price cannot exceed ${MAX_ZONE_PRICE.toLocaleString()} VND due to payment gateway limitations (MoMo: 50M VND max per transaction)`
+      );
+      return;
+    }
+
     if (editingZone) {
       // Update existing zone
       setZones(
@@ -515,6 +525,17 @@ export function SeatMapBuilder({
       return;
     }
 
+    // Validate zone prices before saving
+    const MAX_ZONE_PRICE = 50_000_000;
+    const invalidZones = zones.filter((z) => z.price > MAX_ZONE_PRICE);
+    if (invalidZones.length > 0) {
+      toast.error(
+        `Zone prices cannot exceed ${MAX_ZONE_PRICE.toLocaleString()} VND. ` +
+          `Invalid zones: ${invalidZones.map((z) => z.name).join(", ")}`
+      );
+      return;
+    }
+
     try {
       // AUTO-UPDATE ZONE CAPACITIES from actual seat counts
       const updatedZones = zones.map((z) => ({
@@ -546,7 +567,7 @@ export function SeatMapBuilder({
 
       const payload = {
         eventId: eventId,
-        name: `${eventTitle || "Event"} Seat Map`,
+        name: t("management.seat.builder.seatMapName", { eventTitle: eventTitle || t("common.eventTitle") }),
         description: "Seat map created with builder",
         totalRows: gridSize.rows,
         totalColumns: gridSize.cols,
@@ -594,6 +615,15 @@ export function SeatMapBuilder({
 
     await handleSave();
     toast.success("Seat map published successfully!");
+    
+    // Navigate back to wizard with eventId after publishing
+    setTimeout(() => {
+      if (eventId) {
+        onNavigate("organizer-wizard", eventId);
+      } else {
+        onNavigate("organizer-dashboard");
+      }
+    }, 1000);
   };
 
   return (
@@ -605,7 +635,13 @@ export function SeatMapBuilder({
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
-                onClick={() => onNavigate("organizer-dashboard")}
+                onClick={() => {
+                  if (eventId) {
+                    onNavigate("organizer-wizard", eventId);
+                  } else {
+                    onNavigate("organizer-dashboard");
+                  }
+                }}
               >
                 ← Back
               </Button>
@@ -1114,18 +1150,18 @@ export function SeatMapBuilder({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingZone ? "Edit Zone" : "Create New Zone"}
+              {editingZone ? t("management.seat.builder.zone.editZone") : t("management.seat.builder.zone.createNewZone")}
             </DialogTitle>
             <DialogDescription>
-              Define the zone name, color, and pricing
+              {t("management.seat.builder.zone.zoneDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Zone Name</Label>
+              <Label>{t("management.seat.builder.zone.zoneName")}</Label>
               <Input
-                placeholder="e.g., VIP Section"
+                placeholder={t("management.seat.builder.zone.zoneNamePlaceholder")}
                 value={newZone.name}
                 onChange={(e) =>
                   setNewZone({ ...newZone, name: e.target.value })
@@ -1134,7 +1170,7 @@ export function SeatMapBuilder({
             </div>
 
             <div>
-              <Label>Zone Color</Label>
+              <Label>{t("management.seat.builder.zone.zoneColor")}</Label>
               <div className="flex gap-2">
                 <Input
                   type="color"
@@ -1155,18 +1191,28 @@ export function SeatMapBuilder({
             </div>
 
             <div>
-              <Label>Price per Seat ($)</Label>
+              <Label>Price per Seat (VND)</Label>
               <Input
                 type="number"
-                placeholder="120"
+                placeholder="100000"
+                min="0"
+                max="50000000"
                 value={newZone.price || ""}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value) || 0;
+                  if (value > 50_000_000) {
+                    toast.error("Maximum price is 50,000,000 VND");
+                    return;
+                  }
                   setNewZone({
                     ...newZone,
-                    price: parseFloat(e.target.value) || 0,
-                  })
-                }
+                    price: value,
+                  });
+                }}
               />
+              <p className="text-xs text-neutral-500 mt-1">
+                Maximum: 50,000,000 VND (Payment gateway limit)
+              </p>
             </div>
           </div>
 
@@ -1179,10 +1225,10 @@ export function SeatMapBuilder({
                 setNewZone({ name: "", color: "#00C16A", price: 0 });
               }}
             >
-              Cancel
+              {t("management.seat.builder.zone.cancel")}
             </Button>
             <Button onClick={handleAddZone}>
-              {editingZone ? "Update Zone" : "Create Zone"}
+              {editingZone ? t("management.seat.builder.zone.updateZone") : t("management.seat.builder.zone.createZone")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1206,13 +1252,13 @@ export function SeatMapBuilder({
                 className="p-4 border-2 rounded-lg hover:border-teal-500 transition-colors text-left"
               >
                 <div className="text-sm text-neutral-900 mb-1">
-                  {template.name}
+                  {t(template.nameKey)}
                 </div>
                 <div className="text-xs text-neutral-500 mb-2">
-                  {template.description}
+                  {t(template.descriptionKey)}
                 </div>
                 <div className="text-xs text-neutral-400">
-                  {template.rows} rows × {template.cols} columns
+                  {template.rows} {t('management.seat.builder.rows')} × {template.cols} {t('management.seat.builder.seatsPerRow')}
                 </div>
               </button>
             ))}

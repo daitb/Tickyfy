@@ -1,0 +1,432 @@
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Tickify.Data;
+using Tickify.DTOs.Payment;
+using Tickify.Hubs;
+using Tickify.Interfaces.Repositories;
+using Tickify.Models;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace Tickify.Services.Payments;
+
+/// <summary>
+/// Credit Card Payment Provider - Simulated card processing with full validation
+/// This is a mock implementation that simulates a real payment gateway
+/// In production, this would integrate with Stripe, Square, Adyen, or other card processors
+/// </summary>
+public sealed class CreditCardProvider : IPaymentProvider
+{
+    public string Name => "creditcard";
+    
+    private readonly IConfiguration _cfg;
+    private readonly IPaymentRepository _payments;
+    private readonly IBookingRepository _bookings;
+    private readonly ITicketRepository _tickets;
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<CreditCardProvider> _logger;
+    private readonly IHubContext<SeatHub> _seatHubContext;
+
+    // Simulated card brand detection patterns
+    private static readonly Dictionary<string, string> CardBrandPatterns = new()
+    {
+        { "^4", "Visa" },
+        { "^5[1-5]", "Mastercard" },
+        { "^3[47]", "American Express" },
+        { "^6(?:011|5)", "Discover" },
+        { "^(?:2131|1800|35)", "JCB" }
+    };
+
+    public CreditCardProvider(
+        IConfiguration cfg,
+        IPaymentRepository payments,
+        IBookingRepository bookings,
+        ITicketRepository tickets,
+        ApplicationDbContext context,
+        ILogger<CreditCardProvider> logger,
+        IHubContext<SeatHub> seatHubContext)
+    {
+        _cfg = cfg;
+        _payments = payments;
+        _bookings = bookings;
+        _tickets = tickets;
+        _context = context;
+        _logger = logger;
+        _seatHubContext = seatHubContext;
+    }
+
+    /// <summary>
+    /// Creates a credit card payment intent with full processing simulation
+    /// In real implementation: tokenize card, call processor API, handle 3D Secure
+    /// </summary>
+    public async Task<PaymentIntentDto> CreatePaymentAsync(
+        int paymentId, 
+        int bookingId, 
+        decimal amount, 
+        string orderInfo, 
+        string clientIp, 
+        CancellationToken ct)
+    {
+        _logger.LogInformation("[CreditCard] Processing payment - PaymentId: {PaymentId}, Amount: {Amount} VND", 
+            paymentId, amount);
+
+        try
+        {
+            // Get payment and booking details
+            var payment = await _payments.GetAsync(paymentId, ct);
+            if (payment == null)
+                throw new InvalidOperationException($"Payment {paymentId} not found");
+
+            var booking = await _bookings.GetByIdAsync(bookingId);
+            if (booking == null)
+                throw new InvalidOperationException($"Booking {bookingId} not found");
+
+            // In a real implementation, this would:
+            // 1. Tokenize card details (PCI-DSS compliant - never store raw card data)
+            // 2. Call payment processor API (Stripe, Square, Adyen, etc.)
+            // 3. Handle 3D Secure authentication if required
+            // 4. Process the charge
+            // 5. Handle response and update records
+
+            // For this mock implementation, we simulate immediate processing
+            using var transaction = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                // Simulate payment processing
+                var transactionId = Validators.CreditCardValidator.GenerateTransactionId(paymentId);
+                var authCode = Validators.CreditCardValidator.GenerateAuthorizationCode();
+
+                // Update payment record
+                payment.Status = PaymentStatus.Completed;
+                payment.TransactionId = transactionId;
+                payment.PaymentGateway = Name;
+                payment.PaidAt = DateTime.UtcNow;
+                payment.PaymentResponse = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    success = true,
+                    transactionId = transactionId,
+                    authorizationCode = authCode,
+                    processedAt = DateTime.UtcNow,
+                    amount = amount,
+                    currency = "VND",
+                    mock = true
+                });
+                await _payments.UpdateAsync(payment, ct);
+
+                // Confirm booking
+                if (booking.Status == BookingStatus.Pending)
+                {
+                    booking.Status = BookingStatus.Confirmed;
+                    booking.ExpiresAt = null;
+                    await _bookings.UpdateAsync(booking);
+                }
+
+                // Create tickets
+                await CreateTicketsForBookingAsync(bookingId, ct);
+
+                await transaction.CommitAsync(ct);
+
+                _logger.LogInformation("[CreditCard] Payment {PaymentId} processed successfully - TxnId: {TransactionId}", 
+                    paymentId, transactionId);
+
+                // Return success response (no redirect needed for direct payment)
+                var returnUrl = _cfg["Payments:ReturnUrl"] ?? "http://localhost:3000/payment/return";
+                var successUrl = $"{returnUrl}?paymentId={paymentId}&status=success&provider=creditcard&txnId={transactionId}";
+
+                return new PaymentIntentDto
+                {
+                    Provider = Name,
+                    PaymentId = paymentId,
+                    RedirectUrl = successUrl,
+                    ExpiresAtUtc = DateTime.UtcNow.AddMinutes(15),
+                    Status = "completed",
+                    TransactionId = transactionId
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(ct);
+                _logger.LogError(ex, "[CreditCard] Transaction failed: {Message}", ex.Message);
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[CreditCard] Payment creation failed: {Message}", ex.Message);
+            throw new InvalidOperationException($"Xử lý thanh toán thất bại: {ex.Message}", ex);
+        }
+    }
+
+    public async Task<bool> VerifyAsync(int paymentId, CancellationToken ct)
+    {
+        var payment = await _payments.GetAsync(paymentId, ct);
+        if (payment == null) return false;
+
+        var booking = await _bookings.GetByIdAsync(payment.BookingId);
+        if (booking == null) return false;
+
+        // If payment is completed, confirm booking
+        if (payment.Status == PaymentStatus.Completed)
+        {
+            if (booking.Status == BookingStatus.Pending)
+            {
+                booking.Status = BookingStatus.Confirmed;
+                booking.ExpiresAt = null;
+                await _bookings.UpdateAsync(booking);
+            }
+            
+            await CreateTicketsForBookingAsync(booking.Id, ct);
+            return true;
+        }
+
+        // If booking is confirmed, update payment
+        if (booking.Status == BookingStatus.Confirmed)
+        {
+            if (payment.Status == PaymentStatus.Pending)
+            {
+                payment.Status = PaymentStatus.Completed;
+                payment.PaidAt = DateTime.UtcNow;
+                await _payments.UpdateAsync(payment, ct);
+            }
+            
+            await CreateTicketsForBookingAsync(booking.Id, ct);
+            return true;
+        }
+
+        return false;
+    }
+
+    public async Task<bool> VerifyFromReturnUrlAsync(int paymentId, IQueryCollection queryParams, CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("[CreditCard] Verifying payment {PaymentId} from return URL", paymentId);
+
+            var status = queryParams["status"].ToString();
+            var provider = queryParams["provider"].ToString();
+
+            // Validate this is our provider
+            if (!provider.Equals("creditcard", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("[CreditCard] Invalid provider in return URL: {Provider}", provider);
+                return false;
+            }
+
+            // Get payment record
+            var payment = await _payments.GetAsync(paymentId, ct);
+            if (payment == null)
+            {
+                _logger.LogWarning("[CreditCard] Payment {PaymentId} not found", paymentId);
+                return false;
+            }
+
+            // In mock mode, always succeed
+            if (status.Equals("success", StringComparison.OrdinalIgnoreCase))
+            {
+                // Check idempotency
+                if (payment.Status == PaymentStatus.Completed)
+                {
+                    _logger.LogInformation("[CreditCard] Payment {PaymentId} already completed", paymentId);
+                    return true;
+                }
+
+                using var transaction = await _context.Database.BeginTransactionAsync(ct);
+                try
+                {
+                    // Complete payment
+                    payment.Status = PaymentStatus.Completed;
+                    payment.TransactionId = $"CC_{paymentId}_{DateTime.UtcNow:yyyyMMddHHmmss}";
+                    payment.PaidAt = DateTime.UtcNow;
+                    await _payments.UpdateAsync(payment, ct);
+
+                    // Confirm booking
+                    var booking = await _bookings.GetByIdAsync(payment.BookingId);
+                    if (booking != null && booking.Status == BookingStatus.Pending)
+                    {
+                        booking.Status = BookingStatus.Confirmed;
+                        booking.ExpiresAt = null;
+                        await _bookings.UpdateAsync(booking);
+
+                        await CreateTicketsForBookingAsync(booking.Id, ct);
+                    }
+
+                    await transaction.CommitAsync(ct);
+
+                    _logger.LogInformation("[CreditCard] Payment {PaymentId} completed successfully", paymentId);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync(ct);
+                    _logger.LogError(ex, "[CreditCard] Transaction rollback: {Message}", ex.Message);
+                    throw;
+                }
+            }
+            else
+            {
+                payment.Status = PaymentStatus.Failed;
+                await _payments.UpdateAsync(payment, ct);
+                _logger.LogWarning("[CreditCard] Payment {PaymentId} failed", paymentId);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[CreditCard] Verification error: {Message}", ex.Message);
+            return false;
+        }
+    }
+
+    public Task<bool> HandleWebhookAsync(HttpRequest request, CancellationToken ct)
+    {
+        // Credit card provider doesn't use webhooks in mock implementation
+        _logger.LogWarning("[CreditCard] Webhook received but not implemented");
+        return Task.FromResult(false);
+    }
+
+    public Task<bool> RefundAsync(int paymentId, decimal amount, string reason, CancellationToken ct)
+    {
+        // Stub for refund functionality
+        return Task.FromResult(false);
+    }
+
+    private async Task CreateTicketsForBookingAsync(int bookingId, CancellationToken ct)
+    {
+        var booking = await _context.Bookings
+            .Include(b => b.Event)
+            .Include(b => b.Tickets)
+            .FirstOrDefaultAsync(b => b.Id == bookingId, ct);
+
+        if (booking == null)
+        {
+            _logger.LogWarning("[CreditCard] Booking {BookingId} not found", bookingId);
+            return;
+        }
+
+        if (booking.Tickets != null && booking.Tickets.Any())
+        {
+            _logger.LogInformation("[CreditCard] Tickets already exist for booking {BookingId}", bookingId);
+            return;
+        }
+
+        var ticketTypes = await _context.TicketTypes
+            .Where(tt => tt.EventId == booking.EventId && tt.IsActive)
+            .ToListAsync(ct);
+
+        if (!ticketTypes.Any())
+        {
+            _logger.LogWarning("[CreditCard] No ticket types found for event {EventId}", booking.EventId);
+            return;
+        }
+
+        var pricePerTicket = booking.TotalAmount + booking.DiscountAmount;
+        TicketType? selectedTicketType = null;
+        int quantity = 1;
+
+        foreach (var ticketType in ticketTypes.OrderByDescending(tt => tt.Price))
+        {
+            var calculatedQuantity = (int)Math.Round(pricePerTicket / ticketType.Price);
+            if (calculatedQuantity > 0 && Math.Abs(pricePerTicket - (ticketType.Price * calculatedQuantity)) < 0.01m)
+            {
+                selectedTicketType = ticketType;
+                quantity = calculatedQuantity;
+                break;
+            }
+        }
+
+        if (selectedTicketType == null)
+        {
+            selectedTicketType = ticketTypes.OrderByDescending(tt => tt.Price).First();
+            quantity = (int)Math.Ceiling(pricePerTicket / selectedTicketType.Price);
+            if (quantity <= 0) quantity = 1;
+        }
+
+        var ticketsToCreate = new List<Ticket>();
+
+        // Handle seat-based booking
+        if (!string.IsNullOrEmpty(booking.SeatIdsJson))
+        {
+            try
+            {
+                var seatIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(booking.SeatIdsJson);
+                if (seatIds != null && seatIds.Any())
+                {
+                    var seats = await _context.Seats
+                        .Include(s => s.TicketType)
+                        .Include(s => s.SeatZone)
+                        .Where(s => seatIds.Contains(s.Id))
+                        .ToListAsync(ct);
+
+                    int ticketIndex = 1;
+                    var eventId = seats.FirstOrDefault()?.TicketType.EventId;
+
+                    foreach (var seat in seats)
+                    {
+                        var ticket = new Ticket
+                        {
+                            BookingId = bookingId,
+                            TicketTypeId = seat.TicketTypeId,
+                            SeatId = seat.Id,
+                            TicketCode = GenerateTicketCode(bookingId, ticketIndex++),
+                            Price = seat.SeatZone?.ZonePrice ?? seat.TicketType.Price,
+                            Status = TicketStatus.Valid,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        ticketsToCreate.Add(ticket);
+
+                        seat.Status = SeatStatus.Sold;
+                        seat.ReservedByUserId = null;
+                        seat.ReservedUntil = null;
+                    }
+
+                    if (eventId.HasValue)
+                    {
+                        await _seatHubContext.Clients
+                            .Group($"Event_{eventId}")
+                            .SendAsync("SeatsUpdated", new
+                            {
+                                eventId = eventId.Value,
+                                seatIds = seatIds,
+                                status = "Sold"
+                            }, ct);
+                    }
+
+                    _logger.LogInformation("[CreditCard] Created {Count} seat tickets for booking {BookingId}", 
+                        ticketsToCreate.Count, bookingId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[CreditCard] Error parsing seat IDs: {Message}", ex.Message);
+            }
+        }
+
+        // Fallback: create general tickets
+        if (!ticketsToCreate.Any())
+        {
+            for (int i = 0; i < quantity; i++)
+            {
+                var ticket = new Ticket
+                {
+                    BookingId = bookingId,
+                    TicketTypeId = selectedTicketType.Id,
+                    TicketCode = GenerateTicketCode(bookingId, i + 1),
+                    Price = selectedTicketType.Price,
+                    Status = TicketStatus.Valid,
+                    CreatedAt = DateTime.UtcNow
+                };
+                ticketsToCreate.Add(ticket);
+            }
+            _logger.LogInformation("[CreditCard] Created {Count} general tickets for booking {BookingId}", 
+                ticketsToCreate.Count, bookingId);
+        }
+
+        await _tickets.CreateBulkAsync(ticketsToCreate);
+        await _context.SaveChangesAsync(ct);
+    }
+
+    private static string GenerateTicketCode(int bookingId, int ticketNumber)
+    {
+        return $"TK{bookingId:D6}{ticketNumber:D3}{DateTime.UtcNow:yyyyMMdd}";
+    }
+}
