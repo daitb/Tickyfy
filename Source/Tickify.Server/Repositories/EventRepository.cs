@@ -33,7 +33,9 @@ public class EventRepository : IEventRepository
                 .Include(e => e.ApprovedByStaff)
                 .Include(e => e.Reviews)
                 .Include(e => e.Bookings!)
-                    .ThenInclude(b => b.Tickets);
+                    .ThenInclude(b => b.Tickets)
+                .Include(e => e.Bookings!)
+                    .ThenInclude(b => b.User);
         }
 
         return await query.FirstOrDefaultAsync(e => e.Id == id);

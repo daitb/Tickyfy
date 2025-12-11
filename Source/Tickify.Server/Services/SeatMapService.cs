@@ -152,47 +152,61 @@ namespace Tickify.Services
             if (seatMap == null)
                 throw new KeyNotFoundException($"SeatMap with ID {id} not found");
 
-            // Update only non-null properties
-            if (dto.Name != null) seatMap.Name = dto.Name;
-            if (dto.Description != null) seatMap.Description = dto.Description;
-            if (dto.TotalRows.HasValue) seatMap.TotalRows = dto.TotalRows.Value;
-            if (dto.TotalColumns.HasValue) seatMap.TotalColumns = dto.TotalColumns.Value;
-            if (dto.LayoutConfig != null) 
+            // Use transaction to ensure atomicity - don't lose data if validation fails
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
             {
-                seatMap.LayoutConfig = dto.LayoutConfig;
+                // Update only non-null properties
+                if (dto.Name != null) seatMap.Name = dto.Name;
+                if (dto.Description != null) seatMap.Description = dto.Description;
+                if (dto.TotalRows.HasValue) seatMap.TotalRows = dto.TotalRows.Value;
+                if (dto.TotalColumns.HasValue) seatMap.TotalColumns = dto.TotalColumns.Value;
+                if (dto.LayoutConfig != null) 
+                {
+                    seatMap.LayoutConfig = dto.LayoutConfig;
+                    
+                    // Delete old zones and seats, then recreate from new layoutConfig
+                    // First get zone IDs to delete associated seats
+                    var oldZoneIds = await _dbContext.SeatZones
+                        .Where(z => z.SeatMapId == id)
+                        .Select(z => z.Id)
+                        .ToListAsync();
+                    
+                    // Delete seats in those zones
+                    var oldSeats = _dbContext.Seats.Where(s => s.SeatZoneId.HasValue && oldZoneIds.Contains(s.SeatZoneId.Value));
+                    _dbContext.Seats.RemoveRange(oldSeats);
+                    
+                    // Delete zones
+                    var oldZones = _dbContext.SeatZones.Where(z => z.SeatMapId == id);
+                    _dbContext.SeatZones.RemoveRange(oldZones);
+                    
+                    await _dbContext.SaveChangesAsync();
+                    
+                    // Create new zones and seats - this will throw if validation fails
+                    await CreateZonesAndSeatsFromLayoutAsync(id, dto.LayoutConfig, seatMap.EventId);
+                }
+                if (dto.IsActive.HasValue) seatMap.IsActive = dto.IsActive.Value;
                 
-                // Delete old zones and seats, then recreate from new layoutConfig
-                // First get zone IDs to delete associated seats
-                var oldZoneIds = await _dbContext.SeatZones
-                    .Where(z => z.SeatMapId == id)
-                    .Select(z => z.Id)
-                    .ToListAsync();
-                
-                // Delete seats in those zones
-                var oldSeats = _dbContext.Seats.Where(s => s.SeatZoneId.HasValue && oldZoneIds.Contains(s.SeatZoneId.Value));
-                _dbContext.Seats.RemoveRange(oldSeats);
-                
-                // Delete zones
-                var oldZones = _dbContext.SeatZones.Where(z => z.SeatMapId == id);
-                _dbContext.SeatZones.RemoveRange(oldZones);
-                
-                await _dbContext.SaveChangesAsync();
-                
-                // Create new zones and seats
-                await CreateZonesAndSeatsFromLayoutAsync(id, dto.LayoutConfig, seatMap.EventId);
-            }
-            if (dto.IsActive.HasValue) seatMap.IsActive = dto.IsActive.Value;
-            
-            seatMap.UpdatedAt = DateTime.UtcNow;
+                seatMap.UpdatedAt = DateTime.UtcNow;
 
-            var updated = await _seatMapRepository.UpdateAsync(seatMap);
-            
-            // Reload seat map to include newly created zones
-            var reloaded = await _dbContext.SeatMaps
-                .Include(sm => sm.Zones)
-                .FirstOrDefaultAsync(sm => sm.Id == updated.Id);
-            
-            return _mapper.Map<SeatMapResponseDto>(reloaded ?? updated);
+                var updated = await _seatMapRepository.UpdateAsync(seatMap);
+                
+                // Commit transaction only if everything succeeded
+                await transaction.CommitAsync();
+                
+                // Reload seat map to include newly created zones
+                var reloaded = await _dbContext.SeatMaps
+                    .Include(sm => sm.Zones)
+                    .FirstOrDefaultAsync(sm => sm.Id == updated.Id);
+                
+                return _mapper.Map<SeatMapResponseDto>(reloaded ?? updated);
+            }
+            catch
+            {
+                // Rollback transaction on any error - old data will be preserved
+                await transaction.RollbackAsync();
+                throw; // Re-throw to let controller handle error response
+            }
         }
 
         public async Task<bool> DeleteSeatMapAsync(int id)
@@ -341,6 +355,15 @@ namespace Tickify.Services
                 {
                     Console.WriteLine($"[SeatMapService] Processing zone: '{zone.Name}' (ID: '{zone.Id}', Price: {zone.Price}, Capacity: {zone.Capacity})");
                     
+                    // Validate zone price
+                    const decimal MAX_ZONE_PRICE = 50_000_000m; // 50 triệu VND
+                    if (zone.Price > MAX_ZONE_PRICE)
+                    {
+                        throw new InvalidOperationException(
+                            $"Zone '{zone.Name}' price ({zone.Price:N0} VND) exceeds maximum limit of {MAX_ZONE_PRICE:N0} VND. " +
+                            $"This is due to payment gateway limitations (MoMo: 50M VND max per transaction).");
+                    }
+                    
                     // Find existing ticket type by name
                     var ticketType = eventTicketTypes.FirstOrDefault(tt => 
                         tt.Name.Equals(zone.Name, StringComparison.OrdinalIgnoreCase));
@@ -369,10 +392,10 @@ namespace Tickify.Services
                         Name = zone.Name,
                         Color = zone.Color,
                         ZonePrice = zone.Price,
-                        StartRow = 0,
-                        EndRow = 0,
-                        StartColumn = 0,
-                        EndColumn = 0,
+                        StartRow = zone.StartRow,
+                        EndRow = zone.EndRow,
+                        StartColumn = zone.StartColumn,
+                        EndColumn = zone.EndColumn,
                         Capacity = zone.Capacity,
                         AvailableSeats = zone.Capacity,
                         CreatedAt = DateTime.UtcNow
@@ -390,6 +413,37 @@ namespace Tickify.Services
                 }
 
                 Console.WriteLine($"[SeatMapService] All zones created successfully. Zone mapping: {string.Join(", ", zoneIdMap.Select(kvp => $"{kvp.Key}→{kvp.Value}"))}");
+
+                // Validate zone overlaps (check if any zones have overlapping row/column ranges)
+                var createdZones = await _dbContext.SeatZones
+                    .Where(z => z.SeatMapId == seatMapId)
+                    .ToListAsync();
+                
+                for (int i = 0; i < createdZones.Count; i++)
+                {
+                    for (int j = i + 1; j < createdZones.Count; j++)
+                    {
+                        var zone1 = createdZones[i];
+                        var zone2 = createdZones[j];
+                        
+                        // Skip zones with zero ranges (dynamically positioned zones)
+                        if (zone1.StartRow == 0 && zone1.EndRow == 0 && zone1.StartColumn == 0 && zone1.EndColumn == 0)
+                            continue;
+                        if (zone2.StartRow == 0 && zone2.EndRow == 0 && zone2.StartColumn == 0 && zone2.EndColumn == 0)
+                            continue;
+                        
+                        // Check for overlap: zones overlap if their ranges intersect
+                        bool rowsOverlap = zone1.StartRow <= zone2.EndRow && zone2.StartRow <= zone1.EndRow;
+                        bool colsOverlap = zone1.StartColumn <= zone2.EndColumn && zone2.StartColumn <= zone1.EndColumn;
+                        
+                        if (rowsOverlap && colsOverlap)
+                        {
+                            throw new InvalidOperationException(
+                                $"Zone overlap detected: Zone '{zone1.Name}' (rows {zone1.StartRow}-{zone1.EndRow}, cols {zone1.StartColumn}-{zone1.EndColumn}) " +
+                                $"overlaps with zone '{zone2.Name}' (rows {zone2.StartRow}-{zone2.EndRow}, cols {zone2.StartColumn}-{zone2.EndColumn}).");
+                        }
+                    }
+                }
 
                 // Create seats using direct zone ID mapping
                 var seatsCreated = 0;
@@ -480,6 +534,10 @@ namespace Tickify.Services
             public string Color { get; set; } = string.Empty;
             public decimal Price { get; set; }
             public int Capacity { get; set; }
+            public int StartRow { get; set; }
+            public int EndRow { get; set; }
+            public int StartColumn { get; set; }
+            public int EndColumn { get; set; }
         }
 
         private class SeatData

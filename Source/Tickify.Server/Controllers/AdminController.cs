@@ -102,6 +102,61 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
+    /// GET /api/admin/dashboard/stats - Get admin dashboard statistics
+    /// </summary>
+    [HttpGet("dashboard/stats")]
+    [ProducesResponseType(typeof(ApiResponse<AdminDashboardStatsDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDashboardStats()
+    {
+        var stats = await _adminService.GetDashboardStatsAsync();
+        return Ok(ApiResponse<AdminDashboardStatsDto>.SuccessResponse(stats, "Dashboard statistics retrieved successfully"));
+    }
+
+    /// <summary>
+    /// GET /api/admin/dashboard/revenue-trend - Get monthly revenue trend
+    /// </summary>
+    [HttpGet("dashboard/revenue-trend")]
+    [ProducesResponseType(typeof(ApiResponse<List<MonthlyRevenueDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMonthlyRevenue([FromQuery] int months = 6)
+    {
+        var revenue = await _adminService.GetMonthlyRevenueAsync(months);
+        return Ok(ApiResponse<List<MonthlyRevenueDto>>.SuccessResponse(revenue, "Monthly revenue retrieved successfully"));
+    }
+
+    /// <summary>
+    /// GET /api/admin/dashboard/category-distribution - Get category distribution
+    /// </summary>
+    [HttpGet("dashboard/category-distribution")]
+    [ProducesResponseType(typeof(ApiResponse<List<CategoryDistributionDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCategoryDistribution()
+    {
+        var distribution = await _adminService.GetCategoryDistributionAsync();
+        return Ok(ApiResponse<List<CategoryDistributionDto>>.SuccessResponse(distribution, "Category distribution retrieved successfully"));
+    }
+
+    /// <summary>
+    /// GET /api/admin/dashboard/recent-users - Get recent users
+    /// </summary>
+    [HttpGet("dashboard/recent-users")]
+    [ProducesResponseType(typeof(ApiResponse<List<RecentUserDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRecentUsers([FromQuery] int count = 5)
+    {
+        var users = await _adminService.GetRecentUsersAsync(count);
+        return Ok(ApiResponse<List<RecentUserDto>>.SuccessResponse(users, "Recent users retrieved successfully"));
+    }
+
+    /// <summary>
+    /// GET /api/admin/dashboard/organizers - Get organizers list
+    /// </summary>
+    [HttpGet("dashboard/organizers")]
+    [ProducesResponseType(typeof(ApiResponse<List<OrganizerListDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetOrganizersList()
+    {
+        var organizers = await _adminService.GetOrganizersListAsync();
+        return Ok(ApiResponse<List<OrganizerListDto>>.SuccessResponse(organizers, "Organizers list retrieved successfully"));
+    }
+
+    /// <summary>
     /// GET /api/admin/events/pending - Get all pending events
     /// </summary>
     [HttpGet("events/pending")]
@@ -110,6 +165,28 @@ public class AdminController : ControllerBase
     {
         var events = await _adminService.GetAllPendingEventsAsync();
         return Ok(ApiResponse<object>.SuccessResponse(events, $"Retrieved {events.Count} pending events"));
+    }
+
+    /// <summary>
+    /// GET /api/admin/events - Get all events (for admin dashboard)
+    /// </summary>
+    [HttpGet("events")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllEvents()
+    {
+        var events = await _adminService.GetAllEventsAsync();
+        return Ok(ApiResponse<object>.SuccessResponse(events, $"Retrieved {events.Count} events"));
+    }
+
+    /// <summary>
+    /// GET /api/admin/events/analytics - Get all events with analytics data (revenue, tickets sold, capacity)
+    /// </summary>
+    [HttpGet("events/analytics")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllEventsWithAnalytics()
+    {
+        var events = await _adminService.GetAllEventsWithAnalyticsAsync();
+        return Ok(ApiResponse<object>.SuccessResponse(events, $"Retrieved {events.Count} events with analytics"));
     }
 
     /// <summary>
