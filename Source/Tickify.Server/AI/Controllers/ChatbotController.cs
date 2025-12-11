@@ -161,6 +161,26 @@ public class ChatbotController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Reset collection - xóa và tạo lại collection trong Qdrant
+    /// </summary>
+    [HttpPost("reset")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ResetCollection([FromServices] IQdrantService qdrantService)
+    {
+        try
+        {
+            await qdrantService.ClearCollectionAsync();
+            await qdrantService.CreateCollectionAsync();
+            return Ok(new { message = "Collection reset successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting collection");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 }
 
 public class IndexMarkdownRequest

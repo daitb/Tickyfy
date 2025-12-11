@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import React, { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { MessageCircle, X, Send, Loader2, RefreshCw, Trash2, Bot, User, ChevronDown } from 'lucide-react';
 import { useChatbot } from '../../hooks/useChatbot';
 import type { ChatMessage } from '../../types/chatbot';

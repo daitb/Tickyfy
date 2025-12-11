@@ -139,7 +139,31 @@ public class QdrantService : IQdrantService
                 $"/collections/{_config.CollectionName}/points", 
                 content);
             
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Qdrant upsert failed: {StatusCode} - {Error}", 
+                    response.StatusCode, errorBody);
+                
+                // Nếu lỗi do vector size không khớp, xóa collection và tạo lại
+                if (errorBody.Contains("dimension") || errorBody.Contains("vector"))
+                {
+                    _logger.LogWarning("Vector dimension mismatch detected. Recreating collection...");
+                    await ClearCollectionAsync();
+                    await CreateCollectionAsync();
+                    
+                    // Retry upsert
+                    content = new StringContent(json, Encoding.UTF8, "application/json");
+                    response = await _httpClient.PutAsync(
+                        $"/collections/{_config.CollectionName}/points", 
+                        content);
+                    response.EnsureSuccessStatusCode();
+                }
+                else
+                {
+                    response.EnsureSuccessStatusCode();
+                }
+            }
             
             _logger.LogInformation("Upserted {Count} documents to Qdrant", chunks.Count);
         }
@@ -157,6 +181,15 @@ public class QdrantService : IQdrantService
     {
         try
         {
+            // Kiểm tra collection có tồn tại không, nếu chưa thì tạo mới
+            if (!await CollectionExistsAsync())
+            {
+                _logger.LogWarning("Collection {CollectionName} does not exist. Creating...", _config.CollectionName);
+                await CreateCollectionAsync();
+                // Collection mới tạo nên chưa có data, trả về rỗng
+                return new List<QdrantSearchResult>();
+            }
+
             var searchRequest = new
             {
                 vector = queryVector,
@@ -172,6 +205,13 @@ public class QdrantService : IQdrantService
                 $"/collections/{_config.CollectionName}/points/search", 
                 content);
             
+            // Nếu 404 (collection không tồn tại), trả về list rỗng
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _logger.LogWarning("Collection not found during search, returning empty results");
+                return new List<QdrantSearchResult>();
+            }
+            
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -183,6 +223,11 @@ public class QdrantService : IQdrantService
                 Score = r.Score,
                 Payload = r.Payload ?? new Dictionary<string, object>()
             }).ToList() ?? new List<QdrantSearchResult>();
+        }
+        catch (HttpRequestException ex) when (ex.Message.Contains("404"))
+        {
+            _logger.LogWarning("Collection not found, returning empty results");
+            return new List<QdrantSearchResult>();
         }
         catch (Exception ex)
         {
