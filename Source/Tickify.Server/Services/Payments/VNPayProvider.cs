@@ -885,6 +885,7 @@ public sealed class VNPayProvider : IPaymentProvider
                 ? $"Lỗi không xác định (Mã: {responseCode})" 
                 : $"{responseMessage} (Mã: {responseCode})"
         };
+    }
 
     private async Task SendPaymentSuccessNotificationsAsync(Booking? booking, Payment payment, CancellationToken ct)
     {

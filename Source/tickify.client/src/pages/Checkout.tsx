@@ -484,6 +484,75 @@ export function Checkout({
               cvv: paymentDetails.cvv,
             },
           });
+
+          // Credit card payments are completed immediately
+          if (paymentIntent.isImmediateCompletion) {
+            toast.success("Thanh toán thành công!");
+            
+            // Get current user for order
+            const currentUser = authService.getCurrentUser();
+            
+            // Calculate total from tickets (more reliable than backend response)
+            let ticketSubtotal = 0;
+            if (seatBookingMode && seatDetails.length > 0) {
+              ticketSubtotal = seatDetails.reduce((sum, seat) => sum + seat.price, 0);
+            } else {
+              ticketSubtotal = items.reduce((sum, item) => sum + item.price, 0);
+            }
+            
+            // Add 5% service fee
+            const serviceFeeAmount = ticketSubtotal * 0.05;
+            const totalAmount = ticketSubtotal + serviceFeeAmount;
+            
+            // Create order object for success page
+            const order: Order = {
+              id: paymentIntent.transactionId || response.bookingId.toString(),
+              userId: currentUser?.userId || "",
+              eventId: eventId.toString(),
+              tickets: seatBookingMode && seatDetails.length > 0 
+                ? seatDetails.map((seat, idx) => ({
+                    id: `ticket-${idx}`,
+                    tierId: seat.ticketTypeId.toString(),
+                    tierName: seat.zoneName || "General",
+                    price: seat.price,
+                    qrCode: `QR-${response.bookingId}-${idx}`,
+                    status: "valid" as const,
+                    seatInfo: `${seat.row}-${seat.seatNumber}`
+                  }))
+                : items.map((item, idx) => ({
+                    id: `ticket-${idx}`,
+                    tierId: item.tierId,
+                    tierName: item.tierName,
+                    price: item.price,
+                    qrCode: `QR-${response.bookingId}-${idx}`,
+                    status: "valid" as const
+                  })),
+              subtotal: ticketSubtotal,
+              serviceFee: serviceFeeAmount,
+              total: totalAmount,
+              status: "completed",
+              createdAt: new Date().toISOString(),
+              userEmail: formData.email,
+              userName: formData.name,
+              paymentMethod: "Credit Card"
+            };
+            
+            // Clear session storage
+            sessionStorage.removeItem("selectedSeats");
+            sessionStorage.removeItem("reservationExpiresAt");
+            sessionStorage.removeItem("eventId");
+            sessionStorage.removeItem("totalPrice");
+            
+            // Call onCompleteOrder to pass order data to success page
+            onCompleteOrder(order);
+            
+            // Navigate to success page
+            setTimeout(() => {
+              onNavigate("success");
+            }, 1000);
+            
+            return;
+          }
         } else {
           paymentIntent = await createPaymentIntent({
             bookingId: response.bookingId,

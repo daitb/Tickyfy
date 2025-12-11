@@ -1634,19 +1634,24 @@
     }
   },
   "promoCode": {
-    "title": "Đánh giá",
+    "title": "Mã khuyến mãi",
     "createNewCode": "Tạo mã mới",
     "bulkImport": "Nhập hàng loạt",
     "searchPlaceholder": "Tìm kiếm mã hoặc mô tả...",
     "statusPlaceholder": "Trạng thái",
+    "apply": "Áp dụng",
+    "applied": "Đã áp dụng mã khuyến mãi",
+    "invalid": "Mã khuyến mãi không hợp lệ",
+    "expired": "Mã khuyến mãi đã hết hạn",
+    "remove": "Xóa",
     "filters": {
       "allStatus": "Tất cả trạng thái",
       "active": "Hoạt động",
       "inactive": "Không hoạt động"
     },
     "list": {
-      "title": "Đánh giá",
-      "subtitle": "Những gì người tham dự nói",
+      "title": "Mã khuyến mãi",
+      "subtitle": "Quản lý mã khuyến mãi của bạn",
       "averageRating": "Đánh giá trung bình",
       "totalReviews": "đánh giá",
       "writeReview": "Viết đánh giá",
