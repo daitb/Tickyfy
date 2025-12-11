@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { DateRangePicker } from 'react-date-range';
+import { addDays, format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import 'react-date-range/dist/styles.css';
+import 'react-date-range/dist/theme/default.css';
 import {
   Tabs,
   TabsContent,
@@ -124,6 +128,14 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [eventSearchTerm, setEventSearchTerm] = useState('');
   const [eventStatusFilter, setEventStatusFilter] = useState('all');
   const [eventDateFilter, setEventDateFilter] = useState('all');
+  const [showDateRangePicker, setShowDateRangePicker] = useState(false);
+  const [dateRange, setDateRange] = useState([
+    {
+      startDate: new Date(),
+      endDate: addDays(new Date(), 7),
+      key: 'selection'
+    }
+  ]);
   const [allEvents, setAllEvents] = useState<any[]>([]);
   const [eventPage, setEventPage] = useState(1);
   const eventPageSize = 10;
@@ -339,8 +351,9 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   useEffect(() => {
     if (activeTab === "requests" && organizerRequests.length === 0) {
       loadOrganizerRequests();
-    } else if ((activeTab === "event-approvals" || activeTab === "events") && allEvents.length === 0) {
-      loadAllEvents(true); // Skip seat map check on initial load
+    } else if (activeTab === "event-approvals" || activeTab === "events") {
+      // Always reload events with seat map check when switching to these tabs
+      loadAllEvents(false);
     } else if (activeTab === 'users') {
       loadUsers();
     } else if (activeTab === "overview") {
@@ -500,12 +513,14 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           const batch = events.slice(i, i + batchSize);
           await Promise.all(
             batch.map(async (event) => {
-              if (event.eventId) {
+              // Try both event.id and event.eventId for compatibility
+              const eventId = event.eventId || event.id;
+              if (eventId) {
                 try {
-                  await apiClient.get(`/seatmaps/event/${event.eventId}`);
-                  seatMapStatusMap[event.eventId] = true;
+                  await apiClient.get(`/seatmaps/event/${eventId}`);
+                  seatMapStatusMap[eventId] = true;
                 } catch (error: any) {
-                  seatMapStatusMap[event.eventId] = false;
+                  seatMapStatusMap[eventId] = false;
                 }
               }
             })
@@ -535,7 +550,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         duration: 2000,
         closeButton: false,
       });
-      await loadAllEvents();
+      await loadAllEvents(false); // Reload with seat map check
     } catch (error: any) {
       console.error("Failed to approve event:", error);
       toast.error("Không thể phê duyệt sự kiện", {
@@ -593,7 +608,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       setShowEventRejectDialog(false);
       setEventRejectReason('');
       setSelectedEvent(null);
-      await loadAllEvents();
+      await loadAllEvents(false); // Reload with seat map check
     } catch (error: any) {
       console.error("Failed to reject event:", error);
       toast.error("Không thể từ chối sự kiện", {
@@ -1202,34 +1217,105 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       className="pl-9"
                     />
                   </div>
-                  <Select
-                    value={eventDateFilter}
-                    onValueChange={setEventDateFilter}
-                  >
-                    <SelectTrigger className="w-36">
-                      <SelectValue placeholder={t("admin.filterByDate", "Lọc theo ngày")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        {t("admin.allDates", "Tất cả ngày")}
-                      </SelectItem>
-                      <SelectItem value="today">
-                        {t("admin.today", "Hôm nay")}
-                      </SelectItem>
-                      <SelectItem value="thisWeek">
-                        {t("admin.thisWeek", "Tuần này")}
-                      </SelectItem>
-                      <SelectItem value="thisMonth">
-                        {t("admin.thisMonth", "Tháng này")}
-                      </SelectItem>
-                      <SelectItem value="upcoming">
-                        {t("admin.upcoming", "Sắp diễn ra")}
-                      </SelectItem>
-                      <SelectItem value="past">
-                        {t("admin.past", "Đã qua")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  
+                  {/* Date Range Picker */}
+                  <div className="relative">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDateRangePicker(!showDateRangePicker)}
+                      className="w-64 justify-start text-left font-normal"
+                    >
+                      <Calendar size={16} className="mr-2" />
+                      {eventDateFilter === 'custom' ? (
+                        `${format(dateRange[0].startDate, 'MMM dd, yyyy')} - ${format(dateRange[0].endDate, 'MMM dd, yyyy')}`
+                      ) : eventDateFilter === 'all' ? (
+                        t("admin.allDates", "All Dates")
+                      ) : eventDateFilter === 'today' ? (
+                        t("admin.today", "Today")
+                      ) : eventDateFilter === 'thisWeek' ? (
+                        t("admin.thisWeek", "This Week")
+                      ) : eventDateFilter === 'thisMonth' ? (
+                        t("admin.thisMonth", "This Month")
+                      ) : eventDateFilter === 'upcoming' ? (
+                        t("admin.upcoming", "Upcoming")
+                      ) : (
+                        t("admin.past", "Past")
+                      )}
+                    </Button>
+                    
+                    {showDateRangePicker && (
+                      <div className="absolute top-12 left-0 z-50 bg-white border rounded-lg shadow-lg">
+                        <div className="p-4 border-b flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={eventDateFilter === 'all' ? 'default' : 'outline'}
+                            onClick={() => {
+                              setEventDateFilter('all');
+                              setShowDateRangePicker(false);
+                            }}
+                          >
+                            {t("admin.allDates", "All")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={eventDateFilter === 'today' ? 'default' : 'outline'}
+                            onClick={() => {
+                              setEventDateFilter('today');
+                              setShowDateRangePicker(false);
+                            }}
+                          >
+                            {t("admin.today", "Today")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={eventDateFilter === 'thisWeek' ? 'default' : 'outline'}
+                            onClick={() => {
+                              setEventDateFilter('thisWeek');
+                              setShowDateRangePicker(false);
+                            }}
+                          >
+                            {t("admin.thisWeek", "Week")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={eventDateFilter === 'thisMonth' ? 'default' : 'outline'}
+                            onClick={() => {
+                              setEventDateFilter('thisMonth');
+                              setShowDateRangePicker(false);
+                            }}
+                          >
+                            {t("admin.thisMonth", "Month")}
+                          </Button>
+                        </div>
+                        <DateRangePicker
+                          ranges={dateRange}
+                          onChange={(item: any) => {
+                            setDateRange([item.selection]);
+                            setEventDateFilter('custom');
+                          }}
+                          months={2}
+                          direction="horizontal"
+                          showDateDisplay={false}
+                        />
+                        <div className="p-4 border-t flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowDateRangePicker(false)}
+                          >
+                            {t("common.cancel", "Cancel")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => setShowDateRangePicker(false)}
+                          >
+                            {t("common.apply", "Apply")}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
                   <Select
                     value={statusFilter}
                     onValueChange={setStatusFilter}
@@ -1324,6 +1410,14 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                                   break;
                                 case "past":
                                   matchesDate = eventDate < today;
+                                  break;
+                                case "custom":
+                                  const rangeStart = startOfDay(dateRange[0].startDate);
+                                  const rangeEnd = endOfDay(dateRange[0].endDate);
+                                  matchesDate = isWithinInterval(eventDate, {
+                                    start: rangeStart,
+                                    end: rangeEnd
+                                  });
                                   break;
                               }
                             }
@@ -1575,6 +1669,14 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                                 case 'past':
                                   matchesDate = eventDate < today;
                                   break;
+                                case 'custom':
+                                  const rangeStart = startOfDay(dateRange[0].startDate);
+                                  const rangeEnd = endOfDay(dateRange[0].endDate);
+                                  matchesDate = isWithinInterval(eventDate, {
+                                    start: rangeStart,
+                                    end: rangeEnd
+                                  });
+                                  break;
                               }
                             }
                             
@@ -1593,6 +1695,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           <TableHead className="text-center">{t("events.category")}</TableHead>
                           <TableHead className="text-center">{t('admin.seatMap')}</TableHead>
                           <TableHead className="text-center">{t("admin.status")}</TableHead>
+                          <TableHead className="text-center">{t("admin.reason", "Reason")}</TableHead>
                           <TableHead className="text-center">
                             {t("admin.actions")}
                           </TableHead>
@@ -1640,6 +1743,14 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                                 case 'past':
                                   matchesDate = eventDate < today;
                                   break;
+                                case 'custom':
+                                  const rangeStart = startOfDay(dateRange[0].startDate);
+                                  const rangeEnd = endOfDay(dateRange[0].endDate);
+                                  matchesDate = isWithinInterval(eventDate, {
+                                    start: rangeStart,
+                                    end: rangeEnd
+                                  });
+                                  break;
                               }
                             }
                             
@@ -1647,8 +1758,9 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           })
                           .slice((eventPage - 1) * eventPageSize, eventPage * eventPageSize)
                           .map((event: any, index: number) => {
-                          const hasSeatMap =
-                            eventSeatMapStatus[event.id] === true;
+                          // Use same eventId logic as in loadAllEvents
+                          const eventId = event.eventId || event.id;
+                          const hasSeatMap = eventSeatMapStatus[eventId] === true;
                           return (
                             <TableRow key={event.id || `event-${index}`}>
                               <TableCell className="font-medium">
@@ -1681,12 +1793,12 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               </TableCell>
                               <TableCell className="text-center">
                                 {hasSeatMap ? (
-                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                  <Badge className="bg-green-100 text-green-700">
                                     <CheckCircle size={12} className="mr-1" />
                                     {t('admin.created', 'Created')}
                                   </Badge>
                                 ) : (
-                                  <Badge className="bg-orange-50 text-orange-700 border-orange-200">
+                                  <Badge className="bg-orange-100 text-orange-700">
                                     <AlertCircle size={12} className="mr-1" />
                                     {t('admin.missing')}
                                   </Badge>
@@ -1694,6 +1806,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               </TableCell>
                               <TableCell className="text-center">
                                 {getEventStatusBadge(event.status)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {event.status === 2 && event.rejectionReason ? (
+                                  <div className="text-sm text-red-600 max-w-[200px] truncate" title={event.rejectionReason}>
+                                    {event.rejectionReason}
+                                  </div>
+                                ) : (
+                                  <span className="text-neutral-400">-</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-center">
                                 <div className="flex gap-2 justify-center">

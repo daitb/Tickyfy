@@ -49,12 +49,107 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
   const [errorMessage, setErrorMessage] = useState("");
   const [pendingRequest, setPendingRequest] = useState<any | null>(null);
   const [isCheckingRequest, setIsCheckingRequest] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Validation functions
+  const validateField = (name: string, value: string): string => {
+    switch (name) {
+      case 'companyName':
+        if (!value.trim()) return t('organizer.validation.companyNameRequired', 'Tên tổ chức là bắt buộc');
+        if (value.trim().length < 3) return t('organizer.validation.companyNameTooShort', 'Tên tổ chức phải có ít nhất 3 ký tự');
+        return '';
+      
+      case 'companyPhone':
+        if (!value.trim()) return t('organizer.validation.phoneRequired', 'Số điện thoại là bắt buộc');
+        const phoneRegex = /^[0-9]{10,11}$/;
+        if (!phoneRegex.test(value.replace(/[\s\-]/g, ''))) {
+          return t('organizer.validation.phoneInvalid', 'Số điện thoại phải có 10-11 chữ số');
+        }
+        return '';
+      
+      case 'companyEmail':
+        if (value && value.trim()) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value)) {
+            return t('organizer.validation.emailInvalid', 'Email không hợp lệ');
+          }
+        }
+        return '';
+      
+      case 'website':
+        if (value && value.trim()) {
+          try {
+            new URL(value);
+          } catch {
+            return t('organizer.validation.websiteInvalid', 'URL website không hợp lệ (VD: https://example.com)');
+          }
+        }
+        return '';
+      
+      case 'companyAddress':
+        if (!value.trim()) return t('organizer.validation.addressRequired', 'Địa chỉ là bắt buộc');
+        if (value.trim().length < 10) return t('organizer.validation.addressTooShort', 'Địa chỉ phải có ít nhất 10 ký tự');
+        return '';
+      
+      case 'taxCode':
+        if (value && value.trim()) {
+          const taxCodeRegex = /^[0-9]{10}(-[0-9]{3})?$/;
+          if (!taxCodeRegex.test(value.trim())) {
+            return t('organizer.validation.taxCodeInvalid', 'Mã số thuế không hợp lệ (VD: 0123456789 hoặc 0123456789-001)');
+          }
+        }
+        return '';
+      
+      case 'businessRegistrationNumber':
+        if (value && value.trim()) {
+          const businessRegex = /^[0-9]{10,13}$/;
+          if (!businessRegex.test(value.trim())) {
+            return t('organizer.validation.businessRegInvalid', 'Số đăng ký kinh doanh phải có 10-13 chữ số');
+          }
+        }
+        return '';
+      
+      case 'description':
+        if (value && value.trim() && value.trim().length < 20) {
+          return t('organizer.validation.descriptionTooShort', 'Mô tả phải có ít nhất 20 ký tự');
+        }
+        return '';
+      
+      default:
+        return '';
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    // Validate all fields
+    Object.keys(formData).forEach(key => {
+      const error = validateField(key, formData[key as keyof typeof formData]);
+      if (error) {
+        errors[key] = error;
+      }
+    });
+    
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitStatus("idle");
     setErrorMessage("");
+    setFieldErrors({});
+
+    // Validate form before submit
+    if (!validateForm()) {
+      setIsSubmitting(false);
+      toast.error(t('organizer.validation.formHasErrors', 'Vui lòng kiểm tra lại thông tin đã nhập'), {
+        duration: 3000,
+      });
+      return;
+    }
 
     try {
       // POST /api/organizers/register - Now creates OrganizerRequest instead of Organizer
@@ -103,10 +198,31 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
+    const { name, value } = e.target;
+    
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+    
+    // Real-time validation
+    if (fieldErrors[name]) {
+      const error = validateField(name, value);
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: error
+      }));
+    }
+  };
+
+  // Validate field on blur
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    setFieldErrors(prev => ({
+      ...prev,
+      [name]: error
+    }));
   };
 
   // Check if user has pending request
@@ -332,12 +448,17 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleChange}
-                  placeholder={t(
-                    "organizer.orgNamePlaceholder",
-                    "VD: Công ty TNHH ABC"
-                  )}
+                  onBlur={handleBlur}
+                  placeholder={t('organizer.orgNamePlaceholder', 'VD: Công ty TNHH ABC')}
                   required
+                  className={fieldErrors.companyName ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {fieldErrors.companyName && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {fieldErrors.companyName}
+                  </p>
+                )}
               </div>
 
               {/* Business Registration */}
@@ -351,11 +472,16 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   name="businessRegistrationNumber"
                   value={formData.businessRegistrationNumber}
                   onChange={handleChange}
-                  placeholder={t(
-                    "organizer.businessRegPlaceholder",
-                    "VD: 0123456789"
-                  )}
+                  onBlur={handleBlur}
+                  placeholder={t('organizer.businessRegPlaceholder', 'VD: 0123456789')}
+                  className={fieldErrors.businessRegistrationNumber ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {fieldErrors.businessRegistrationNumber && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {fieldErrors.businessRegistrationNumber}
+                  </p>
+                )}
               </div>
 
               {/* Tax Code */}
@@ -369,8 +495,16 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   name="taxCode"
                   value={formData.taxCode}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   placeholder="VD: 0123456789-001"
+                  className={fieldErrors.taxCode ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {fieldErrors.taxCode && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {fieldErrors.taxCode}
+                  </p>
+                )}
               </div>
 
               {/* Company Phone */}
@@ -385,12 +519,17 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   type="tel"
                   value={formData.companyPhone}
                   onChange={handleChange}
-                  placeholder={t(
-                    "organizer.phonePlaceholder",
-                    "VD: 0901234567"
-                  )}
+                  onBlur={handleBlur}
+                  placeholder={t('organizer.phonePlaceholder', 'VD: 0901234567')}
                   required
+                  className={fieldErrors.companyPhone ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {fieldErrors.companyPhone && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {fieldErrors.companyPhone}
+                  </p>
+                )}
               </div>
 
               {/* Company Email */}
@@ -405,8 +544,16 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   type="email"
                   value={formData.companyEmail}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   placeholder="contact@company.com"
+                  className={fieldErrors.companyEmail ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {fieldErrors.companyEmail && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {fieldErrors.companyEmail}
+                  </p>
+                )}
               </div>
 
               {/* Website */}
@@ -420,8 +567,16 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   type="url"
                   value={formData.website}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   placeholder="https://www.company.com"
+                  className={fieldErrors.website ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {fieldErrors.website && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {fieldErrors.website}
+                  </p>
+                )}
               </div>
 
               {/* Company Address */}
@@ -434,12 +589,17 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   name="companyAddress"
                   value={formData.companyAddress}
                   onChange={handleChange}
-                  placeholder={t(
-                    "organizer.addressPlaceholder",
-                    "VD: 123 Đường ABC, Quận 1, TP.HCM"
-                  )}
+                  onBlur={handleBlur}
+                  placeholder={t('organizer.addressPlaceholder', 'VD: 123 Đường ABC, Quận 1, TP.HCM')}
                   required
+                  className={fieldErrors.companyAddress ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {fieldErrors.companyAddress && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {fieldErrors.companyAddress}
+                  </p>
+                )}
               </div>
 
               {/* Description */}
@@ -452,12 +612,22 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  placeholder={t(
-                    "organizer.descriptionPlaceholder",
-                    "Giới thiệu về tổ chức của bạn và loại sự kiện bạn muốn tổ chức..."
-                  )}
+                  onBlur={handleBlur}
+                  placeholder={t('organizer.descriptionPlaceholder', 'Giới thiệu về tổ chức của bạn và loại sự kiện bạn muốn tổ chức...')}
                   rows={4}
+                  className={fieldErrors.description ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 />
+                {fieldErrors.description && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {fieldErrors.description}
+                  </p>
+                )}
+                {formData.description && (
+                  <p className="text-xs text-neutral-500">
+                    {formData.description.length} {t('common.characters', 'ký tự')}
+                  </p>
+                )}
               </div>
 
               {/* Error Message */}

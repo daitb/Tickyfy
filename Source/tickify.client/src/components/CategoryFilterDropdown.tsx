@@ -6,6 +6,7 @@ import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { Badge } from './ui/badge';
 import type { Category } from '../types';
+import { useTranslation } from 'react-i18next';
 
 interface CategoryFilterDropdownProps {
   onApply: (filters: {
@@ -20,12 +21,21 @@ interface CategoryFilterDropdownProps {
   };
 }
 
-const cities = ['Nationwide', 'Ho Chi Minh', 'Hanoi', 'Da Lat', 'Other'];
 const categoryOptions: Category[] = ['Music', 'Theater', 'Sports', 'Conference', 'Arts', 'Food & Drink'];
 
 export function CategoryFilterDropdown({ onApply, currentFilters = {} }: CategoryFilterDropdownProps) {
+  const { t } = useTranslation();
+  
+  const getCities = () => [
+    t('categoryFilter.nationwide', 'Nationwide'),
+    'Ho Chi Minh',
+    'Hanoi',
+    'Da Lat',
+    t('categoryFilter.other', 'Other')
+  ];
+  
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedCity, setSelectedCity] = useState(currentFilters.city || 'Nationwide');
+  const [selectedCity, setSelectedCity] = useState(currentFilters.city || t('categoryFilter.nationwide', 'Nationwide'));
   const [isFree, setIsFree] = useState(currentFilters.isFree || false);
   const [selectedCategories, setSelectedCategories] = useState<Category[]>(currentFilters.categories || []);
   
@@ -62,14 +72,15 @@ export function CategoryFilterDropdown({ onApply, currentFilters = {} }: Categor
   };
 
   const handleReset = () => {
-    setSelectedCity('Nationwide');
+    setSelectedCity(t('categoryFilter.nationwide', 'Nationwide'));
     setIsFree(false);
     setSelectedCategories([]);
   };
 
   const handleApply = () => {
+    const nationwide = t('categoryFilter.nationwide', 'Nationwide');
     onApply({
-      city: selectedCity === 'Nationwide' ? undefined : selectedCity,
+      city: selectedCity === nationwide ? undefined : selectedCity,
       isFree: isFree || undefined,
       categories: selectedCategories.length > 0 ? selectedCategories : undefined,
     });
@@ -77,13 +88,14 @@ export function CategoryFilterDropdown({ onApply, currentFilters = {} }: Categor
   };
 
   const hasActiveFilter = 
-    (selectedCity !== 'Nationwide') || 
+    (selectedCity !== t('categoryFilter.nationwide', 'Nationwide')) || 
     isFree || 
     selectedCategories.length > 0;
 
   const getActiveFilterCount = () => {
     let count = 0;
-    if (selectedCity !== 'Nationwide') count++;
+    const nationwide = t('categoryFilter.nationwide', 'Nationwide');
+    if (selectedCity !== nationwide) count++;
     if (isFree) count++;
     count += selectedCategories.length;
     return count;
@@ -103,7 +115,7 @@ export function CategoryFilterDropdown({ onApply, currentFilters = {} }: Categor
         onClick={() => setIsOpen(!isOpen)}
       >
         <FilterIcon size={16} />
-        <span>Filter</span>
+        <span>{t('categoryFilter.filter', 'Filter')}</span>
         {hasActiveFilter && (
           <Badge className="ml-1 bg-white text-teal-600 hover:bg-white text-xs px-1.5 py-0">
             {getActiveFilterCount()}
@@ -123,11 +135,11 @@ export function CategoryFilterDropdown({ onApply, currentFilters = {} }: Categor
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <MapPin className="text-teal-500" size={18} />
-                <h4 className="text-neutral-900">Location</h4>
+                <h4 className="text-neutral-900">{t('categoryFilter.location', 'Location')}</h4>
               </div>
               <RadioGroup value={selectedCity} onValueChange={setSelectedCity}>
                 <div className="space-y-2">
-                  {cities.map((city) => (
+                  {getCities().map((city) => (
                     <div key={city} className="flex items-center space-x-2">
                       <RadioGroupItem value={city} id={`city-${city}`} />
                       <Label 
@@ -144,7 +156,7 @@ export function CategoryFilterDropdown({ onApply, currentFilters = {} }: Categor
 
             {/* Price Section */}
             <div className="pt-4 border-t border-neutral-100">
-              <h4 className="text-neutral-900 mb-3">Price</h4>
+              <h4 className="text-neutral-900 mb-3">{t('categoryFilter.price', 'Price')}</h4>
               <div className="flex items-center space-x-2">
                 <Checkbox 
                   id="free-events" 
@@ -155,14 +167,14 @@ export function CategoryFilterDropdown({ onApply, currentFilters = {} }: Categor
                   htmlFor="free-events"
                   className="cursor-pointer text-sm"
                 >
-                  Free events only
+                  {t('categoryFilter.freeEventsOnly', 'Free events only')}
                 </Label>
               </div>
             </div>
 
             {/* Category Section */}
             <div className="pt-4 border-t border-neutral-100">
-              <h4 className="text-neutral-900 mb-3">Categories</h4>
+              <h4 className="text-neutral-900 mb-3">{t('categoryFilter.categories', 'Categories')}</h4>
               <div className="flex flex-wrap gap-2">
                 {categoryOptions.map((category) => {
                   const isSelected = selectedCategories.includes(category);
@@ -191,13 +203,13 @@ export function CategoryFilterDropdown({ onApply, currentFilters = {} }: Categor
                 onClick={handleReset}
                 className="border-teal-500 text-teal-600 hover:bg-teal-50"
               >
-                Reset
+                {t('categoryFilter.reset', 'Reset')}
               </Button>
               <Button
                 onClick={handleApply}
                 className="bg-teal-500 hover:bg-teal-600 text-white"
               >
-                Apply
+                {t('categoryFilter.apply', 'Apply')}
               </Button>
             </div>
           </div>
