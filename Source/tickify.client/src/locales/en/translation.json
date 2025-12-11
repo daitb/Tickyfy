@@ -1630,19 +1630,24 @@
     }
   },
   "promoCode": {
-    "title": "Reviews",
+    "title": "Promo Codes",
     "createNewCode": "Create New Code",
     "bulkImport": "Bulk Import",
     "searchPlaceholder": "Search code or description...",
     "statusPlaceholder": "Status",
+    "apply": "Apply",
+    "applied": "Promo code applied",
+    "invalid": "Invalid promo code",
+    "expired": "Promo code expired",
+    "remove": "Remove",
     "filters": {
       "allStatus": "All Status",
       "active": "Active",
       "inactive": "Inactive"
     },
     "list": {
-      "title": "Reviews",
-      "subtitle": "What attendees are saying",
+      "title": "Promo Codes",
+      "subtitle": "Manage your promotional codes",
       "averageRating": "Average Rating",
       "totalReviews": "reviews",
       "writeReview": "Write a Review",

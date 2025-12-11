@@ -157,34 +157,61 @@ public sealed class PaymentController : ControllerBase
 
     [HttpPost("create-credit-card-intent")]
     [Authorize]
-    [ProducesResponseType(typeof(ApiResponse<PaymentIntentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CreditCardPaymentResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<ApiResponse<PaymentIntentDto>>> CreateCreditCardIntent(
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<CreditCardPaymentResponseDto>>> CreateCreditCardIntent(
         [FromBody] CreditCardPaymentDto dto, 
         CancellationToken ct)
     {
         try
         {
+            _logger.LogInformation("[PaymentController] Processing credit card payment for booking {BookingId}", dto.BookingId);
+
             // Authorization check
             var userId = GetCurrentUserId();
             var ownsBooking = await UserOwnsBookingAsync(dto.BookingId, userId, ct);
             if (!ownsBooking)
             {
-                _logger.LogWarning($"[PaymentController] User {userId} attempted credit card payment for booking {dto.BookingId}");
+                _logger.LogWarning("[PaymentController] User {UserId} attempted unauthorized credit card payment for booking {BookingId}", 
+                    userId, dto.BookingId);
                 return Forbid();
             }
 
-            // Validate card number using Luhn algorithm
-            if (!ValidateLuhnAlgorithm(dto.CardNumber))
+            // Comprehensive validation using validator
+            var (isValid, errorMessage) = Validators.CreditCardValidator.ValidateCardDetails(dto);
+            if (!isValid)
             {
-                return BadRequest(ApiResponse<object>.FailureResponse("Số thẻ không hợp lệ"));
+                _logger.LogWarning("[PaymentController] Card validation failed: {Error}", errorMessage);
+                return BadRequest(ApiResponse<object>.FailureResponse(errorMessage));
             }
 
-            // Validate expiry date
-            var now = DateTime.Now;
-            if (dto.ExpiryYear < now.Year || (dto.ExpiryYear == now.Year && dto.ExpiryMonth < now.Month))
+            // Detect card brand for logging and response
+            var cardBrand = Validators.CreditCardValidator.DetectCardBrand(dto.CardNumber);
+            var maskedCard = Validators.CreditCardValidator.MaskCardNumber(dto.CardNumber);
+            var last4 = Validators.CreditCardValidator.GetLast4Digits(dto.CardNumber);
+
+            _logger.LogInformation("[PaymentController] Card validated - Brand: {Brand}, Masked: {Masked}", 
+                cardBrand, maskedCard);
+
+            // Get booking to check amount
+            var booking = await _bookingRepository.GetByIdAsync(dto.BookingId);
+            if (booking == null)
             {
-                return BadRequest(ApiResponse<object>.FailureResponse("Thẻ đã hết hạn"));
+                return BadRequest(ApiResponse<object>.FailureResponse("Booking không tồn tại"));
+            }
+
+            // Simulate fraud check
+            var (fraudPassed, fraudReason) = Validators.CreditCardValidator.SimulateFraudCheck(
+                dto.CardNumber, 
+                booking.TotalAmount,
+                dto.BillingCountry
+            );
+
+            if (!fraudPassed)
+            {
+                _logger.LogWarning("[PaymentController] Fraud check failed: {Reason}", fraudReason);
+                return BadRequest(ApiResponse<object>.FailureResponse(fraudReason ?? "Giao dịch bị từ chối"));
             }
 
             // Get client IP
@@ -199,8 +226,31 @@ public sealed class PaymentController : ControllerBase
 
             var intent = await _payments.CreateAsync(createDto, ip, ct);
             
-            _logger.LogInformation($"[PaymentController] Credit card payment created - PaymentId: {intent.PaymentId}");
-            return Ok(ApiResponse<PaymentIntentDto>.SuccessResponse(intent, "Thông tin thẻ hợp lệ, đang xử lý thanh toán..."));
+            // Build comprehensive response
+            var response = new CreditCardPaymentResponseDto
+            {
+                PaymentId = intent.PaymentId,
+                TransactionId = intent.TransactionId ?? "N/A",
+                Status = "Completed",
+                Amount = booking.TotalAmount,
+                Currency = "VND",
+                CardBrand = cardBrand,
+                Last4Digits = last4,
+                ProcessedAt = DateTime.UtcNow,
+                Message = "Thanh toán thành công qua thẻ tín dụng",
+                AuthorizationCode = Validators.CreditCardValidator.GenerateAuthorizationCode(),
+                ReceiptUrl = intent.RedirectUrl,
+                IsImmediateCompletion = true,
+                BookingId = booking.Id
+            };
+
+            _logger.LogInformation("[PaymentController] Credit card payment successful - PaymentId: {PaymentId}, TxnId: {TxnId}, Brand: {Brand}", 
+                intent.PaymentId, response.TransactionId, cardBrand);
+
+            return Ok(ApiResponse<CreditCardPaymentResponseDto>.SuccessResponse(
+                response, 
+                $"Thanh toán thành công {booking.TotalAmount:N0} VND qua thẻ {cardBrand}"
+            ));
         }
         catch (InvalidOperationException ex)
         {
@@ -383,35 +433,6 @@ public sealed class PaymentController : ControllerBase
             new { success },
             success ? "Payment verified successfully from return URL" : "Payment verification from return URL failed"
         ));
-    }
-
-    private bool ValidateLuhnAlgorithm(string cardNumber)
-    {
-        if (string.IsNullOrEmpty(cardNumber) || cardNumber.Length < 13 || cardNumber.Length > 19)
-            return false;
-
-        int sum = 0;
-        bool alternate = false;
-        
-        for (int i = cardNumber.Length - 1; i >= 0; i--)
-        {
-            if (!char.IsDigit(cardNumber[i]))
-                return false;
-
-            int digit = cardNumber[i] - '0';
-            
-            if (alternate)
-            {
-                digit *= 2;
-                if (digit > 9)
-                    digit -= 9;
-            }
-            
-            sum += digit;
-            alternate = !alternate;
-        }
-        
-        return sum % 10 == 0;
     }
 
     private string GetClientIp()

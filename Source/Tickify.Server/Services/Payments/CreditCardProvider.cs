@@ -5,12 +5,15 @@ using Tickify.DTOs.Payment;
 using Tickify.Hubs;
 using Tickify.Interfaces.Repositories;
 using Tickify.Models;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Tickify.Services.Payments;
 
 /// <summary>
-/// Credit Card Payment Provider - Direct card processing (mock implementation)
-/// In production, this would integrate with Stripe, Square, or other card processors
+/// Credit Card Payment Provider - Simulated card processing with full validation
+/// This is a mock implementation that simulates a real payment gateway
+/// In production, this would integrate with Stripe, Square, Adyen, or other card processors
 /// </summary>
 public sealed class CreditCardProvider : IPaymentProvider
 {
@@ -23,6 +26,16 @@ public sealed class CreditCardProvider : IPaymentProvider
     private readonly ApplicationDbContext _context;
     private readonly ILogger<CreditCardProvider> _logger;
     private readonly IHubContext<SeatHub> _seatHubContext;
+
+    // Simulated card brand detection patterns
+    private static readonly Dictionary<string, string> CardBrandPatterns = new()
+    {
+        { "^4", "Visa" },
+        { "^5[1-5]", "Mastercard" },
+        { "^3[47]", "American Express" },
+        { "^6(?:011|5)", "Discover" },
+        { "^(?:2131|1800|35)", "JCB" }
+    };
 
     public CreditCardProvider(
         IConfiguration cfg,
@@ -42,6 +55,10 @@ public sealed class CreditCardProvider : IPaymentProvider
         _seatHubContext = seatHubContext;
     }
 
+    /// <summary>
+    /// Creates a credit card payment intent with full processing simulation
+    /// In real implementation: tokenize card, call processor API, handle 3D Secure
+    /// </summary>
     public async Task<PaymentIntentDto> CreatePaymentAsync(
         int paymentId, 
         int bookingId, 
@@ -50,39 +67,94 @@ public sealed class CreditCardProvider : IPaymentProvider
         string clientIp, 
         CancellationToken ct)
     {
-        _logger.LogInformation("[CreditCard] Creating payment - PaymentId: {PaymentId}, Amount: {Amount} VND", 
+        _logger.LogInformation("[CreditCard] Processing payment - PaymentId: {PaymentId}, Amount: {Amount} VND", 
             paymentId, amount);
 
-        // Get return URL from configuration
-        var returnUrl = _cfg["Payments:ReturnUrl"] ?? "http://localhost:3000/payment/return";
-        
-        // In a real implementation, this would:
-        // 1. Tokenize card details (PCI-DSS compliant)
-        // 2. Submit to payment processor (Stripe, Square, etc.)
-        // 3. Handle 3D Secure authentication
-        // 4. Return redirect URL or confirmation
-        
-        // For mock implementation, create a redirect to our own success page
-        var redirectUrl = $"{returnUrl}?paymentId={paymentId}&status=success&provider=creditcard";
-        
-        // Update payment with gateway info
-        var payment = await _payments.GetAsync(paymentId, ct);
-        if (payment != null)
+        try
         {
-            payment.PaymentGateway = Name;
-            payment.PaymentResponse = $"{{\"redirect\":\"{redirectUrl}\",\"mock\":true}}";
-            await _payments.UpdateAsync(payment, ct);
+            // Get payment and booking details
+            var payment = await _payments.GetAsync(paymentId, ct);
+            if (payment == null)
+                throw new InvalidOperationException($"Payment {paymentId} not found");
+
+            var booking = await _bookings.GetByIdAsync(bookingId);
+            if (booking == null)
+                throw new InvalidOperationException($"Booking {bookingId} not found");
+
+            // In a real implementation, this would:
+            // 1. Tokenize card details (PCI-DSS compliant - never store raw card data)
+            // 2. Call payment processor API (Stripe, Square, Adyen, etc.)
+            // 3. Handle 3D Secure authentication if required
+            // 4. Process the charge
+            // 5. Handle response and update records
+
+            // For this mock implementation, we simulate immediate processing
+            using var transaction = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                // Simulate payment processing
+                var transactionId = Validators.CreditCardValidator.GenerateTransactionId(paymentId);
+                var authCode = Validators.CreditCardValidator.GenerateAuthorizationCode();
+
+                // Update payment record
+                payment.Status = PaymentStatus.Completed;
+                payment.TransactionId = transactionId;
+                payment.PaymentGateway = Name;
+                payment.PaidAt = DateTime.UtcNow;
+                payment.PaymentResponse = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    success = true,
+                    transactionId = transactionId,
+                    authorizationCode = authCode,
+                    processedAt = DateTime.UtcNow,
+                    amount = amount,
+                    currency = "VND",
+                    mock = true
+                });
+                await _payments.UpdateAsync(payment, ct);
+
+                // Confirm booking
+                if (booking.Status == BookingStatus.Pending)
+                {
+                    booking.Status = BookingStatus.Confirmed;
+                    booking.ExpiresAt = null;
+                    await _bookings.UpdateAsync(booking);
+                }
+
+                // Create tickets
+                await CreateTicketsForBookingAsync(bookingId, ct);
+
+                await transaction.CommitAsync(ct);
+
+                _logger.LogInformation("[CreditCard] Payment {PaymentId} processed successfully - TxnId: {TransactionId}", 
+                    paymentId, transactionId);
+
+                // Return success response (no redirect needed for direct payment)
+                var returnUrl = _cfg["Payments:ReturnUrl"] ?? "http://localhost:3000/payment/return";
+                var successUrl = $"{returnUrl}?paymentId={paymentId}&status=success&provider=creditcard&txnId={transactionId}";
+
+                return new PaymentIntentDto
+                {
+                    Provider = Name,
+                    PaymentId = paymentId,
+                    RedirectUrl = successUrl,
+                    ExpiresAtUtc = DateTime.UtcNow.AddMinutes(15),
+                    Status = "completed",
+                    TransactionId = transactionId
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(ct);
+                _logger.LogError(ex, "[CreditCard] Transaction failed: {Message}", ex.Message);
+                throw;
+            }
         }
-
-        _logger.LogInformation("[CreditCard] Payment intent created - Redirect: {RedirectUrl}", redirectUrl);
-
-        return new PaymentIntentDto
+        catch (Exception ex)
         {
-            Provider = Name,
-            PaymentId = paymentId,
-            RedirectUrl = redirectUrl,
-            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(15)
-        };
+            _logger.LogError(ex, "[CreditCard] Payment creation failed: {Message}", ex.Message);
+            throw new InvalidOperationException($"Xử lý thanh toán thất bại: {ex.Message}", ex);
+        }
     }
 
     public async Task<bool> VerifyAsync(int paymentId, CancellationToken ct)

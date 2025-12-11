@@ -60,9 +60,10 @@ builder.Services.AddScoped<IAdminService, Tickify.Services.AdminService>();
 // Định nghĩa rõ: Interface và Class đều lấy từ Services.Payments
 builder.Services.AddScoped<Tickify.Services.Payments.IPaymentService, Tickify.Services.Payments.PaymentService>();
 
-// Đăng ký các Provider (VNPay, MoMo) vào cùng 1 interface IPaymentProvider để PaymentService nhận được IEnumerable
+// Đăng ký các Provider (VNPay, MoMo, CreditCard) vào cùng 1 interface IPaymentProvider để PaymentService nhận được IEnumerable
 builder.Services.AddScoped<Tickify.Services.Payments.IPaymentProvider, Tickify.Services.Payments.VNPayProvider>();
 builder.Services.AddScoped<Tickify.Services.Payments.IPaymentProvider, Tickify.Services.Payments.MoMoProvider>();
+builder.Services.AddScoped<Tickify.Services.Payments.IPaymentProvider, Tickify.Services.Payments.CreditCardProvider>();
 
 builder.Services.AddScoped<Tickify.Services.Refunds.IRefundService, Tickify.Services.Refunds.RefundService>();
 builder.Services.AddScoped<IPaymentRepository, EfPaymentRepository>();

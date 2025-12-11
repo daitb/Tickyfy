@@ -5,6 +5,13 @@ export interface PaymentIntent {
   paymentId: number;
   redirectUrl: string;
   expiresAtUtc: string;
+  isImmediateCompletion?: boolean;
+  bookingId?: number;
+  transactionId?: string;
+  status?: string;
+  amount?: number;
+  cardBrand?: string;
+  last4Digits?: string;
 }
 
 export type PaymentProvider = "momo" | "vnpay" | "creditcard";
