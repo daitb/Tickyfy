@@ -118,19 +118,25 @@ public class BookingService : IBookingService
 
             // Calculate subtotal from actual seat prices (from zones)
             subtotal = selectedSeats.Sum(s => s.SeatZone?.ZonePrice ?? s.TicketType.Price);
+            
+            _logger.LogInformation("Seat-based booking: {SeatCount} seats selected, Subtotal: {Subtotal}", 
+                selectedSeats.Count, subtotal);
         }
         else
         {
             // Regular booking without specific seats - use ticket type price
             subtotal = ticketType.Price * createBookingDto.Quantity;
+            
+            _logger.LogInformation("Regular booking: Quantity={Quantity}, Price={Price}, Subtotal={Subtotal}", 
+                createBookingDto.Quantity, ticketType.Price, subtotal);
         }
         
         // Calculate service fee (5% như frontend)
         // TODO: Nên lấy từ configuration thay vì hardcode
         const decimal SERVICE_FEE_PERCENTAGE = 0.05m;
-        decimal serviceFee = subtotal * SERVICE_FEE_PERCENTAGE;
+        decimal serviceFee = Math.Ceiling(subtotal * SERVICE_FEE_PERCENTAGE); // Làm tròn lên
         
-        // Total amount = subtotal + service fee
+        // Total amount = subtotal + service fee (đảm bảo là số nguyên VND)
         decimal totalAmount = subtotal + serviceFee;
 
         // Validate and apply promo code if provided
@@ -158,7 +164,17 @@ public class BookingService : IBookingService
         
         // Final total = subtotal - discount + service fee
         // Service fee luôn được tính, không bị discount
-        decimal finalAmount = subtotal - discount + serviceFee;
+        // Làm tròn finalAmount để đảm bảo là số nguyên VND (tránh lỗi với MoMo/VNPay)
+        decimal finalAmount = Math.Ceiling(subtotal - discount + serviceFee);
+
+        // Validate tổng tiền không vượt quá giới hạn thanh toán
+        const decimal MAX_PAYMENT_AMOUNT = 50_000_000m; // 50 triệu VND - giới hạn MoMo
+        if (finalAmount > MAX_PAYMENT_AMOUNT)
+        {
+            throw new BadRequestException(
+                $"Total booking amount ({finalAmount:N0} VND) exceeds maximum payment limit of {MAX_PAYMENT_AMOUNT:N0} VND per transaction. " +
+                $"Please reduce the number of tickets or contact support for assistance.");
+        }
 
         // Sử dụng transaction để đảm bảo data consistency
         _logger.LogInformation("Bắt đầu tạo booking cho UserId: {UserId}, EventId: {EventId}, Quantity: {Quantity}", 

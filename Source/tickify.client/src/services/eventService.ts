@@ -456,6 +456,7 @@ export interface EventStatsDto {
   availableSeats: number;
   totalRevenue: number;
   totalBookings: number;
+  totalTicketsSold: number;
   averageRating: number;
   totalReviews: number;
   pageViews?: number;

@@ -10,10 +10,13 @@ public class OrganizerEventDashboardDto
     public string Title { get; set; } = string.Empty;
 
     public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public string? BannerImage { get; set; }
     public string Status { get; set; } = string.Empty;
     public int TotalSeats { get; set; }
     public int SoldSeats { get; set; }
     public decimal Revenue { get; set; }
+    public string? RejectionReason { get; set; }
 }
 
 public class OrganizerTopEventDto

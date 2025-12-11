@@ -158,6 +158,34 @@ namespace Tickify.Data
                 .HasForeignKey(s => s.TicketTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Seat - SeatZone relationship
+            modelBuilder.Entity<Seat>()
+                .HasOne(s => s.SeatZone)
+                .WithMany(sz => sz.Seats)
+                .HasForeignKey(s => s.SeatZoneId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // SeatZone - SeatMap relationship
+            modelBuilder.Entity<SeatZone>()
+                .HasOne(sz => sz.SeatMap)
+                .WithMany(sm => sm.Zones)
+                .HasForeignKey(sz => sz.SeatMapId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // SeatZone - TicketType relationship
+            modelBuilder.Entity<SeatZone>()
+                .HasOne(sz => sz.TicketType)
+                .WithMany()
+                .HasForeignKey(sz => sz.TicketTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // SeatMap - Event relationship
+            modelBuilder.Entity<SeatMap>()
+                .HasOne(sm => sm.Event)
+                .WithOne(e => e.SeatMap)
+                .HasForeignKey<SeatMap>(sm => sm.EventId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Seat - Ticket relationship
             modelBuilder.Entity<Ticket>()
                 .HasOne(t => t.Seat)

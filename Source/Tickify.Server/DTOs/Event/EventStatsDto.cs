@@ -30,6 +30,45 @@ public class EventStatsDto
     // Time-based sales
     public DateTime? FirstSaleDate { get; set; }
     public DateTime? LastSaleDate { get; set; }
+
+    // Sales over time
+    public List<SalesByDateDto> SalesByDate { get; set; } = new();
+
+    // Top buyers
+    public List<TopBuyerDto> TopBuyers { get; set; } = new();
+
+    // Recent transactions
+    public List<RecentTransactionDto> RecentTransactions { get; set; } = new();
+
+    // Additional metrics
+    public int PageViews { get; set; }
+    public int SoldSeats { get; set; }
+}
+
+public class SalesByDateDto
+{
+    public DateTime Date { get; set; }
+    public decimal Revenue { get; set; }
+    public int TicketsSold { get; set; }
+}
+
+public class TopBuyerDto
+{
+    public int UserId { get; set; }
+    public string UserName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public int TicketsPurchased { get; set; }
+    public decimal TotalSpent { get; set; }
+    public DateTime LastPurchaseDate { get; set; }
+}
+
+public class RecentTransactionDto
+{
+    public string TransactionId { get; set; } = string.Empty;
+    public string BuyerName { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public DateTime TransactionDate { get; set; }
+    public string Status { get; set; } = string.Empty;
 }
 
 public class TicketTypeSalesDto
