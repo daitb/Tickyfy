@@ -14,6 +14,7 @@ using Tickify.Interfaces.Services; // Chứa các Interface chung (IUserService,
 using Tickify.Services;
 using Tickify.Services.Email;
 using Tickify.Services.Reviews;
+using Tickify.Server.AI;
 using Tickify.Services.Payments;
 using Tickify.Services.Refunds;
 using Tickify.Services.Payouts;
@@ -103,6 +104,9 @@ builder.Services.AddScoped<IWaitlistService, WaitlistService>();
 builder.Services.AddScoped<IChatRepository, EfChatRepository>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<INotificationService, Tickify.Services.Notifications.NotificationService>();
+
+// --- RAG AI Services (Groq, Ollama, Embedding) ---
+builder.Services.AddRagServices(builder.Configuration);
 
 // --- Background Jobs ---
 builder.Services.AddHostedService<Tickify.Jobs.SeatReservationCleanupJob>();

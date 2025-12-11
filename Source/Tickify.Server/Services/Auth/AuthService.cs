@@ -66,7 +66,7 @@ public class AuthService : IAuthService
 
         await _userRepository.AddUserAsync(user);
 
-        var userRole = await _roleRepository.GetRoleByNameAsync("User");
+        var userRole = await _roleRepository.GetRoleByNameAsync("Customer");
         if (userRole != null)
         {
             await _userRoleRepository.AddUserRoleAsync(new UserRole
@@ -394,7 +394,7 @@ public class AuthService : IAuthService
         await _userRepository.AddUserAsync(newUser);
 
         // Assign User role
-        var userRole = await _roleRepository.GetRoleByNameAsync("User");
+        var userRole = await _roleRepository.GetRoleByNameAsync("Customer");
         if (userRole != null)
         {
             await _userRoleRepository.AddUserRoleAsync(new UserRole
