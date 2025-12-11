@@ -61,8 +61,8 @@ import {
   organizerService,
   type OrganizerEventDto,
 } from "../services/organizerService";
+import { eventService } from "../services/eventService";
 import { authService } from "../services/authService";
-import apiClient from "../services/apiClient";
 import { toast } from "sonner";
 
 interface EventManagementProps {
@@ -103,7 +103,6 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
-  const [eventToCancel, setEventToCancel] = useState<string | null>(null);
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
   const [events, setEvents] = useState<OrganizerEventDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -252,10 +251,7 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
         onNavigate("event-analytics", eventId);
         break;
       case "duplicate":
-        // TODO: Implement duplicate event functionality
-        break;
-      case "cancel":
-        setEventToCancel(eventId);
+        handleDuplicateEvent(eventId);
         break;
       case "delete":
         setEventToDelete(eventId);
@@ -263,14 +259,62 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
     }
   };
 
-  const confirmCancelEvent = () => {
-    // TODO: Implement cancel event API call
-    setEventToCancel(null);
+  const confirmDeleteEvent = async () => {
+    if (!eventToDelete) return;
+
+    try {
+      await eventService.deleteEvent(Number(eventToDelete));
+
+      toast.success("Sự kiện đã được xóa thành công", {
+        duration: 3000,
+      });
+
+      // Reload events
+      const currentUser = authService.getCurrentUser();
+      if (currentUser?.organizerId) {
+        const data = await organizerService.getOrganizerEvents(
+          currentUser.organizerId
+        );
+        setEvents(data);
+      }
+    } catch (err: any) {
+      console.error("Failed to delete event:", err);
+      toast.error("Không thể xóa sự kiện", {
+        description: err.response?.data?.message || "Vui lòng thử lại sau",
+        duration: 3000,
+      });
+    } finally {
+      setEventToDelete(null);
+    }
   };
 
-  const confirmDeleteEvent = () => {
-    // TODO: Implement delete event API call
-    setEventToDelete(null);
+  const handleDuplicateEvent = async (eventId: string) => {
+    try {
+      const duplicatedEvent = await eventService.duplicateEvent(Number(eventId));
+
+      toast.success("Đã nhân bản sự kiện thành công", {
+        description: "Vui lòng cập nhật thông tin cho sự kiện mới",
+        duration: 3000,
+      });
+
+      // Reload events
+      const currentUser = authService.getCurrentUser();
+      if (currentUser?.organizerId) {
+        const data = await organizerService.getOrganizerEvents(
+          currentUser.organizerId
+        );
+        setEvents(data);
+      }
+
+      // Navigate to edit the new duplicated event (use duplicatedEvent.id which is string)
+      onNavigate("organizer-wizard", duplicatedEvent.id);
+    } catch (err: any) {
+      console.error("Failed to duplicate event:", err);
+      toast.error("Không thể nhân bản sự kiện", {
+        description: err.response?.data?.message || "Vui lòng thử lại sau",
+        duration: 3000,
+      });
+    }
   };
 
   return (
@@ -609,15 +653,6 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() =>
-                                  handleEventAction("cancel", eventIdStr)
-                                }
-                                className="text-red-600"
-                              >
-                                <XCircle size={14} className="mr-2" />
-                                {t("eventManagement.cancelEvent")}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
                                   handleEventAction("delete", eventIdStr)
                                 }
                                 className="text-red-600"
@@ -804,15 +839,6 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    handleEventAction("cancel", eventIdStr)
-                                  }
-                                  className="text-red-600"
-                                >
-                                  <XCircle size={14} className="mr-2" />
-                                  {t("eventManagement.cancelEvent")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
                                     handleEventAction("delete", eventIdStr)
                                   }
                                   className="text-red-600"
@@ -833,32 +859,6 @@ export function EventManagement({ onNavigate }: EventManagementProps) {
           </Card>
         )}
       </div>
-
-      {/* Cancel Event Dialog */}
-      <Dialog
-        open={!!eventToCancel}
-        onOpenChange={() => setEventToCancel(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("eventManagement.cancelEventTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("eventManagement.cancelEventMessage")}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEventToCancel(null)}>
-              {t("eventManagement.keepEvent")}
-            </Button>
-            <Button
-              className="bg-red-500 hover:bg-red-600"
-              onClick={confirmCancelEvent}
-            >
-              {t("eventManagement.confirmCancel")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Event Dialog */}
       <Dialog

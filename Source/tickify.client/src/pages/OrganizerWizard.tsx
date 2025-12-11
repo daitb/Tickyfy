@@ -10,6 +10,7 @@ import {
   CheckCircle,
   AlertCircle,
   Clock,
+  Grid3x3,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -33,7 +34,7 @@ import { toast } from "sonner";
 import type { Category, Event, TicketTier } from "../types";
 
 interface OrganizerWizardProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, eventId?: string) => void;
   eventId?: string; // For editing existing events
 }
 
@@ -223,11 +224,11 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
   }, [eventId]);
 
   const steps = [
-    { number: 1, label: "Basics" },
-    { number: 2, label: "Schedule & Venue" },
-    { number: 3, label: "Ticketing" },
-    { number: 4, label: "Policies" },
-    { number: 5, label: "Review" },
+    { number: 1, label: t('wizard.organizer.stepLabel1') },
+    { number: 2, label: t('wizard.organizer.stepLabel2') },
+    { number: 3, label: t('wizard.organizer.stepLabel3') },
+    { number: 4, label: t('wizard.organizer.stepLabel4') },
+    { number: 5, label: t('wizard.organizer.stepLabel5') },
   ];
 
   const handleInputChange = (field: string, value: any) => {
@@ -301,6 +302,8 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
 
       setUploadedImageUrl(response.imageUrl);
       handleInputChange("image", response.imageUrl);
+      
+      // Silent success - no toast notification
     } catch (error: any) {
       const errorMsg =
         error.response?.data?.message ||
@@ -485,40 +488,86 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
       );
       const categoryId = selectedCategory?.categoryId || 1; // Fallback to 1 if not found
 
-      // Prepare event data
-      const createEventDto: CreateEventDto = {
-        organizerId: organizerId!,
-        categoryId: categoryId,
-        title: eventData.title,
-        description: eventData.description,
-        venue: eventData.venue,
-        imageUrl: eventData.image,
-        startDate: startDateTime,
-        endDate: endDateTime,
-        totalSeats: ticketTiers.reduce(
-          (sum, tier) => sum + (tier.total || 0),
-          0
-        ),
-        isFeatured: false,
-        // Note: seatMapId is NOT sent during event creation
-        // User must create seat map separately after event is created
-        ticketTypes: ticketTiers.map((tier) => ({
-          typeName: tier.name || "General",
-          price: tier.price || 0,
-          quantity: tier.total || 0,
-          description: tier.description,
-        })),
-      };
+      if (isEditMode && eventId) {
+        // UPDATE existing event
+        const updateEventDto = {
+          categoryId: categoryId,
+          title: eventData.title,
+          description: eventData.description,
+          venue: eventData.venue,
+          imageUrl: eventData.image,
+          startDate: startDateTime,
+          endDate: endDateTime,
+          totalSeats: ticketTiers.reduce(
+            (sum, tier) => sum + (tier.total || 0),
+            0
+          ),
+          isFeatured: false,
+        };
 
-      // POST /api/events - Create event
-      const createdEvent = await eventService.createEvent(createEventDto);
+        const updatedEvent = await eventService.updateEvent(
+          Number(eventId),
+          updateEventDto
+        );
 
-      toast.success(`Event "${createdEvent.title}" created successfully!`, {
-        description: "It will be reviewed by admin.",
-        duration: 2000,
-        closeButton: false,
-      });
-      onNavigate("organizer-dashboard");
+        toast.success(
+          t("wizard.organizer.eventUpdated") ||
+            `Event "${updatedEvent.title}" updated successfully!`,
+          {
+            description:
+              t("wizard.organizer.eventUpdatedDesc") ||
+              "Your changes have been saved.",
+            duration: 2000,
+            closeButton: false,
+          }
+        );
+        onNavigate("event-management");
+      } else {
+        // CREATE new event
+        const createEventDto: CreateEventDto = {
+          organizerId: organizerId!,
+          categoryId: categoryId,
+          title: eventData.title,
+          description: eventData.description,
+          venue: eventData.venue,
+          imageUrl: eventData.image,
+          startDate: startDateTime,
+          endDate: endDateTime,
+          totalSeats: ticketTiers.reduce(
+            (sum, tier) => sum + (tier.total || 0),
+            0
+          ),
+          isFeatured: false,
+          ticketTypes: ticketTiers.map((tier) => ({
+            typeName: tier.name || "General",
+            price: tier.price || 0,
+            quantity: tier.total || 0,
+            description: tier.description,
+          })),
+        };
+
+        const createdEvent = await eventService.createEvent(createEventDto);
+
+        toast.success(
+          t("wizard.organizer.eventCreated") ||
+            `Event "${createdEvent.title}" created successfully!`,
+          {
+            description:
+              t("wizard.organizer.eventCreatedDesc") ||
+              "Now you can set up seat map for this event.",
+            duration: 3000,
+            closeButton: false,
+          }
+        );
+
+        // Navigate to seat map setup after creating event
+        // createdEvent.id is a string (mapped from eventId)
+        if (createdEvent.id) {
+          onNavigate("edit-seat-map", createdEvent.id);
+        } else {
+          onNavigate("event-management");
+        }
+      }
     } catch (error: any) {
       // Extract detailed error messages from backend validation
       let errorMessage = "Please check your inputs.";
@@ -728,12 +777,9 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                       <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center z-10">
                         <div className="text-center">
                           <Loader2
-                            className="animate-spin mx-auto text-orange-500 mb-2"
+                            className="animate-spin mx-auto text-orange-500"
                             size={40}
                           />
-                          <p className="text-sm text-neutral-700 font-medium">
-                            {t("wizard.organizer.uploadingToAzure")}
-                          </p>
                         </div>
                       </div>
                     )}
@@ -978,19 +1024,45 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                 ))}
               </div>
 
-              {/* Seat Map Info Message */}
-              <div className="mt-8 border-t pt-6">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-blue-900 mb-2">
-                    ℹ️ {t("wizard.organizer.seatMapConfigTitle")}
-                  </h4>
-                  <p className="text-sm text-blue-700">
-                    {t("wizard.organizer.seatMapConfigDesc1")}
-                  </p>
-                  <p className="text-sm text-blue-700 mt-2">
-                    <strong>{t("wizard.organizer.important")}:</strong>{" "}
-                    {t("wizard.organizer.seatMapConfigDesc2")}
-                  </p>
+              {/* Seat Map Setup Button */}
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-neutral-900 font-medium mb-1">
+                      {t("wizard.organizer.seatMapSetupTitle")}
+                    </h3>
+                    <p className="text-sm text-neutral-600">
+                      {isEditMode 
+                        ? t("wizard.organizer.seatMapSetupDescEdit")
+                        : t("wizard.organizer.seatMapSetupDescCreate")}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      if (isEditMode && eventId) {
+                        // Edit mode: navigate directly to seat map
+                        onNavigate("edit-seat-map", eventId);
+                      } else {
+                        // Create mode: save event first, then navigate
+                        await handlePublish();
+                      }
+                    }}
+                    disabled={isPublishing}
+                    className="bg-blue-500 hover:bg-blue-600"
+                  >
+                    {isPublishing ? (
+                      <>
+                        <Loader2 size={18} className="mr-2 animate-spin" />
+                        {t("wizard.organizer.saving", "Đang lưu...")}
+                      </>
+                    ) : (
+                      <>
+                        <Grid3x3 size={18} className="mr-2" />
+                        {t("wizard.organizer.setupSeatsButton")}
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1202,8 +1274,12 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                 {isPublishing ? (
                   <>
                     <Loader2 className="animate-spin mr-2" size={16} />
-                    {t("wizard.organizer.publishingEvent")}
+                    {isEditMode
+                      ? t("wizard.organizer.updatingEvent") || "Updating..."
+                      : t("wizard.organizer.publishingEvent")}
                   </>
+                ) : isEditMode ? (
+                  t("wizard.organizer.updateEvent") || "Update Event"
                 ) : (
                   t("wizard.organizer.publish")
                 )}

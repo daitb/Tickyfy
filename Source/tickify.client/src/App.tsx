@@ -606,7 +606,7 @@ export default function App() {
         return <OrganizerWizard onNavigate={handleNavigate} eventId={selectedEventId || undefined} />;
 
       case "organizer-dashboard":
-        return <OrganizerDashboard onNavigate={handleNavigate} />;
+        return <OrganizerDashboard key={Date.now()} onNavigate={handleNavigate} />;
 
       case "event-management":
         return <EventManagement onNavigate={handleNavigate} />;

@@ -58,7 +58,7 @@ import {
 import { toast } from "sonner";
 
 interface SeatMapBuilderProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, eventId?: string) => void;
   eventId?: string | null;
 }
 
@@ -614,6 +614,15 @@ export function SeatMapBuilder({
 
     await handleSave();
     toast.success("Seat map published successfully!");
+    
+    // Navigate back to wizard with eventId after publishing
+    setTimeout(() => {
+      if (eventId) {
+        onNavigate("organizer-wizard", eventId);
+      } else {
+        onNavigate("organizer-dashboard");
+      }
+    }, 1000);
   };
 
   return (
@@ -625,7 +634,13 @@ export function SeatMapBuilder({
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
-                onClick={() => onNavigate("organizer-dashboard")}
+                onClick={() => {
+                  if (eventId) {
+                    onNavigate("organizer-wizard", eventId);
+                  } else {
+                    onNavigate("organizer-dashboard");
+                  }
+                }}
               >
                 ← Back
               </Button>

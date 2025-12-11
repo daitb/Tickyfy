@@ -1,5 +1,6 @@
 // using FluentValidation.TestHelper;
 // using Tickify.DTOs.SeatMap;
+// using Tickify.Validators.SeatMap;
 // using Xunit;
 
 // namespace Tickify.Tests.Validators;
