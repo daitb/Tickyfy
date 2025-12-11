@@ -21,7 +21,9 @@
     "qrScanner": "Quét QR",
     "scanHistory": "Lịch sử quét",
     "profileSettings": "Hồ sơ & Cài đặt",
-    "signOut": "Đăng xuất"
+    "signOut": "Đăng xuất",
+    "chat": "Trò chuyện",
+    "pendingApproval": "Đang chờ phê duyệt"
   },
   "home": {
     "title": "Khám phá các sự kiện tuyệt vời",
@@ -156,8 +158,16 @@
     "organizer": "Nhà tổ chức",
     "selectTickets": "Chọn vé",
     "selectSeats": "Chọn ghế",
+    "eventTitle": "Tiêu đề sự kiện",
     "getTickets": "Lấy vé",
-    "bookNow": "Đặt ngay",
+    "generalAdmission": "Vé thường",
+    "unknownEvent": "Sự kiện không xác định",
+    "publishEvent": "Xuất bản sự kiện",
+    "publishing": "Đang xuất bản...",
+    "freeTicket": "Vé miễn phí",
+    "left": "còn lại",
+    "eventCheckIn": "Check-in sự kiện",
+    "notYet": "Chưa có",
     "ticketsFrom": "Vé từ",
     "share": "Chia sẻ",
     "addToWishlist": "Thêm vào yêu thích",
@@ -324,7 +334,8 @@
       "subtotal": "Tạm tính",
       "serviceFee": "Phí dịch vụ",
       "discount": "Giảm giá",
-      "total": "Tổng cộng"
+      "total": "Tổng cộng",
+      "applying": "Đang kiểm tra..."
     },
     "summary": "Tóm tắt đơn hàng",
     "serviceFee": "Phí dịch vụ",
@@ -489,8 +500,24 @@
     "benefit2Desc": "Dashboard chuyên nghiệp với đầy đủ tính năng",
     "benefit3Title": "Báo cáo chi tiết",
     "benefit3Desc": "Theo dõi doanh thu và phân tích chi tiết",
+    "createEvent": "Tạo sự kiện",
+    "myEvents": "Sự kiện của tôi",
+    "analytics": "Phân tích",
+    "earnings": "Thu nhập",
+    "attendees": "Người tham dự",
+    "ticketsSold": "Vé đã bán",
+    "revenue": "Doanh thu",
     "upcomingEvents": "Sự kiện sắp tới",
     "pastEvents": "Sự kiện đã qua",
+    "draftEvents": "Sự kiện nháp",
+    "eventName": "Tên sự kiện",
+    "eventDate": "Ngày sự kiện",
+    "ticketSales": "Bán vé",
+    "actions": "Thao tác",
+    "editEvent": "Chỉnh sửa sự kiện",
+    "deleteEvent": "Xóa sự kiện",
+    "viewAnalytics": "Xem phân tích",
+    "publishEvent": "Xuất bản sự kiện",
     "createNewEvent": "Tạo sự kiện mới",
     "dashboard": {
       "title": "Bảng điều khiển Organizer",
@@ -601,6 +628,7 @@
     "charactersCount": "ký tự",
     "category": "Danh mục",
     "categoryMusic": "Âm nhạc",
+    "categoryMusicAndConcerts": "Âm nhạc & Hòa nhạc",
     "categorySports": "Thể thao",
     "categoryArts": "Nghệ thuật & Văn hóa",
     "categoryFood": "Ẩm thực",
@@ -757,6 +785,7 @@
     "rejected": "Bị từ chối",
     "draft": "Bản nháp",
     "cancelled": "Đã hủy",
+    "completed": "Hoàn thành",
     "date": "Ngày",
     "allTime": "Tất cả thời gian",
     "upcoming": "Sắp diễn ra",
@@ -795,7 +824,6 @@
     "deleteErrorDesc": "Đã xảy ra lỗi khi xóa sự kiện.",
     "duplicateFeatureComingSoon": "Tính năng sao chép sắp ra mắt",
     "duplicateFeatureDesc": "Tính năng này đang được phát triển.",
-    "completed": "Đã hoàn thành",
     "loading": "Đang tải sự kiện...",
     "duplicate": "Sao chép",
     "cancelEvent": "Hủy sự kiện",
@@ -1085,6 +1113,10 @@
     "reset": "Đặt lại",
     "apply": "Áp dụng"
   },
+  "language": {
+    "switchToVi": "Chuyển sang tiếng Việt",
+    "switchToEn": "Chuyển sang tiếng Anh"
+  },
   "common": {
     "locale": "vi",
     "search": "Tìm kiếm",
@@ -1127,8 +1159,11 @@
     "daysAgo": "{count} ngày trước",
     "weeksAgo": "tuần trước",
     "monthsAgo": "tháng trước",
+    "checking": "Đang kiểm tra...",
+    "tryAgain": "Thử lại",
+    "date": "Ngày",
+    "venue": "Địa điểm",
     "returnHome": "Về trang chủ",
-    "viewAll": "Xem tất cả",
     "paste": "Dán",
     "cut": "Cắt",
     "undo": "Hoàn tác",
@@ -1144,6 +1179,7 @@
     "less": "Ít hơn",
     "none": "Không có",
     "other": "Khác",
+    "viewAll": "Xem tất cả",
     "help": "Trợ giúp",
     "settings": "Cài đặt",
     "logout": "Đăng xuất",
@@ -1157,6 +1193,68 @@
     "about": "Giới thiệu",
     "FAQ": "Câu hỏi thường gặp",
     "support": "Hỗ trợ"
+  },
+  "footer": {
+    "description": "Nền tảng đáng tin cậy của bạn để khám phá và đặt vé cho các sự kiện trên khắp Việt Nam.",
+    "company": "Công ty",
+    "aboutUs": "Về chúng tôi",
+    "privacyPolicy": "Chính sách bảo mật",
+    "termsOfService": "Điều khoản dịch vụ",
+    "refundPolicy": "Chính sách hoàn tiền",
+    "support": "Hỗ trợ",
+    "faq": "Câu hỏi thường gặp",
+    "contactUs": "Liên hệ",
+    "forOrganizers": "Dành cho nhà tổ chức",
+    "helpCenter": "Trung tâm trợ giúp",
+    "contact": "Liên hệ",
+    "copyright": "© 2025 Tickify. Bảo lưu mọi quyền."
+  },
+  "contact": {
+    "title": "Liên hệ",
+    "subtitle": "Liên hệ với đội ngũ của chúng tôi",
+    "form": {
+      "title": "Gửi tin nhắn cho chúng tôi",
+      "name": "Tên của bạn",
+      "email": "Email của bạn",
+      "subject": "Chủ đề",
+      "message": "Tin nhắn",
+      "send": "Gửi tin nhắn",
+      "sending": "Đang gửi...",
+      "success": "Cảm ơn bạn! Tin nhắn của bạn đã được gửi thành công.",
+      "errors": {
+        "nameRequired": "Tên là bắt buộc",
+        "emailRequired": "Email là bắt buộc",
+        "emailInvalid": "Định dạng email không hợp lệ",
+        "subjectRequired": "Chủ đề là bắt buộc",
+        "messageRequired": "Tin nhắn là bắt buộc",
+        "messageTooShort": "Tin nhắn phải có ít nhất 10 ký tự",
+        "sendFailed": "Không thể gửi tin nhắn. Vui lòng thử lại."
+      }
+    },
+    "info": {
+      "email": {
+        "title": "Email",
+        "content": "support@tickify.com"
+      },
+      "phone": {
+        "title": "Điện thoại",
+        "content": "+84 123 456 789"
+      },
+      "address": {
+        "title": "Địa chỉ",
+        "content": "123 Đường Sự Kiện, Thành phố Hồ Chí Minh, Việt Nam"
+      }
+    },
+    "hours": {
+      "title": "Giờ làm việc",
+      "weekdays": "Thứ Hai - Thứ Sáu: 9:00 - 18:00",
+      "weekend": "Thứ Bảy - Chủ Nhật: 10:00 - 16:00"
+    },
+    "quickLinks": {
+      "title": "Liên kết nhanh",
+      "faq": "Câu hỏi thường gặp",
+      "helpCenter": "Trung tâm trợ giúp"
+    }
   },
   "policy": {
     "policy": "Chính sách vé",
@@ -1458,7 +1556,13 @@
       "transferTicket": "Chuyển vé",
       "customerSupport": "Cần trợ giúp? Liên hệ hỗ trợ khách hàng",
       "contactSupport": "Liên hệ hỗ trợ",
-      "viewDetail": "Xem chi tiết đơn hàng"
+      "viewDetail": "Xem chi tiết đơn hàng",
+      "timeline": {
+        "orderPlaced": "Đơn hàng đã đặt",
+        "paymentConfirmed": "Thanh toán đã xác nhận",
+        "ticketsIssued": "Vé đã phát hành",
+        "eventCheckIn": "Check-in sự kiện"
+      }
     },
     "refundHistory": {
       "title": "Lịch sử hoàn tiền",
@@ -1527,19 +1631,24 @@
     }
   },
   "promoCode": {
-    "title": "Đánh giá",
+    "title": "Mã khuyến mãi",
     "createNewCode": "Tạo mã mới",
     "bulkImport": "Nhập hàng loạt",
     "searchPlaceholder": "Tìm kiếm mã hoặc mô tả...",
     "statusPlaceholder": "Trạng thái",
+    "apply": "Áp dụng",
+    "applied": "Đã áp dụng mã khuyến mãi",
+    "invalid": "Mã khuyến mãi không hợp lệ",
+    "expired": "Mã khuyến mãi đã hết hạn",
+    "remove": "Xóa",
     "filters": {
       "allStatus": "Tất cả trạng thái",
       "active": "Hoạt động",
       "inactive": "Không hoạt động"
     },
     "list": {
-      "title": "Đánh giá",
-      "subtitle": "Những gì người tham dự nói",
+      "title": "Mã khuyến mãi",
+      "subtitle": "Quản lý mã khuyến mãi của bạn",
       "averageRating": "Đánh giá trung bình",
       "totalReviews": "đánh giá",
       "writeReview": "Viết đánh giá",
@@ -1842,7 +1951,23 @@
       "ticketsSold": "Vé đã bán",
       "revenue": "Doanh thu",
       "status": "Trạng thái",
-      "actions": "Thao tác"
+      "actions": "Thao tác",
+      "edit": "Sửa",
+      "duplicate": "Nhân bản",
+      "cancel": "Hủy",
+      "delete": "Xóa",
+      "viewAnalytics": "Xem phân tích"
+    },
+    "policy": {
+      "policy": "Chính sách vé",
+      "please": "Vui lòng xem xét trước khi mua",
+      "Refundable": "Hoàn tiền",
+      "Non-refundable": "Không hoàn tiền",
+      "Transferable": "Có thể chuyển nhượng",
+      "Non-transferable": "Không thể chuyển nhượng",
+      "notify": "Tất cả vé đều là vé chính thức và đã được xác minh. Vui lòng kiểm tra email để biết thông tin giao vé sau khi mua.",
+      "text1": "vé có thể được chuyển nhượng cho người khác",
+      "text2": "vé không thể được chuyển nhượng cho người khác"
     },
     "user": {
       "title": "Quản lý người dùng",
@@ -2271,6 +2396,593 @@
       "helpful": "Hữu ích",
       "notHelpful": "Không hữu ích",
       "reportReview": "Báo cáo"
+    }
+  },
+  "user": {
+    "title": "Quản lý người dùng",
+    "subtitle": "Quản lý người dùng và xem xét yêu cầu tổ chức",
+    "usersTab": "Danh sách người dùng",
+    "requestsTab": "Yêu cầu tổ chức",
+    "usersList": "Danh sách người dùng",
+    "searchPlaceholder": "Tìm theo tên hoặc email...",
+    "name": "Tên",
+    "email": "Email",
+    "role": "Vai trò",
+    "status": "Trạng thái",
+    "createdDate": "Ngày tạo",
+    "action": "Hành động",
+    "verified": "Đã xác minh",
+    "notVerified": "Chưa xác minh",
+    "loading": "Đang tải...",
+    "noRequests": "Không có yêu cầu nào",
+    "organizationName": "Tên tổ chức",
+    "requester": "Người yêu cầu",
+    "taxCode": "Mã số thuế",
+    "phone": "Số điện thoại",
+    "address": "Địa chỉ",
+    "description": "Mô tả",
+    "requestDate": "Ngày yêu cầu",
+    "approve": "Phê duyệt",
+    "reject": "Từ chối",
+    "deleteConfirm": "Bạn có chắc chắn muốn xóa người dùng này?",
+    "approveConfirm": "Bạn có chắc chắn muốn phê duyệt yêu cầu này?",
+    "rejectReason": "Lý do từ chối (tùy chọn):",
+    "noPendingRequests": "Không có yêu cầu đang chờ",
+    "approving": "Đang phê duyệt...",
+    "rejecting": "Đang từ chối...",
+    "errorLoading": "Lỗi khi tải dữ liệu",
+    "retryButton": "Thử lại",
+    "noDataAvailable": "Không có dữ liệu",
+    "viewDetails": "Xem chi tiết",
+    "manageRoles": "Quản lý vai trò",
+    "resendEmail": "Gửi lại xác minh",
+    "disable": "Vô hiệu hóa tài khoản",
+    "enable": "Kích hoạt tài khoản",
+    "deleteUser": "Xóa người dùng",
+    "editRoles": "Chỉnh sửa vai trò",
+    "delete": "Xóa",
+    "editRoleTitle": "Chỉnh sửa vai trò người dùng",
+    "editRoleDesc": "Thay đổi vai trò cho",
+    "selectRole": "Chọn vai trò",
+    "toast": {
+      "roleUpdated": "Cập nhật vai trò thành công!",
+      "roleUpdateError": "Không thể cập nhật vai trò",
+      "statusChanged": "Đã thay đổi trạng thái người dùng!",
+      "statusChangeError": "Không thể thay đổi trạng thái",
+      "userDeleted": "Đã xóa người dùng!",
+      "userDeleteError": "Không thể xóa người dùng",
+      "requestApproved": "Đã phê duyệt yêu cầu!",
+      "requestApprovedDesc": "Người dùng đã được nâng cấp lên Organizer và nhận được email thông báo.",
+      "requestRejected": "Đã từ chối yêu cầu",
+      "requestRejectedDesc": "Người dùng sẽ nhận được email thông báo về quyết định này.",
+      "approveError": "Lỗi phê duyệt",
+      "rejectError": "Lỗi từ chối",
+      "error": "Lỗi"
+    }
+  },
+  "about": {
+    "title": "Về Tickify",
+    "subtitle": "Đối tác đáng tin cậy của bạn cho giải pháp quản lý sự kiện và bán vé liền mạch",
+    "mission": {
+      "title": "Sứ mệnh của chúng tôi",
+      "description": "Tại Tickify, chúng tôi cam kết cách mạng hóa ngành quản lý sự kiện bằng cách cung cấp các giải pháp sáng tạo, thân thiện với người dùng giúp trao quyền cho các nhà tổ chức và làm hài lòng người tham dự. Chúng tôi tin rằng mọi sự kiện, lớn hay nhỏ, đều xứng đáng có các công cụ chuyên nghiệp và trải nghiệm liền mạch."
+    },
+    "features": {
+      "title": "Tại sao chọn Tickify?",
+      "0": {
+        "title": "Quản lý sự kiện",
+        "description": "Tạo, quản lý và quảng bá sự kiện của bạn một cách dễ dàng. Nền tảng của chúng tôi cung cấp tất cả các công cụ bạn cần."
+      },
+      "1": {
+        "title": "Tập trung vào cộng đồng",
+        "description": "Kết nối với các nhà tổ chức và người tham dự. Xây dựng mối quan hệ lâu dài trong cộng đồng của chúng tôi."
+      },
+      "2": {
+        "title": "Thanh toán an toàn",
+        "description": "Xử lý thanh toán an toàn với các cổng thanh toán Stripe và VNPay được tích hợp."
+      },
+      "3": {
+        "title": "Hỗ trợ 24/7",
+        "description": "Đội ngũ hỗ trợ tận tâm của chúng tôi luôn sẵn sàng giúp bạn thành công."
+      }
+    },
+    "story": {
+      "title": "Câu chuyện của chúng tôi",
+      "paragraph1": "Được thành lập vào năm 2024, Tickify ra đời từ một quan sát đơn giản: quản lý sự kiện phải dễ tiếp cận, trực quan và mạnh mẽ. Đội ngũ các nhà phát triển đam mê và chuyên gia sự kiện của chúng tôi đã cùng nhau tạo ra một nền tảng kết nối công nghệ và kết nối con người.",
+      "paragraph2": "Ngày nay, chúng tôi phục vụ hàng nghìn nhà tổ chức và hàng triệu người tham dự trên toàn thế giới, giúp họ tạo ra những trải nghiệm đáng nhớ kết nối mọi người. Từ các cuộc tụ họp cộng đồng nhỏ đến các hội nghị quy mô lớn, Tickify tự hào là một phần trong hành trình của bạn."
+    },
+    "relatedLinks": {
+      "title": "Khám phá thêm",
+      "organizers": "Dành cho nhà tổ chức",
+      "helpCenter": "Trung tâm trợ giúp",
+      "contact": "Liên hệ",
+      "faq": "Câu hỏi thường gặp"
+    }
+  },
+  "privacy": {
+    "title": "Chính sách bảo mật",
+    "lastUpdated": "Cập nhật lần cuối: Tháng 1 năm 2024",
+    "introduction": "Tại Tickify, chúng tôi coi trọng quyền riêng tư của bạn. Chính sách Bảo mật này giải thích cách chúng tôi thu thập, sử dụng, tiết lộ và bảo vệ thông tin của bạn khi bạn sử dụng nền tảng quản lý sự kiện và bán vé của chúng tôi.",
+    "sections": {
+      "0": {
+        "title": "Thông tin chúng tôi thu thập",
+        "content": "Chúng tôi thu thập thông tin bạn cung cấp trực tiếp cho chúng tôi, bao gồm: thông tin cá nhân (tên, email, số điện thoại), thông tin thanh toán (được xử lý an toàn thông qua các nhà cung cấp bên thứ ba), thông tin hồ sơ, sở thích sự kiện, lịch sử giao tiếp và thông tin thiết bị (địa chỉ IP, loại trình duyệt, hệ điều hành)."
+      },
+      "1": {
+        "title": "Cách chúng tôi sử dụng thông tin của bạn",
+        "content": "Chúng tôi sử dụng thông tin thu thập được để: cung cấp, duy trì và cải thiện dịch vụ của chúng tôi, xử lý giao dịch và gửi thông tin liên quan, gửi thông báo kỹ thuật và tin nhắn hỗ trợ, trả lời nhận xét và câu hỏi của bạn, giao tiếp về sự kiện, khuyến mãi và tin tức, theo dõi và phân tích xu hướng và cách sử dụng, phát hiện và ngăn chặn gian lận và lạm dụng, và cá nhân hóa trải nghiệm của bạn."
+      },
+      "2": {
+        "title": "Chia sẻ thông tin",
+        "content": "Chúng tôi có thể chia sẻ thông tin của bạn với: nhà tổ chức sự kiện (khi bạn mua vé), bộ xử lý thanh toán (Stripe và VNPay), nhà cung cấp dịch vụ hỗ trợ hoạt động của chúng tôi, cơ quan thực thi pháp luật khi được yêu cầu bởi pháp luật, các bên khác với sự đồng ý của bạn, và người nhận chuyển nhượng kinh doanh trong trường hợp sáp nhập hoặc mua lại. Chúng tôi không bán thông tin cá nhân của bạn cho bên thứ ba."
+      },
+      "3": {
+        "title": "Bảo mật dữ liệu",
+        "content": "Chúng tôi thực hiện các biện pháp kỹ thuật và tổ chức phù hợp để bảo vệ thông tin cá nhân của bạn chống lại truy cập trái phép, thay đổi, tiết lộ hoặc phá hủy. Tuy nhiên, không có phương pháp truyền tải qua Internet nào là 100% an toàn. Chúng tôi sử dụng mã hóa cho dữ liệu nhạy cảm, máy chủ an toàn với bảo vệ tường lửa, kiểm tra bảo mật thường xuyên và kiểm soát truy cập cho các thành viên trong nhóm của chúng tôi."
+      },
+      "4": {
+        "title": "Cookie và theo dõi",
+        "content": "Chúng tôi sử dụng cookie và các công nghệ theo dõi tương tự để theo dõi hoạt động trên dịch vụ của chúng tôi. Cookie là các tệp có lượng dữ liệu nhỏ. Bạn có thể hướng dẫn trình duyệt của mình từ chối tất cả cookie hoặc cho biết khi cookie được gửi. Chúng tôi sử dụng: cookie cần thiết cho xác thực, cookie tùy chọn cho cài đặt của bạn, cookie phân tích để hiểu cách sử dụng và cookie tiếp thị cho quảng cáo có mục tiêu."
+      },
+      "5": {
+        "title": "Quyền và lựa chọn của bạn",
+        "content": "Bạn có quyền: truy cập thông tin cá nhân của bạn, sửa dữ liệu không chính xác, xóa tài khoản và dữ liệu của bạn (tuân theo nghĩa vụ pháp lý), phản đối việc xử lý thông tin của bạn, từ chối giao tiếp tiếp thị và yêu cầu tính di động dữ liệu. Để thực hiện các quyền này, hãy liên hệ với chúng tôi tại privacy@tickify.com."
+      },
+      "6": {
+        "title": "Lưu trữ dữ liệu",
+        "content": "Chúng tôi lưu giữ thông tin cá nhân của bạn trong thời gian cần thiết để cung cấp dịch vụ của chúng tôi và thực hiện các mục đích nêu trong chính sách này. Sau khi bạn xóa tài khoản, chúng tôi có thể lưu giữ một số thông tin nhất định cho mục đích kinh doanh hợp pháp hoặc theo yêu cầu của pháp luật, thường là 7 năm cho hồ sơ tài chính và 3 năm cho dữ liệu khác."
+      },
+      "7": {
+        "title": "Chuyển dữ liệu quốc tế",
+        "content": "Thông tin của bạn có thể được chuyển và lưu trữ trên máy tính nằm ngoài quốc gia của bạn nơi luật bảo vệ dữ liệu có thể khác. Bằng cách sử dụng dịch vụ của chúng tôi, bạn đồng ý với việc chuyển này. Chúng tôi đảm bảo các biện pháp bảo vệ phù hợp được áp dụng cho các chuyển giao như vậy."
+      },
+      "8": {
+        "title": "Quyền riêng tư của trẻ em",
+        "content": "Dịch vụ của chúng tôi không dành cho trẻ em dưới 16 tuổi. Chúng tôi không cố ý thu thập thông tin cá nhân từ trẻ em dưới 16 tuổi. Nếu bạn là cha mẹ hoặc người giám hộ và tin rằng con bạn đã cung cấp thông tin cá nhân cho chúng tôi, vui lòng liên hệ với chúng tôi để chúng tôi có thể xóa nó."
+      },
+      "9": {
+        "title": "Dịch vụ bên thứ ba",
+        "content": "Dịch vụ của chúng tôi có thể chứa liên kết đến các trang web hoặc dịch vụ bên thứ ba. Chúng tôi không chịu trách nhiệm về các thực hành bảo mật của các bên thứ ba này. Chúng tôi khuyến khích bạn xem xét các chính sách bảo mật của bất kỳ dịch vụ bên thứ ba nào bạn truy cập."
+      },
+      "10": {
+        "title": "Quyền riêng tư California",
+        "content": "Nếu bạn là cư dân California, bạn có các quyền cụ thể theo Đạo luật Bảo vệ Quyền riêng tư Người tiêu dùng California (CCPA), bao gồm quyền biết thông tin cá nhân nào chúng tôi thu thập, quyền xóa thông tin cá nhân và quyền từ chối bán thông tin cá nhân (chúng tôi không bán thông tin cá nhân)."
+      },
+      "11": {
+        "title": "Tuân thủ GDPR",
+        "content": "Đối với người dùng ở Khu vực Kinh tế Châu Âu (EEA), chúng tôi xử lý dữ liệu cá nhân của bạn theo Quy định Bảo vệ Dữ liệu Chung (GDPR). Cơ sở pháp lý của chúng tôi để xử lý bao gồm: đồng ý, cần thiết theo hợp đồng, nghĩa vụ pháp lý và lợi ích hợp pháp. Bạn có các quyền bổ sung theo GDPR như được nêu trong phần \"Quyền của bạn\"."
+      },
+      "12": {
+        "title": "Thay đổi chính sách này",
+        "content": "Chúng tôi có thể cập nhật Chính sách Bảo mật của chúng tôi theo thời gian. Chúng tôi sẽ thông báo cho bạn về bất kỳ thay đổi nào bằng cách đăng chính sách mới trên trang này và cập nhật ngày \"Cập nhật lần cuối\". Đối với các thay đổi quan trọng, chúng tôi sẽ cung cấp thông báo nổi bật hoặc tìm kiếm sự đồng ý của bạn nơi được yêu cầu bởi pháp luật."
+      },
+      "13": {
+        "title": "Liên hệ với chúng tôi",
+        "content": "Nếu bạn có bất kỳ câu hỏi nào về Chính sách Bảo mật này, vui lòng liên hệ với chúng tôi tại: Email: privacy@tickify.com, Địa chỉ: 123 Đường Sự Kiện, Thành phố Hồ Chí Minh, Việt Nam, Điện thoại: +84 123 456 789. Nhân viên Bảo vệ Dữ liệu của chúng tôi có thể được liên hệ tại dpo@tickify.com."
+      }
+    },
+    "relatedLinks": {
+      "title": "Thông tin liên quan",
+      "terms": "Điều khoản dịch vụ",
+      "refund": "Chính sách hoàn tiền",
+      "helpCenter": "Trung tâm trợ giúp",
+      "contact": "Liên hệ"
+    },
+    "footer": "Bằng cách sử dụng Tickify, bạn thừa nhận rằng bạn đã đọc và hiểu Chính sách Bảo mật này và đồng ý với các điều khoản của nó. Việc bạn tiếp tục sử dụng dịch vụ của chúng tôi sau các thay đổi đối với chính sách này có nghĩa là chấp nhận những thay đổi đó."
+  },
+  "terms": {
+    "title": "Điều khoản dịch vụ",
+    "lastUpdated": "Cập nhật lần cuối: Tháng 1 năm 2024",
+    "introduction": "Chào mừng đến với Tickify. Các Điều khoản Dịch vụ (\"Điều khoản\") này điều chỉnh việc sử dụng trang web và dịch vụ của chúng tôi. Vui lòng đọc kỹ.",
+    "sections": {
+      "0": {
+        "title": "Chấp nhận điều khoản",
+        "content": "Bằng cách truy cập và sử dụng Tickify, bạn chấp nhận và đồng ý bị ràng buộc bởi các điều khoản và quy định của thỏa thuận này. Nếu bạn không đồng ý với các điều khoản này, vui lòng không sử dụng dịch vụ của chúng tôi."
+      },
+      "1": {
+        "title": "Giấy phép sử dụng",
+        "content": "Được cấp phép để tạm thời truy cập Tickify chỉ để sử dụng cá nhân, phi thương mại. Giấy phép này không bao gồm: sửa đổi hoặc sao chép tài liệu, sử dụng tài liệu cho mục đích thương mại, cố gắng đảo ngược kỹ thuật bất kỳ phần mềm nào, xóa bản quyền hoặc ký hiệu độc quyền, hoặc chuyển tài liệu cho người khác."
+      },
+      "2": {
+        "title": "Tài khoản người dùng",
+        "content": "Khi bạn tạo tài khoản với chúng tôi, bạn phải cung cấp thông tin chính xác, đầy đủ và hiện tại. Không làm như vậy sẽ vi phạm Điều khoản. Bạn chịu trách nhiệm bảo vệ mật khẩu của mình và cho bất kỳ hoạt động hoặc hành động nào dưới tài khoản của bạn."
+      },
+      "3": {
+        "title": "Nhà tổ chức sự kiện",
+        "content": "Nhà tổ chức sự kiện chịu trách nhiệm về tính chính xác của thông tin sự kiện, giá vé, chính sách hoàn tiền và việc thực hiện sự kiện. Tickify hoạt động như một nhà cung cấp nền tảng và không chịu trách nhiệm về việc hủy sự kiện, thay đổi hoặc tranh chấp giữa nhà tổ chức và người tham dự."
+      },
+      "4": {
+        "title": "Mua vé",
+        "content": "Tất cả việc bán vé phụ thuộc vào tính khả dụng và xác nhận. Giá có thể thay đổi mà không cần thông báo. Thanh toán phải được thực hiện đầy đủ tại thời điểm đặt chỗ. Chính sách hoàn tiền được xác định bởi các nhà tổ chức sự kiện cá nhân trừ khi được quy định khác."
+      },
+      "5": {
+        "title": "Xử lý thanh toán",
+        "content": "Chúng tôi sử dụng bộ xử lý thanh toán bên thứ ba (Stripe và VNPay) để xử lý giao dịch. Bằng cách gửi thông tin thanh toán của bạn, bạn đồng ý với các điều khoản của các nhà cung cấp thanh toán này. Tickify không lưu trữ chi tiết thẻ thanh toán đầy đủ của bạn."
+      },
+      "6": {
+        "title": "Hoạt động bị cấm",
+        "content": "Bạn không được: sử dụng dịch vụ cho bất kỳ mục đích bất hợp pháp nào, cố gắng truy cập trái phép, can thiệp vào hoạt động của dịch vụ, truyền mã hoặc vi-rút có hại, thu thập thông tin người dùng mà không có sự đồng ý, hoặc tham gia vào việc đầu cơ vé hoặc gian lận."
+      },
+      "7": {
+        "title": "Sở hữu trí tuệ",
+        "content": "Dịch vụ và nội dung, tính năng và chức năng gốc của nó thuộc sở hữu của Tickify và được bảo vệ bởi luật bản quyền quốc tế, nhãn hiệu, bằng sáng chế, bí mật thương mại và các luật sở hữu trí tuệ khác."
+      },
+      "8": {
+        "title": "Giới hạn trách nhiệm",
+        "content": "Tickify sẽ không chịu trách nhiệm cho bất kỳ thiệt hại gián tiếp, ngẫu nhiên, đặc biệt, hậu quả hoặc trừng phạt nào do việc sử dụng hoặc không thể sử dụng dịch vụ của bạn, truy cập trái phép vào dữ liệu của bạn, hoặc bất kỳ vấn đề nào khác liên quan đến dịch vụ."
+      },
+      "9": {
+        "title": "Bồi thường",
+        "content": "Bạn đồng ý bảo vệ, bồi thường và giữ cho Tickify và các công ty liên kết của nó không bị tổn hại khỏi bất kỳ khiếu nại, thiệt hại, nghĩa vụ, tổn thất, trách nhiệm, chi phí hoặc chi phí nào phát sinh từ việc bạn vi phạm các Điều khoản này hoặc việc sử dụng dịch vụ của bạn."
+      },
+      "10": {
+        "title": "Chấm dứt",
+        "content": "Chúng tôi có thể chấm dứt hoặc đình chỉ tài khoản của bạn ngay lập tức, không cần thông báo trước hoặc trách nhiệm, vì bất kỳ lý do nào, bao gồm vi phạm các Điều khoản này. Khi chấm dứt, quyền sử dụng dịch vụ của bạn sẽ ngay lập tức chấm dứt."
+      },
+      "11": {
+        "title": "Luật điều chỉnh",
+        "content": "Các Điều khoản này sẽ được điều chỉnh và giải thích theo luật pháp Việt Nam, không tính đến các quy định xung đột pháp luật của nó. Việc chúng tôi không thực thi bất kỳ quyền hoặc quy định nào của các Điều khoản này sẽ không được coi là từ bỏ."
+      },
+      "12": {
+        "title": "Thay đổi điều khoản",
+        "content": "Chúng tôi bảo lưu quyền sửa đổi hoặc thay thế các Điều khoản này bất cứ lúc nào. Nếu một bản sửa đổi là quan trọng, chúng tôi sẽ cung cấp thông báo ít nhất 30 ngày trước khi bất kỳ điều khoản mới nào có hiệu lực. Việc tiếp tục sử dụng dịch vụ sau các thay đổi có nghĩa là chấp nhận."
+      },
+      "13": {
+        "title": "Thông tin liên hệ",
+        "content": "Nếu bạn có bất kỳ câu hỏi nào về các Điều khoản này, vui lòng liên hệ với chúng tôi tại legal@tickify.com hoặc thông qua trang liên hệ của chúng tôi."
+      }
+    },
+    "relatedLinks": {
+      "title": "Thông tin liên quan",
+      "privacy": "Chính sách bảo mật",
+      "refund": "Chính sách hoàn tiền",
+      "helpCenter": "Trung tâm trợ giúp",
+      "contact": "Liên hệ"
+    },
+    "footer": "Các điều khoản này tạo thành toàn bộ thỏa thuận giữa bạn và Tickify liên quan đến việc sử dụng dịch vụ của chúng tôi. Bằng cách sử dụng Tickify, bạn thừa nhận rằng bạn đã đọc, hiểu và đồng ý bị ràng buộc bởi các Điều khoản Dịch vụ này."
+  },
+  "refundPolicy": {
+    "title": "Chính sách hoàn tiền",
+    "lastUpdated": "Cập nhật lần cuối: Tháng 1 năm 2024",
+    "introduction": "Tại Tickify, chúng tôi hiểu rằng kế hoạch có thể thay đổi. Chính sách Hoàn tiền này nêu rõ các điều khoản và điều kiện để hoàn tiền vé trên nền tảng của chúng tôi. Vui lòng đọc kỹ chính sách này trước khi mua vé.",
+    "sections": {
+      "0": {
+        "title": "Chính sách hoàn tiền chung",
+        "content": "Tickify cung cấp một nền tảng cho các nhà tổ chức sự kiện để bán vé. Chính sách hoàn tiền chủ yếu được xác định bởi các nhà tổ chức sự kiện cá nhân. Tuy nhiên, chúng tôi đã thiết lập các chính sách cơ bản để bảo vệ cả nhà tổ chức và người tham dự."
+      },
+      "1": {
+        "title": "Đủ điều kiện hoàn tiền",
+        "content": "Vé thường đủ điều kiện để hoàn tiền nếu: sự kiện bị hủy bởi nhà tổ chức, sự kiện bị hoãn và bạn không thể tham dự ngày mới, bạn yêu cầu hoàn tiền ít nhất 7 ngày trước sự kiện (tùy thuộc vào chính sách của nhà tổ chức), có lỗi kỹ thuật trên nền tảng của chúng tôi ngăn bạn tham dự, hoặc mô tả sự kiện đã gây hiểu lầm đáng kể. Hoàn tiền không có sẵn cho: vé mua ít hơn 7 ngày trước sự kiện (trừ khi sự kiện bị hủy), vé cho các sự kiện đã xảy ra, vé đã chuyển cho người khác, hoặc vé mua bằng mã khuyến mãi chỉ định \"không hoàn tiền\"."
+      },
+      "2": {
+        "title": "Yêu cầu hoàn tiền",
+        "content": "Để yêu cầu hoàn tiền: đăng nhập vào tài khoản Tickify của bạn, điều hướng đến \"Vé của tôi\", chọn vé bạn muốn hoàn tiền, nhấp \"Yêu cầu hoàn tiền\", cung cấp lý do cho yêu cầu hoàn tiền và gửi. Bạn sẽ nhận được email xác nhận yêu cầu của bạn. Yêu cầu hoàn tiền thường được xem xét trong vòng 2-3 ngày làm việc."
+      },
+      "3": {
+        "title": "Thời gian xử lý hoàn tiền",
+        "content": "Khi hoàn tiền của bạn được chấp thuận: hoàn tiền được xử lý trong vòng 5-10 ngày làm việc, hoàn tiền được phát hành đến phương thức thanh toán ban đầu đã sử dụng, nếu phương thức thanh toán ban đầu không còn khả dụng, chúng tôi sẽ liên hệ với bạn để sắp xếp thay thế, và bạn sẽ nhận được thông báo email khi hoàn tiền được xử lý."
+      },
+      "4": {
+        "title": "Hủy sự kiện",
+        "content": "Nếu sự kiện bị hủy bởi nhà tổ chức: bạn sẽ nhận được hoàn tiền tự động đầy đủ, không cần hành động nào từ phía bạn, hoàn tiền được xử lý trong vòng 5-7 ngày làm việc, và bạn sẽ được thông báo qua email về việc hủy và trạng thái hoàn tiền."
+      },
+      "5": {
+        "title": "Hoãn sự kiện",
+        "content": "Nếu sự kiện bị hoãn: bạn có thể chọn giữ vé cho ngày mới, yêu cầu hoàn tiền đầy đủ nếu bạn không thể tham dự ngày mới, hoặc chuyển vé của bạn cho người khác. Yêu cầu hoàn tiền cho các sự kiện bị hoãn phải được gửi trong vòng 14 ngày kể từ khi thông báo hoãn."
+      },
+      "6": {
+        "title": "Hoàn tiền một phần",
+        "content": "Hoàn tiền một phần có thể có sẵn trong một số trường hợp nhất định: nếu chỉ một phần của sự kiện nhiều ngày bị hủy, nếu bạn mua gói nhưng chỉ muốn hoàn tiền các vé cụ thể, hoặc nếu có phí dịch vụ có thể được hoàn tiền riêng. Liên hệ với nhóm hỗ trợ của chúng tôi để yêu cầu hoàn tiền một phần."
+      },
+      "7": {
+        "title": "Phí dịch vụ",
+        "content": "Phí dịch vụ do Tickify tính thường không được hoàn tiền trừ khi: sự kiện bị hủy, có lỗi kỹ thuật trên nền tảng của chúng tôi, hoặc được yêu cầu bởi pháp luật. Tuy nhiên, nếu bạn nhận được hoàn tiền vé đầy đủ, phí dịch vụ liên quan cũng có thể được hoàn tiền theo quyết định của chúng tôi."
+      },
+      "8": {
+        "title": "Tranh chấp và kháng cáo",
+        "content": "Nếu yêu cầu hoàn tiền của bạn bị từ chối: bạn có thể kháng cáo quyết định bằng cách liên hệ với nhóm hỗ trợ của chúng tôi, cung cấp thông tin hoặc tài liệu bổ sung để hỗ trợ trường hợp của bạn, nhóm của chúng tôi sẽ xem xét kháng cáo của bạn trong vòng 5 ngày làm việc, và chúng tôi sẽ làm việc với cả bạn và nhà tổ chức để tìm giải pháp công bằng."
+      },
+      "9": {
+        "title": "Chính sách hoàn tiền của nhà tổ chức",
+        "content": "Nhà tổ chức sự kiện có thể đặt chính sách hoàn tiền riêng của họ linh hoạt hơn chính sách cơ bản của chúng tôi. Luôn kiểm tra chính sách hoàn tiền cụ thể được liệt kê trên trang sự kiện trước khi mua vé. Chính sách của nhà tổ chức không thể kém thuận lợi hơn tiêu chuẩn tối thiểu của chúng tôi."
+      },
+      "10": {
+        "title": "Chargebacks",
+        "content": "Chúng tôi rất khuyến khích không sử dụng chargebacks vì chúng có thể dẫn đến phí bổ sung và phức tạp. Nếu bạn có vấn đề với việc mua hàng, vui lòng liên hệ với nhóm hỗ trợ của chúng tôi trước. Chúng tôi cam kết giải quyết vấn đề một cách công bằng và nhanh chóng. Chargebacks có thể dẫn đến đình chỉ tài khoản."
+      },
+      "11": {
+        "title": "Liên hệ để hoàn tiền",
+        "content": "Đối với câu hỏi hoặc hỗ trợ liên quan đến hoàn tiền, vui lòng liên hệ với chúng tôi tại: Email: refunds@tickify.com, Điện thoại: +84 123 456 789, hoặc thông qua trang Liên hệ của chúng tôi. Nhóm hỗ trợ hoàn tiền của chúng tôi có sẵn Thứ Hai-Thứ Sáu, 9 giờ sáng - 6 giờ chiều."
+      }
+    },
+    "relatedLinks": {
+      "title": "Thông tin liên quan",
+      "terms": "Điều khoản dịch vụ",
+      "privacy": "Chính sách bảo mật",
+      "helpCenter": "Trung tâm trợ giúp",
+      "contact": "Liên hệ"
+    },
+    "footer": "Chính sách hoàn tiền này có thể thay đổi. Chúng tôi khuyến nghị xem xét định kỳ. Bằng cách mua vé thông qua Tickify, bạn thừa nhận rằng bạn đã đọc và hiểu Chính sách Hoàn tiền này."
+  },
+  "forOrganizers": {
+    "title": "Dành cho nhà tổ chức sự kiện",
+    "subtitle": "Mọi thứ bạn cần để tạo, quản lý và quảng bá các sự kiện thành công",
+    "getStarted": "Bắt đầu ngay hôm nay",
+    "features": {
+      "title": "Tính năng mạnh mẽ cho thành công sự kiện",
+      "0": {
+        "title": "Tạo sự kiện dễ dàng",
+        "description": "Tạo và quản lý sự kiện của bạn với trình tạo sự kiện trực quan của chúng tôi. Thiết lập loại vé, giá cả và chỗ ngồi trong vài phút."
+      },
+      "1": {
+        "title": "Quản lý người tham dự",
+        "description": "Theo dõi đăng ký, quản lý check-in và giao tiếp với người tham dự của bạn tất cả ở một nơi."
+      },
+      "2": {
+        "title": "Thanh toán an toàn",
+        "description": "Chấp nhận thanh toán thông qua Stripe và VNPay. Nhận thanh toán nhanh chóng với thanh toán tự động sau sự kiện của bạn."
+      },
+      "3": {
+        "title": "Phân tích & Thông tin chi tiết",
+        "description": "Nhận phân tích chi tiết về doanh số bán vé, nhân khẩu học người tham dự và doanh thu để đưa ra quyết định dựa trên dữ liệu."
+      },
+      "4": {
+        "title": "Bảo vệ gian lận",
+        "description": "Phát hiện và ngăn chặn gian lận tiên tiến để bảo vệ sự kiện và doanh thu của bạn khỏi các giao dịch gian lận."
+      },
+      "5": {
+        "title": "Hỗ trợ tận tâm",
+        "description": "Nhóm hỗ trợ của chúng tôi ở đây để giúp bạn thành công. Nhận hỗ trợ ưu tiên và hướng dẫn chuyên gia bất cứ khi nào bạn cần."
+      }
+    },
+    "benefits": {
+      "title": "Tại sao chọn Tickify?",
+      "0": "Không có chi phí trước - chỉ trả khi bạn bán vé",
+      "1": "Phí dịch vụ cạnh tranh bắt đầu từ 5%",
+      "2": "Theo dõi và báo cáo bán hàng theo thời gian thực",
+      "3": "Thương hiệu tùy chỉnh và trang sự kiện",
+      "4": "Quét vé mã QR",
+      "5": "Công cụ tiếp thị email",
+      "6": "Tích hợp mạng xã hội",
+      "7": "Ứng dụng check-in thân thiện với thiết bị di động"
+    },
+    "pricing": {
+      "title": "Giá cả đơn giản, minh bạch",
+      "perTicket": "mỗi vé đã bán",
+      "mostPopular": "Phổ biến nhất",
+      "starter": {
+        "0": "Lên đến 100 vé mỗi sự kiện",
+        "1": "Phân tích cơ bản",
+        "2": "Hỗ trợ email",
+        "3": "Xử lý thanh toán tiêu chuẩn"
+      },
+      "professional": {
+        "0": "Vé không giới hạn",
+        "1": "Phân tích nâng cao",
+        "2": "Hỗ trợ ưu tiên",
+        "3": "Thương hiệu tùy chỉnh",
+        "4": "Mã khuyến mãi"
+      },
+      "enterprise": {
+        "0": "Tất cả trong Professional",
+        "1": "Quản lý tài khoản chuyên dụng",
+        "2": "Truy cập API",
+        "3": "Tùy chọn white-label",
+        "4": "Tích hợp tùy chỉnh"
+      }
+    },
+    "stats": {
+      "title": "Được tin tưởng bởi hàng nghìn nhà tổ chức",
+      "events": "Sự kiện đã tạo",
+      "tickets": "Vé đã bán",
+      "organizers": "Nhà tổ chức đang hoạt động",
+      "satisfaction": "Tỷ lệ hài lòng"
+    },
+    "cta": {
+      "title": "Sẵn sàng bắt đầu?",
+      "description": "Tham gia cùng hàng nghìn nhà tổ chức sự kiện thành công tin tưởng Tickify để cung cấp năng lượng cho sự kiện của họ.",
+      "button": "Trở thành nhà tổ chức"
+    },
+    "relatedLinks": {
+      "title": "Cần thêm thông tin?",
+      "helpCenter": "Trung tâm trợ giúp",
+      "faq": "Câu hỏi thường gặp",
+      "contact": "Liên hệ",
+      "about": "Về chúng tôi"
+    }
+  },
+  "helpCenter": {
+    "title": "Trung tâm trợ giúp",
+    "subtitle": "Tìm câu trả lời cho câu hỏi của bạn và nhận hỗ trợ bạn cần",
+    "search": {
+      "placeholder": "Tìm kiếm bài viết trợ giúp...",
+      "noResults": "Không tìm thấy bài viết nào phù hợp với tìm kiếm của bạn.",
+      "tryDifferent": "Thử các từ khóa khác hoặc duyệt các danh mục ở trên."
+    },
+    "categories": {
+      "title": "Duyệt theo danh mục",
+      "articles": "{{count}} bài viết",
+      "0": {
+        "title": "Bắt đầu",
+        "description": "Tìm hiểu những điều cơ bản về sử dụng Tickify"
+      },
+      "1": {
+        "title": "Tài khoản & Hồ sơ",
+        "description": "Quản lý cài đặt tài khoản của bạn"
+      },
+      "2": {
+        "title": "Vé & Đặt chỗ",
+        "description": "Mọi thứ về mua vé"
+      },
+      "3": {
+        "title": "Dành cho nhà tổ chức",
+        "description": "Tài nguyên cho nhà tổ chức sự kiện"
+      },
+      "4": {
+        "title": "Thanh toán & Hoàn tiền",
+        "description": "Phương thức thanh toán và chính sách hoàn tiền"
+      },
+      "5": {
+        "title": "Hỗ trợ kỹ thuật",
+        "description": "Khắc phục sự cố và vấn đề kỹ thuật"
+      }
+    },
+    "popular": {
+      "title": "Bài viết phổ biến"
+    },
+    "articles": {
+      "views": "{{count}} lượt xem",
+      "0": {
+        "title": "Cách tạo tài khoản",
+        "description": "Hướng dẫn từng bước để tạo tài khoản Tickify của bạn"
+      },
+      "1": {
+        "title": "Cách mua vé",
+        "description": "Hướng dẫn đầy đủ để mua vé cho sự kiện"
+      },
+      "2": {
+        "title": "Phương thức thanh toán được chấp nhận",
+        "description": "Tìm hiểu về tất cả các tùy chọn thanh toán có sẵn"
+      },
+      "3": {
+        "title": "Tạo sự kiện đầu tiên của bạn",
+        "description": "Hướng dẫn thiết lập và quản lý sự kiện"
+      },
+      "4": {
+        "title": "Cập nhật hồ sơ của bạn",
+        "description": "Cách chỉnh sửa thông tin cá nhân của bạn"
+      },
+      "5": {
+        "title": "Chuyển vé",
+        "description": "Cách chuyển vé cho người khác"
+      }
+    },
+    "quickLinks": {
+      "faq": {
+        "title": "Câu hỏi thường gặp",
+        "description": "Câu hỏi thường gặp",
+        "button": "Xem FAQ"
+      },
+      "contact": {
+        "title": "Liên hệ hỗ trợ",
+        "description": "Liên hệ với nhóm của chúng tôi",
+        "button": "Liên hệ"
+      },
+      "video": {
+        "title": "Video hướng dẫn",
+        "description": "Xem hướng dẫn từng bước",
+        "button": "Xem video"
+      }
+    },
+    "stillNeedHelp": {
+      "title": "Vẫn cần giúp đỡ?",
+      "description": "Không tìm thấy những gì bạn đang tìm? Nhóm hỗ trợ của chúng tôi ở đây để giúp đỡ.",
+      "contact": "Liên hệ hỗ trợ",
+      "email": "Gửi email cho chúng tôi"
+    }
+  },
+  "faq": {
+    "title": "Câu hỏi thường gặp",
+    "subtitle": "Tìm câu trả lời cho các câu hỏi phổ biến về Tickify",
+    "search": {
+      "placeholder": "Tìm kiếm câu hỏi..."
+    },
+    "categories": {
+      "general": "Chung",
+      "tickets": "Vé",
+      "refunds": "Hoàn tiền",
+      "organizers": "Nhà tổ chức",
+      "support": "Hỗ trợ"
+    },
+    "items": {
+      "General-0": {
+        "question": "Tickify là gì?",
+        "answer": "Tickify là một nền tảng quản lý sự kiện và bán vé toàn diện giúp các nhà tổ chức tạo, quản lý và quảng bá sự kiện trong khi cung cấp cho người tham dự trải nghiệm mua vé liền mạch."
+      },
+      "General-1": {
+        "question": "Làm thế nào để tạo tài khoản?",
+        "answer": "Nhấp vào nút \"Đăng ký\" ở góc trên bên phải, điền thông tin chi tiết của bạn (tên, email, mật khẩu) và xác minh địa chỉ email của bạn. Sau đó bạn có thể chọn trở thành người tham dự hoặc nhà tổ chức sự kiện."
+      },
+      "General-2": {
+        "question": "Tickify có miễn phí không?",
+        "answer": "Tạo tài khoản và duyệt sự kiện hoàn toàn miễn phí. Đối với nhà tổ chức, chúng tôi tính phí dịch vụ nhỏ cho mỗi vé đã bán. Người tham dự có thể thấy phí đặt chỗ tùy thuộc vào sự kiện."
+      },
+      "Tickets-0": {
+        "question": "Làm thế nào để mua vé?",
+        "answer": "Duyệt sự kiện, chọn sự kiện bạn muốn tham dự, chọn loại vé và số lượng, nhấp \"Mua vé\" và hoàn tất quy trình thanh toán an toàn với thông tin thanh toán của bạn."
+      },
+      "Tickets-1": {
+        "question": "Bạn chấp nhận phương thức thanh toán nào?",
+        "answer": "Chúng tôi chấp nhận tất cả các thẻ tín dụng/ghi nợ chính thông qua Stripe và VNPay cho các phương thức thanh toán địa phương Việt Nam bao gồm chuyển khoản ngân hàng, mã QR và ví điện tử."
+      },
+      "Tickets-2": {
+        "question": "Làm thế nào để nhận vé?",
+        "answer": "Sau khi thanh toán thành công, bạn sẽ nhận được vé qua email ngay lập tức. Bạn cũng có thể xem và tải xuống chúng từ bảng điều khiển tài khoản của bạn bất cứ lúc nào."
+      },
+      "Tickets-3": {
+        "question": "Tôi có thể chuyển vé cho người khác không?",
+        "answer": "Có, bạn có thể chuyển vé cho người khác thông qua bảng điều khiển tài khoản của bạn. Chỉ cần chọn vé và nhập địa chỉ email của người nhận."
+      },
+      "Refunds-0": {
+        "question": "Chính sách hoàn tiền của bạn là gì?",
+        "answer": "Chính sách hoàn tiền khác nhau tùy theo sự kiện và được đặt bởi nhà tổ chức. Thông thường, vé có thể được hoàn tiền lên đến 7 ngày trước sự kiện. Kiểm tra trang sự kiện cụ thể để biết chi tiết."
+      },
+      "Refunds-1": {
+        "question": "Làm thế nào để yêu cầu hoàn tiền?",
+        "answer": "Đi đến đặt chỗ của bạn, chọn vé bạn muốn hoàn tiền, nhấp \"Yêu cầu hoàn tiền\", cung cấp lý do và gửi. Hoàn tiền thường được xử lý trong vòng 5-10 ngày làm việc sau khi được chấp thuận."
+      },
+      "Refunds-2": {
+        "question": "Điều gì xảy ra nếu sự kiện bị hủy?",
+        "answer": "Nếu nhà tổ chức hủy sự kiện, bạn sẽ nhận được hoàn tiền đầy đủ tự động. Bạn sẽ được thông báo qua email về việc hủy và trạng thái hoàn tiền."
+      },
+      "Organizers-0": {
+        "question": "Làm thế nào để tạo sự kiện?",
+        "answer": "Đăng ký làm nhà tổ chức, hoàn tất xác minh hồ sơ của bạn, nhấp \"Tạo sự kiện\", điền chi tiết sự kiện, đặt loại vé và giá cả, và gửi để phê duyệt. Sự kiện thường được xem xét trong vòng 24 giờ."
+      },
+      "Organizers-1": {
+        "question": "Chi phí tổ chức sự kiện là bao nhiêu?",
+        "answer": "Chúng tôi tính phí dịch vụ 5-10% cho mỗi vé đã bán, tùy thuộc vào cấp đăng ký của bạn. Không có chi phí trước để tạo và liệt kê sự kiện của bạn."
+      },
+      "Organizers-2": {
+        "question": "Khi nào tôi nhận được thanh toán cho doanh số bán vé?",
+        "answer": "Thanh toán được xử lý sau khi sự kiện của bạn kết thúc, thường trong vòng 7 ngày làm việc. Bạn có thể yêu cầu thanh toán từ bảng điều khiển nhà tổ chức của bạn một khi quỹ có sẵn."
+      },
+      "Organizers-3": {
+        "question": "Tôi có thể cung cấp mã khuyến mãi hoặc giảm giá không?",
+        "answer": "Có, bạn có thể tạo mã khuyến mãi với giảm giá phần trăm hoặc số tiền cố định. Đặt giới hạn sử dụng, ngày hết hạn và yêu cầu mua tối thiểu từ bảng điều khiển sự kiện của bạn."
+      },
+      "Support-0": {
+        "question": "Tôi quên mật khẩu. Tôi nên làm gì?",
+        "answer": "Nhấp \"Quên mật khẩu\" trên trang đăng nhập, nhập địa chỉ email của bạn và làm theo liên kết đặt lại mật khẩu được gửi đến email của bạn. Liên kết hết hạn sau 24 giờ."
+      },
+      "Support-1": {
+        "question": "Thanh toán của tôi thất bại. Tôi nên làm gì?",
+        "answer": "Kiểm tra xem chi tiết thẻ của bạn có đúng và có đủ tiền không. Nếu vấn đề vẫn tiếp tục, hãy thử phương thức thanh toán khác hoặc liên hệ ngân hàng của bạn. Bạn cũng có thể liên hệ với nhóm hỗ trợ của chúng tôi để được hỗ trợ."
+      },
+      "Support-2": {
+        "question": "Làm thế nào để liên hệ hỗ trợ khách hàng?",
+        "answer": "Bạn có thể liên hệ với chúng tôi qua trang Liên hệ, gửi email đến support@tickify.com hoặc sử dụng tính năng trò chuyện trực tiếp trong bảng điều khiển tài khoản của bạn. Chúng tôi phản hồi trong vòng 24 giờ."
+      },
+      "Support-3": {
+        "question": "Thông tin thanh toán của tôi có an toàn không?",
+        "answer": "Có, chúng tôi sử dụng mã hóa SSL tiêu chuẩn ngành và hợp tác với các bộ xử lý thanh toán tuân thủ PCI (Stripe và VNPay). Chúng tôi không bao giờ lưu trữ chi tiết thẻ đầy đủ của bạn trên máy chủ của chúng tôi."
+      }
+    },
+    "noResults": "Không tìm thấy câu hỏi nào phù hợp với tìm kiếm của bạn.",
+    "noResultsHint": "Thử các từ khóa khác hoặc duyệt tất cả các danh mục ở trên.",
+    "stillNeedHelp": {
+      "title": "Vẫn cần giúp đỡ?",
+      "description": "Không tìm thấy câu trả lời bạn đang tìm? Nhóm hỗ trợ của chúng tôi ở đây để giúp đỡ.",
+      "contact": "Liên hệ với chúng tôi tại",
+      "contactButton": "Liên hệ hỗ trợ",
+      "helpCenter": "Trung tâm trợ giúp"
+    },
+    "relatedLinks": {
+      "title": "Trang liên quan",
+      "helpCenter": "Trung tâm trợ giúp",
+      "contact": "Liên hệ",
+      "refund": "Chính sách hoàn tiền",
+      "organizers": "Dành cho nhà tổ chức"
     }
   }
 }

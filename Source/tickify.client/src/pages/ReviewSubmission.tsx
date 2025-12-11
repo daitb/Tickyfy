@@ -72,7 +72,6 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
   const [existingReview, setExistingReview] = useState<any>(null);
   const [isCheckingReview, setIsCheckingReview] = useState(false);
 
-  // Fetch event data and check for existing review
   useEffect(() => {
     let mounted = true;
     setIsCheckingReview(true);
@@ -83,14 +82,12 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
         if (eventId) {
           ev = await eventService.getEventByIdentifier(eventId);
         } else {
-          // Fallback to mock data
           ev = mockEvents[0];
         }
         
         if (mounted && ev) {
           setEvent(ev);
           
-          // Check if user has already reviewed this event
           try {
             const parsedEventId = parseInt(ev.id, 10);
             if (!isNaN(parsedEventId) && parsedEventId > 0) {
@@ -101,12 +98,10 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
               }
             }
           } catch (error) {
-            // Silently fail - user might not be logged in or review check failed
             console.log('[ReviewSubmission] Could not check existing review:', error);
           }
         }
       } catch (error) {
-        // Fallback to mock data if API fails
         if (mounted) {
           const mockEvent = mockEvents.find((e) => e.id === eventId) || mockEvents[0];
           setEvent(mockEvent);
@@ -149,7 +144,6 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
     setIsSubmitting(true);
 
     try {
-      // Lấy eventId từ event.id (string) hoặc eventId prop
       const eventIdToParse = event.id || eventId;
       if (!eventIdToParse) {
         toast.error('Event ID không hợp lệ');
@@ -157,7 +151,6 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
         return;
       }
 
-      // Parse eventId từ string sang number
       const parsedEventId = parseInt(eventIdToParse, 10);
       if (isNaN(parsedEventId) || parsedEventId <= 0) {
         toast.error('Event ID không hợp lệ');
@@ -165,20 +158,17 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
         return;
       }
 
-      // Validate rating
       if (overallRating < 1 || overallRating > 5) {
         toast.error('Rating phải từ 1 đến 5');
         return;
       }
 
-      // Validate comment length (max 1000 chars)
       const combinedComment = `${reviewTitle}\n\n${reviewContent}`;
       if (combinedComment.length > 1000) {
         toast.error('Nội dung đánh giá quá dài (tối đa 1000 ký tự)');
         return;
       }
 
-      // Tạo review với API thật
       const reviewData = {
         eventId: parsedEventId,
         rating: overallRating,
@@ -195,21 +185,17 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
       console.error('[ReviewSubmission] Error submitting review:', error);
       console.error('[ReviewSubmission] Error response:', error.response?.data);
       
-      // Extract error message từ response
       let errorMessage = 'Có lỗi xảy ra khi gửi đánh giá';
       
       if (error.response?.data) {
         const responseData = error.response.data;
         
-        // Check if it's a string
         if (typeof responseData === 'string') {
           errorMessage = responseData;
         }
-        // Check for message field (ApiResponse format)
         else if (responseData.message) {
           errorMessage = responseData.message;
           
-          // Translate common error messages
           if (errorMessage.includes('already reviewed')) {
             errorMessage = 'Bạn đã đánh giá sự kiện này rồi. Vui lòng cập nhật đánh giá hiện có thay vì tạo mới.';
           } else if (errorMessage.includes('must have tickets')) {
@@ -218,7 +204,6 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
             errorMessage = 'Bạn cần tham dự sự kiện (vé đã được quét) để đánh giá.';
           }
         }
-        // Check for FluentValidation errors
         else if (responseData.errors) {
           const errors = responseData.errors;
           errorMessage = Object.values(errors).flat().join(', ');
@@ -235,7 +220,6 @@ export function ReviewSubmission({ eventId, onNavigate }: ReviewSubmissionProps)
 
   const isFormValid = overallRating > 0 && reviewTitle.trim() && reviewContent.trim();
 
-  // Hiển thị loading nếu chưa có event data
   if (!event) {
     return (
       <div className="min-h-screen bg-neutral-50 py-8">

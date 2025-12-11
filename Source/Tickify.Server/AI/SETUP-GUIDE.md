@@ -10,7 +10,7 @@ AI Chatbot sử dụng **RAG (Retrieval-Augmented Generation)** với các công
 | **Vector DB** | Qdrant Local | FREE | ~50MB, không Docker |
 | **Embeddings** | HuggingFace API / Local | FREE | Tùy chọn |
 
-## ⚡ Bước 1: Lấy Groq API Key (2 phút)
+## ⚡ Bước 1: Lấy Groq API Key (1 phút)
 
 1. Truy cập: https://console.groq.com/
 2. Đăng ký/đăng nhập bằng Google hoặc GitHub

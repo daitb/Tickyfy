@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Clock,
@@ -40,6 +41,7 @@ interface RefundHistoryProps {
 }
 
 export function RefundHistory({ onNavigate }: RefundHistoryProps) {
+  const { t } = useTranslation();
   const [refunds, setRefunds] = useState<RefundRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,13 +63,11 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
       const data = await getMyRefundRequests();
       setRefunds(data);
 
-      // Load booking and event details
       const bookingMap = new Map<number, BookingDto>();
       const eventMap = new Map<string, any>();
 
       for (const refund of data) {
         try {
-          // Try to get booking details if available
           const booking = await bookingService.getBookingById(refund.bookingId);
           bookingMap.set(refund.bookingId, booking);
           
@@ -168,10 +168,10 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
 
   const getEventTitle = (refund: RefundRequest) => {
     const booking = bookings.get(refund.bookingId);
-    if (!booking || !booking.eventId) return 'Unknown Event';
+    if (!booking || !booking.eventId) return t('common.unknownEvent');
     const eventIdKey = typeof booking.eventId === 'string' ? booking.eventId : booking.eventId.toString();
     const event = events.get(eventIdKey);
-    return event?.title || 'Unknown Event';
+    return event?.title || t('common.unknownEvent');
   };
 
   return (
