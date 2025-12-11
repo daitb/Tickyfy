@@ -2,9 +2,11 @@ import apiClient from "./apiClient";
 
 // ===== INTERFACES =====
 export interface ValidatePromoCodeDto {
-  code: string;
+  code?: string;
+  promoCode?: string; // Support both field names for backward compatibility
   eventId: number;
-  orderTotal: number;
+  orderTotal?: number; // Support both field names
+  totalAmount?: number; // Support both field names for backward compatibility
 }
 
 export interface PromoCodeValidationResult {
@@ -58,9 +60,15 @@ class PromoCodeService {
   async validatePromoCode(
     data: ValidatePromoCodeDto
   ): Promise<PromoCode> {
+    // Normalize field names to match backend DTO
+    const requestData = {
+      Code: data.code || data.promoCode || "",
+      EventId: data.eventId,
+      OrderTotal: data.orderTotal || data.totalAmount || 0,
+    };
     const response = await apiClient.post<PromoCode>(
       "/PromoCode/validate",
-      data
+      requestData
     );
     // apiClient interceptor already extracts data from ApiResponse wrapper
     return response.data;
@@ -72,9 +80,15 @@ class PromoCodeService {
   async calculateDiscount(
     data: ValidatePromoCodeDto
   ): Promise<number> {
+    // Normalize field names to match backend DTO
+    const requestData = {
+      Code: data.code || data.promoCode || "",
+      EventId: data.eventId,
+      OrderTotal: data.orderTotal || data.totalAmount || 0,
+    };
     const response = await apiClient.post<number>(
       "/PromoCode/calculate-discount",
-      data
+      requestData
     );
     // apiClient interceptor already extracts data from ApiResponse wrapper
     return response.data;

@@ -85,7 +85,6 @@ export function Checkout({
     { number: 3, label: t("booking.checkout.step3") },
   ];
 
-  // Utility: extract trailing numeric ID from strings like 'evt-1' or return number as-is
   const extractTrailingNumber = (val: string | number | undefined) => {
     if (typeof val === "number") return val;
     if (!val) return NaN;
@@ -94,7 +93,6 @@ export function Checkout({
     return m ? parseInt(m[1], 10) : NaN;
   };
 
-  // Check if this is seat-based booking and load seat details
   useEffect(() => {
     const seatsJson = sessionStorage.getItem("selectedSeats");
     const eventIdStr = sessionStorage.getItem("eventId");
@@ -107,13 +105,11 @@ export function Checkout({
           setSelectedSeats(seatIds);
           setSeatBookingMode(true);
 
-          // Check if reservation has expired
           if (expiresAtStr) {
             const expiresAt = new Date(expiresAtStr);
             const now = new Date();
 
             if (now >= expiresAt) {
-              // Reservation expired - redirect back to seat selection
               setReservationExpired(true);
               toast.error(
                 "Your seat reservation has expired. Please select seats again."
@@ -128,14 +124,12 @@ export function Checkout({
               return;
             }
 
-            // Calculate time remaining
             const remaining = Math.floor(
               (expiresAt.getTime() - now.getTime()) / 1000
             );
             setTimeRemaining(remaining);
           }
 
-          // Load full seat details from backend
           seatMapService
             .getEventSeats(eventIdStr)
             .then((allSeats) => {
@@ -155,7 +149,6 @@ export function Checkout({
     }
   }, [onNavigate]);
 
-  // When cart items change, fetch event metadata from backend for display
   useEffect(() => {
     const ids = Array.from(
       new Set(
@@ -171,13 +164,10 @@ export function Checkout({
         .getEventById(id)
         .then((ev) => setEventsMap((prev) => ({ ...prev, [id]: ev })))
         .catch(() => {
-          // ignore missing events for now
         });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+  }, [items, eventsMap]);
 
-  // Timer countdown for seat reservation
   useEffect(() => {
     if (!seatBookingMode || timeRemaining === null || reservationExpired)
       return;
@@ -185,7 +175,6 @@ export function Checkout({
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev === null || prev <= 0) {
-          // Expired during checkout
           setReservationExpired(true);
           toast.error("Your seat reservation has expired!");
           sessionStorage.removeItem("selectedSeats");
@@ -210,7 +199,6 @@ export function Checkout({
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Check if cart is empty (allow seat booking mode even with empty cart items)
   if (items.length === 0 && !seatBookingMode) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
@@ -241,7 +229,6 @@ export function Checkout({
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
 
-    // Validate on change if field has been touched
     if (touchedFields[field as keyof typeof touchedFields]) {
       validateField(field, value);
     }
@@ -305,7 +292,6 @@ export function Checkout({
 
   const handleNext = () => {
     if (currentStep === 1) {
-      // Validate step 1 before proceeding
       if (!validateStep1()) {
         return;
       }
@@ -329,7 +315,6 @@ export function Checkout({
     setError("");
 
     try {
-      // Check if reservation has expired (for seat booking mode)
       if (seatBookingMode) {
         const expiresAtStr = sessionStorage.getItem("reservationExpiresAt");
         if (expiresAtStr) {
@@ -351,14 +336,12 @@ export function Checkout({
         }
       }
 
-      // Validate step 1 (contact information)
       if (!validateStep1()) {
         setCurrentStep(1);
         setIsProcessing(false);
         return;
       }
 
-      // Validate step 2 (payment method)
       if (paymentMethod === "momo") {
         const momoValidation = validateMomoPhone(paymentDetails?.phone || "");
         if (!momoValidation.isValid) {
@@ -407,7 +390,6 @@ export function Checkout({
         }
       }
 
-      // Check if user is authenticated
       if (!authService.isAuthenticated()) {
         setError(t("booking.checkout.loginRequired"));
         onNavigate("login");
@@ -415,21 +397,17 @@ export function Checkout({
         return;
       }
 
-      // Determine eventId, ticketTypeId, and quantity based on booking mode
       let eventId: number;
       let ticketTypeId: number;
       let totalQuantity: number;
 
       if (seatBookingMode && seatDetails.length > 0) {
-        // Seat-based booking: get from seatDetails
         const eventIdStr = sessionStorage.getItem("eventId");
         eventId = eventIdStr ? parseInt(eventIdStr, 10) : NaN;
 
-        // All seats should have same ticketTypeId (same zone/ticket type)
         ticketTypeId = seatDetails[0].ticketTypeId;
         totalQuantity = seatDetails.length;
       } else {
-        // Regular cart-based booking: get from items
         const firstItem = items[0];
         eventId = extractTrailingNumber(firstItem.eventId);
         ticketTypeId = extractTrailingNumber(firstItem.tierId);
@@ -442,41 +420,146 @@ export function Checkout({
         return;
       }
 
-      // Create booking via API with numeric IDs
       const bookingData: any = {
         eventId: eventId,
         ticketTypeId: ticketTypeId,
         quantity: totalQuantity,
       };
 
-      // If seat-based booking, add seat IDs
       if (seatBookingMode && selectedSeats.length > 0) {
-        bookingData.seatIds = selectedSeats; // Already number[]
+        bookingData.seatIds = selectedSeats;
       }
 
-      // Add promo code if applied
       if (appliedPromoCode && promoCode.trim()) {
         bookingData.promoCode = promoCode.trim().toUpperCase();
       }
 
       const response = await bookingService.createBooking(bookingData);
 
-      // Now create payment intent for the booking
-      const paymentProviderMap: { [key in PaymentMethod]: "momo" | "vnpay" } = {
+      const paymentProviderMap: { [key in PaymentMethod]: "momo" | "vnpay" | "creditcard" } = {
         momo: "momo",
         vnpay: "vnpay",
-        "credit-card": "vnpay", // fallback to VNPay for credit cards
+        "credit-card": "creditcard",
       };
 
       const provider = paymentProviderMap[paymentMethod];
 
       try {
-        const paymentIntent = await createPaymentIntent({
-          bookingId: response.bookingId,
-          provider: provider,
-        });
+        let paymentIntent;
 
-        // Redirect to payment provider
+        if (paymentMethod === "credit-card") {
+          if (!paymentDetails?.number || !paymentDetails?.cvv || !paymentDetails?.expiry || !paymentDetails?.name) {
+            setError(t("payment.creditCard.enterFullInfo"));
+            setIsProcessing(false);
+            return;
+          }
+
+          const expiryParts = paymentDetails.expiry.split("/");
+          if (expiryParts.length !== 2) {
+            setError(t("payment.creditCard.invalidExpiryFormat"));
+            setIsProcessing(false);
+            return;
+          }
+
+          const expiryMonth = parseInt(expiryParts[0], 10);
+          const expiryYear = parseInt("20" + expiryParts[1], 10);
+
+          if (isNaN(expiryMonth) || isNaN(expiryYear) || expiryMonth < 1 || expiryMonth > 12) {
+            setError(t("payment.creditCard.invalidExpiry"));
+            setIsProcessing(false);
+            return;
+          }
+
+          toast.info(t("payment.creditCard.verifying"));
+
+          const { createCreditCardPaymentIntent } = await import("../services/paymentService");
+          
+          paymentIntent = await createCreditCardPaymentIntent({
+            bookingId: response.bookingId,
+            cardDetails: {
+              cardNumber: paymentDetails.number,
+              cardholderName: paymentDetails.name,
+              expiryMonth: expiryMonth,
+              expiryYear: expiryYear,
+              cvv: paymentDetails.cvv,
+            },
+          });
+
+          // Credit card payments are completed immediately
+          if (paymentIntent.isImmediateCompletion) {
+            toast.success("Thanh toán thành công!");
+            
+            // Get current user for order
+            const currentUser = authService.getCurrentUser();
+            
+            // Calculate total from tickets (more reliable than backend response)
+            let ticketSubtotal = 0;
+            if (seatBookingMode && seatDetails.length > 0) {
+              ticketSubtotal = seatDetails.reduce((sum, seat) => sum + seat.price, 0);
+            } else {
+              ticketSubtotal = items.reduce((sum, item) => sum + item.price, 0);
+            }
+            
+            // Add 5% service fee
+            const serviceFeeAmount = ticketSubtotal * 0.05;
+            const totalAmount = ticketSubtotal + serviceFeeAmount;
+            
+            // Create order object for success page
+            const order: Order = {
+              id: paymentIntent.transactionId || response.bookingId.toString(),
+              userId: currentUser?.userId || "",
+              eventId: eventId.toString(),
+              tickets: seatBookingMode && seatDetails.length > 0 
+                ? seatDetails.map((seat, idx) => ({
+                    id: `ticket-${idx}`,
+                    tierId: seat.ticketTypeId.toString(),
+                    tierName: seat.zoneName || "General",
+                    price: seat.price,
+                    qrCode: `QR-${response.bookingId}-${idx}`,
+                    status: "valid" as const,
+                    seatInfo: `${seat.row}-${seat.seatNumber}`
+                  }))
+                : items.map((item, idx) => ({
+                    id: `ticket-${idx}`,
+                    tierId: item.tierId,
+                    tierName: item.tierName,
+                    price: item.price,
+                    qrCode: `QR-${response.bookingId}-${idx}`,
+                    status: "valid" as const
+                  })),
+              subtotal: ticketSubtotal,
+              serviceFee: serviceFeeAmount,
+              total: totalAmount,
+              status: "completed",
+              createdAt: new Date().toISOString(),
+              userEmail: formData.email,
+              userName: formData.name,
+              paymentMethod: "Credit Card"
+            };
+            
+            // Clear session storage
+            sessionStorage.removeItem("selectedSeats");
+            sessionStorage.removeItem("reservationExpiresAt");
+            sessionStorage.removeItem("eventId");
+            sessionStorage.removeItem("totalPrice");
+            
+            // Call onCompleteOrder to pass order data to success page
+            onCompleteOrder(order);
+            
+            // Navigate to success page
+            setTimeout(() => {
+              onNavigate("success");
+            }, 1000);
+            
+            return;
+          }
+        } else {
+          paymentIntent = await createPaymentIntent({
+            bookingId: response.bookingId,
+            provider: provider,
+          });
+        }
+
         if (paymentIntent.redirectUrl) {
           window.location.href = paymentIntent.redirectUrl;
         } else {
@@ -509,7 +592,6 @@ export function Checkout({
 
   const isStepValid = () => {
     if (currentStep === 1) {
-      // Check if all fields are filled and valid
       const emailValid = validateEmail(formData.email).isValid;
       const nameValid = validateName(formData.name).isValid;
       const phoneValid = validatePhone(formData.phone).isValid;
@@ -521,7 +603,7 @@ export function Checkout({
         return validateMomoPhone(paymentDetails.phone).isValid;
       }
       if (paymentMethod === "vnpay") {
-        return true; // VNPay doesn't require additional details
+        return true;
       }
       if (paymentMethod === "credit-card") {
         if (
@@ -561,7 +643,6 @@ export function Checkout({
     setPromoCodeError("");
 
     try {
-      // Get eventId
       let eventId: number;
       if (seatBookingMode && seatDetails.length > 0) {
         const eventIdStr = sessionStorage.getItem("eventId");
@@ -577,14 +658,12 @@ export function Checkout({
         return;
       }
 
-      // Validate promo code
       const validatedPromo = await promoCodeService.validatePromoCode({
         code: promoCode.trim().toUpperCase(),
         eventId: eventId,
         orderTotal: subtotal,
       });
 
-      // Calculate discount
       const discount = await promoCodeService.calculateDiscount({
         code: promoCode.trim().toUpperCase(),
         eventId: eventId,
@@ -999,10 +1078,10 @@ export function Checkout({
                                 {isValidatingPromoCode ? (
                                   <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Đang kiểm tra...
+                                    {t("checkout.applying")}
                                   </>
                                 ) : (
-                                  "Áp dụng"
+                                  t("promoCode.apply")
                                 )}
                               </Button>
                             </div>

@@ -36,31 +36,35 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
 
     try {
       // Get first event ID from cart items
-      const eventId = items[0]?.eventId;
-      if (!eventId) {
+      const eventIdStr = items[0]?.eventId;
+      if (!eventIdStr) {
         setPromoError("No items in cart");
         return;
       }
 
-      const result = await promoCodeService.validatePromoCode({
-        code: promoCode.trim(),
-        eventId: parseInt(eventId),
-        orderTotal: subtotal,
+      // Parse eventId from string to number
+      const eventId = parseInt(eventIdStr, 10);
+      if (isNaN(eventId)) {
+        setPromoError("Invalid event ID");
+        return;
+      }
+
+      // Validate promo code first
+      await promoCodeService.validatePromoCode({
+        promoCode: promoCode.trim(),
+        eventId,
+        totalAmount: subtotal,
       });
 
-      // PromoCode is returned if valid
-      if (result && result.isActive) {
-        const discountValue =
-          result.discountAmount ||
-          (result.discountPercent
-            ? subtotal * (result.discountPercent / 100)
-            : 0);
-        setDiscount(discountValue);
-        setPromoError("");
-      } else {
-        setDiscount(0);
-        setPromoError("Invalid or inactive promo code");
-      }
+      // If validation succeeds, calculate discount
+      const discountAmount = await promoCodeService.calculateDiscount({
+        promoCode: promoCode.trim(),
+        eventId,
+        totalAmount: subtotal,
+      });
+
+      setDiscount(discountAmount);
+      setPromoError("");
     } catch (error: any) {
       console.error("Promo validation error:", error);
       setDiscount(0);

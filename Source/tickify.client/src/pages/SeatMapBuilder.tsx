@@ -89,34 +89,35 @@ type Tool =
   | "stage"
   | "eraser";
 
+// Templates will be translated in the component
 const predefinedTemplates = [
   {
     id: "theater",
-    name: "Theater Style",
+    nameKey: "management.seat.builder.templates.theaterStyle",
     rows: 15,
     cols: 20,
-    description: "Traditional theater seating",
+    descriptionKey: "management.seat.builder.templates.theaterDescription",
   },
   {
     id: "stadium",
-    name: "Stadium",
+    nameKey: "management.seat.builder.templates.stadium",
     rows: 20,
     cols: 30,
-    description: "Curved stadium layout",
+    descriptionKey: "management.seat.builder.templates.stadiumDescription",
   },
   {
     id: "conference",
-    name: "Conference",
+    nameKey: "management.seat.builder.templates.conference",
     rows: 10,
     cols: 15,
-    description: "Tables and chairs",
+    descriptionKey: "management.seat.builder.templates.conferenceDescription",
   },
   {
     id: "concert",
-    name: "Concert Hall",
+    nameKey: "management.seat.builder.templates.concertHall",
     rows: 12,
     cols: 25,
-    description: "Mix of seated and standing",
+    descriptionKey: "management.seat.builder.templates.concertDescription",
   },
 ];
 
@@ -566,7 +567,7 @@ export function SeatMapBuilder({
 
       const payload = {
         eventId: eventId,
-        name: `${eventTitle || "Event"} Seat Map`,
+        name: t("management.seat.builder.seatMapName", { eventTitle: eventTitle || t("common.eventTitle") }),
         description: "Seat map created with builder",
         totalRows: gridSize.rows,
         totalColumns: gridSize.cols,
@@ -1149,18 +1150,18 @@ export function SeatMapBuilder({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingZone ? "Edit Zone" : "Create New Zone"}
+              {editingZone ? t("management.seat.builder.zone.editZone") : t("management.seat.builder.zone.createNewZone")}
             </DialogTitle>
             <DialogDescription>
-              Define the zone name, color, and pricing
+              {t("management.seat.builder.zone.zoneDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Zone Name</Label>
+              <Label>{t("management.seat.builder.zone.zoneName")}</Label>
               <Input
-                placeholder="e.g., VIP Section"
+                placeholder={t("management.seat.builder.zone.zoneNamePlaceholder")}
                 value={newZone.name}
                 onChange={(e) =>
                   setNewZone({ ...newZone, name: e.target.value })
@@ -1169,7 +1170,7 @@ export function SeatMapBuilder({
             </div>
 
             <div>
-              <Label>Zone Color</Label>
+              <Label>{t("management.seat.builder.zone.zoneColor")}</Label>
               <div className="flex gap-2">
                 <Input
                   type="color"
@@ -1224,10 +1225,10 @@ export function SeatMapBuilder({
                 setNewZone({ name: "", color: "#00C16A", price: 0 });
               }}
             >
-              Cancel
+              {t("management.seat.builder.zone.cancel")}
             </Button>
             <Button onClick={handleAddZone}>
-              {editingZone ? "Update Zone" : "Create Zone"}
+              {editingZone ? t("management.seat.builder.zone.updateZone") : t("management.seat.builder.zone.createZone")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1251,13 +1252,13 @@ export function SeatMapBuilder({
                 className="p-4 border-2 rounded-lg hover:border-teal-500 transition-colors text-left"
               >
                 <div className="text-sm text-neutral-900 mb-1">
-                  {template.name}
+                  {t(template.nameKey)}
                 </div>
                 <div className="text-xs text-neutral-500 mb-2">
-                  {template.description}
+                  {t(template.descriptionKey)}
                 </div>
                 <div className="text-xs text-neutral-400">
-                  {template.rows} rows × {template.cols} columns
+                  {template.rows} {t('management.seat.builder.rows')} × {template.cols} {t('management.seat.builder.seatsPerRow')}
                 </div>
               </button>
             ))}
