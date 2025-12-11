@@ -46,8 +46,8 @@ export function SeatSelectionReal({
   eventId,
   onNavigate,
 }: SeatSelectionRealProps) {
-  const navigate = useNavigate();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [seats, setSeats] = useState<SeatDto[]>([]);
   const [seatMap, setSeatMap] = useState<SeatMapDto | null>(null);
@@ -742,9 +742,9 @@ export function SeatSelectionReal({
             }}
             title={`${seat.row}${seat.seatNumber} - ${formatVND(seat.price)}${
               seat.zoneName ? ` (${seat.zoneName})` : ""
-            }${seat.isWheelchair ? " - Wheelchair Accessible" : ""}${
+            }${seat.isWheelchair ? ` - ${t("management.seat.selection.wheelchairAccessible")}` : ""}${
               selectedSeats.includes(seat.id)
-                ? " - Click again to deselect"
+                ? ` - ${t("management.seat.selection.clickToDeselect")}`
                 : ""
             }`}
           >
@@ -839,7 +839,7 @@ export function SeatSelectionReal({
           </Button>
 
           <div className="text-white">
-            <h1 className="text-2xl mb-1">{event?.title || "Select Seats"}</h1>
+            <h1 className="text-2xl mb-1">{event?.title || t("management.seat.selection.selectSeats")}</h1>
             <div className="flex items-center gap-4 text-sm opacity-90">
               <div className="flex items-center gap-2">
                 <MapPin size={16} />

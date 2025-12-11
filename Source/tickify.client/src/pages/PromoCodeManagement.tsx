@@ -646,7 +646,7 @@ export function PromoCodeManagement() {
                               ? `${code.discountPercent}% OFF`
                               : code.discountAmount
                               ? `${code.discountAmount.toLocaleString()}₫ OFF`
-                              : "Free Ticket"}
+                              : t("common.freeTicket")}
                           </div>
                           <div className="text-sm text-neutral-600 mt-1">
                             {code.description}

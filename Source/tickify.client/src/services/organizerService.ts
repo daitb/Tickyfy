@@ -44,10 +44,13 @@ export interface OrganizerEventDto {
   eventId: number;
   title: string;
   startDate: string;
+  endDate: string;
+  bannerImage?: string;
   status: string;
   totalSeats: number;
   soldSeats: number;
   revenue: number;
+  rejectionReason?: string;
 }
 
 export interface OrganizerEarningsDto {
@@ -71,13 +74,28 @@ export interface OrganizerEarningsDto {
   }>;
 }
 
+export interface OrganizerBookingDto {
+  bookingId: number;
+  bookingCode: string;
+  bookingDate: string;
+  status: string;
+  eventId: number;
+  eventTitle: string;
+  customerName: string;
+  customerEmail: string;
+  totalTickets: number;
+  totalAmount: number;
+  paymentStatus?: string;
+  paymentDate?: string;
+}
+
 // ===== ORGANIZER SERVICE =====
 class OrganizerService {
   /**
    * POST /api/organizers/register - Register as organizer (creates request)
    */
   async registerOrganizer(dto: CreateOrganizerDto): Promise<any> {
-    const response = await apiClient.post<any>('/organizers/register', dto);
+    const response = await apiClient.post<any>("/organizers/register", dto);
     // Backend returns ApiResponse<object> with data nested in response.data.data
     return response.data?.data || response.data;
   }
@@ -86,15 +104,23 @@ class OrganizerService {
    * GET /api/organizers/{id} - Get organizer profile
    */
   async getOrganizerProfile(id: number): Promise<OrganizerProfileDto> {
-    const response = await apiClient.get<OrganizerProfileDto>(`/organizers/${id}`);
+    const response = await apiClient.get<OrganizerProfileDto>(
+      `/organizers/${id}`
+    );
     return response.data;
   }
 
   /**
    * PUT /api/organizers/{id} - Update organizer profile
    */
-  async updateOrganizerProfile(id: number, dto: CreateOrganizerDto): Promise<OrganizerProfileDto> {
-    const response = await apiClient.put<OrganizerProfileDto>(`/organizers/${id}`, dto);
+  async updateOrganizerProfile(
+    id: number,
+    dto: CreateOrganizerDto
+  ): Promise<OrganizerProfileDto> {
+    const response = await apiClient.put<OrganizerProfileDto>(
+      `/organizers/${id}`,
+      dto
+    );
     return response.data;
   }
 
@@ -102,7 +128,9 @@ class OrganizerService {
    * GET /api/organizers/{id}/events - Get organizer's events
    */
   async getOrganizerEvents(id: number): Promise<OrganizerEventDto[]> {
-    const response = await apiClient.get<OrganizerEventDto[]>(`/organizers/${id}/events`);
+    const response = await apiClient.get<OrganizerEventDto[]>(
+      `/organizers/${id}/events`
+    );
     return response.data;
   }
 
@@ -110,7 +138,19 @@ class OrganizerService {
    * GET /api/organizers/{id}/earnings - Get organizer earnings dashboard
    */
   async getOrganizerEarnings(id: number): Promise<OrganizerEarningsDto> {
-    const response = await apiClient.get<OrganizerEarningsDto>(`/organizers/${id}/earnings`);
+    const response = await apiClient.get<OrganizerEarningsDto>(
+      `/organizers/${id}/earnings`
+    );
+    return response.data;
+  }
+
+  /**
+   * GET /api/organizers/{id}/bookings - Get organizer bookings
+   */
+  async getOrganizerBookings(id: number): Promise<OrganizerBookingDto[]> {
+    const response = await apiClient.get<OrganizerBookingDto[]>(
+      `/organizers/${id}/bookings`
+    );
     return response.data;
   }
 
@@ -118,7 +158,7 @@ class OrganizerService {
    * GET /api/organizers - List all organizers (Admin only)
    */
   async getAllOrganizers(): Promise<OrganizerDto[]> {
-    const response = await apiClient.get<OrganizerDto[]>('/organizers');
+    const response = await apiClient.get<OrganizerDto[]>("/organizers");
     return response.data;
   }
 
@@ -126,7 +166,9 @@ class OrganizerService {
    * POST /api/organizers/{id}/verify - Verify organizer (Admin only)
    */
   async verifyOrganizer(id: number): Promise<OrganizerDto> {
-    const response = await apiClient.post<OrganizerDto>(`/organizers/${id}/verify`);
+    const response = await apiClient.post<OrganizerDto>(
+      `/organizers/${id}/verify`
+    );
     return response.data;
   }
 
@@ -135,7 +177,7 @@ class OrganizerService {
    */
   async getMyOrganizerRequest(): Promise<any | null> {
     try {
-      const response = await apiClient.get<any>('/organizers/my-request');
+      const response = await apiClient.get<any>("/organizers/my-request");
       return response.data?.data || null;
     } catch (error: any) {
       // If no request found, return null instead of throwing

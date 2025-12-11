@@ -204,7 +204,7 @@ export function TicketDetail({
                 <h1 className="text-white mb-4">
                   {currentTicket.eventTitle ||
                     currentEvent?.title ||
-                    "Event Title"}
+                    t("common.eventTitle")}
                 </h1>
                 <div className="space-y-2 text-white/90">
                   <div className="flex items-center gap-2">

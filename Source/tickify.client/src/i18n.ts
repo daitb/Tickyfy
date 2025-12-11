@@ -25,6 +25,10 @@ if (import.meta.env.DEV) {
     hasViTicketRefund: !!viTrans?.ticketRefund,
     enTicketRefundKeys: enTrans?.ticketRefund ? Object.keys(enTrans.ticketRefund).slice(0, 5) : [],
     viTicketRefundKeys: viTrans?.ticketRefund ? Object.keys(viTrans.ticketRefund).slice(0, 5) : [],
+    hasEnDateFilter: !!enTrans?.dateFilter,
+    hasViDateFilter: !!viTrans?.dateFilter,
+    hasEnCategoryFilter: !!enTrans?.categoryFilter,
+    hasViCategoryFilter: !!viTrans?.categoryFilter,
   });
 }
 

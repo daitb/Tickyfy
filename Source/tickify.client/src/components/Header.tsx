@@ -135,10 +135,10 @@ export function Header({
                 className={`cursor-pointer gap-2 text-white hover:bg-teal-600 ${
                   currentPage === "chat" ? "bg-teal-600" : ""
                 }`}
-                title="Chat"
+                title={t("header.chat")}
               >
                 <MessageCircle size={18} />
-                <span className="hidden sm:inline">Chat</span>
+                <span className="hidden sm:inline">{t("header.chat")}</span>
               </Button>
             )}
             
@@ -186,7 +186,7 @@ export function Header({
                       </AvatarFallback>
                     </Avatar>
                     <span className="hidden sm:inline">
-                      {authService.getCurrentUser()?.fullName || "Account"}
+                      {authService.getCurrentUser()?.fullName || t("header.account")}
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
@@ -277,7 +277,7 @@ export function Header({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem disabled className="text-neutral-500">
                         <Plus size={16} className="mr-2" />
-                        {t("header.becomeOrganizer")} - {t("header.pendingApproval", "Pending Approval")}
+                        {t("header.becomeOrganizer")} - {t("header.pendingApproval")}
                       </DropdownMenuItem>
                     </>
                   )}

@@ -115,7 +115,10 @@ class UserService {
    * Update current user profile
    */
   async updateProfile(data: UpdateProfileDto): Promise<UserProfileDto> {
-    const response = await apiClient.put<UserProfileDto>("/users/profile", data);
+    const response = await apiClient.put<UserProfileDto>(
+      "/users/profile",
+      data
+    );
     return response.data;
   }
 
@@ -126,11 +129,15 @@ class UserService {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await apiClient.post<string>("/users/profile/avatar", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await apiClient.post<string>(
+      "/users/profile/avatar",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
     return response.data;
   }
 

@@ -1,4 +1,3 @@
-// Repositories/EfBookingRepository.cs
 using Microsoft.EntityFrameworkCore;
 using Tickify.Data;
 using Tickify.Interfaces.Repositories;
@@ -57,7 +56,4 @@ namespace Tickify.Repositories
                 .Where(b => b.ExpiresAt != null && b.ExpiresAt < DateTime.UtcNow) 
                 .ToListAsync();
     }
-}
-
-
-// do chua co chuc nang cua nhanh' khac 
+} 

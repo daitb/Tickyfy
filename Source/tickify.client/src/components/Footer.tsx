@@ -1,7 +1,9 @@
 import { Ticket, Mail, Phone, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export function Footer() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleNavigate = (page: string) => {
@@ -21,32 +23,32 @@ export function Footer() {
               <span className="text-xl text-white">Tickify</span>
             </div>
             <p className="text-sm text-neutral-400">
-              Your trusted platform for discovering and booking events across Vietnam.
+              {t('footer.description')}
             </p>
           </div>
 
           {/* Company */}
           <div>
-            <h4 className="text-white mb-4">Company</h4>
+            <h4 className="text-white mb-4">{t('footer.company')}</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <button onClick={() => handleNavigate('about')} className="hover:text-orange-500 transition-colors text-left">
-                  About Us
+                  {t('footer.aboutUs')}
                 </button>
               </li>
               <li>
                 <button onClick={() => handleNavigate('privacy')} className="hover:text-orange-500 transition-colors text-left">
-                  Privacy Policy
+                  {t('footer.privacyPolicy')}
                 </button>
               </li>
               <li>
                 <button onClick={() => handleNavigate('terms')} className="hover:text-orange-500 transition-colors text-left">
-                  Terms of Service
+                  {t('footer.termsOfService')}
                 </button>
               </li>
               <li>
                 <button onClick={() => handleNavigate('refund-policy')} className="hover:text-orange-500 transition-colors text-left">
-                  Refund Policy
+                  {t('footer.refundPolicy')}
                 </button>
               </li>
             </ul>
@@ -54,26 +56,26 @@ export function Footer() {
 
           {/* Support */}
           <div>
-            <h4 className="text-white mb-4">Support</h4>
+            <h4 className="text-white mb-4">{t('footer.support')}</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <button onClick={() => handleNavigate('faq')} className="hover:text-orange-500 transition-colors text-left">
-                  FAQ
+                  {t('footer.faq')}
                 </button>
               </li>
               <li>
                 <button onClick={() => handleNavigate('contact')} className="hover:text-orange-500 transition-colors text-left">
-                  Contact Us
+                  {t('footer.contactUs')}
                 </button>
               </li>
               <li>
                 <button onClick={() => handleNavigate('for-organizers')} className="hover:text-orange-500 transition-colors text-left">
-                  For Organizers
+                  {t('footer.forOrganizers')}
                 </button>
               </li>
               <li>
                 <button onClick={() => handleNavigate('help-center')} className="hover:text-orange-500 transition-colors text-left">
-                  Help Center
+                  {t('footer.helpCenter')}
                 </button>
               </li>
             </ul>
@@ -81,7 +83,7 @@ export function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="text-white mb-4">Contact</h4>
+            <h4 className="text-white mb-4">{t('footer.contact')}</h4>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2">
                 <Mail size={16} />
@@ -100,7 +102,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-neutral-800 mt-8 pt-8 text-sm text-neutral-400 text-center">
-          <p>&copy; 2025 Tickify. All rights reserved.</p>
+          <p>{t('footer.copyright')}</p>
         </div>
       </div>
     </footer>

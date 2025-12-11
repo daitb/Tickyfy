@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Wallet, Check, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { CreditCard, Wallet, Check, AlertCircle, Smartphone } from 'lucide-react';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
@@ -33,8 +34,8 @@ export function PaymentMethodSelector({
   onPaymentMethodChange, 
   selectedMethod 
 }: PaymentMethodSelectorProps) {
-  // Nếu selectedMethod là vnpay, chuyển sang momo vì vnpay đã bị ẩn
-  const initialMethod = selectedMethod === 'vnpay' ? 'momo' : (selectedMethod || 'momo');
+  const { t } = useTranslation();
+  const initialMethod = selectedMethod || 'momo';
   const [method, setMethod] = useState<PaymentMethod>(initialMethod);
   const [momoPhone, setMomoPhone] = useState('');
   const [cardDetails, setCardDetails] = useState({
@@ -155,7 +156,6 @@ export function PaymentMethodSelector({
     validateCardField(touchedField, value);
   };
 
-  // Validate all fields when method changes or component mounts
   useEffect(() => {
     if (method === 'momo' && momoPhone && touched.momoPhone) {
       validateMomoPhoneField(momoPhone);
@@ -166,32 +166,30 @@ export function PaymentMethodSelector({
       if (cardDetails.expiry && touched.cardExpiry) validateCardField('cardExpiry', cardDetails.expiry);
       if (cardDetails.cvv && touched.cardCvv) validateCardField('cardCvv', cardDetails.cvv);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [method]);
+  }, [method, momoPhone, cardDetails, touched]);
 
   const paymentMethods = [
     {
       id: 'momo' as PaymentMethod,
-      name: 'MoMo E-Wallet',
+      name: t("payment.methods.momoWallet"),
       icon: Wallet,
-      description: 'Pay securely with MoMo',
+      description: t("payment.methods.momoDescription"),
       color: 'bg-pink-500',
       popular: true
     },
-
-    // {
-    //   id: 'vnpay' as PaymentMethod,
-    //   name: 'VNPay',
-    //   icon: Smartphone,
-    //   description: 'Pay via VNPay gateway',
-    //   color: 'bg-blue-500',
-    //   popular: true
-    // },
+    {
+      id: 'vnpay' as PaymentMethod,
+      name: t("payment.methods.vnpay"),
+      icon: Smartphone,
+      description: t("payment.methods.vnpayDescription"),
+      color: 'bg-blue-500',
+      popular: true
+    },
     {
       id: 'credit-card' as PaymentMethod,
-      name: 'Credit/Debit Card',
+      name: t("payment.methods.creditCard"),
       icon: CreditCard,
-      description: 'Visa, Mastercard, JCB accepted',
+      description: t("payment.methods.creditCardDescription"),
       color: 'bg-teal-500',
       popular: false
     }
@@ -200,7 +198,7 @@ export function PaymentMethodSelector({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="mb-6">Select Payment Method</h3>
+        <h3 className="mb-6">{t("payment.selectMethod")}</h3>
         
         <RadioGroup value={method} onValueChange={(value) => handleMethodChange(value as PaymentMethod)}>
           <div className="space-y-3">
@@ -232,7 +230,7 @@ export function PaymentMethodSelector({
                       <span className="text-neutral-900">{pm.name}</span>
                       {pm.popular && (
                         <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded">
-                          Popular
+                          {t("payment.popular")}
                         </span>
                       )}
                     </div>
@@ -256,17 +254,17 @@ export function PaymentMethodSelector({
         {method === 'momo' && (
           <div className="space-y-4 animate-in fade-in duration-300">
             <div className="bg-pink-50 border border-pink-200 rounded-xl p-4">
-              <h4 className="mb-2 text-pink-900">How to pay with MoMo</h4>
+              <h4 className="mb-2 text-pink-900">{t("payment.momo.howToPay")}</h4>
               <ol className="text-sm text-pink-800 space-y-1.5 list-decimal list-inside">
-                <li>Enter your MoMo phone number below</li>
-                <li>Click "Complete Payment" to proceed</li>
-                <li>You'll receive a notification on your MoMo app</li>
-                <li>Open the app and confirm the payment</li>
+                <li>{t("payment.momo.step1")}</li>
+                <li>{t("payment.momo.step2")}</li>
+                <li>{t("payment.momo.step3")}</li>
+                <li>{t("payment.momo.step4")}</li>
               </ol>
             </div>
             
             <div>
-              <Label htmlFor="momo-phone">Số điện thoại MoMo *</Label>
+              <Label htmlFor="momo-phone">{t("payment.momo.phoneNumber")}</Label>
               <Input
                 id="momo-phone"
                 type="tel"
@@ -291,12 +289,12 @@ export function PaymentMethodSelector({
               {touched.momoPhone && !errors.momoPhone && momoPhone && (
                 <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
                   <Check size={14} />
-                  <span>Số điện thoại MoMo hợp lệ</span>
+                  <span>{t("payment.momo.validPhone")}</span>
                 </div>
               )}
               {!touched.momoPhone && (
                 <p className="text-xs text-neutral-500 mt-2">
-                  Nhập số điện thoại đã liên kết với tài khoản MoMo của bạn
+                  {t("payment.momo.phoneNote")}
                 </p>
               )}
             </div>
@@ -304,22 +302,22 @@ export function PaymentMethodSelector({
         )}
 
 
-        {/* {method === 'vnpay' && (
+        {method === 'vnpay' && (
           <div className="space-y-4 animate-in fade-in duration-300">
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <h4 className="mb-2 text-blue-900">How to pay with VNPay</h4>
+              <h4 className="mb-2 text-blue-900">{t("payment.vnpay.howToPay")}</h4>
               <ol className="text-sm text-blue-800 space-y-1.5 list-decimal list-inside">
-                <li>Click "Complete Payment" to proceed</li>
-                <li>You'll be redirected to VNPay payment gateway</li>
-                <li>Select your bank and complete payment</li>
-                <li>Return to Tickify to view your tickets</li>
+                <li>{t("payment.vnpay.step1")}</li>
+                <li>{t("payment.vnpay.step2")}</li>
+                <li>{t("payment.vnpay.step3")}</li>
+                <li>{t("payment.vnpay.step4")}</li>
               </ol>
             </div>
 
             <div className="bg-white border border-neutral-200 rounded-xl p-4">
-              <h5 className="text-sm mb-3 text-neutral-700">Supported Banks</h5>
+              <h5 className="text-sm mb-3 text-neutral-700">{t("payment.vnpay.supportedBanks")}</h5>
               <div className="grid grid-cols-3 gap-3">
-                {['Vietcombank', 'Techcombank', 'VietinBank', 'BIDV', 'ACB', 'MB Bank'].map((bank) => (
+                {['Vietcombank', 'Techcombank', 'VietinBank', 'BIDV', 'ACB', 'MB Bank', 'VPBank', 'TPBank', 'Agribank'].map((bank) => (
                   <div 
                     key={bank}
                     className="text-xs text-center p-2 bg-neutral-50 rounded border border-neutral-200"
@@ -328,21 +326,25 @@ export function PaymentMethodSelector({
                   </div>
                 ))}
               </div>
+              <p className="text-xs text-neutral-600 mt-3">
+                {t("payment.vnpay.banksNote")}
+              </p>
             </div>
           </div>
-        )} */}
+        )}
 
         {method === 'credit-card' && (
           <div className="space-y-4 animate-in fade-in duration-300">
             <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
+              <h4 className="mb-2 text-teal-900">{t("payment.creditCard.securePayment")}</h4>
               <p className="text-sm text-teal-800">
-                <strong>Secure payment:</strong> We accept Visa, Mastercard, and JCB. Your card details are encrypted and never stored.
+                {t("payment.creditCard.instructions")}
               </p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="card-number">Số thẻ *</Label>
+                <Label htmlFor="card-number">{t("payment.creditCard.cardNumber")}</Label>
                 <Input
                   id="card-number"
                   type="text"
@@ -368,13 +370,13 @@ export function PaymentMethodSelector({
                 {touched.cardNumber && !errors.cardNumber && cardDetails.number && (
                   <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
                     <Check size={14} />
-                    <span>Số thẻ hợp lệ</span>
+                    <span>{t("payment.creditCard.validCardNumber")}</span>
                   </div>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="card-name">Tên chủ thẻ *</Label>
+                <Label htmlFor="card-name">{t("payment.creditCard.cardholderName")}</Label>
                 <Input
                   id="card-name"
                   type="text"
@@ -399,14 +401,14 @@ export function PaymentMethodSelector({
                 {touched.cardName && !errors.cardName && cardDetails.name && (
                   <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
                     <Check size={14} />
-                    <span>Tên chủ thẻ hợp lệ</span>
+                    <span>{t("payment.creditCard.validCardholderName")}</span>
                   </div>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="card-expiry">Ngày hết hạn *</Label>
+                  <Label htmlFor="card-expiry">{t("payment.creditCard.expiryDate")}</Label>
                   <Input
                     id="card-expiry"
                     type="text"
@@ -432,12 +434,12 @@ export function PaymentMethodSelector({
                   {touched.cardExpiry && !errors.cardExpiry && cardDetails.expiry && (
                     <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
                       <Check size={14} />
-                      <span>Hợp lệ</span>
+                      <span>{t("payment.creditCard.valid")}</span>
                     </div>
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="card-cvv">CVV *</Label>
+                  <Label htmlFor="card-cvv">{t("payment.creditCard.cvv")}</Label>
                   <Input
                     id="card-cvv"
                     type="text"
@@ -463,7 +465,7 @@ export function PaymentMethodSelector({
                   {touched.cardCvv && !errors.cardCvv && cardDetails.cvv && (
                     <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
                       <Check size={14} />
-                      <span>Hợp lệ</span>
+                      <span>{t("payment.creditCard.valid")}</span>
                     </div>
                   )}
                 </div>
