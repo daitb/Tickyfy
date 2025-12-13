@@ -1,17 +1,14 @@
-using Tickify.Server.AI.Models;
-using Tickify.Server.AI.Services;
+using Tickify.Server.Models;
+using Tickify.Server.Services.AI;
 
-namespace Tickify.Server.AI;
+namespace Tickify.Server.Extensions;
 
 /// <summary>
 /// Extension methods để đăng ký RAG services vào DI container
-/// Hỗ trợ nhiều LLM providers: Groq (cloud free), Ollama (local)
+/// Sử dụng Groq API cho LLM
 /// </summary>
 public static class RagServiceExtensions
 {
-    /// <summary>
-    /// Đăng ký tất cả RAG services
-    /// </summary>
     public static IServiceCollection AddRagServices(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -20,25 +17,10 @@ public static class RagServiceExtensions
         var ragConfig = configuration.GetSection("Rag").Get<RagConfiguration>() 
             ?? new RagConfiguration();
         
-        // Tự động chọn LLM provider dựa trên API key
-        if (string.IsNullOrEmpty(ragConfig.LlmProvider))
-        {
-            ragConfig.LlmProvider = !string.IsNullOrEmpty(ragConfig.GroqApiKey) ? "groq" : "ollama";
-        }
-        
-        // Tự động chọn Embedding provider
-        if (string.IsNullOrEmpty(ragConfig.EmbeddingProvider))
-        {
-            if (!string.IsNullOrEmpty(ragConfig.JinaApiKey))
-                ragConfig.EmbeddingProvider = "jina";
-            else
-                ragConfig.EmbeddingProvider = "simple";
-        }
-        
         // Đăng ký configuration như singleton
         services.AddSingleton(ragConfig);
 
-        // Đăng ký HttpClient cho Groq (Cloud LLM - RECOMMENDED)
+        // Đăng ký HttpClient cho Groq (Cloud LLM)
         if (!string.IsNullOrEmpty(ragConfig.GroqApiKey))
         {
             services.AddHttpClient<IGroqService, GroqService>(client =>
@@ -49,13 +31,6 @@ public static class RagServiceExtensions
             });
         }
 
-        // Đăng ký HttpClient cho Ollama (Local LLM - Optional fallback)
-        services.AddHttpClient<IOllamaService, OllamaService>(client =>
-        {
-            client.BaseAddress = new Uri(ragConfig.OllamaBaseUrl);
-            client.Timeout = TimeSpan.FromMinutes(5);
-        });
-
         // Đăng ký HttpClient cho Qdrant (Vector Database)
         services.AddHttpClient<IQdrantService, QdrantService>(client =>
         {
@@ -63,22 +38,11 @@ public static class RagServiceExtensions
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 
-        // Đăng ký Embedding Service (multi-provider support)
-        // Ưu tiên: Jina AI (FREE 1M tokens) > Simple local
-        if (!string.IsNullOrEmpty(ragConfig.JinaApiKey))
+        // Đăng ký Jina Embedding Service
+        services.AddHttpClient<IEmbeddingService, JinaEmbeddingService>(client =>
         {
-            services.AddHttpClient<IEmbeddingService, JinaEmbeddingService>(client =>
-            {
-                client.Timeout = TimeSpan.FromMinutes(2);
-            });
-        }
-        else
-        {
-            services.AddSingleton<IEmbeddingService>(sp => 
-                new SimpleEmbeddingService(
-                    ragConfig, 
-                    sp.GetRequiredService<ILogger<SimpleEmbeddingService>>()));
-        }
+            client.Timeout = TimeSpan.FromMinutes(2);
+        });
 
         // Đăng ký các services khác
         services.AddScoped<IDocumentProcessorService, DocumentProcessorService>();
@@ -95,7 +59,6 @@ public static class RagServiceExtensions
             
             // Get optional services - returns null if not registered
             var groqService = sp.GetService<IGroqService>();
-            var ollamaService = sp.GetService<IOllamaService>();
             
             return new RagService(
                 qdrantService,
@@ -104,8 +67,7 @@ public static class RagServiceExtensions
                 dbContext,
                 config,
                 logger,
-                groqService,
-                ollamaService);
+                groqService);
         });
 
         return services;
