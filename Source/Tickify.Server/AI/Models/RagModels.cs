@@ -158,23 +158,27 @@ public class RagConfiguration
     public string LlmModel { get; set; } = "llama3.2";
     public string EmbeddingModel { get; set; } = "nomic-embed-text";
     
-    // Groq API (FREE - Recommended)
+    // Groq API (FREE - Recommended for LLM)
     public string GroqApiKey { get; set; } = string.Empty;
-    public string GroqModel { get; set; } = "llama-3.1-8b-instant"; // Fast & free
+    public string GroqModel { get; set; } = "llama-3.3-70b-versatile"; // Best quality, free
     
-    // HuggingFace API (FREE - for embeddings)
-    public string HuggingFaceApiKey { get; set; } = string.Empty; // Optional - works without key too
+    // Jina AI Embeddings API (FREE - 1M tokens/month)
+    // Get key at: https://jina.ai/embeddings/
+    public string JinaApiKey { get; set; } = string.Empty;
     
-    // LLM Provider: "groq", "ollama", "huggingface"
+    // HuggingFace API (DEPRECATED - no longer supported)
+    public string HuggingFaceApiKey { get; set; } = string.Empty;
+    
+    // LLM Provider: "groq", "ollama"
     public string LlmProvider { get; set; } = "groq";
     
-    // Embedding Provider: "simple", "huggingface", "ollama"
-    public string EmbeddingProvider { get; set; } = "simple";
+    // Embedding Provider: "jina", "simple", "ollama"
+    public string EmbeddingProvider { get; set; } = "jina";
     
     // Qdrant settings
     public string QdrantBaseUrl { get; set; } = "http://localhost:6333";
     public string CollectionName { get; set; } = "tickify_documents";
-    public int VectorSize { get; set; } = 384; // all-MiniLM-L6-v2 dimension (or 768 for simple)
+    public int VectorSize { get; set; } = 1024; // Jina embeddings-v3 dimension
     
     // RAG settings
     public int TopK { get; set; } = 5;

@@ -118,77 +118,158 @@ public class SimpleEmbeddingService : IEmbeddingService
 }
 
 /// <summary>
-/// Embedding service sử dụng HuggingFace Inference API (miễn phí)
+/// Embedding service sử dụng Jina AI Embeddings API (MIỄN PHÍ 1M tokens/tháng)
+/// https://jina.ai/embeddings/ - Model: jina-embeddings-v3 (1024 dimensions)
 /// </summary>
-public class HuggingFaceEmbeddingService : IEmbeddingService
+public class JinaEmbeddingService : IEmbeddingService
 {
     private readonly HttpClient _httpClient;
     private readonly RagConfiguration _config;
-    private readonly ILogger<HuggingFaceEmbeddingService> _logger;
-    private readonly SimpleEmbeddingService _fallbackService;
+    private readonly ILogger<JinaEmbeddingService> _logger;
 
-    private const string HfApiUrl = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2";
+    // Jina AI Embeddings API - MIỄN PHÍ 1 triệu tokens/tháng
+    private const string JinaApiUrl = "https://api.jina.ai/v1/embeddings";
 
-    public HuggingFaceEmbeddingService(
+    public JinaEmbeddingService(
         HttpClient httpClient,
         RagConfiguration config,
-        ILogger<HuggingFaceEmbeddingService> logger,
-        ILogger<SimpleEmbeddingService> simpleLogger)
+        ILogger<JinaEmbeddingService> logger)
     {
         _httpClient = httpClient;
         _config = config;
         _logger = logger;
-        _fallbackService = new SimpleEmbeddingService(config, simpleLogger);
 
-        if (!string.IsNullOrEmpty(config.HuggingFaceApiKey))
+        if (!string.IsNullOrEmpty(config.JinaApiKey))
         {
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.HuggingFaceApiKey}");
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.JinaApiKey}");
         }
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
     }
 
     public async Task<float[]> GetEmbeddingAsync(string text)
     {
-        try
+        const int maxRetries = 3;
+        
+        for (int retry = 0; retry < maxRetries; retry++)
         {
-            var request = new { inputs = text };
-            var json = JsonSerializer.Serialize(request);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PostAsync(HfApiUrl, content);
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                _logger.LogWarning("HuggingFace API failed, using fallback. Status: {Status}", response.StatusCode);
-                return await _fallbackService.GetEmbeddingAsync(text);
+                var request = new
+                {
+                    model = "jina-embeddings-v3",
+                    task = "retrieval.passage", // hoặc "retrieval.query" cho query
+                    dimensions = _config.VectorSize, // Jina cho phép chọn dimensions
+                    input = new[] { text }
+                };
+                var json = JsonSerializer.Serialize(request);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                _logger.LogDebug("Calling Jina API for text: {TextPreview}...", text.Length > 50 ? text[..50] : text);
+
+                var response = await _httpClient.PostAsync(JinaApiUrl, content);
+                var responseJson = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Jina API failed: {Status} - {Body}", response.StatusCode, responseJson);
+                    
+                    if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                    {
+                        _logger.LogInformation("Rate limited, waiting... (attempt {Retry}/{Max})", retry + 1, maxRetries);
+                        await Task.Delay(2000 * (retry + 1));
+                        continue;
+                    }
+                    
+                    throw new HttpRequestException($"Jina API error: {response.StatusCode} - {responseJson}");
+                }
+
+                // Parse Jina response format
+                using var doc = JsonDocument.Parse(responseJson);
+                var dataArray = doc.RootElement.GetProperty("data");
+                var firstItem = dataArray.EnumerateArray().First();
+                var embeddingArray = firstItem.GetProperty("embedding");
+                
+                var embedding = new float[embeddingArray.GetArrayLength()];
+                int i = 0;
+                foreach (var val in embeddingArray.EnumerateArray())
+                {
+                    embedding[i++] = val.GetSingle();
+                }
+
+                _logger.LogDebug("Got Jina embedding with {Dims} dimensions", embedding.Length);
+                return embedding;
             }
-
-            var responseJson = await response.Content.ReadAsStringAsync();
-            var embedding = JsonSerializer.Deserialize<float[]>(responseJson);
-
-            return embedding ?? await _fallbackService.GetEmbeddingAsync(text);
+            catch (Exception ex) when (retry < maxRetries - 1)
+            {
+                _logger.LogWarning(ex, "Jina API error, retrying... (attempt {Retry}/{Max})", retry + 1, maxRetries);
+                await Task.Delay(1000 * (retry + 1));
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "HuggingFace API error, using fallback");
-            return await _fallbackService.GetEmbeddingAsync(text);
-        }
+        
+        throw new InvalidOperationException("Failed to get embedding from Jina after all retries");
     }
 
     public async Task<List<float[]>> GetEmbeddingsAsync(List<string> texts)
     {
-        var embeddings = new List<float[]>();
+        // Jina hỗ trợ batch request
+        const int maxRetries = 3;
         
+        for (int retry = 0; retry < maxRetries; retry++)
+        {
+            try
+            {
+                var request = new
+                {
+                    model = "jina-embeddings-v3",
+                    task = "retrieval.passage",
+                    dimensions = _config.VectorSize,
+                    input = texts.ToArray()
+                };
+                var json = JsonSerializer.Serialize(request);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync(JinaApiUrl, content);
+                var responseJson = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Jina batch API failed: {Status}", response.StatusCode);
+                    throw new HttpRequestException($"Jina API error: {response.StatusCode}");
+                }
+
+                using var doc = JsonDocument.Parse(responseJson);
+                var dataArray = doc.RootElement.GetProperty("data");
+                
+                var embeddings = new List<float[]>();
+                foreach (var item in dataArray.EnumerateArray().OrderBy(x => x.GetProperty("index").GetInt32()))
+                {
+                    var embeddingArray = item.GetProperty("embedding");
+                    var embedding = new float[embeddingArray.GetArrayLength()];
+                    int i = 0;
+                    foreach (var val in embeddingArray.EnumerateArray())
+                    {
+                        embedding[i++] = val.GetSingle();
+                    }
+                    embeddings.Add(embedding);
+                }
+
+                return embeddings;
+            }
+            catch (Exception ex) when (retry < maxRetries - 1)
+            {
+                _logger.LogWarning(ex, "Jina batch API error, retrying...");
+                await Task.Delay(1000 * (retry + 1));
+            }
+        }
+        
+        // Fallback to individual calls
+        var result = new List<float[]>();
         foreach (var text in texts)
         {
-            var embedding = await GetEmbeddingAsync(text);
-            embeddings.Add(embedding);
-            
-            // Rate limiting - HuggingFace free tier has limits
-            await Task.Delay(100);
+            result.Add(await GetEmbeddingAsync(text));
+            await Task.Delay(50);
         }
-
-        return embeddings;
+        return result;
     }
 
     public async Task<bool> IsHealthyAsync()

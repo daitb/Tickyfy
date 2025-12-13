@@ -29,12 +29,10 @@ public static class RagServiceExtensions
         // Tự động chọn Embedding provider
         if (string.IsNullOrEmpty(ragConfig.EmbeddingProvider))
         {
-            if (!string.IsNullOrEmpty(ragConfig.GroqApiKey))
-                ragConfig.EmbeddingProvider = "groq";
-            else if (!string.IsNullOrEmpty(ragConfig.HuggingFaceApiKey))
-                ragConfig.EmbeddingProvider = "huggingface";
+            if (!string.IsNullOrEmpty(ragConfig.JinaApiKey))
+                ragConfig.EmbeddingProvider = "jina";
             else
-                ragConfig.EmbeddingProvider = "ollama";
+                ragConfig.EmbeddingProvider = "simple";
         }
         
         // Đăng ký configuration như singleton
@@ -66,10 +64,10 @@ public static class RagServiceExtensions
         });
 
         // Đăng ký Embedding Service (multi-provider support)
-        // Sử dụng HuggingFace API nếu có API key, ngược lại dùng simple local
-        if (!string.IsNullOrEmpty(ragConfig.HuggingFaceApiKey))
+        // Ưu tiên: Jina AI (FREE 1M tokens) > Simple local
+        if (!string.IsNullOrEmpty(ragConfig.JinaApiKey))
         {
-            services.AddHttpClient<IEmbeddingService, HuggingFaceEmbeddingService>(client =>
+            services.AddHttpClient<IEmbeddingService, JinaEmbeddingService>(client =>
             {
                 client.Timeout = TimeSpan.FromMinutes(2);
             });
