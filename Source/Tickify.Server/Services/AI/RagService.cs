@@ -32,7 +32,7 @@ public class RagService : IRagService
     private readonly RagConfiguration _config;
     private readonly ILogger<RagService> _logger;
 
-    private const string SystemPrompt = """
+    private const string SystemPromptVi = """
         Bạn là Tickify Assistant - trợ lý AI thông minh cho hệ thống quản lý sự kiện Tickify.
 
         NHIỆM VỤ:
@@ -44,7 +44,7 @@ public class RagService : IRagService
         QUY TẮC BẮT BUỘC:
         1. LUÔN trả lời dựa trên thông tin trong CONTEXT bên dưới
         2. Nếu CONTEXT có thông tin về sự kiện, hãy liệt kê đầy đủ
-        3. Trả lời bằng tiếng Việt, ngắn gọn, rõ ràng, thân thiện
+        3. BẮT BUỘC trả lời bằng TIẾNG VIỆT - không được dùng tiếng Anh
         4. Format danh sách sự kiện rõ ràng với tên, ngày, địa điểm
         5. Nếu người dùng hỏi về vấn đề không liên quan đến sự kiện (ví dụ: siêu thị, thời tiết, tin tức xã hội...), hãy từ chối lịch sự.
         6. TUYỆT ĐỐI KHÔNG khuyên người dùng tìm kiếm thông tin đó trên Tickify (vì Tickify chỉ có sự kiện).
@@ -53,8 +53,144 @@ public class RagService : IRagService
         CONTEXT (Dữ liệu sự kiện từ Tickify):
         {context}
 
-        Dựa trên CONTEXT trên, hãy trả lời câu hỏi của người dùng.
+        Dựa trên CONTEXT trên, hãy trả lời câu hỏi của người dùng BẰNG TIẾNG VIỆT.
         """;
+
+    private const string SystemPromptEn = """
+        You are Tickify Assistant - an intelligent AI assistant for the Tickify event management system.
+
+        TASKS:
+        - Help users search and book event tickets
+        - Answer questions about events, schedules, venues, ticket prices
+        - Guide users on how to use Tickify features
+        - Answer questions about payments, refunds, ticket transfers
+
+        MANDATORY RULES:
+        1. ALWAYS answer based on the information in the CONTEXT below
+        2. If CONTEXT contains event information, list them completely
+        3. YOU MUST answer in ENGLISH ONLY - DO NOT use Vietnamese
+        4. Format event lists clearly with name, date, venue
+        5. If the user asks about topics unrelated to events (e.g., supermarkets, weather, social news...), politely decline.
+        6. ABSOLUTELY DO NOT suggest users search for that information on Tickify (because Tickify only has events).
+        7. Sample response: "Sorry, Tickify only provides event information. Would you like to find related [Events]?"
+
+        CRITICAL: Your response MUST be in English. Even if the context contains Vietnamese text, translate and respond in English.
+
+        CONTEXT (Event data from Tickify):
+        {context}
+
+        Based on the CONTEXT above, answer the user's question IN ENGLISH.
+        """;
+
+    private string GetSystemPrompt(string? language)
+    {
+        // Default to Vietnamese if language is not specified or not "en"
+        return language?.ToLowerInvariant() == "en" ? SystemPromptEn : SystemPromptVi;
+    }
+
+    /// <summary>
+    /// Detect language from message content
+    /// Prioritizes message content over UI language setting
+    /// </summary>
+    private string DetectLanguageFromMessage(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return "vi";
+
+        var messageLower = message.ToLowerInvariant();
+        
+        // Common English words/phrases (expanded list)
+        var englishIndicators = new[]
+        {
+            "the", "is", "are", "can", "will", "what", "where", "when", "how", "why",
+            "give", "show", "list", "find", "search", "event", "events", "ticket", "tickets",
+            "please", "help", "hello", "hi", "thanks", "thank you", "all", "me", "my", "you",
+            "your", "get", "need", "want", "have", "has", "had", "do", "does", "did",
+            "tell", "about", "information", "details", "price", "date", "time", "location"
+        };
+
+        // Common Vietnamese words/phrases
+        var vietnameseIndicators = new[]
+        {
+            "cho", "tôi", "bạn", "của", "và", "với", "có", "không", "được", "là",
+            "gì", "nào", "đâu", "khi", "sao", "sự kiện", "vé", "danh sách",
+            "xin chào", "cảm ơn", "giúp", "tìm", "hiển thị", "tất cả", "mọi"
+        };
+
+        int englishCount = 0;
+        int vietnameseCount = 0;
+
+        // Count English indicators
+        foreach (var indicator in englishIndicators)
+        {
+            // Use word boundary matching for better accuracy
+            if (messageLower.Contains($" {indicator} ") || 
+                messageLower.StartsWith($"{indicator} ") || 
+                messageLower.EndsWith($" {indicator}") ||
+                messageLower == indicator)
+            {
+                englishCount++;
+            }
+        }
+
+        // Count Vietnamese indicators
+        foreach (var indicator in vietnameseIndicators)
+        {
+            if (messageLower.Contains(indicator))
+                vietnameseCount++;
+        }
+
+        // Check for Vietnamese characters (most reliable indicator)
+        var vietnameseChars = new[] { 
+            'ă', 'â', 'đ', 'ê', 'ô', 'ơ', 'ư', 
+            'á', 'à', 'ả', 'ã', 'ạ', 
+            'é', 'è', 'ẻ', 'ẽ', 'ẹ', 
+            'í', 'ì', 'ỉ', 'ĩ', 'ị', 
+            'ó', 'ò', 'ỏ', 'õ', 'ọ', 
+            'ú', 'ù', 'ủ', 'ũ', 'ụ', 
+            'ý', 'ỳ', 'ỷ', 'ỹ', 'ỵ' 
+        };
+        bool hasVietnameseChars = message.Any(c => vietnameseChars.Contains(char.ToLowerInvariant(c)));
+
+        // Decision logic (prioritize Vietnamese characters)
+        if (hasVietnameseChars)
+        {
+            _logger.LogDebug("Detected Vietnamese characters in message");
+            return "vi";
+        }
+        
+        // If has English words and no Vietnamese words, likely English
+        if (englishCount > 0 && vietnameseCount == 0)
+        {
+            _logger.LogDebug("Detected English from indicators: {Count} English words found", englishCount);
+            return "en";
+        }
+        
+        // If has more English than Vietnamese indicators
+        if (englishCount > vietnameseCount && englishCount > 0)
+        {
+            _logger.LogDebug("Detected English: {EnglishCount} vs {VietnameseCount} indicators", englishCount, vietnameseCount);
+            return "en";
+        }
+        
+        // If has Vietnamese indicators
+        if (vietnameseCount > 0)
+        {
+            _logger.LogDebug("Detected Vietnamese from indicators: {Count} Vietnamese words found", vietnameseCount);
+            return "vi";
+        }
+
+        // Default: if message contains common English words, assume English
+        if (englishCount > 0)
+        {
+            _logger.LogDebug("Defaulting to English based on {Count} English indicators", englishCount);
+            return "en";
+        }
+
+        // Default to Vietnamese
+        _logger.LogDebug("Defaulting to Vietnamese (no clear indicators)");
+        return "vi";
+    }
 
     public RagService(
         IQdrantService qdrantService,
@@ -131,13 +267,27 @@ public class RagService : IRagService
             _logger.LogInformation("Built context: {ContextPreview}...", 
                 context.Length > 200 ? context[..200] : context);
 
-            // 4. Create prompt with context
-            var promptWithContext = SystemPrompt.Replace("{context}", context);
+            // 4. Detect language - prioritize message content over UI language
+            // If user types in English, they want English response regardless of UI language
+            var detectedLanguage = DetectLanguageFromMessage(request.Message);
+            var language = detectedLanguage; // Always use detected language from message
+            
+            _logger.LogInformation("Detected language from message: {DetectedLanguage} (UI language was: {UILanguage})", 
+                detectedLanguage, request.Language ?? "not provided");
+            
+            var systemPrompt = GetSystemPrompt(language);
+            var promptWithContext = systemPrompt.Replace("{context}", context);
 
-            // 5. Get LLM response
+            // 5. Add explicit language instruction to user message
+            var languageInstruction = language == "en" 
+                ? "[IMPORTANT: Answer in English only]" 
+                : "[QUAN TRỌNG: Trả lời bằng tiếng Việt]";
+            var userMessageWithLanguage = $"{languageInstruction}\n\n{request.Message}";
+
+            // 6. Get LLM response
             var response = await ChatWithLlmAsync(
                 promptWithContext, 
-                request.Message, 
+                userMessageWithLanguage, 
                 request.History);
 
             return new ChatResponse
@@ -151,9 +301,19 @@ public class RagService : IRagService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing RAG query");
+            var language = request.Language;
+            if (string.IsNullOrWhiteSpace(language))
+            {
+                language = DetectLanguageFromMessage(request.Message);
+            }
+            
+            var errorMessage = language?.ToLowerInvariant() == "en" 
+                ? "Sorry, an error occurred. Please try again later."
+                : "Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.";
+            
             return new ChatResponse
             {
-                Message = "Xin loi, da co loi xay ra. Vui long thu lai sau.",
+                Message = errorMessage,
                 ConversationId = conversationId,
                 Success = false,
                 Error = ex.Message
@@ -184,11 +344,25 @@ public class RagService : IRagService
         var context = BuildContext(searchResults);
         _logger.LogInformation("StreamQuery: Context length = {Len} chars", context.Length);
         
-        var promptWithContext = SystemPrompt.Replace("{context}", context);
+        // Detect language - prioritize message content over UI language
+        var detectedLanguage = DetectLanguageFromMessage(request.Message);
+        var language = detectedLanguage; // Always use detected language from message
+        
+        _logger.LogInformation("StreamQuery: Detected language from message: {DetectedLanguage} (UI language was: {UILanguage})", 
+            detectedLanguage, request.Language ?? "not provided");
+        
+        var systemPrompt = GetSystemPrompt(language);
+        var promptWithContext = systemPrompt.Replace("{context}", context);
+
+        // Add explicit language instruction to user message
+        var languageInstruction = language == "en" 
+            ? "[IMPORTANT: Answer in English only]" 
+            : "[QUAN TRỌNG: Trả lời bằng tiếng Việt]";
+        var userMessageWithLanguage = $"{languageInstruction}\n\n{request.Message}";
 
         await foreach (var chunk in StreamChatWithLlmAsync(
             promptWithContext, 
-            request.Message, 
+            userMessageWithLanguage, 
             request.History))
         {
             yield return chunk;

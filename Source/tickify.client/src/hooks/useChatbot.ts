@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ChatMessage, ChatRequest } from '../types/chatbot';
 import chatbotService from '../services/chatbotService';
 
@@ -22,6 +23,7 @@ interface UseChatbotReturn {
  */
 export function useChatbot(options: UseChatbotOptions = {}): UseChatbotReturn {
   const { enableStreaming = true } = options;
+  const { i18n, t } = useTranslation();
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,20 +33,29 @@ export function useChatbot(options: UseChatbotOptions = {}): UseChatbotReturn {
   
   const lastUserMessageRef = useRef<string>('');
   const streamingMessageRef = useRef<string>('');
+  const hasWelcomeMessageRef = useRef<boolean>(false);
 
-  // Thêm welcome message khi component mount
+  // Thêm welcome message khi component mount hoặc khi messages bị xóa
   useEffect(() => {
-    if (messages.length === 0) {
+    if (messages.length === 0 && !hasWelcomeMessageRef.current) {
+      hasWelcomeMessageRef.current = true;
+      const welcomeContent = t('chatbot.welcome.description', {
+        defaultValue: i18n.language === 'en' 
+          ? 'Hello! I am Tickify Assistant. I can help you search for events, book tickets, or answer questions about Tickify. Ask me anything!'
+          : 'Xin chào! Tôi là Tickify Assistant. Tôi có thể giúp bạn tìm kiếm sự kiện, đặt vé, hoặc giải đáp các thắc mắc về Tickify. Hãy hỏi tôi bất cứ điều gì!'
+      });
       setMessages([
         {
           id: 'welcome',
           role: 'assistant',
-          content: 'Xin chào! Tôi là Tickify Assistant. Tôi có thể giúp bạn tìm kiếm sự kiện, đặt vé, hoặc giải đáp các thắc mắc về Tickify. Hãy hỏi tôi bất cứ điều gì!',
+          content: welcomeContent,
           timestamp: new Date(),
         },
       ]);
+    } else if (messages.length > 0) {
+      hasWelcomeMessageRef.current = true;
     }
-  }, []);
+  }, [messages.length, i18n.language, t]);
 
   const buildHistory = useCallback((): { role: string; content: string }[] => {
     return messages.slice(-10).map((msg: ChatMessage) => ({
@@ -60,7 +71,7 @@ export function useChatbot(options: UseChatbotOptions = {}): UseChatbotReturn {
       setError(null);
       lastUserMessageRef.current = content;
 
-      // Thêm tin nhắn của user
+      // Thêm tin nhắn của user ngay lập tức để hiển thị
       const userMessage: ChatMessage = {
         id: `user-${Date.now()}`,
         role: 'user',
@@ -68,13 +79,22 @@ export function useChatbot(options: UseChatbotOptions = {}): UseChatbotReturn {
         timestamp: new Date(),
       };
 
-      setMessages((prev: ChatMessage[]) => [...prev, userMessage]);
+      // Sử dụng functional update để đảm bảo state được cập nhật đúng
+      // Thêm tin nhắn user vào state
+      setMessages((prev: ChatMessage[]) => {
+        // Kiểm tra xem tin nhắn đã tồn tại chưa (tránh duplicate)
+        const exists = prev.some(msg => msg.id === userMessage.id);
+        return exists ? prev : [...prev, userMessage];
+      });
       setIsLoading(true);
 
+      // Build history bao gồm tin nhắn user vừa thêm
+      const currentHistory = buildHistory();
       const request: ChatRequest = {
         message: content.trim(),
         conversationId: conversationId || undefined,
-        history: buildHistory(),
+        history: [...currentHistory, { role: 'user', content: content.trim() }],
+        language: i18n.language, // Send current language to backend
       };
 
       if (enableStreaming) {
@@ -118,10 +138,15 @@ export function useChatbot(options: UseChatbotOptions = {}): UseChatbotReturn {
             setError(err.message);
             setIsStreaming(false);
             setIsLoading(false);
+            const errorMessage = t('chatbot.error.generic', {
+              defaultValue: i18n.language === 'en'
+                ? 'Sorry, an error occurred. Please try again.'
+                : 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.'
+            });
             setMessages((prev: ChatMessage[]) =>
               prev.map((msg: ChatMessage) =>
                 msg.id === assistantMessageId
-                  ? { ...msg, content: 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.' }
+                  ? { ...msg, content: errorMessage }
                   : msg
               )
             );
@@ -144,19 +169,26 @@ export function useChatbot(options: UseChatbotOptions = {}): UseChatbotReturn {
             setMessages((prev: ChatMessage[]) => [...prev, assistantMessage]);
             setConversationId(response.conversationId);
           } else {
-            setError(response.error || 'Đã có lỗi xảy ra');
+            const defaultError = i18n.language === 'en'
+              ? 'An error occurred'
+              : 'Đã có lỗi xảy ra';
+            setError(response.error || defaultError);
           }
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra');
+          const defaultError = i18n.language === 'en'
+            ? 'An error occurred'
+            : 'Đã có lỗi xảy ra';
+          setError(err instanceof Error ? err.message : defaultError);
         } finally {
           setIsLoading(false);
         }
       }
     },
-    [isLoading, isStreaming, conversationId, buildHistory, enableStreaming]
+    [isLoading, isStreaming, conversationId, buildHistory, enableStreaming, i18n.language, t]
   );
 
   const clearMessages = useCallback(() => {
+    hasWelcomeMessageRef.current = false;
     setMessages([]);
     setConversationId(null);
     setError(null);

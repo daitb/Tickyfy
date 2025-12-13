@@ -70,16 +70,6 @@ function mapEventListToEvent(dto: EventListDto): Event {
   const startDate = dto.startDate ? new Date(dto.startDate) : new Date();
   const title = dto.title || "Untitled Event";
 
-  // Debug: Log backend prices
-  console.log(
-    "Backend data for",
-    title,
-    "- minPrice:",
-    dto.minPrice,
-    "maxPrice:",
-    dto.maxPrice
-  );
-
   // Create placeholder ticket tiers from minPrice and maxPrice for list view
   const ticketTiers: TicketTier[] = [];
   if (dto.minPrice > 0) {

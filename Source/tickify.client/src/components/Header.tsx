@@ -75,13 +75,15 @@ export function Header({
     onNavigate("event-detail", eventId);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleCategoryClick = (_category: Category) => {
+  const handleCategoryClick = (category: Category) => {
+    // Navigate to listing with category filter
+    window.history.pushState({}, '', `/listing?category=${encodeURIComponent(category)}`);
     onNavigate("listing");
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleCityClick = (_city: string) => {
+  const handleCityClick = (city: string) => {
+    // Navigate to listing with city filter
+    window.history.pushState({}, '', `/listing?city=${encodeURIComponent(city)}`);
     onNavigate("listing");
   };
 
