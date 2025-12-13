@@ -13,7 +13,7 @@ public interface IRagService
     IAsyncEnumerable<string> StreamQueryAsync(Models.ChatRequest request);
     Task IndexDocumentsAsync(List<Models.IndexDocumentRequest> documents);
     Task IndexEventsFromDatabaseAsync();
-    Task IndexMarkdownFileAsync(string filePath);
+    Task IndexFaqAsync();
     Task<RagStatus> GetStatusAsync();
 }
 
@@ -39,25 +39,28 @@ public class RagService : IRagService
     private readonly ILogger<RagService> _logger;
 
     private const string SystemPrompt = """
-        Ban la Tickify Assistant - tro ly AI thong minh cho he thong quan ly su kien Tickify.
+        Bạn là Tickify Assistant - trợ lý AI thông minh cho hệ thống quản lý sự kiện Tickify.
 
-        NHIEM VU CUA BAN:
-        - Ho tro nguoi dung tim kiem va dat ve su kien
-        - Tra loi cac cau hoi ve su kien, lich trinh, dia diem
-        - Huong dan su dung cac tinh nang cua Tickify
-        - Giai dap thac mac ve thanh toan, hoan tien, doi ve
+        NHIỆM VỤ:
+        - Hỗ trợ người dùng tìm kiếm và đặt vé sự kiện
+        - Trả lời câu hỏi về sự kiện, lịch trình, địa điểm, giá vé
+        - Hướng dẫn sử dụng các tính năng của Tickify
+        - Giải đáp thắc mắc về thanh toán, hoàn tiền, đổi vé
 
-        QUY TAC:
-        1. Chi tra loi dua tren thong tin duoc cung cap trong CONTEXT
-        2. Neu khong tim thay thong tin, hay noi ro "Toi khong co thong tin ve van de nay"
-        3. Tra loi ngan gon, ro rang, than thien
-        4. Su dung tieng Viet tru khi nguoi dung hoi bang tieng Anh
-        5. Khong bia thong tin
+        QUY TẮC BẮT BUỘC:
+        1. LUÔN trả lời dựa trên thông tin trong CONTEXT bên dưới
+        2. Nếu CONTEXT có thông tin về sự kiện, hãy liệt kê đầy đủ
+        3. Trả lời bằng tiếng Việt, ngắn gọn, rõ ràng, thân thiện
+        4. Format danh sách sự kiện rõ ràng với tên, ngày, địa điểm
+        5. Nếu người dùng hỏi về vấn đề không liên quan đến sự kiện (ví dụ: siêu thị, thời tiết, tin tức xã hội...), hãy từ chối lịch sự.
+        6. TUYỆT ĐỐI KHÔNG khuyên người dùng tìm kiếm thông tin đó trên Tickify (vì Tickify chỉ có sự kiện).
+        7. Hãy gợi ý lái sang các sự kiện có chủ đề tương tự (Ví dụ: Hỏi siêu thị -> Gợi ý Hội chợ; Hỏi ca sĩ -> Gợi ý Nhạc hội).
+        8. Mẫu câu trả lời: "Xin lỗi, Tickify chỉ cung cấp thông tin sự kiện. Bạn có muốn tìm các [Sự kiện liên quan] không?"
 
-        CONTEXT (Thong tin lien quan):
+        CONTEXT (Dữ liệu sự kiện từ Tickify):
         {context}
 
-        Hay tra loi cau hoi cua nguoi dung dua tren context tren.
+        Dựa trên CONTEXT trên, hãy trả lời câu hỏi của người dùng.
         """;
 
     public RagService(
@@ -280,31 +283,130 @@ public class RagService : IRagService
         }).ToList();
 
         await IndexDocumentsAsync(documents);
+        
+        _logger.LogInformation("Indexed {Count} events from database", events.Count);
     }
 
-    public async Task IndexMarkdownFileAsync(string filePath)
+    /// <summary>
+    /// Index FAQ từ file markdown
+    /// </summary>
+    public async Task IndexFaqAsync()
     {
-        if (!File.Exists(filePath))
+        _logger.LogInformation("Indexing FAQ");
+
+        // Đường dẫn đến file FAQ
+        var faqPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "AI", "Data", "FAQ.md");
+        
+        // Fallback nếu chạy từ bin folder
+        if (!File.Exists(faqPath))
         {
-            _logger.LogWarning("File not found: {FilePath}", filePath);
+            faqPath = Path.Combine(AppContext.BaseDirectory, "AI", "Data", "FAQ.md");
+        }
+        
+        // Fallback cho development
+        if (!File.Exists(faqPath))
+        {
+            var projectRoot = Directory.GetCurrentDirectory();
+            faqPath = Path.Combine(projectRoot, "AI", "Data", "FAQ.md");
+        }
+
+        if (!File.Exists(faqPath))
+        {
+            _logger.LogWarning("FAQ.md not found at expected paths");
             return;
         }
 
-        var content = await File.ReadAllTextAsync(filePath);
-        var fileName = Path.GetFileName(filePath);
+        var content = await File.ReadAllTextAsync(faqPath);
         
-        var chunks = _documentProcessor.ProcessMarkdown(content, fileName);
+        // Parse FAQ sections
+        var faqDocuments = ParseFaqContent(content);
         
-        foreach (var chunk in chunks)
+        await IndexDocumentsAsync(faqDocuments);
+        
+        _logger.LogInformation("Indexed {Count} FAQ entries", faqDocuments.Count);
+    }
+
+    /// <summary>
+    /// Parse nội dung FAQ markdown thành các documents
+    /// </summary>
+    private List<Models.IndexDocumentRequest> ParseFaqContent(string content)
+    {
+        var documents = new List<Models.IndexDocumentRequest>();
+        var lines = content.Split('\n');
+        
+        string? currentCategory = null;
+        string? currentQuestion = null;
+        var currentAnswer = new System.Text.StringBuilder();
+
+        foreach (var line in lines)
         {
-            chunk.Embedding = await _embeddingService.GetEmbeddingAsync(chunk.Content);
+            var trimmedLine = line.Trim();
+            
+            // Category header (## ...)
+            if (trimmedLine.StartsWith("## "))
+            {
+                // Save previous Q&A if exists
+                if (currentQuestion != null && currentAnswer.Length > 0)
+                {
+                    documents.Add(CreateFaqDocument(currentCategory, currentQuestion, currentAnswer.ToString()));
+                }
+                
+                currentCategory = trimmedLine[3..].Trim();
+                currentQuestion = null;
+                currentAnswer.Clear();
+            }
+            // Question header (### ...)
+            else if (trimmedLine.StartsWith("### "))
+            {
+                // Save previous Q&A if exists
+                if (currentQuestion != null && currentAnswer.Length > 0)
+                {
+                    documents.Add(CreateFaqDocument(currentCategory, currentQuestion, currentAnswer.ToString()));
+                }
+                
+                currentQuestion = trimmedLine[4..].Trim();
+                currentAnswer.Clear();
+            }
+            // Answer content
+            else if (currentQuestion != null && !string.IsNullOrWhiteSpace(trimmedLine))
+            {
+                currentAnswer.AppendLine(trimmedLine);
+            }
         }
 
-        await _qdrantService.CreateCollectionAsync();
-        await _qdrantService.UpsertAsync(chunks);
-        
-        _logger.LogInformation("Indexed markdown file: {FileName} ({Count} chunks)", 
-            fileName, chunks.Count);
+        // Don't forget the last Q&A
+        if (currentQuestion != null && currentAnswer.Length > 0)
+        {
+            documents.Add(CreateFaqDocument(currentCategory, currentQuestion, currentAnswer.ToString()));
+        }
+
+        return documents;
+    }
+
+    private static Models.IndexDocumentRequest CreateFaqDocument(
+        string? category, 
+        string question, 
+        string answer)
+    {
+        return new Models.IndexDocumentRequest
+        {
+            Content = $"""
+                ❓ CÂU HỎI: {question}
+                
+                📂 Danh mục: {category ?? "FAQ"}
+                
+                ✅ TRẢ LỜI:
+                {answer.Trim()}
+                """,
+            Source = $"FAQ: {question}",
+            SourceType = "faq",
+            Metadata = new Dictionary<string, object>
+            {
+                ["category"] = category ?? "General",
+                ["question"] = question,
+                ["type"] = "faq"
+            }
+        };
     }
 
     public async Task<RagStatus> GetStatusAsync()
@@ -368,15 +470,34 @@ public class RagService : IRagService
 
     private static string BuildEventContent(Tickify.Models.Event e)
     {
+        var statusText = e.Status switch
+        {
+            Tickify.Models.EventStatus.Published => "Đang mở bán",
+            Tickify.Models.EventStatus.Approved => "Đã duyệt",
+            Tickify.Models.EventStatus.Pending => "Chờ duyệt",
+            Tickify.Models.EventStatus.Rejected => "Đã từ chối",
+            Tickify.Models.EventStatus.Cancelled => "Đã hủy",
+            Tickify.Models.EventStatus.Completed => "Đã kết thúc",
+            _ => e.Status.ToString()
+        };
+
         return $"""
-            Su kien: {e.Title}
-            Mo ta: {e.Description}
-            Thoi gian bat dau: {e.StartDate:dd/MM/yyyy HH:mm}
-            Thoi gian ket thuc: {e.EndDate:dd/MM/yyyy HH:mm}
-            Dia diem: {e.Location}
-            Danh muc: {e.Category?.Name ?? "Chua phan loai"}
-            To chuc boi: {e.Organizer?.CompanyName ?? "Khong ro"}
-            Trang thai: {e.Status}
+            🎫 SỰ KIỆN: {e.Title}
+            
+            📝 Mô tả: {e.Description}
+            
+            📅 Thời gian: {e.StartDate:dd/MM/yyyy HH:mm} - {e.EndDate:dd/MM/yyyy HH:mm}
+            
+            📍 Địa điểm: {e.Location}
+            {(string.IsNullOrEmpty(e.Address) ? "" : $"📌 Địa chỉ: {e.Address}")}
+            
+            🏷️ Danh mục: {e.Category?.Name ?? "Chưa phân loại"}
+            
+            🏢 Tổ chức bởi: {e.Organizer?.CompanyName ?? "Không rõ"}
+            
+            ✅ Trạng thái: {statusText}
+            
+            👥 Sức chứa tối đa: {e.MaxCapacity} người
             """;
     }
 }

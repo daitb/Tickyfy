@@ -27,7 +27,7 @@ public class ChatbotController : ControllerBase
     /// Gửi tin nhắn và nhận phản hồi từ chatbot
     /// </summary>
     [HttpPost("chat")]
-    [AllowAnonymous] // Hoặc [Authorize] nếu cần đăng nhập
+    [AllowAnonymous]
     public async Task<ActionResult<ChatResponse>> Chat([FromBody] ChatRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Message))
@@ -96,30 +96,6 @@ public class ChatbotController : ControllerBase
     }
 
     /// <summary>
-    /// Index documents vào vector database
-    /// </summary>
-    [HttpPost("index")]
-    [Authorize(Roles = "Admin")] // Chỉ admin mới được index
-    public async Task<IActionResult> IndexDocuments([FromBody] BatchIndexRequest request)
-    {
-        if (request.Documents == null || !request.Documents.Any())
-        {
-            return BadRequest("No documents provided");
-        }
-
-        try
-        {
-            await _ragService.IndexDocumentsAsync(request.Documents);
-            return Ok(new { message = $"Successfully indexed {request.Documents.Count} documents" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error indexing documents");
-            return StatusCode(500, new { error = ex.Message });
-        }
-    }
-
-    /// <summary>
     /// Index events từ database vào vector database
     /// </summary>
     [HttpPost("index/events")]
@@ -139,25 +115,20 @@ public class ChatbotController : ControllerBase
     }
 
     /// <summary>
-    /// Index file markdown
+    /// Index FAQ vào vector database
     /// </summary>
-    [HttpPost("index/markdown")]
+    [HttpPost("index/faq")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> IndexMarkdown([FromBody] IndexMarkdownRequest request)
+    public async Task<IActionResult> IndexFaq()
     {
-        if (string.IsNullOrWhiteSpace(request.FilePath))
-        {
-            return BadRequest("FilePath is required");
-        }
-
         try
         {
-            await _ragService.IndexMarkdownFileAsync(request.FilePath);
-            return Ok(new { message = $"Successfully indexed {request.FilePath}" });
+            await _ragService.IndexFaqAsync();
+            return Ok(new { message = "Successfully indexed FAQ" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error indexing markdown file");
+            _logger.LogError(ex, "Error indexing FAQ");
             return StatusCode(500, new { error = ex.Message });
         }
     }
@@ -181,9 +152,4 @@ public class ChatbotController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
-}
-
-public class IndexMarkdownRequest
-{
-    public string FilePath { get; set; } = string.Empty;
 }
