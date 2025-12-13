@@ -20,6 +20,7 @@ export interface ChatRequest {
   conversationId?: string;
   history?: { role: string; content: string }[];
   userId?: string;
+  language?: string; // "en" or "vi"
 }
 
 export interface ChatResponse {

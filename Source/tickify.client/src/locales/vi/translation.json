@@ -40,6 +40,29 @@
     },
     "noEvents": "Không tìm thấy sự kiện"
   },
+  "search": {
+    "placeholder": "Bạn đang tìm kiếm gì hôm nay?",
+    "exploreByCategory": "Khám phá theo danh mục",
+    "exploreByCity": "Khám phá theo thành phố",
+    "suggestionsForYou": "Gợi ý cho bạn",
+    "searchResults": "Kết quả tìm kiếm",
+    "result": "kết quả",
+    "results": "kết quả",
+    "soldOut": "Hết vé",
+    "from": "Từ",
+    "noEventsFound": "Không tìm thấy sự kiện",
+    "tryDifferentKeywords": "Thử tìm kiếm với từ khóa khác hoặc khám phá theo danh mục",
+    "clearSearch": "Xóa tìm kiếm"
+  },
+  "categories": {
+    "Music": "Âm nhạc",
+    "Theater": "Sân khấu",
+    "Sports": "Thể thao",
+    "Conference": "Hội nghị",
+    "Arts": "Nghệ thuật",
+    "Food & Drink": "Ẩm thực",
+    "Other": "Khác"
+  },
   "auth": {
     "login": "Đăng nhập",
     "register": "Đăng ký",
@@ -2983,6 +3006,37 @@
       "contact": "Liên hệ",
       "refund": "Chính sách hoàn tiền",
       "organizers": "Dành cho nhà tổ chức"
+    }
+  },
+  "chatbot": {
+    "title": "Tickify Assistant",
+    "placeholder": "Nhập câu hỏi của bạn...",
+    "online": "Trực tuyến",
+    "poweredBy": "Được hỗ trợ bởi AI",
+    "clearHistory": "Xóa lịch sử chat",
+    "close": "Đóng chat",
+    "send": "Gửi tin nhắn",
+    "thinking": "Đang suy nghĩ...",
+    "retry": "Thử lại",
+    "enterToSend": "Nhấn",
+    "toSend": "để gửi",
+    "shiftEnter": "Shift+Enter",
+    "toNewLine": "để xuống dòng",
+    "clear": "Xóa",
+    "welcome": {
+      "title": "Chào mừng đến với {title}!",
+      "description": "Tôi có thể giúp bạn tìm kiếm sự kiện, đặt vé, hoặc giải đáp các thắc mắc. Hãy bắt đầu cuộc trò chuyện!"
+    },
+    "emptyState": {
+      "title": "Chào mừng đến với {title}!",
+      "description": "Tôi có thể giúp bạn tìm kiếm sự kiện, đặt vé, hoặc giải đáp các thắc mắc. Hãy bắt đầu cuộc trò chuyện!"
+    },
+    "error": {
+      "generic": "Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.",
+      "network": "Lỗi kết nối. Vui lòng kiểm tra kết nối internet của bạn."
+    },
+    "sources": {
+      "title": "Nguồn tham khảo:"
     }
   }
 }

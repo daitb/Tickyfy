@@ -28,6 +28,25 @@ export function EventListing({ onNavigate }: EventListingProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
+  // Load filters from URL parameters on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const category = params.get('category');
+    const city = params.get('city');
+    
+    const initialFilters: FilterBarState = {};
+    if (category) {
+      initialFilters.categories = [category];
+    }
+    if (city) {
+      initialFilters.city = city;
+    }
+    
+    if (Object.keys(initialFilters).length > 0) {
+      setFilters(initialFilters);
+    }
+  }, []);
+
   useEffect(() => {
     loadEvents();
   }, []);

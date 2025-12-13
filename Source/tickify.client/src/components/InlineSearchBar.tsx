@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useDebounce } from "../hooks/useDebounce";
+import { useTranslation } from "react-i18next";
 import {
   Search,
-  TrendingUp,
   MapPin,
   Calendar,
   ArrowRight,
@@ -19,8 +19,9 @@ import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
-import { mockEvents, categories, cities } from "../mockData";
-import type { Category } from "../types";
+import { categories, cities } from "../mockData";
+import type { Category, Event as EventType } from "../types";
+import { eventService } from "../services/eventService";
 
 interface InlineSearchBarProps {
   onEventClick?: (eventId: string) => void;
@@ -28,14 +29,6 @@ interface InlineSearchBarProps {
   onCityClick?: (city: string) => void;
   onOpenChange?: (isOpen: boolean) => void;
 }
-
-const trendingKeywords = [
-  "yconcert",
-  "gdragon",
-  "drama",
-  "ntpmm",
-  "summer festival",
-];
 
 const categoryIcons = {
   Music: Music,
@@ -53,15 +46,25 @@ export function InlineSearchBar({
   onCityClick,
   onOpenChange,
 }: InlineSearchBarProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("category");
   const [isLoading, setIsLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<EventType[]>([]);
+  const [suggestedEvents, setSuggestedEvents] = useState<EventType[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Sử dụng useDebounce hook để debounce search query
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  // Load suggested events on mount
+  useEffect(() => {
+    eventService.getFeaturedEvents(3)
+      .then(events => setSuggestedEvents(events))
+      .catch(() => setSuggestedEvents([]));
+  }, []);
 
   // Notify parent when open state changes
   useEffect(() => {
@@ -97,14 +100,24 @@ export function InlineSearchBar({
     };
   }, [isOpen]);
 
-  // Show loading khi search query đang được debounce
+  // Search API when debounced query changes
   useEffect(() => {
-    if (searchQuery.length >= 2 && searchQuery !== debouncedSearchQuery) {
+    if (debouncedSearchQuery.trim().length >= 2) {
       setIsLoading(true);
+      eventService.searchEvents(debouncedSearchQuery)
+        .then(events => {
+          setSearchResults(events);
+          setIsLoading(false);
+        })
+        .catch(() => {
+          setSearchResults([]);
+          setIsLoading(false);
+        });
     } else {
+      setSearchResults([]);
       setIsLoading(false);
     }
-  }, [searchQuery, debouncedSearchQuery]);
+  }, [debouncedSearchQuery]);
 
   const handleFocus = () => {
     setIsOpen(true);
@@ -118,10 +131,6 @@ export function InlineSearchBar({
   const handleClose = () => {
     setIsOpen(false);
     setSearchQuery("");
-  };
-
-  const handleTrendingClick = (keyword: string) => {
-    setSearchQuery(keyword);
   };
 
   const handleCategoryCardClick = (category: Category) => {
@@ -145,23 +154,10 @@ export function InlineSearchBar({
     }
   };
 
-  // Filter events based on debounced search query với memoization
-  const filteredEvents = useMemo(() => {
-    if (debouncedSearchQuery.trim().length < 2) {
-      return mockEvents.slice(0, 4);
-    }
-    
-    const query = debouncedSearchQuery.toLowerCase();
-    return mockEvents
-      .filter(
-        (event) =>
-          event.title.toLowerCase().includes(query) ||
-          event.category.toLowerCase().includes(query) ||
-          event.city.toLowerCase().includes(query) ||
-          event.venue.toLowerCase().includes(query)
-      )
-      .slice(0, 4);
-  }, [debouncedSearchQuery]);
+  const showResults = debouncedSearchQuery.trim().length >= 2;
+
+  // Use search results or suggested events
+  const filteredEvents = showResults ? searchResults.slice(0, 4) : suggestedEvents;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -178,8 +174,6 @@ export function InlineSearchBar({
       year: "numeric",
     }).format(date);
   };
-
-  const showResults = debouncedSearchQuery.trim().length >= 2;
 
   return (
     <>
@@ -205,7 +199,7 @@ export function InlineSearchBar({
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             onFocus={handleFocus}
-            placeholder="What are you looking for today?"
+            placeholder={t("search.placeholder")}
             className="pl-12 pr-12 h-12 bg-white border-none rounded-full shadow-sm"
           />
           {isLoading && (
@@ -226,51 +220,27 @@ export function InlineSearchBar({
         {/* Dropdown Panel */}
         {isOpen && (
           <div
-            className="absolute top-full mt-2 left-0 right-0 bg-neutral-900 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[60]"
+            className="absolute top-full mt-2 left-0 right-0 bg-white rounded-xl shadow-2xl border border-neutral-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[60]"
             style={{ maxHeight: "500px", overflowY: "auto" }}
           >
             <div className="p-6">
               {!showResults ? (
                 <>
-                  {/* Trending Keywords */}
-                  <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <TrendingUp className="text-teal-400" size={18} />
-                      <h3 className="text-white">Trending Search</h3>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {trendingKeywords.map((keyword, index) => (
-                        <Badge
-                          key={index}
-                          variant="secondary"
-                          className="bg-neutral-800 hover:bg-teal-500/20 hover:text-teal-400 text-neutral-300 cursor-pointer px-3 py-1.5 transition-colors"
-                          onClick={() => handleTrendingClick(keyword)}
-                        >
-                          {keyword}
-                          <TrendingUp
-                            size={12}
-                            className="ml-1 text-teal-400"
-                          />
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Explore Tabs */}
                   <div className="mb-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
-                      <TabsList className="mb-4 bg-neutral-800">
+                      <TabsList className="mb-4 bg-neutral-100">
                         <TabsTrigger
                           value="category"
                           className="data-[state=active]:bg-teal-500 data-[state=active]:text-white"
                         >
-                          Explore by Category
+                          {t("search.exploreByCategory")}
                         </TabsTrigger>
                         <TabsTrigger
                           value="city"
                           className="data-[state=active]:bg-teal-500 data-[state=active]:text-white"
                         >
-                          Explore by City
+                          {t("search.exploreByCity")}
                         </TabsTrigger>
                       </TabsList>
 
@@ -284,15 +254,15 @@ export function InlineSearchBar({
                                 onClick={() =>
                                   handleCategoryCardClick(category)
                                 }
-                                className="group relative overflow-hidden rounded-lg bg-gradient-to-br from-neutral-800 to-neutral-950 p-4 text-left transition-all hover:scale-105 hover:shadow-xl"
+                                className="group relative overflow-hidden rounded-lg bg-gradient-to-br from-teal-50 to-teal-100 p-4 text-left transition-all hover:scale-105 hover:shadow-lg border border-teal-200"
                               >
-                                <div className="absolute inset-0 bg-gradient-to-br from-teal-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className="relative z-10">
                                   <Icon
-                                    className="text-teal-400 mb-2"
+                                    className="text-teal-600 mb-2"
                                     size={24}
                                   />
-                                  <p className="text-white">{category}</p>
+                                  <p className="text-neutral-800 font-medium">{t(`categories.${category}`)}</p>
                                 </div>
                               </button>
                             );
@@ -306,15 +276,15 @@ export function InlineSearchBar({
                             <button
                               key={city}
                               onClick={() => handleCityCardClick(city)}
-                              className="group relative overflow-hidden rounded-lg bg-gradient-to-br from-neutral-800 to-neutral-950 p-4 text-left transition-all hover:scale-105 hover:shadow-xl"
+                              className="group relative overflow-hidden rounded-lg bg-gradient-to-br from-teal-50 to-teal-100 p-4 text-left transition-all hover:scale-105 hover:shadow-lg border border-teal-200"
                             >
-                              <div className="absolute inset-0 bg-gradient-to-br from-teal-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                               <div className="relative z-10">
                                 <MapPin
-                                  className="text-teal-400 mb-2"
+                                  className="text-teal-600 mb-2"
                                   size={24}
                                 />
-                                <p className="text-white">{city}</p>
+                                <p className="text-neutral-800 font-medium">{city}</p>
                               </div>
                             </button>
                           ))}
@@ -325,17 +295,17 @@ export function InlineSearchBar({
 
                   {/* Suggestions */}
                   <div>
-                    <h3 className="text-white mb-3">Suggestions for You</h3>
+                    <h3 className="text-neutral-900 font-semibold mb-3">{t("search.suggestionsForYou")}</h3>
                     <div className="space-y-3">
-                      {filteredEvents.slice(0, 3).map((event) => {
-                        const lowestPrice = Math.min(
-                          ...event.ticketTiers.map((tier) => tier.price)
-                        );
+                      {suggestedEvents.slice(0, 3).map((event) => {
+                        const lowestPrice = event.ticketTiers.length > 0 
+                          ? Math.min(...event.ticketTiers.map((tier) => tier.price))
+                          : 0;
                         return (
                           <button
                             key={event.id}
                             onClick={() => handleEventCardClick(event.id)}
-                            className="group w-full flex gap-3 p-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-all"
+                            className="group w-full flex gap-3 p-3 rounded-lg bg-neutral-50 hover:bg-teal-50 transition-all border border-neutral-200 hover:border-teal-300"
                           >
                             <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden">
                               <img
@@ -345,20 +315,20 @@ export function InlineSearchBar({
                               />
                             </div>
                             <div className="flex-1 min-w-0 text-left">
-                              <h4 className="text-white mb-1 truncate group-hover:text-teal-400 transition-colors text-sm">
+                              <h4 className="text-neutral-900 mb-1 truncate group-hover:text-teal-600 transition-colors text-sm font-medium">
                                 {event.title}
                               </h4>
-                              <div className="flex items-center gap-2 text-xs text-neutral-400">
+                              <div className="flex items-center gap-2 text-xs text-neutral-500">
                                 <Calendar size={12} />
                                 <span>{formatDate(event.date)}</span>
                               </div>
-                              <p className="text-teal-400 text-sm mt-1">
-                                From {formatPrice(lowestPrice)}
+                              <p className="text-teal-600 text-sm mt-1 font-semibold">
+                                {t("search.from")} {formatPrice(lowestPrice)}
                               </p>
                             </div>
                             <ArrowRight
                               size={16}
-                              className="text-neutral-500 group-hover:text-teal-400 group-hover:translate-x-1 transition-all self-center"
+                              className="text-neutral-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all self-center"
                             />
                           </button>
                         );
@@ -370,21 +340,20 @@ export function InlineSearchBar({
                 /* Search Results */
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-white">Search Results</h3>
+                    <h3 className="text-neutral-900 font-semibold">{t("search.searchResults")}</h3>
                     <Badge
                       variant="secondary"
-                      className="bg-teal-500/20 text-teal-400"
+                      className="bg-teal-100 text-teal-700 border border-teal-200"
                     >
-                      {filteredEvents.length} result
-                      {filteredEvents.length !== 1 ? "s" : ""}
+                      {searchResults.length} {searchResults.length !== 1 ? t("search.results") : t("search.result")}
                     </Badge>
                   </div>
-                  {filteredEvents.length > 0 ? (
+                  {searchResults.length > 0 ? (
                     <div className="space-y-3">
-                      {filteredEvents.map((event) => {
-                        const lowestPrice = Math.min(
-                          ...event.ticketTiers.map((tier) => tier.price)
-                        );
+                      {searchResults.slice(0, 4).map((event) => {
+                        const lowestPrice = event.ticketTiers.length > 0
+                          ? Math.min(...event.ticketTiers.map((tier) => tier.price))
+                          : 0;
                         const isSoldOut = event.ticketTiers.every(
                           (tier) => tier.available === 0
                         );
@@ -393,7 +362,7 @@ export function InlineSearchBar({
                           <button
                             key={event.id}
                             onClick={() => handleEventCardClick(event.id)}
-                            className="group w-full flex gap-3 p-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-all"
+                            className="group w-full flex gap-3 p-3 rounded-lg bg-neutral-50 hover:bg-teal-50 transition-all border border-neutral-200 hover:border-teal-300"
                           >
                             <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
                               <img
@@ -404,16 +373,16 @@ export function InlineSearchBar({
                               {isSoldOut && (
                                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
                                   <Badge className="bg-red-500 text-white text-xs">
-                                    Sold Out
+                                    {t("search.soldOut")}
                                   </Badge>
                                 </div>
                               )}
                             </div>
                             <div className="flex-1 min-w-0 text-left">
-                              <h4 className="text-white mb-1 truncate group-hover:text-teal-400 transition-colors">
+                              <h4 className="text-neutral-900 mb-1 truncate group-hover:text-teal-600 transition-colors font-medium">
                                 {event.title}
                               </h4>
-                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-400">
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
                                 <div className="flex items-center gap-1">
                                   <Calendar size={14} />
                                   <span>{formatDate(event.date)}</span>
@@ -423,13 +392,13 @@ export function InlineSearchBar({
                                   <span className="truncate">{event.city}</span>
                                 </div>
                               </div>
-                              <p className="text-teal-400 mt-1">
-                                From {formatPrice(lowestPrice)}
+                              <p className="text-teal-600 mt-1 font-semibold">
+                                {t("search.from")} {formatPrice(lowestPrice)}
                               </p>
                             </div>
                             <ArrowRight
                               size={16}
-                              className="text-neutral-500 group-hover:text-teal-400 group-hover:translate-x-1 transition-all self-center"
+                              className="text-neutral-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all self-center"
                             />
                           </button>
                         );
@@ -437,21 +406,20 @@ export function InlineSearchBar({
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-neutral-800 flex items-center justify-center">
-                        <Search className="text-neutral-600" size={28} />
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-neutral-100 flex items-center justify-center">
+                        <Search className="text-neutral-400" size={28} />
                       </div>
-                      <h4 className="text-white mb-2">No events found</h4>
-                      <p className="text-sm text-neutral-400 mb-4">
-                        Try searching with different keywords or explore by
-                        category
+                      <h4 className="text-neutral-900 font-semibold mb-2">{t("search.noEventsFound")}</h4>
+                      <p className="text-sm text-neutral-600 mb-4">
+                        {t("search.tryDifferentKeywords")}
                       </p>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setSearchQuery("")}
-                        className="border-teal-500 text-teal-400 hover:bg-teal-500/20"
+                        className="border-teal-500 text-teal-600 hover:bg-teal-50"
                       >
-                        Clear search
+                        {t("search.clearSearch")}
                       </Button>
                     </div>
                   )}

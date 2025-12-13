@@ -40,6 +40,29 @@
     },
     "noEvents": "No events found"
   },
+  "search": {
+    "placeholder": "What are you looking for today?",
+    "exploreByCategory": "Explore by Category",
+    "exploreByCity": "Explore by City",
+    "suggestionsForYou": "Suggestions for You",
+    "searchResults": "Search Results",
+    "result": "result",
+    "results": "results",
+    "soldOut": "Sold Out",
+    "from": "From",
+    "noEventsFound": "No events found",
+    "tryDifferentKeywords": "Try searching with different keywords or explore by category",
+    "clearSearch": "Clear search"
+  },
+  "categories": {
+    "Music": "Music",
+    "Theater": "Theater",
+    "Sports": "Sports",
+    "Conference": "Conference",
+    "Arts": "Arts",
+    "Food & Drink": "Food & Drink",
+    "Other": "Other"
+  },
   "auth": {
     "login": "Login",
     "register": "Register",
@@ -2911,6 +2934,37 @@
       "contact": "Contact Us",
       "refund": "Refund Policy",
       "organizers": "For Organizers"
+    }
+  },
+  "chatbot": {
+    "title": "Tickify Assistant",
+    "placeholder": "Type your question...",
+    "online": "Online",
+    "poweredBy": "Powered by AI",
+    "clearHistory": "Clear chat history",
+    "close": "Close chat",
+    "send": "Send message",
+    "thinking": "Thinking...",
+    "retry": "Retry",
+    "enterToSend": "Press",
+    "toSend": "to send",
+    "shiftEnter": "Shift+Enter",
+    "toNewLine": "to new line",
+    "clear": "Clear",
+    "welcome": {
+      "title": "Welcome to {title}!",
+      "description": "I can help you search for events, book tickets, or answer questions. Let's start a conversation!"
+    },
+    "emptyState": {
+      "title": "Welcome to {title}!",
+      "description": "I can help you search for events, book tickets, or answer questions. Let's start a conversation!"
+    },
+    "error": {
+      "generic": "Sorry, an error occurred. Please try again.",
+      "network": "Connection error. Please check your internet connection."
+    },
+    "sources": {
+      "title": "Reference sources:"
     }
   }
 }
