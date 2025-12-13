@@ -1,9 +1,9 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Tickify.Server.AI.Models;
+using Tickify.Server.Models;
 
-namespace Tickify.Server.AI.Services;
+namespace Tickify.Server.Services.AI;
 
 /// <summary>
 /// Service for interacting with Qdrant Vector Database
@@ -11,39 +11,25 @@ namespace Tickify.Server.AI.Services;
 /// </summary>
 public interface IQdrantService
 {
-    /// <summary>
     /// Tạo collection mới (nếu chưa tồn tại)
-    /// </summary>
     Task CreateCollectionAsync();
     
-    /// <summary>
     /// Thêm documents vào collection
-    /// </summary>
     Task UpsertAsync(List<DocumentChunk> chunks);
     
-    /// <summary>
-    /// Tìm kiếm documents tương tự
-    /// </summary>
-    Task<List<QdrantSearchResult>> SearchAsync(float[] queryVector, int topK = 5, double minScore = 0.7);
+    /// Tìm kiếm documents với filter theo source_type
+    Task<List<QdrantSearchResult>> SearchWithFilterAsync(float[] queryVector, string? sourceType, int topK = 5, double minScore = 0.0);
     
-    /// <summary>
     /// Xóa tất cả documents trong collection
-    /// </summary>
     Task ClearCollectionAsync();
     
-    /// <summary>
     /// Kiểm tra collection có tồn tại không
-    /// </summary>
     Task<bool> CollectionExistsAsync();
     
-    /// <summary>
     /// Lấy số lượng documents trong collection
-    /// </summary>
     Task<long> GetDocumentCountAsync();
     
-    /// <summary>
     /// Kiểm tra Qdrant có đang chạy không
-    /// </summary>
     Task<bool> IsHealthyAsync();
 }
 
@@ -174,68 +160,6 @@ public class QdrantService : IQdrantService
         }
     }
 
-    public async Task<List<QdrantSearchResult>> SearchAsync(
-        float[] queryVector, 
-        int topK = 5, 
-        double minScore = 0.7)
-    {
-        try
-        {
-            // Kiểm tra collection có tồn tại không, nếu chưa thì tạo mới
-            if (!await CollectionExistsAsync())
-            {
-                _logger.LogWarning("Collection {CollectionName} does not exist. Creating...", _config.CollectionName);
-                await CreateCollectionAsync();
-                // Collection mới tạo nên chưa có data, trả về rỗng
-                return new List<QdrantSearchResult>();
-            }
-
-            var searchRequest = new
-            {
-                vector = queryVector,
-                limit = topK,
-                with_payload = true,
-                score_threshold = minScore
-            };
-
-            var json = JsonSerializer.Serialize(searchRequest, _jsonOptions);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PostAsync(
-                $"/collections/{_config.CollectionName}/points/search", 
-                content);
-            
-            // Nếu 404 (collection không tồn tại), trả về list rỗng
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                _logger.LogWarning("Collection not found during search, returning empty results");
-                return new List<QdrantSearchResult>();
-            }
-            
-            response.EnsureSuccessStatusCode();
-
-            var responseJson = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<QdrantSearchResponse>(responseJson, _jsonOptions);
-
-            return result?.Result?.Select(r => new QdrantSearchResult
-            {
-                Id = r.Id?.ToString() ?? "",
-                Score = r.Score,
-                Payload = r.Payload ?? new Dictionary<string, object>()
-            }).ToList() ?? new List<QdrantSearchResult>();
-        }
-        catch (HttpRequestException ex) when (ex.Message.Contains("404"))
-        {
-            _logger.LogWarning("Collection not found, returning empty results");
-            return new List<QdrantSearchResult>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error searching Qdrant");
-            throw;
-        }
-    }
-
     public async Task ClearCollectionAsync()
     {
         try
@@ -253,6 +177,90 @@ public class QdrantService : IQdrantService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error clearing Qdrant collection");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Search với filter theo source_type (event, faq, etc.)
+    /// </summary>
+    public async Task<List<QdrantSearchResult>> SearchWithFilterAsync(
+        float[] queryVector, 
+        string? sourceType, 
+        int topK = 5, 
+        double minScore = 0.0)
+    {
+        try
+        {
+            if (!await CollectionExistsAsync())
+            {
+                _logger.LogWarning("Collection does not exist");
+                return new List<QdrantSearchResult>();
+            }
+
+            object searchRequest;
+            
+            if (!string.IsNullOrEmpty(sourceType))
+            {
+                // Search với filter
+                searchRequest = new
+                {
+                    vector = queryVector,
+                    limit = topK,
+                    with_payload = true,
+                    score_threshold = minScore,
+                    filter = new
+                    {
+                        must = new[]
+                        {
+                            new
+                            {
+                                key = "source_type",
+                                match = new { value = sourceType }
+                            }
+                        }
+                    }
+                };
+            }
+            else
+            {
+                // Search không filter
+                searchRequest = new
+                {
+                    vector = queryVector,
+                    limit = topK,
+                    with_payload = true,
+                    score_threshold = minScore
+                };
+            }
+
+            var json = JsonSerializer.Serialize(searchRequest, _jsonOptions);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync(
+                $"/collections/{_config.CollectionName}/points/search", 
+                content);
+            
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return new List<QdrantSearchResult>();
+            }
+            
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<QdrantSearchResponse>(responseJson, _jsonOptions);
+
+            return result?.Result?.Select(r => new QdrantSearchResult
+            {
+                Id = r.Id?.ToString() ?? "",
+                Score = r.Score,
+                Payload = r.Payload ?? new Dictionary<string, object>()
+            }).ToList() ?? new List<QdrantSearchResult>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching Qdrant with filter");
             throw;
         }
     }

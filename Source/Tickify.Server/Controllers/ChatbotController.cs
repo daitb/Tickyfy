@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Tickify.Server.AI.Models;
-using Tickify.Server.AI.Services;
+using Tickify.Server.Models;
+using Tickify.Server.Services.AI;
 
-namespace Tickify.Server.AI.Controllers;
+namespace Tickify.Server.Controllers;
 
 /// <summary>
 /// API Controller cho RAG Chatbot
@@ -23,9 +23,6 @@ public class ChatbotController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Gửi tin nhắn và nhận phản hồi từ chatbot
-    /// </summary>
     [HttpPost("chat")]
     [AllowAnonymous]
     public async Task<ActionResult<ChatResponse>> Chat([FromBody] ChatRequest request)
@@ -55,9 +52,6 @@ public class ChatbotController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Stream phản hồi từ chatbot (Server-Sent Events)
-    /// </summary>
     [HttpPost("chat/stream")]
     [AllowAnonymous]
     public async Task StreamChat([FromBody] ChatRequest request)
@@ -84,9 +78,6 @@ public class ChatbotController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Lấy status của RAG system
-    /// </summary>
     [HttpGet("status")]
     [AllowAnonymous]
     public async Task<ActionResult<RagStatus>> GetStatus()
@@ -95,9 +86,6 @@ public class ChatbotController : ControllerBase
         return Ok(status);
     }
 
-    /// <summary>
-    /// Index events từ database vào vector database
-    /// </summary>
     [HttpPost("index/events")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> IndexEvents()
@@ -114,9 +102,6 @@ public class ChatbotController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Index FAQ vào vector database
-    /// </summary>
     [HttpPost("index/faq")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> IndexFaq()
@@ -133,9 +118,6 @@ public class ChatbotController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Reset collection - xóa và tạo lại collection trong Qdrant
-    /// </summary>
     [HttpPost("reset")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ResetCollection([FromServices] IQdrantService qdrantService)

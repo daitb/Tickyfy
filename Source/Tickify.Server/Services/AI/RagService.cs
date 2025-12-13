@@ -1,17 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Tickify.Data;
+using Tickify.Server.Models;
 
-namespace Tickify.Server.AI.Services;
+namespace Tickify.Server.Services.AI;
 
-/// <summary>
-/// Service chính xử lý RAG pipeline
-/// Hỗ trợ nhiều LLM providers: Groq (cloud free), Ollama (local)
-/// </summary>
 public interface IRagService
 {
-    Task<Models.ChatResponse> ProcessQueryAsync(Models.ChatRequest request);
-    IAsyncEnumerable<string> StreamQueryAsync(Models.ChatRequest request);
-    Task IndexDocumentsAsync(List<Models.IndexDocumentRequest> documents);
+    Task<ChatResponse> ProcessQueryAsync(ChatRequest request);
+    IAsyncEnumerable<string> StreamQueryAsync(ChatRequest request);
+    Task IndexDocumentsAsync(List<IndexDocumentRequest> documents);
     Task IndexEventsFromDatabaseAsync();
     Task IndexFaqAsync();
     Task<RagStatus> GetStatusAsync();
@@ -23,19 +20,16 @@ public class RagStatus
     public bool QdrantHealthy { get; set; }
     public bool EmbeddingHealthy { get; set; }
     public long DocumentCount { get; set; }
-    public string LlmProvider { get; set; } = string.Empty;
-    public string EmbeddingProvider { get; set; } = string.Empty;
 }
 
 public class RagService : IRagService
 {
     private readonly IGroqService? _groqService;
-    private readonly IOllamaService? _ollamaService;
     private readonly IEmbeddingService _embeddingService;
     private readonly IQdrantService _qdrantService;
     private readonly IDocumentProcessorService _documentProcessor;
     private readonly ApplicationDbContext _dbContext;
-    private readonly Models.RagConfiguration _config;
+    private readonly RagConfiguration _config;
     private readonly ILogger<RagService> _logger;
 
     private const string SystemPrompt = """
@@ -54,8 +48,7 @@ public class RagService : IRagService
         4. Format danh sách sự kiện rõ ràng với tên, ngày, địa điểm
         5. Nếu người dùng hỏi về vấn đề không liên quan đến sự kiện (ví dụ: siêu thị, thời tiết, tin tức xã hội...), hãy từ chối lịch sự.
         6. TUYỆT ĐỐI KHÔNG khuyên người dùng tìm kiếm thông tin đó trên Tickify (vì Tickify chỉ có sự kiện).
-        7. Hãy gợi ý lái sang các sự kiện có chủ đề tương tự (Ví dụ: Hỏi siêu thị -> Gợi ý Hội chợ; Hỏi ca sĩ -> Gợi ý Nhạc hội).
-        8. Mẫu câu trả lời: "Xin lỗi, Tickify chỉ cung cấp thông tin sự kiện. Bạn có muốn tìm các [Sự kiện liên quan] không?"
+        7. Mẫu câu trả lời: "Xin lỗi, Tickify chỉ cung cấp thông tin sự kiện. Bạn có muốn tìm các [Sự kiện liên quan] không?"
 
         CONTEXT (Dữ liệu sự kiện từ Tickify):
         {context}
@@ -68,10 +61,9 @@ public class RagService : IRagService
         IDocumentProcessorService documentProcessor,
         IEmbeddingService embeddingService,
         ApplicationDbContext dbContext,
-        Models.RagConfiguration config,
+        RagConfiguration config,
         ILogger<RagService> logger,
-        IGroqService? groqService = null,
-        IOllamaService? ollamaService = null)
+        IGroqService? groqService = null)
     {
         _qdrantService = qdrantService;
         _documentProcessor = documentProcessor;
@@ -80,44 +72,35 @@ public class RagService : IRagService
         _config = config;
         _logger = logger;
         _groqService = groqService;
-        _ollamaService = ollamaService;
     }
 
     private async Task<string> ChatWithLlmAsync(
         string systemPrompt, 
         string userMessage, 
-        List<Models.ChatMessage>? history = null)
+        List<ChatMessage>? history = null)
     {
-        if (_config.LlmProvider == "groq" && _groqService != null)
+        if (_groqService != null)
         {
             return await _groqService.ChatAsync(systemPrompt, userMessage, history);
         }
-        else if (_ollamaService != null)
-        {
-            return await _ollamaService.ChatAsync(systemPrompt, userMessage, history);
-        }
         
-        throw new InvalidOperationException("No LLM provider configured. Please set GroqApiKey or run Ollama.");
+        throw new InvalidOperationException("No LLM provider configured. Please set GroqApiKey.");
     }
 
     private IAsyncEnumerable<string> StreamChatWithLlmAsync(
         string systemPrompt, 
         string userMessage, 
-        List<Models.ChatMessage>? history = null)
+        List<ChatMessage>? history = null)
     {
-        if (_config.LlmProvider == "groq" && _groqService != null)
+        if (_groqService != null)
         {
             return _groqService.StreamChatAsync(systemPrompt, userMessage, history);
-        }
-        else if (_ollamaService != null)
-        {
-            return _ollamaService.StreamChatAsync(systemPrompt, userMessage, history);
         }
         
         throw new InvalidOperationException("No LLM provider configured.");
     }
 
-    public async Task<Models.ChatResponse> ProcessQueryAsync(Models.ChatRequest request)
+    public async Task<ChatResponse> ProcessQueryAsync(ChatRequest request)
     {
         var conversationId = request.ConversationId ?? Guid.NewGuid().ToString();
         
@@ -129,18 +112,16 @@ public class RagService : IRagService
             var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Message);
             _logger.LogInformation("Created embedding with {Dims} dimensions", queryEmbedding.Length);
 
-            // 2. Search for relevant documents - dùng minScore thấp cho simple embedding
-            var minScore = 0.0; // Không lọc theo score, lấy tất cả
-            var searchResults = await _qdrantService.SearchAsync(
-                queryEmbedding, 
-                _config.TopK, 
-                minScore);
+            // 2. Phân loại câu hỏi và search thông minh
+            var searchResults = await SmartSearchAsync(queryEmbedding, request.Message);
 
             _logger.LogInformation("Found {Count} relevant documents from Qdrant", searchResults.Count);
             foreach (var r in searchResults)
             {
-                _logger.LogInformation("  - Score: {Score:F4}, Source: {Source}", 
-                    r.Score, r.Payload.GetValueOrDefault("source", "unknown"));
+                _logger.LogInformation("  - Score: {Score:F4}, Type: {Type}, Source: {Source}", 
+                    r.Score, 
+                    r.Payload.GetValueOrDefault("source_type", "unknown"),
+                    r.Payload.GetValueOrDefault("source", "unknown"));
             }
 
             // 3. Build context
@@ -159,7 +140,7 @@ public class RagService : IRagService
                 request.Message, 
                 request.History);
 
-            return new Models.ChatResponse
+            return new ChatResponse
             {
                 Message = response,
                 ConversationId = conversationId,
@@ -170,7 +151,7 @@ public class RagService : IRagService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing RAG query");
-            return new Models.ChatResponse
+            return new ChatResponse
             {
                 Message = "Xin loi, da co loi xay ra. Vui long thu lai sau.",
                 ConversationId = conversationId,
@@ -180,26 +161,24 @@ public class RagService : IRagService
         }
     }
 
-    public async IAsyncEnumerable<string> StreamQueryAsync(Models.ChatRequest request)
+    public async IAsyncEnumerable<string> StreamQueryAsync(ChatRequest request)
     {
         _logger.LogInformation("StreamQuery: Processing query '{Query}'", request.Message);
         
         var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Message);
         _logger.LogInformation("StreamQuery: Created embedding with {Dims} dimensions", queryEmbedding.Length);
 
-        // Dùng minScore = 0 để lấy tất cả documents (không lọc)
-        var minScore = 0.0;
-        var searchResults = await _qdrantService.SearchAsync(
-            queryEmbedding, 
-            _config.TopK, 
-            minScore);
+        // Sử dụng SmartSearch để lấy kết quả phù hợp
+        var searchResults = await SmartSearchAsync(queryEmbedding, request.Message);
 
         _logger.LogInformation("StreamQuery: Found {Count} relevant documents", searchResults.Count);
         
         foreach (var result in searchResults)
         {
-            _logger.LogInformation("StreamQuery: Doc score={Score:F4}, source={Source}", 
-                result.Score, result.Payload.GetValueOrDefault("source", "unknown"));
+            _logger.LogInformation("StreamQuery: Doc score={Score:F4}, type={Type}, source={Source}", 
+                result.Score, 
+                result.Payload.GetValueOrDefault("source_type", "unknown"),
+                result.Payload.GetValueOrDefault("source", "unknown"));
         }
 
         var context = BuildContext(searchResults);
@@ -216,13 +195,74 @@ public class RagService : IRagService
         }
     }
 
-    public async Task IndexDocumentsAsync(List<Models.IndexDocumentRequest> documents)
+    /// <summary>
+    /// Smart search - phân loại câu hỏi và search với filter phù hợp
+    /// Nếu hỏi về sự kiện -> ưu tiên events
+    /// Nếu hỏi về cách sử dụng/hướng dẫn -> ưu tiên FAQ
+    /// Nếu không rõ -> lấy cả hai
+    /// </summary>
+    private async Task<List<QdrantSearchResult>> SmartSearchAsync(float[] queryEmbedding, string query)
+    {
+        var queryLower = query.ToLowerInvariant();
+        
+        // Keywords cho event queries
+        var eventKeywords = new[] { 
+            "sự kiện", "event", "concert", "show", "lịch", "ngày", "địa điểm", 
+            "vé", "ticket", "giá", "danh sách", "tìm", "có những", "nào", 
+            "đang diễn ra", "sắp tới", "hôm nay", "tuần này", "tháng này",
+            "nhạc hội", "festival", "workshop", "hội thảo", "biểu diễn"
+        };
+        
+        // Keywords cho FAQ queries  
+        var faqKeywords = new[] { 
+            "làm sao", "làm thế nào", "cách", "hướng dẫn", "thế nào", 
+            "tại sao", "bao lâu", "ở đâu", "liên hệ", "hỗ trợ", "hotline",
+            "hoàn tiền", "đổi vé", "hủy", "thanh toán", "payment", 
+            "đăng ký", "đăng nhập", "tài khoản", "mật khẩu", "email",
+            "quy định", "chính sách", "điều khoản"
+        };
+        
+        var isEventQuery = eventKeywords.Any(k => queryLower.Contains(k));
+        var isFaqQuery = faqKeywords.Any(k => queryLower.Contains(k));
+        
+        _logger.LogInformation("Query classification: isEvent={IsEvent}, isFaq={IsFaq}", isEventQuery, isFaqQuery);
+        
+        List<QdrantSearchResult> results;
+        
+        if (isEventQuery && !isFaqQuery)
+        {
+            // Chỉ hỏi về events -> lấy nhiều events
+            _logger.LogInformation("Searching for events only");
+            results = await _qdrantService.SearchWithFilterAsync(queryEmbedding, "event", _config.TopK, 0.0);
+        }
+        else if (isFaqQuery && !isEventQuery)
+        {
+            // Chỉ hỏi FAQ -> lấy FAQ + vài events liên quan
+            _logger.LogInformation("Searching for FAQ with some events");
+            var faqResults = await _qdrantService.SearchWithFilterAsync(queryEmbedding, "faq", _config.TopK - 2, 0.0);
+            var eventResults = await _qdrantService.SearchWithFilterAsync(queryEmbedding, "event", 2, 0.0);
+            results = faqResults.Concat(eventResults).ToList();
+        }
+        else
+        {
+            // Cả hai hoặc không rõ -> lấy cân bằng (ưu tiên events nhiều hơn)
+            _logger.LogInformation("Searching for both events and FAQ");
+            var eventResults = await _qdrantService.SearchWithFilterAsync(queryEmbedding, "event", _config.TopK - 3, 0.0);
+            var faqResults = await _qdrantService.SearchWithFilterAsync(queryEmbedding, "faq", 3, 0.0);
+            results = eventResults.Concat(faqResults).ToList();
+        }
+        
+        // Sort by score descending
+        return results.OrderByDescending(r => r.Score).ToList();
+    }
+
+    public async Task IndexDocumentsAsync(List<IndexDocumentRequest> documents)
     {
         _logger.LogInformation("Indexing {Count} documents", documents.Count);
 
         await _qdrantService.CreateCollectionAsync();
 
-        var allChunks = new List<Models.DocumentChunk>();
+        var allChunks = new List<DocumentChunk>();
 
         foreach (var doc in documents)
         {
@@ -268,7 +308,7 @@ public class RagService : IRagService
                        e.Status == Tickify.Models.EventStatus.Approved)
             .ToListAsync();
 
-        var documents = events.Select(e => new Models.IndexDocumentRequest
+        var documents = events.Select(e => new IndexDocumentRequest
         {
             Content = BuildEventContent(e),
             Source = $"Event: {e.Title}",
@@ -283,19 +323,13 @@ public class RagService : IRagService
         }).ToList();
 
         await IndexDocumentsAsync(documents);
-        
-        _logger.LogInformation("Indexed {Count} events from database", events.Count);
     }
 
-    /// <summary>
-    /// Index FAQ từ file markdown
-    /// </summary>
     public async Task IndexFaqAsync()
     {
-        _logger.LogInformation("Indexing FAQ");
 
         // Đường dẫn đến file FAQ
-        var faqPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "AI", "Data", "FAQ.md");
+        var faqPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "FAQ.md");
         
         // Fallback nếu chạy từ bin folder
         if (!File.Exists(faqPath))
@@ -326,12 +360,9 @@ public class RagService : IRagService
         _logger.LogInformation("Indexed {Count} FAQ entries", faqDocuments.Count);
     }
 
-    /// <summary>
-    /// Parse nội dung FAQ markdown thành các documents
-    /// </summary>
-    private List<Models.IndexDocumentRequest> ParseFaqContent(string content)
+    private List<IndexDocumentRequest> ParseFaqContent(string content)
     {
-        var documents = new List<Models.IndexDocumentRequest>();
+        var documents = new List<IndexDocumentRequest>();
         var lines = content.Split('\n');
         
         string? currentCategory = null;
@@ -383,12 +414,12 @@ public class RagService : IRagService
         return documents;
     }
 
-    private static Models.IndexDocumentRequest CreateFaqDocument(
+    private static IndexDocumentRequest CreateFaqDocument(
         string? category, 
         string question, 
         string answer)
     {
-        return new Models.IndexDocumentRequest
+        return new IndexDocumentRequest
         {
             Content = $"""
                 ❓ CÂU HỎI: {question}
@@ -411,29 +442,18 @@ public class RagService : IRagService
 
     public async Task<RagStatus> GetStatusAsync()
     {
-        var llmHealthy = false;
-        
-        if (_config.LlmProvider == "groq" && _groqService != null)
-        {
-            llmHealthy = await _groqService.IsHealthyAsync();
-        }
-        else if (_ollamaService != null)
-        {
-            llmHealthy = await _ollamaService.IsHealthyAsync();
-        }
+        var llmHealthy = _groqService != null && await _groqService.IsHealthyAsync();
 
         return new RagStatus
         {
             LlmHealthy = llmHealthy,
             QdrantHealthy = await _qdrantService.IsHealthyAsync(),
             EmbeddingHealthy = await _embeddingService.IsHealthyAsync(),
-            DocumentCount = await _qdrantService.GetDocumentCountAsync(),
-            LlmProvider = _config.LlmProvider,
-            EmbeddingProvider = _config.EmbeddingProvider
+            DocumentCount = await _qdrantService.GetDocumentCountAsync()
         };
     }
 
-    private string BuildContext(List<Models.QdrantSearchResult> results)
+    private string BuildContext(List<QdrantSearchResult> results)
     {
         if (!results.Any())
         {
@@ -457,9 +477,9 @@ public class RagService : IRagService
         return contextBuilder.ToString();
     }
 
-    private List<Models.SourceReference> ExtractSources(List<Models.QdrantSearchResult> results)
+    private List<SourceReference> ExtractSources(List<QdrantSearchResult> results)
     {
-        return results.Select(r => new Models.SourceReference
+        return results.Select(r => new SourceReference
         {
             Source = r.Payload.GetValueOrDefault("source", "Unknown")?.ToString() ?? "",
             SourceType = r.Payload.GetValueOrDefault("source_type", "")?.ToString() ?? "",
