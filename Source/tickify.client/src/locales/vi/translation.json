@@ -23,7 +23,9 @@
     "profileSettings": "Hồ sơ & Cài đặt",
     "signOut": "Đăng xuất",
     "chat": "Trò chuyện",
-    "pendingApproval": "Đang chờ phê duyệt"
+    "pendingApproval": "Đang chờ phê duyệt",
+    "refundHistory": "Hoàn tiền của tôi",
+    "manageRefunds": "Quản lý hoàn tiền"
   },
   "home": {
     "title": "Khám phá các sự kiện tuyệt vời",
