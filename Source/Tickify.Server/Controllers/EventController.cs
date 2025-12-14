@@ -30,7 +30,6 @@ public class EventController : ControllerBase
 
     #region Public Endpoints
 
-    /// Get all events with filtering, sorting and pagination
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<EventListDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<PagedResult<EventListDto>>>> GetEvents(
@@ -46,7 +45,6 @@ public class EventController : ControllerBase
         ));
     }
 
-    /// Get featured events for homepage
     [HttpGet("featured")]
     [ProducesResponseType(typeof(ApiResponse<List<EventCardDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<EventCardDto>>>> GetFeaturedEvents(
@@ -65,7 +63,6 @@ public class EventController : ControllerBase
         ));
     }
 
-    /// Get upcoming published events
     [HttpGet("upcoming")]
     [ProducesResponseType(typeof(ApiResponse<List<EventCardDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<EventCardDto>>>> GetUpcomingEvents(
@@ -84,7 +81,6 @@ public class EventController : ControllerBase
         ));
     }
 
-    /// Get event details by ID
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status404NotFound)]
@@ -107,7 +103,6 @@ public class EventController : ControllerBase
         ));
     }
 
-    /// Search events by keyword
     [HttpGet("search")]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<EventListDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<EventListDto>>), StatusCodes.Status400BadRequest)]
@@ -140,7 +135,6 @@ public class EventController : ControllerBase
 
     #region Organizer Endpoints (Organizer Role Required)
 
-    /// Create new event (Organizer only)
     [HttpPost]
     [Authorize(Roles = "Organizer")]
     [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status201Created)]
@@ -186,11 +180,10 @@ public class EventController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating event: {Message}. DTO: {@Dto}", ex.Message, dto);
-            throw; // Re-throw to be caught by ExceptionHandlingMiddleware
+            throw; 
         }
     }
 
-    /// Update existing event (Organizer/Admin)
     [HttpPut("{id}")]
     [Authorize(Roles = "Organizer,Admin")]
     [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status200OK)]
@@ -227,7 +220,6 @@ public class EventController : ControllerBase
         ));
     }
 
-    /// Publish event - submit for admin approval (Organizer only)
     [HttpPost("{id}/publish")]
     [Authorize(Roles = "Organizer")]
     [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status200OK)]
@@ -249,7 +241,6 @@ public class EventController : ControllerBase
         ));
     }
 
-    /// Cancel event (Organizer/Admin)
     [HttpPost("{id}/cancel")]
     [Authorize(Roles = "Organizer,Admin")]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
@@ -278,7 +269,6 @@ public class EventController : ControllerBase
         ));
     }
 
-    /// Duplicate event (create copy with new dates)
     [HttpPost("{id}/duplicate")]
     [Authorize(Roles = "Organizer")]
     [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status201Created)]
@@ -307,7 +297,6 @@ public class EventController : ControllerBase
 
     #region Admin Endpoints (Admin Role Required)
 
-    /// Approve event (Admin only)
     [HttpPost("{id}/approve")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status200OK)]
@@ -328,7 +317,6 @@ public class EventController : ControllerBase
         ));
     }
 
-    /// Reject event (Admin only)
     [HttpPost("{id}/reject")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), StatusCodes.Status200OK)]
@@ -360,7 +348,6 @@ public class EventController : ControllerBase
         ));
     }
 
-    /// Delete event (Organizer can delete Pending/Rejected, Admin can delete any) - Soft delete
     [HttpDelete("{id}")]
     [Authorize(Roles = "Organizer,Admin")]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
@@ -387,7 +374,6 @@ public class EventController : ControllerBase
 
     #region Statistics Endpoint (Organizer/Admin)
 
-    /// Get event statistics (Organizer/Admin)
     [HttpGet("{id}/stats")]
     [Authorize(Roles = "Organizer,Admin")]
     [ProducesResponseType(typeof(ApiResponse<EventStatsDto>), StatusCodes.Status200OK)]
@@ -413,7 +399,6 @@ public class EventController : ControllerBase
 
     #region Helper Methods
 
-    /// Get current user ID from JWT claims
     private int GetUserIdFromClaims()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -428,16 +413,13 @@ public class EventController : ControllerBase
         return userId;
     }
 
-    /// Get organizer ID from JWT claims (for organizers)
     private async Task<int> GetOrganizerIdFromClaimsAsync()
     {
-        // Log all claims for debugging
         var allClaims = User.Claims.Select(c => $"{c.Type}={c.Value}").ToList();
         _logger.LogInformation("User claims: {Claims}", string.Join(", ", allClaims));
 
         var organizerIdClaim = User.FindFirst("organizerId")?.Value;
 
-        // If organizerId is not in token, try to get it from database
         if (string.IsNullOrEmpty(organizerIdClaim))
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -453,8 +435,6 @@ public class EventController : ControllerBase
 
             if (organizer == null)
             {
-                // First, check if user actually has Organizer role in database
-                // This is a safety check - user should not have Organizer role in token without having it in database
                 var user = await _context.Users
                     .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
@@ -469,26 +449,19 @@ public class EventController : ControllerBase
                 
                 if (!hasOrganizerRole)
                 {
-                    // User does not have Organizer role in database - this should not happen
-                    // User should not have Organizer role in token without having it in database
                     _logger.LogWarning("User {UserId} has Organizer role in token but not in database. This may indicate a token issue.", userId);
                     throw new UnauthorizedAccessException("You do not have organizer permissions. Please contact admin if you believe this is an error.");
                 }
 
-                // Check if user has an approved organizer request
-                // Only auto-create if there's an approved request, not just a pending one
                 var approvedRequest = await _context.OrganizerRequests
                     .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == "Approved");
                 
                 if (approvedRequest == null)
                 {
-                    // User has Organizer role in database but no approved request
-                    // This should not happen - user should not have Organizer role without approval
                     _logger.LogWarning("User {UserId} has Organizer role in database but no approved organizer request. This may indicate a data inconsistency.", userId);
                     throw new UnauthorizedAccessException("You do not have a valid organizer profile. Please contact admin if you believe this is an error.");
                 }
 
-                // Auto-create Organizer profile from approved request
                 _logger.LogInformation("Auto-creating Organizer profile for user {UserId} from approved request {RequestId}", userId, approvedRequest.RequestId);
 
                 organizer = new Tickify.Models.Organizer
@@ -529,7 +502,6 @@ public class EventController : ControllerBase
     #endregion
 }
 
-/// Request model for cancelling events
 public class CancelEventRequest
 {
     public string? Reason { get; set; }

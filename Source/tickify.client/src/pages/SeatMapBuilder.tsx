@@ -619,6 +619,8 @@ export function SeatMapBuilder({
     // Navigate back to wizard with eventId after publishing
     setTimeout(() => {
       if (eventId) {
+        // Save step 3 (Ticketing) to return to correct step
+        sessionStorage.setItem(`wizard-step-${eventId}`, "3");
         onNavigate("organizer-wizard", eventId);
       } else {
         onNavigate("organizer-dashboard");
@@ -637,6 +639,8 @@ export function SeatMapBuilder({
                 variant="ghost"
                 onClick={() => {
                   if (eventId) {
+                    // Save step 3 (Ticketing) to return to correct step
+                    sessionStorage.setItem(`wizard-step-${eventId}`, "3");
                     onNavigate("organizer-wizard", eventId);
                   } else {
                     onNavigate("organizer-dashboard");

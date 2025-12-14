@@ -11,7 +11,6 @@ using Tickify.Services.Email;
 
 namespace Tickify.Services;
 
-/// Event Service - Business logic for event management
 public class EventService : IEventService
 {
     private readonly IEventRepository _eventRepository;
@@ -34,15 +33,10 @@ public class EventService : IEventService
         _logger = logger;
     }
 
-    #region Public Queries (No Authentication Required)
-
-    /// Get all events with filtering, sorting and pagination
     public async Task<PagedResult<EventListDto>> GetAllEventsAsync(EventFilterDto filter)
     {
-        // Get paged events from repository
         var pagedEvents = await _eventRepository.GetAllAsync(filter);
 
-        // Map to EventListDto
         var eventListDtos = pagedEvents.Items.Select(MapToEventListDto).ToList();
 
         return new PagedResult<EventListDto>(
@@ -53,7 +47,6 @@ public class EventService : IEventService
         );
     }
 
-    /// Get event details by ID
     public async Task<EventDetailDto?> GetEventByIdAsync(int id)
     {
         var eventEntity = await _eventRepository.GetByIdAsync(id, includeRelated: true);
@@ -64,21 +57,18 @@ public class EventService : IEventService
         return MapToEventDetailDto(eventEntity);
     }
 
-    /// Get featured events for homepage
     public async Task<List<EventCardDto>> GetFeaturedEventsAsync(int count = 10)
     {
         var events = await _eventRepository.GetFeaturedEventsAsync(count);
         return events.Select(MapToEventCardDto).ToList();
     }
 
-    /// Get upcoming events (published and future)
     public async Task<List<EventCardDto>> GetUpcomingEventsAsync(int count = 20)
     {
         var events = await _eventRepository.GetUpcomingEventsAsync(count);
         return events.Select(MapToEventCardDto).ToList();
     }
 
-    /// Search events by keyword with pagination
     public async Task<PagedResult<EventListDto>> SearchEventsAsync(
         string searchTerm,
         int pageNumber = 1,
@@ -100,18 +90,12 @@ public class EventService : IEventService
         );
     }
 
-    #endregion
-
-    #region Organizer Operations (Create, Update, Publish, Duplicate)
-
-    /// Create new event (Organizer only)
     public async Task<EventDetailDto> CreateEventAsync(CreateEventDto dto, int organizerId)
     {
         try
         {
             _logger.LogInformation("Starting CreateEventAsync for organizer {OrganizerId}", organizerId);
 
-            // Validate organizer exists
             var organizer = await _context.Organizers
                 .Include(o => o.User)
                 .FirstOrDefaultAsync(o => o.Id == organizerId);
@@ -121,7 +105,6 @@ public class EventService : IEventService
             if (organizer == null)
                 throw new NotFoundException($"Organizer with ID {organizerId} not found");
 
-            // Validate category exists
             _logger.LogInformation("Looking up category {CategoryId}", dto.CategoryId);
             var category = await _context.Categories.FindAsync(dto.CategoryId);
             _logger.LogInformation("Category lookup result: Found={Found}, Active={Active}", 
@@ -130,7 +113,6 @@ public class EventService : IEventService
             if (category == null || !category.IsActive)
                 throw new NotFoundException($"Category with ID {dto.CategoryId} not found or inactive");
 
-            // Business validation
             _logger.LogInformation("Validating event dates: Start={Start}, End={End}", 
                 dto.StartDate, dto.EndDate);
             ValidateEventDates(dto.StartDate, dto.EndDate);
@@ -138,7 +120,6 @@ public class EventService : IEventService
             _logger.LogInformation("Validating ticket types: Count={Count}", dto.TicketTypes?.Count ?? 0);
             ValidateTicketTypes(dto.TicketTypes);
 
-            // Create event entity
             _logger.LogInformation("Creating event entity");
             var eventEntity = new Event
             {
@@ -152,19 +133,17 @@ public class EventService : IEventService
                 MaxCapacity = dto.TotalSeats,
                 CategoryId = dto.CategoryId,
                 OrganizerId = organizerId,
-                Status = EventStatus.Pending, // Always Pending - requires admin approval
+                Status = EventStatus.Pending,
                 CreatedAt = DateTime.UtcNow
             };
             
             _logger.LogInformation("Event status set to: {Status} (Value: {StatusValue})", 
                 eventEntity.Status, (int)eventEntity.Status);
 
-            // Add event to database
             _logger.LogInformation("Adding event to database");
             var createdEvent = await _eventRepository.AddAsync(eventEntity);
             _logger.LogInformation("Event created with ID {EventId}", createdEvent.Id);
 
-            // Create ticket types if provided
             if (dto.TicketTypes != null && dto.TicketTypes.Any())
             {
                 _logger.LogInformation("Creating {Count} ticket types", dto.TicketTypes.Count);
@@ -189,7 +168,6 @@ public class EventService : IEventService
                 _logger.LogInformation("Ticket types saved successfully");
             }
 
-            // Send email notification to organizer
             _logger.LogInformation("Sending email notification to {Email}", organizer.User!.Email);
             try
             {
@@ -204,11 +182,9 @@ public class EventService : IEventService
             }
             catch (Exception emailEx)
             {
-                // Email failure should not block event creation
                 _logger.LogWarning(emailEx, "Failed to send email notification but event was created");
             }
 
-            // Reload event with all related data
             _logger.LogInformation("Reloading event with related data");
             var fullEvent = await _eventRepository.GetByIdAsync(createdEvent.Id, includeRelated: true);
             _logger.LogInformation("CreateEventAsync completed successfully");
@@ -221,7 +197,6 @@ public class EventService : IEventService
         }
     }
 
-    /// Update existing event (Organizer/Admin only)
     public async Task<EventDetailDto> UpdateEventAsync(
         int id,
         UpdateEventDto dto,
@@ -233,7 +208,6 @@ public class EventService : IEventService
         if (eventEntity == null)
             throw new NotFoundException($"Event with ID {id} not found");
 
-        // Authorization check (unless admin)
         if (!isAdmin)
         {
             var user = await _context.Users
@@ -244,7 +218,6 @@ public class EventService : IEventService
                 throw new ForbiddenException("You are not authorized to update this event");
         }
 
-        // Check if event can be edited
         if (!await CanEditEventAsync(id))
         {
             var currentEvent = await _eventRepository.GetByIdAsync(id);
@@ -258,15 +231,12 @@ public class EventService : IEventService
                 throw new BadRequestException("This event cannot be edited");
         }
 
-        // Validate category exists
         var category = await _context.Categories.FindAsync(dto.CategoryId);
         if (category == null || !category.IsActive)
             throw new NotFoundException($"Category with ID {dto.CategoryId} not found or inactive");
 
-        // Business validation
         ValidateEventDates(dto.StartDate, dto.EndDate);
 
-        // Update event properties
         eventEntity.Title = dto.Title.Trim();
         eventEntity.Description = dto.Description.Trim();
         eventEntity.Location = dto.Venue.Trim();
@@ -278,18 +248,12 @@ public class EventService : IEventService
         eventEntity.CategoryId = dto.CategoryId;
         eventEntity.UpdatedAt = DateTime.UtcNow;
 
-        // Note: Keep the current status - allow editing of Approved/Published events
-        // Organizer can update details even after approval, but significant changes
-        // may require re-submission for approval if needed
-
         await _eventRepository.UpdateAsync(eventEntity);
 
-        // Reload with related data
         var updatedEvent = await _eventRepository.GetByIdAsync(id, includeRelated: true);
         return MapToEventDetailDto(updatedEvent!);
     }
 
-    /// Publish event - submit for admin approval (Organizer only)
     public async Task<EventDetailDto> PublishEventAsync(int id, int organizerId)
     {
         var eventEntity = await _eventRepository.GetByIdAsync(id, includeRelated: true);
@@ -297,30 +261,24 @@ public class EventService : IEventService
         if (eventEntity == null)
             throw new NotFoundException($"Event with ID {id} not found");
 
-        // Verify ownership
         if (!await _eventRepository.IsOrganizerOwnerAsync(id, organizerId))
             throw new ForbiddenException("You are not authorized to publish this event");
 
-        // Check current status
         if (eventEntity.Status != EventStatus.Pending)
             throw new BadRequestException($"Event cannot be published from status: {eventEntity.Status}");
 
-        // Validate event has ticket types
         if (eventEntity.TicketTypes == null || !eventEntity.TicketTypes.Any())
             throw new BadRequestException("Event must have at least one ticket type before publishing");
 
-        // Change status to Pending (waiting for admin approval)
         eventEntity.Status = EventStatus.Pending;
         eventEntity.UpdatedAt = DateTime.UtcNow;
 
         await _eventRepository.UpdateAsync(eventEntity);
 
-        // Notify admins (optional - could be done via background job)
         var updatedEvent = await _eventRepository.GetByIdAsync(id, includeRelated: true);
         return MapToEventDetailDto(updatedEvent!);
     }
 
-    /// Cancel event (Organizer/Admin)
     public async Task<bool> CancelEventAsync(int id, int userId, bool isAdmin, string? reason = null)
     {
         var eventEntity = await _eventRepository.GetByIdAsync(id, includeRelated: true);
@@ -328,7 +286,6 @@ public class EventService : IEventService
         if (eventEntity == null)
             throw new NotFoundException($"Event with ID {id} not found");
 
-        // Authorization check
         if (!isAdmin)
         {
             var user = await _context.Users
@@ -339,22 +296,15 @@ public class EventService : IEventService
                 throw new ForbiddenException("You are not authorized to cancel this event");
         }
 
-        // Check if event can be cancelled
         if (eventEntity.Status == EventStatus.Cancelled || eventEntity.Status == EventStatus.Completed)
             throw new BadRequestException($"Event cannot be cancelled (current status: {eventEntity.Status})");
 
-        // Update status
         eventEntity.Status = EventStatus.Cancelled;
         eventEntity.RejectionReason = reason ?? "Event cancelled by organizer";
         eventEntity.UpdatedAt = DateTime.UtcNow;
 
         await _eventRepository.UpdateAsync(eventEntity);
 
-        // TODO: Trigger refunds for confirmed bookings
-        // This should be done via background job (Hangfire)
-        // await ProcessRefundsForCancelledEvent(id);
-
-        // Send cancellation emails to ticket holders
         try
         {
             var confirmedBookings = await _context.Bookings
@@ -376,13 +326,11 @@ public class EventService : IEventService
         }
         catch (Exception)
         {
-            // Email failure should not block cancellation
         }
 
         return true;
     }
 
-    /// Duplicate event (create copy with new dates)
     public async Task<EventDetailDto> DuplicateEventAsync(int id, int organizerId)
     {
         var originalEvent = await _eventRepository.GetByIdAsync(id, includeRelated: true);
@@ -390,11 +338,9 @@ public class EventService : IEventService
         if (originalEvent == null)
             throw new NotFoundException($"Event with ID {id} not found");
 
-        // Verify ownership
         if (!await _eventRepository.IsOrganizerOwnerAsync(id, organizerId))
             throw new ForbiddenException("You are not authorized to duplicate this event");
 
-        // Create duplicated event
         var duplicatedEvent = new Event
         {
             Title = $"{originalEvent.Title} (Copy)",
@@ -406,8 +352,8 @@ public class EventService : IEventService
             MinimumAge = originalEvent.MinimumAge,
             CategoryId = originalEvent.CategoryId,
             OrganizerId = organizerId,
-            Status = EventStatus.Pending, // Start as draft
-            StartDate = DateTime.UtcNow.AddDays(30), // Default: 30 days from now
+            Status = EventStatus.Pending,
+            StartDate = DateTime.UtcNow.AddDays(30),
             EndDate = DateTime.UtcNow.AddDays(30).AddHours(
                 (originalEvent.EndDate - originalEvent.StartDate).TotalHours
             ),
@@ -416,7 +362,6 @@ public class EventService : IEventService
 
         var createdEvent = await _eventRepository.AddAsync(duplicatedEvent);
 
-        // Duplicate ticket types
         if (originalEvent.TicketTypes != null && originalEvent.TicketTypes.Any())
         {
             foreach (var originalTicketType in originalEvent.TicketTypes)
@@ -441,16 +386,10 @@ public class EventService : IEventService
             await _context.SaveChangesAsync();
         }
 
-        // Reload with related data
         var fullEvent = await _eventRepository.GetByIdAsync(createdEvent.Id, includeRelated: true);
         return MapToEventDetailDto(fullEvent!);
     }
 
-    #endregion
-
-    #region Admin Operations (Approve, Reject, Delete)
-
-    /// Approve event (Admin only) - changes status to Approved
     public async Task<EventDetailDto> ApproveEventAsync(int id, int adminId)
     {
         var eventEntity = await _eventRepository.GetByIdAsync(id, includeRelated: true);
@@ -458,11 +397,9 @@ public class EventService : IEventService
         if (eventEntity == null)
             throw new NotFoundException($"Event with ID {id} not found");
 
-        // Check if event is in Pending status
         if (eventEntity.Status != EventStatus.Pending)
             throw new BadRequestException($"Only pending events can be approved (current status: {eventEntity.Status})");
 
-        // Update event status
         eventEntity.Status = EventStatus.Approved;
         eventEntity.ApprovedByStaffId = adminId;
         eventEntity.ApprovedAt = DateTime.UtcNow;
@@ -470,7 +407,6 @@ public class EventService : IEventService
 
         await _eventRepository.UpdateAsync(eventEntity);
 
-        // Send approval email and notification to organizer
         try
         {
             var organizer = await _context.Organizers
@@ -488,7 +424,6 @@ public class EventService : IEventService
                     $"<p>Event Date: {eventEntity.StartDate:MMMM dd, yyyy}</p>"
                 );
 
-                // Gửi notification cho organizer
                 await _notificationService.NotifyEventApprovedAsync(
                     eventEntity.OrganizerId,
                     eventEntity.Id,
@@ -498,7 +433,6 @@ public class EventService : IEventService
         }
         catch (Exception ex)
         {
-            // Email/notification failure should not block approval
             _logger.LogWarning(ex, $"[EventService] Failed to send email/notification for event approval {id}");
         }
 
@@ -506,7 +440,6 @@ public class EventService : IEventService
         return MapToEventDetailDto(approvedEvent!);
     }
 
-    /// Reject event (Admin only) - changes status to Rejected
     public async Task<EventDetailDto> RejectEventAsync(int id, int adminId, string reason)
     {
         if (string.IsNullOrWhiteSpace(reason))
@@ -517,19 +450,16 @@ public class EventService : IEventService
         if (eventEntity == null)
             throw new NotFoundException($"Event with ID {id} not found");
 
-        // Check if event is in Pending status
         if (eventEntity.Status != EventStatus.Pending)
             throw new BadRequestException($"Only pending events can be rejected (current status: {eventEntity.Status})");
 
-        // Update event status
         eventEntity.Status = EventStatus.Rejected;
         eventEntity.RejectionReason = reason.Trim();
-        eventEntity.ApprovedByStaffId = adminId; // Track who rejected it
+        eventEntity.ApprovedByStaffId = adminId;
         eventEntity.UpdatedAt = DateTime.UtcNow;
 
         await _eventRepository.UpdateAsync(eventEntity);
 
-        // Send rejection email to organizer
         try
         {
             var organizer = await _context.Organizers
@@ -550,14 +480,12 @@ public class EventService : IEventService
         }
         catch (Exception)
         {
-            // Email failure should not block rejection
         }
 
         var rejectedEvent = await _eventRepository.GetByIdAsync(id, includeRelated: true);
         return MapToEventDetailDto(rejectedEvent!);
     }
 
-    /// Delete event (Organizer can delete Pending/Rejected, Admin can delete any) - soft delete
     public async Task<bool> DeleteEventAsync(int id, int userId, bool isAdmin)
     {
         var eventEntity = await _eventRepository.GetByIdAsync(id, includeRelated: true);
@@ -565,7 +493,6 @@ public class EventService : IEventService
         if (eventEntity == null)
             throw new NotFoundException($"Event with ID {id} not found");
 
-        // Authorization check - Organizer can only delete their own Pending/Rejected events
         if (!isAdmin)
         {
             var user = await _context.Users
@@ -575,27 +502,19 @@ public class EventService : IEventService
             if (user?.OrganizerProfile == null || user.OrganizerProfile.Id != eventEntity.OrganizerId)
                 throw new ForbiddenException("You are not authorized to delete this event");
 
-            // Organizers can only delete Pending or Rejected events
             if (eventEntity.Status != EventStatus.Pending && eventEntity.Status != EventStatus.Rejected)
                 throw new BadRequestException("You can only delete events that are Pending or Rejected. Please cancel the event instead.");
         }
 
-        // Check if event has confirmed bookings
         var hasConfirmedBookings = await _context.Bookings
             .AnyAsync(b => b.EventId == id && b.Status == BookingStatus.Confirmed);
 
         if (hasConfirmedBookings)
             throw new BadRequestException("Cannot delete event with confirmed bookings. Please cancel the event instead.");
 
-        // Soft delete (changes status to Cancelled)
         return await _eventRepository.DeleteAsync(id);
     }
 
-    #endregion
-
-    #region Statistics
-
-    /// Get event statistics (sales, revenue, attendance)
     public async Task<EventStatsDto> GetEventStatisticsAsync(int id, int userId, bool isAdmin)
     {
         var eventEntity = await _eventRepository.GetByIdAsync(id, includeRelated: true);
@@ -603,7 +522,6 @@ public class EventService : IEventService
         if (eventEntity == null)
             throw new NotFoundException($"Event with ID {id} not found");
 
-        // Authorization check (organizer or admin)
         if (!isAdmin)
         {
             var user = await _context.Users
@@ -614,7 +532,6 @@ public class EventService : IEventService
                 throw new ForbiddenException("You are not authorized to view statistics for this event");
         }
 
-        // Calculate statistics
         var confirmedBookings = eventEntity.Bookings?
             .Where(b => b.Status == BookingStatus.Confirmed)
             .ToList() ?? new List<Booking>();
@@ -631,11 +548,9 @@ public class EventService : IEventService
         var availableSeats = eventEntity.TicketTypes?
             .Sum(tt => tt.AvailableQuantity) ?? 0;
 
-        // Review statistics
         var reviews = eventEntity.Reviews?.ToList() ?? new List<Review>();
         var avgRating = reviews.Any() ? (decimal)reviews.Average(r => r.Rating) : 0m;
 
-        // Attendance statistics (for completed events)
         int? totalAttendees = null;
         decimal? attendanceRate = null;
 
@@ -655,7 +570,6 @@ public class EventService : IEventService
                 attendanceRate = (decimal)totalAttendees / totalTicketsSold * 100;
         }
 
-        // Ticket type breakdown
         var ticketTypeSales = eventEntity.TicketTypes?
             .Select(tt => new TicketTypeSalesDto
             {
@@ -672,7 +586,6 @@ public class EventService : IEventService
             })
             .ToList() ?? new List<TicketTypeSalesDto>();
 
-        // Sales by date (group bookings by date)
         var salesByDate = confirmedBookings
             .GroupBy(b => b.BookingDate.Date)
             .Select(g => new SalesByDateDto
@@ -684,7 +597,6 @@ public class EventService : IEventService
             .OrderBy(s => s.Date)
             .ToList();
 
-        // Top buyers
         var topBuyers = confirmedBookings
             .Where(b => b.User != null)
             .GroupBy(b => b.User!)
@@ -701,7 +613,6 @@ public class EventService : IEventService
             .Take(10)
             .ToList();
 
-        // Recent transactions
         var recentTransactions = confirmedBookings
             .OrderByDescending(b => b.BookingDate)
             .Take(10)
@@ -715,8 +626,6 @@ public class EventService : IEventService
             })
             .ToList();
 
-        // Calculate sold seats - use actual tickets sold count instead of totalSeats - availableSeats
-        // This ensures accuracy even if AvailableQuantity isn't updated correctly
         var soldSeats = totalTicketsSold;
 
         return new EventStatsDto
@@ -744,24 +653,16 @@ public class EventService : IEventService
             SalesByDate = salesByDate,
             TopBuyers = topBuyers,
             RecentTransactions = recentTransactions,
-            PageViews = 0, // TODO: Implement page view tracking
+            PageViews = 0,
             SoldSeats = soldSeats
         };
     }
 
-    #endregion
-
-    #region Validation Helpers
-
-    /// Check if organizer owns the event
     public async Task<bool> IsOrganizerOwnerAsync(int eventId, int organizerId)
     {
         return await _eventRepository.IsOrganizerOwnerAsync(eventId, organizerId);
     }
 
-    /// Check if event can be edited
-    /// Organizer can edit events with status: Pending, Approved, Rejected
-    /// Cannot edit: Cancelled, Completed, Published
     public async Task<bool> CanEditEventAsync(int eventId)
     {
         var eventEntity = await _eventRepository.GetByIdAsync(eventId);
@@ -769,13 +670,11 @@ public class EventService : IEventService
         if (eventEntity == null)
             return false;
 
-        // Can edit only if status is Pending, Approved, or Rejected
         return eventEntity.Status == EventStatus.Pending ||
                eventEntity.Status == EventStatus.Approved ||
                eventEntity.Status == EventStatus.Rejected;
     }
 
-    /// Check if event can be canceled
     public async Task<bool> CanCancelEventAsync(int eventId)
     {
         var eventEntity = await _eventRepository.GetByIdAsync(eventId);
@@ -783,54 +682,40 @@ public class EventService : IEventService
         if (eventEntity == null)
             return false;
 
-        // Cannot cancel if already cancelled or completed
         return eventEntity.Status != EventStatus.Cancelled &&
                eventEntity.Status != EventStatus.Completed;
     }
 
-    #endregion
-
-    #region Private Helper Methods
-
-    /// Validate event dates (start date must be before end date)
-    /// <summary>
-    /// Strict validation for event dates - prevents past events and enforces 24-hour advance booking
-    /// </summary>
     private void ValidateEventDates(DateTime startDate, DateTime endDate)
     {
         var now = DateTime.UtcNow;
         
-        // Check if start date is in the past
         if (startDate < now)
             throw new BadRequestException(
                 $"Event start date cannot be in the past. " +
                 $"Selected: {startDate:yyyy-MM-dd HH:mm} UTC, Current: {now:yyyy-MM-dd HH:mm} UTC");
 
-        // Enforce minimum 24-hour advance booking (best practice for event management)
         var minimumStartDate = now.AddHours(24);
         if (startDate < minimumStartDate)
             throw new BadRequestException(
                 $"Events must be scheduled at least 24 hours in advance. " +
                 $"Minimum allowed: {minimumStartDate:yyyy-MM-dd HH:mm} UTC");
 
-        // Validate end date is after start date
         if (startDate >= endDate)
             throw new BadRequestException(
                 "Event end date must be after start date. " +
                 $"Start: {startDate:yyyy-MM-dd HH:mm}, End: {endDate:yyyy-MM-dd HH:mm}");
 
-        // Prevent extremely long events (sanity check - max 30 days)
         var maxDuration = TimeSpan.FromDays(30);
         if (endDate - startDate > maxDuration)
             throw new BadRequestException(
                 $"Event duration cannot exceed 30 days. Current duration: {(endDate - startDate).TotalDays:F1} days");
     }
 
-    /// Validate ticket types
     private void ValidateTicketTypes(List<CreateTicketTypeDto>? ticketTypes)
     {
         if (ticketTypes == null || !ticketTypes.Any())
-            return; // Ticket types are optional during creation
+            return;
 
         foreach (var tt in ticketTypes)
         {
@@ -842,7 +727,6 @@ public class EventService : IEventService
         }
     }
 
-    /// Map Event entity to EventDetailDto
     private EventDetailDto MapToEventDetailDto(Event eventEntity)
     {
         return new EventDetailDto
@@ -856,7 +740,7 @@ public class EventService : IEventService
             EndDate = eventEntity.EndDate,
             TotalSeats = eventEntity.MaxCapacity ?? 0,
             AvailableSeats = eventEntity.TicketTypes?.Sum(tt => tt.AvailableQuantity) ?? 0,
-            IsFeatured = false, // TODO: Add IsFeatured to Event model
+            IsFeatured = false,
             Status = eventEntity.Status.ToString(),
             CategoryId = eventEntity.CategoryId,
             CategoryName = eventEntity.Category?.Name ?? "",
@@ -884,7 +768,6 @@ public class EventService : IEventService
         };
     }
 
-    /// Map Event entity to EventListDto (for listing)
     private EventListDto MapToEventListDto(Event eventEntity)
     {
         return new EventListDto
@@ -904,12 +787,11 @@ public class EventService : IEventService
             MaxPrice = eventEntity.TicketTypes?.Any() == true
                 ? eventEntity.TicketTypes.Max(tt => tt.Price)
                 : 0,
-            IsFeatured = false, // TODO: Add to Event model
+            IsFeatured = false,
             Status = eventEntity.Status.ToString()
         };
     }
 
-    /// Map Event entity to EventCardDto (minimal for cards)
     private EventCardDto MapToEventCardDto(Event eventEntity)
     {
         return new EventCardDto
@@ -924,9 +806,7 @@ public class EventService : IEventService
                 ? eventEntity.TicketTypes.Min(tt => tt.Price)
                 : 0,
             AvailableSeats = eventEntity.TicketTypes?.Sum(tt => tt.AvailableQuantity) ?? 0,
-            IsFeatured = false // TODO: Add to Event model
+            IsFeatured = false
         };
     }
-
-    #endregion
 }
