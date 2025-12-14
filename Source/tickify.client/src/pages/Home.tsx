@@ -33,7 +33,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
       eventService.getEvents(),
       eventService.getFeaturedEvents(4),
       eventService.getTrendingEvents(3),
-      eventService.getUpcomingEvents(20),
+      eventService.getUpcomingEvents(6),
     ])
       .then(([allEvents, featured, trending, upcoming]) => {
         setEvents(allEvents || []);
