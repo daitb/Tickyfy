@@ -85,7 +85,17 @@ const getCategoryTranslation = (
 
 export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
   const { t, i18n } = useTranslation();
-  const [currentStep, setCurrentStep] = useState(1);
+  // Restore step from sessionStorage when returning from seat map builder
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (eventId) {
+      const savedStep = sessionStorage.getItem(`wizard-step-${eventId}`);
+      if (savedStep) {
+        sessionStorage.removeItem(`wizard-step-${eventId}`);
+        return parseInt(savedStep, 10);
+      }
+    }
+    return 1;
+  });
   const [isPublishing, setIsPublishing] = useState(false);
   const [isLoadingEvent, setIsLoadingEvent] = useState(false);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
@@ -170,11 +180,12 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
         const timeStr = eventDate.toTimeString().slice(0, 5); // HH:MM
 
         // Populate form with existing event data
-        setEventData({
+        setEventData((prev) => ({
+          ...prev,
           title: event.title,
           category: event.category,
           venue: event.venue,
-          city: event.city,
+          city: event.city || prev.city || cities[0], // Preserve existing or use default
           date: dateStr,
           time: timeStr,
           description: event.fullDescription || event.description,
@@ -184,7 +195,7 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
             refundable: true,
             transferable: true,
           },
-        });
+        }));
 
         // Populate ticket tiers
         if (event.ticketTiers && event.ticketTiers.length > 0) {
@@ -1041,6 +1052,8 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                     type="button"
                     onClick={async () => {
                       if (isEditMode && eventId) {
+                        // Save current step before navigating to seat map
+                        sessionStorage.setItem(`wizard-step-${eventId}`, currentStep.toString());
                         // Edit mode: navigate directly to seat map
                         onNavigate("edit-seat-map", eventId);
                       } else {

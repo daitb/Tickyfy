@@ -67,14 +67,12 @@ public class AdminService : IAdminService
         if (request.Status != "Pending")
             throw new BadRequestException($"Request is already {request.Status}");
 
-        // Check if user already has Organizer role or profile
         var existingOrganizer = await _context.Organizers
             .FirstOrDefaultAsync(o => o.UserId == request.UserId);
 
         if (existingOrganizer != null)
             throw new ConflictException("User is already an organizer");
 
-        // Create Organizer profile
         var organizer = new Organizer
         {
             UserId = request.UserId,
@@ -91,7 +89,6 @@ public class AdminService : IAdminService
 
         _context.Organizers.Add(organizer);
 
-        // Assign Organizer role
         var organizerRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Organizer");
         if (organizerRole != null)
         {
@@ -110,7 +107,6 @@ public class AdminService : IAdminService
             }
         }
 
-        // Update request status
         request.Status = "Approved";
         request.ReviewedAt = DateTime.UtcNow;
         request.ReviewedByAdminId = adminId;
@@ -118,7 +114,6 @@ public class AdminService : IAdminService
 
         await _context.SaveChangesAsync();
 
-        // Send approval email
         try
         {
             await _emailService.SendOrganizerVerificationEmailAsync(
@@ -156,7 +151,6 @@ public class AdminService : IAdminService
 
         await _context.SaveChangesAsync();
 
-        // Send rejection email
         try
         {
             await _emailService.SendEmailAsync(
@@ -180,7 +174,6 @@ public class AdminService : IAdminService
         return request;
     }
 
-    // Event Approval Methods
     public async Task<Event> ApproveEventAsync(int eventId, int adminId)
     {
         var eventEntity = await _context.Events
@@ -194,7 +187,6 @@ public class AdminService : IAdminService
         if (eventEntity.Status != EventStatus.Pending)
             throw new BadRequestException($"Event is already {eventEntity.Status}");
 
-        // CHECK IF SEAT MAP EXISTS (Required for event approval)
         var hasSeatMap = await _context.SeatMaps
             .AnyAsync(sm => sm.EventId == eventId && sm.IsActive);
         
@@ -206,7 +198,6 @@ public class AdminService : IAdminService
             );
         }
 
-        // Verify seat map has seats configured
         var seatMap = await _context.SeatMaps
             .Include(sm => sm.Zones)
             .FirstOrDefaultAsync(sm => sm.EventId == eventId && sm.IsActive);
@@ -222,7 +213,6 @@ public class AdminService : IAdminService
                 );
             }
 
-            // Check if there are actual seats
             var zoneIds = seatMap.Zones?.Select(z => z.Id).ToList() ?? new List<int>();
             var seatCount = await _context.Seats
                 .Where(s => s.SeatZoneId.HasValue && zoneIds.Contains(s.SeatZoneId.Value))
@@ -237,7 +227,6 @@ public class AdminService : IAdminService
             }
         }
 
-        // Update event status to Published
         eventEntity.Status = EventStatus.Published;
         eventEntity.ApprovedByStaffId = adminId;
         eventEntity.ApprovedAt = DateTime.UtcNow;
@@ -245,7 +234,6 @@ public class AdminService : IAdminService
 
         await _context.SaveChangesAsync();
 
-        // Send approval email to organizer
         try
         {
             await _emailService.SendEmailAsync(
@@ -263,7 +251,6 @@ public class AdminService : IAdminService
             _logger.LogError(ex, "Failed to send event approval email for event {EventId}", eventId);
         }
 
-        // Send in-app notification to organizer
         try
         {
             await _notificationService.NotifyEventApprovedAsync(
@@ -295,7 +282,6 @@ public class AdminService : IAdminService
         if (eventEntity.Status != EventStatus.Pending)
             throw new BadRequestException($"Event is already {eventEntity.Status}");
 
-        // Update event status to Rejected
         eventEntity.Status = EventStatus.Rejected;
         eventEntity.RejectionReason = rejectionReason ?? "Rejected by admin";
         eventEntity.ApprovedByStaffId = adminId;
@@ -304,7 +290,6 @@ public class AdminService : IAdminService
 
         await _context.SaveChangesAsync();
 
-        // Send rejection email to organizer
         try
         {
             await _emailService.SendEmailAsync(
@@ -323,7 +308,6 @@ public class AdminService : IAdminService
             _logger.LogError(ex, "Failed to send event rejection email for event {EventId}", eventId);
         }
 
-        // Send in-app notification to organizer
         try
         {
             await _notificationService.NotifyEventRejectedAsync(
@@ -366,32 +350,26 @@ public class AdminService : IAdminService
 
     public async Task<List<EventAnalyticsDto>> GetAllEventsWithAnalyticsAsync()
     {
-        // Get all events with ticket types and bookings for analytics calculation
         var events = await _context.Events
             .Include(e => e.Category)
             .Include(e => e.Organizer)
                 .ThenInclude(o => o!.User)
             .Include(e => e.TicketTypes)
-            .Include(e => e.Bookings)
+            .Include(e => e.Bookings!)
                 .ThenInclude(b => b.Tickets)
             .OrderByDescending(e => e.CreatedAt)
             .ToListAsync();
 
-        // Map to EventAnalyticsDto with calculated analytics data
         var eventAnalyticsList = events.Select(e =>
         {
-            // Calculate total capacity from all ticket types (TotalQuantity)
             var capacity = e.TicketTypes?.Sum(tt => tt.TotalQuantity) ?? 0;
 
-            // Calculate total sold tickets (TotalQuantity - AvailableQuantity)
             var soldTickets = e.TicketTypes?.Sum(tt => tt.TotalQuantity - tt.AvailableQuantity) ?? 0;
 
-            // Calculate total revenue from confirmed bookings
             var revenue = e.Bookings?
                 .Where(b => b.Status == BookingStatus.Confirmed)
                 .Sum(b => b.TotalAmount) ?? 0m;
 
-            // Calculate sales rate percentage
             var salesRate = capacity > 0 ? (double)soldTickets / capacity * 100 : 0;
 
             return new EventAnalyticsDto
@@ -420,32 +398,26 @@ public class AdminService : IAdminService
 
     public async Task<AdminDashboardStatsDto> GetDashboardStatsAsync()
     {
-        // Calculate total revenue from completed payments
         var totalRevenue = await _context.Payments
             .Where(p => p.Status == PaymentStatus.Completed)
             .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
-        // Platform fee is 10% of total revenue
         var platformFees = totalRevenue * 0.10m;
 
-        // Get event counts
         var totalEvents = await _context.Events.CountAsync();
         var activeEvents = await _context.Events
             .CountAsync(e => e.Status == EventStatus.Published || e.Status == EventStatus.Approved);
         var pendingEvents = await _context.Events
             .CountAsync(e => e.Status == EventStatus.Pending);
 
-        // Get user counts
         var totalUsers = await _context.Users.CountAsync();
         var activeUsers = await _context.Users
             .CountAsync(u => u.IsActive);
 
-        // Get organizer counts
         var totalOrganizers = await _context.Organizers.CountAsync();
         var pendingOrganizerRequests = await _context.OrganizerRequests
             .CountAsync(r => r.Status == "Pending");
 
-        // Calculate revenue growth (compare last month with previous month)
         var now = DateTime.UtcNow;
         var lastMonth = new DateTime(now.Year, now.Month, 1).AddMonths(-1);
         var previousMonth = lastMonth.AddMonths(-1);
@@ -463,7 +435,6 @@ public class AdminService : IAdminService
             ? ((lastMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100
             : 0m;
 
-        // Calculate user growth
         var lastMonthUsers = await _context.Users
             .CountAsync(u => u.CreatedAt >= lastMonth && u.CreatedAt < lastMonth.AddMonths(1));
         var previousMonthUsers = await _context.Users

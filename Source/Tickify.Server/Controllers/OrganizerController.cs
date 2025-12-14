@@ -7,7 +7,6 @@ using Tickify.Interfaces.Services;
 
 namespace Tickify.Controllers;
 
-/// Organizer Controller - Manages event organizers
 [ApiController]
 [Route("api/organizers")]
 [Produces("application/json")]
@@ -26,7 +25,6 @@ public class OrganizerController : ControllerBase
 
     #region Public/User Endpoints
 
-    /// POST /api/organizers/register - Register as organizer (Authenticated users) - Now creates a request
     [HttpPost("register")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status201Created)]
@@ -54,7 +52,6 @@ public class OrganizerController : ControllerBase
 
         try
         {
-            // Check if user already has a pending request
             var existingRequest = await _organizerService.GetPendingOrganizerRequestAsync(userId);
             if (existingRequest != null)
             {
@@ -63,7 +60,6 @@ public class OrganizerController : ControllerBase
                 ));
             }
 
-            // Check if user is already an organizer
             var existingOrganizer = await _organizerService.GetOrganizerByUserIdAsync(userId);
             if (existingOrganizer != null)
             {
@@ -72,7 +68,6 @@ public class OrganizerController : ControllerBase
                 ));
             }
 
-            // Create organizer request instead of directly creating organizer
             var request = await _organizerService.CreateOrganizerRequestAsync(userId, dto);
 
             return CreatedAtAction(
@@ -91,7 +86,6 @@ public class OrganizerController : ControllerBase
         }
     }
 
-    /// GET /api/organizers/{id} - Get organizer profile by ID (Public)
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ApiResponse<OrganizerProfileDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<OrganizerProfileDto>), StatusCodes.Status404NotFound)]
@@ -114,7 +108,6 @@ public class OrganizerController : ControllerBase
         ));
     }
 
-    /// PUT /api/organizers/{id} - Update organizer profile (Organizer only)
     [HttpPut("{id}")]
     [Authorize(Roles = "Organizer")]
     [ProducesResponseType(typeof(ApiResponse<OrganizerProfileDto>), StatusCodes.Status200OK)]
@@ -151,7 +144,6 @@ public class OrganizerController : ControllerBase
         ));
     }
 
-    /// GET /api/organizers/my-request - Get current user's pending organizer request
     [HttpGet("my-request")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
@@ -182,7 +174,6 @@ public class OrganizerController : ControllerBase
 
     #region Organizer Dashboard Endpoints
 
-    /// GET /api/organizers/{id}/events - Get organizer's events (Organizer only)
     [HttpGet("{id}/events")]
     [Authorize(Roles = "Organizer,Admin")]
     [ProducesResponseType(typeof(ApiResponse<List<OrganizerEventDashboardDto>>), StatusCodes.Status200OK)]
@@ -196,9 +187,8 @@ public class OrganizerController : ControllerBase
 
         _logger.LogInformation("Fetching events for organizer ID: {OrganizerId}", id);
 
-        // Admin can view any organizer's events
         var events = isAdmin
-            ? await _organizerService.GetOrganizerEventsAsync(id, 0) // Admin bypass userId check
+            ? await _organizerService.GetOrganizerEventsAsync(id, 0) 
             : await _organizerService.GetOrganizerEventsAsync(id, userId);
 
         return Ok(ApiResponse<List<OrganizerEventDashboardDto>>.SuccessResponse(
@@ -207,7 +197,6 @@ public class OrganizerController : ControllerBase
         ));
     }
 
-    /// GET /api/organizers/{id}/earnings - Get organizer earnings dashboard (Organizer only)
     [HttpGet("{id}/earnings")]
     [Authorize(Roles = "Organizer,Admin")]
     [ProducesResponseType(typeof(ApiResponse<OrganizerEarningsDto>), StatusCodes.Status200OK)]
@@ -221,7 +210,6 @@ public class OrganizerController : ControllerBase
 
         _logger.LogInformation("Fetching earnings for organizer ID: {OrganizerId}", id);
 
-        // Admin can view any organizer's earnings
         var earnings = isAdmin
             ? await _organizerService.GetOrganizerEarningsAsync(id, 0)
             : await _organizerService.GetOrganizerEarningsAsync(id, userId);
@@ -232,7 +220,6 @@ public class OrganizerController : ControllerBase
         ));
     }
 
-    /// GET /api/organizers/{id}/bookings - Get organizer bookings (Organizer only)
     [HttpGet("{id}/bookings")]
     [Authorize(Roles = "Organizer,Admin")]
     [ProducesResponseType(typeof(ApiResponse<List<OrganizerBookingDto>>), StatusCodes.Status200OK)]
@@ -246,7 +233,6 @@ public class OrganizerController : ControllerBase
 
         _logger.LogInformation("Fetching bookings for organizer ID: {OrganizerId}", id);
 
-        // Admin can view any organizer's bookings
         var bookings = isAdmin
             ? await _organizerService.GetOrganizerBookingsAsync(id, 0)
             : await _organizerService.GetOrganizerBookingsAsync(id, userId);
@@ -261,7 +247,6 @@ public class OrganizerController : ControllerBase
 
     #region Admin Endpoints
 
-    /// POST /api/organizers/{id}/verify - Verify organizer (Admin only)
     [HttpPost("{id}/verify")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<OrganizerDto>), StatusCodes.Status200OK)]
@@ -283,7 +268,6 @@ public class OrganizerController : ControllerBase
         ));
     }
 
-    /// GET /api/organizers - List all organizers (Admin only)
     [HttpGet]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<List<OrganizerDto>>), StatusCodes.Status200OK)]
@@ -305,7 +289,6 @@ public class OrganizerController : ControllerBase
 
     #region Helper Methods
 
-    /// Get current user ID from JWT claims
     private int GetUserIdFromClaims()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value

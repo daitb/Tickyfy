@@ -44,6 +44,41 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
   const [seatMapZones, setSeatMapZones] = useState<any[]>([]); // Store seat map zones
   const [minPrice, setMinPrice] = useState<number>(0); // Minimum ticket price
 
+  // Helper function to get category translation key
+  const getCategoryTranslationKey = (categoryName: string): string => {
+    // Remove special characters and spaces, convert to camelCase for translation key
+    const normalized = categoryName
+      .replace(/[&\s]+/g, '') // Remove & and spaces
+      .replace(/^./, (str) => str.toLowerCase()); // First char lowercase
+    
+    // Map common category names to translation keys
+    const categoryMap: Record<string, string> = {
+      'music': 'Music',
+      'musicconcerts': 'MusicAndConcerts',
+      'sports': 'Sports',
+      'sportsfitness': 'Sports',
+      'arts': 'Arts',
+      'artsculture': 'Arts',
+      'food': 'Food',
+      'fooddrink': 'Food',
+      'business': 'Business',
+      'businessprofessional': 'Business',
+      'technology': 'Technology',
+      'technologyinnovation': 'Technology',
+      'education': 'Education',
+      'educationlearning': 'Education',
+      'conference': 'Conference',
+      'health': 'Health',
+      'healthwellness': 'Health',
+      'entertainment': 'Entertainment',
+      'fashion': 'Fashion',
+      'fashionbeauty': 'Fashion',
+    };
+    
+    const key = categoryMap[normalized.toLowerCase()] || categoryName.split(/[&\s]/)[0];
+    return `editEvent.category${key}`;
+  };
+
   useEffect(() => {
     let mounted = true;
     eventService.getEventByIdentifier(eventId)
@@ -221,7 +256,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-8 shadow-lg">
               <div className="flex items-start justify-between mb-4">
-                <Badge className="bg-teal-500 hover:bg-teal-600">{t(`editEvent.category${event.category}`)}</Badge>
+                <Badge className="bg-teal-500 hover:bg-teal-600">{t(getCategoryTranslationKey(event.category))}</Badge>
                 {showTimer && <HoldTimer onExpire={() => setShowTimer(false)} />}
               </div>
 
