@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Calendar, MapPin, User, Clock, Share2, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { PolicyBlock } from "../components/PolicyBlock";
@@ -90,10 +91,28 @@ export function EventDetail({
 
   useEffect(() => {
     let mounted = true;
+    console.log(
+      "EventDetail: Fetching event data for eventId:",
+      eventId,
+      "refreshKey:",
+      refreshKey
+    );
     eventService
       .getEventByIdentifier(eventId)
       .then((ev) => {
-        if (mounted) setEvent(ev);
+        if (mounted) {
+          console.log("EventDetail: Event data received:", ev);
+          if (ev?.ticketTiers) {
+            console.log(
+              "EventDetail: Ticket tiers:",
+              ev.ticketTiers.map((t: any) => ({
+                name: t.name,
+                available: t.available,
+              }))
+            );
+          }
+          setEvent(ev);
+        }
       })
       .catch(() => {
         if (mounted) setEvent(null);
@@ -105,12 +124,31 @@ export function EventDetail({
 
   // Check if user is in waitlist
   useEffect(() => {
-    if (!event?.id || !isAuthenticated) return;
+    if (!event?.id || !isAuthenticated) {
+      console.log(
+        "EventDetail: Not checking waitlist - eventId:",
+        event?.id,
+        "isAuth:",
+        isAuthenticated
+      );
+      return;
+    }
 
+    console.log("EventDetail: Checking waitlist for event:", event.id);
     waitlistService
       .checkWaitlist(event.id)
-      .then((inWaitlist) => setIsInWaitlist(inWaitlist))
-      .catch(() => setIsInWaitlist(false));
+      .then((inWaitlist) => {
+        console.log(
+          "EventDetail: Waitlist status received:",
+          inWaitlist,
+          typeof inWaitlist
+        );
+        setIsInWaitlist(!!inWaitlist);
+      })
+      .catch((error) => {
+        console.error("EventDetail: Error checking waitlist:", error);
+        setIsInWaitlist(false);
+      });
   }, [event?.id, isAuthenticated]);
 
   // Refresh event data when component becomes visible again
@@ -121,10 +159,23 @@ export function EventDetail({
       }
     };
 
+    const handleFocus = () => {
+      setRefreshKey((prev) => prev + 1);
+    };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
+
+  // Force refresh on mount
+  useEffect(() => {
+    setRefreshKey((prev) => prev + 1);
+  }, [eventId]);
 
   // Check if event has seat map and fetch zone pricing
   useEffect(() => {
@@ -133,13 +184,22 @@ export function EventDetail({
     let mounted = true;
     setCheckingSeatMap(true);
 
+    console.log("EventDetail: Checking seat map for event:", event.id);
     seatMapService
       .getSeatMapByEvent(event.id.toString())
       .then((seatMapData) => {
         if (mounted) {
+          console.log("EventDetail: Seat map data:", seatMapData);
           setHasSeatMap(true);
           // Extract zones with pricing
           if (seatMapData.zones && seatMapData.zones.length > 0) {
+            console.log(
+              "EventDetail: Zones with available seats:",
+              seatMapData.zones.map((z: any) => ({
+                name: z.name,
+                availableSeats: z.availableSeats,
+              }))
+            );
             setSeatMapZones(seatMapData.zones);
             // Calculate minimum price from zones
             const prices = seatMapData.zones.map((z: any) => z.zonePrice);
@@ -168,7 +228,7 @@ export function EventDetail({
     return () => {
       mounted = false;
     };
-  }, [event?.id, event?.ticketTiers]);
+  }, [event?.id, event?.ticketTiers, refreshKey]);
 
   // Get related events from the same category
   useEffect(() => {
@@ -246,15 +306,38 @@ export function EventDetail({
 
     setJoiningWaitlist(true);
     try {
-      await waitlistService.joinWaitlist({
+      console.log("Joining waitlist with data:", {
+        eventId: event.id,
+        requestedQuantity: 1,
+      });
+      const result = await waitlistService.joinWaitlist({
         eventId: event.id,
         requestedQuantity: 1,
       });
       setIsInWaitlist(true);
-      alert(`${t("waitlist.joined")}\n${t("waitlist.notification")}`);
+      toast.success(t("waitlist.joined"), {
+        description: t("waitlist.notification"),
+        duration: 5000,
+      });
+      console.log("Joined waitlist:", result);
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || t("waitlist.error");
-      alert(`${t("common.error")}\n${errorMsg}`);
+      console.error("Error joining waitlist:", error);
+
+      // Handle 409 Conflict - already in waitlist
+      if (error.response?.status === 409) {
+        setIsInWaitlist(true);
+        toast.info(t("waitlist.alreadyJoined"), {
+          description: t("waitlist.notification"),
+          duration: 4000,
+        });
+      } else {
+        const errorMsg =
+          error.response?.data?.message || error.message || t("waitlist.error");
+        toast.error(t("common.error"), {
+          description: errorMsg,
+          duration: 5000,
+        });
+      }
     } finally {
       setJoiningWaitlist(false);
     }
@@ -466,28 +549,46 @@ export function EventDetail({
                       (sum, zone) => sum + (zone.availableSeats || 0),
                       0
                     );
+                    console.log("EventDetail: SeatMap Zones:", seatMapZones);
+                    console.log(
+                      "EventDetail: Total Available Seats:",
+                      totalAvailable
+                    );
                     const isSoldOut = totalAvailable === 0;
+                    console.log("EventDetail: Is Sold Out?", isSoldOut);
 
                     if (isSoldOut) {
                       return (
-                        <div className="space-y-3">
-                          <div className="text-center py-2">
-                            <span className="text-red-600 font-semibold">
+                        <div className="space-y-4">
+                          <div className="text-center py-4 px-3 bg-red-50 rounded-lg border-2 border-red-200">
+                            <div className="text-4xl mb-2"></div>
+                            <div className="text-lg font-bold text-red-600 mb-1">
                               {t("common.soldOut")}
-                            </span>
+                            </div>
+                            <div className="text-sm text-red-700">
+                              {t("events.allSeatsSold") ||
+                                "All tickets for this event have been sold"}
+                            </div>
                           </div>
-                          {isInWaitlist ? (
+                          {!isAuthenticated ? (
+                            <Button
+                              onClick={() => onNavigate("login")}
+                              className="w-full bg-amber-500 hover:bg-amber-600 text-white h-12 text-base font-semibold shadow-md"
+                            >
+                              🔔 {t("auth.loginToJoinWaitlist")}
+                            </Button>
+                          ) : isInWaitlist ? (
                             <Button
                               disabled
-                              className="w-full bg-neutral-400 text-white h-12 text-base font-semibold cursor-not-allowed"
+                              className="w-full bg-teal-600 text-white h-12 text-base font-semibold cursor-default opacity-90"
                             >
-                              {t("waitlist.alreadyJoined")}
+                              ✓ {t("waitlist.alreadyJoined")}
                             </Button>
                           ) : (
                             <Button
                               onClick={handleJoinWaitlist}
                               disabled={joiningWaitlist}
-                              className="w-full bg-amber-600 hover:bg-amber-700 text-white h-12 text-base font-semibold"
+                              className="w-full bg-amber-100 hover:bg-amber-200 text-black h-12 text-base font-semibold shadow-sm border border-amber-300"
                             >
                               {joiningWaitlist ? (
                                 <>
@@ -495,7 +596,7 @@ export function EventDetail({
                                   {t("common.loading")}
                                 </>
                               ) : (
-                                t("events.addToWaitlist")
+                                <>🔔 {t("events.addToWaitlist")}</>
                               )}
                             </Button>
                           )}
@@ -503,6 +604,7 @@ export function EventDetail({
                       );
                     }
 
+                    // Show booking button if seats available
                     return (
                       <Button
                         onClick={() => {
@@ -520,7 +622,7 @@ export function EventDetail({
                     );
                   })()}
                 </div>
-              ) : (
+              ) : event.ticketTiers && event.ticketTiers.length > 0 ? (
                 /* Regular Ticket Selection - Show when no seat map */
                 <div className="space-y-4">
                   {event.ticketTiers.map((tier: any) => (
@@ -569,18 +671,34 @@ export function EventDetail({
                         </Button>
                       ) : (
                         <div className="space-y-2">
-                          {isInWaitlist ? (
+                          {(() => {
+                            console.log(
+                              "Rendering waitlist button - isInWaitlist:",
+                              isInWaitlist,
+                              "isAuthenticated:",
+                              isAuthenticated
+                            );
+                            return null;
+                          })()}
+                          {!isAuthenticated ? (
+                            <Button
+                              onClick={() => onNavigate("login")}
+                              className="w-full bg-amber-500 hover:bg-amber-600 text-white shadow-md"
+                            >
+                              🔔 {t("auth.loginToJoinWaitlist")}
+                            </Button>
+                          ) : isInWaitlist ? (
                             <Button
                               disabled
-                              className="w-full bg-neutral-400 cursor-not-allowed"
+                              className="w-full bg-teal-600 text-white cursor-default opacity-90"
                             >
-                              {t("waitlist.alreadyJoined")}
+                              ✓ {t("waitlist.alreadyJoined")}
                             </Button>
                           ) : (
                             <Button
                               onClick={handleJoinWaitlist}
                               disabled={joiningWaitlist}
-                              className="w-full bg-amber-600 hover:bg-amber-700"
+                              className="w-full bg-amber-100 hover:bg-amber-200 text-black h-12 text-base font-semibold shadow-sm border border-amber-300"
                             >
                               {joiningWaitlist ? (
                                 <>
@@ -588,7 +706,7 @@ export function EventDetail({
                                   {t("common.loading")}
                                 </>
                               ) : (
-                                t("events.addToWaitlist")
+                                <>🔔 {t("events.addToWaitlist")}</>
                               )}
                             </Button>
                           )}
@@ -597,7 +715,7 @@ export function EventDetail({
                     </div>
                   ))}
                 </div>
-              )}
+              ) : null}
 
               {/* Available ticket info for seat map events */}
               {hasSeatMap && !checkingSeatMap && seatMapZones.length > 0 && (

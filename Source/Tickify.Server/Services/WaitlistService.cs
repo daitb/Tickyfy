@@ -23,6 +23,7 @@ public class WaitlistService : IWaitlistService
         var entries = await _context.Waitlists
             .Include(w => w.Event)
             .Include(w => w.TicketType)
+            .Include(w => w.User)
             .Where(w => w.UserId == userId)
             .OrderByDescending(w => w.JoinedAt)
             .ToListAsync();
@@ -71,14 +72,19 @@ public class WaitlistService : IWaitlistService
 
     public async Task<WaitlistDto> JoinWaitlistAsync(int userId, JoinWaitlistDto dto)
     {
+        _logger.LogInformation("JoinWaitlistAsync called - UserId: {UserId}, EventId: {EventId}, RequestedQuantity: {Quantity}",
+            userId, dto.EventId, dto.RequestedQuantity);
+
         var eventEntity = await _context.Events
             .FirstOrDefaultAsync(e => e.Id == dto.EventId);
 
         if (eventEntity == null)
         {
+            _logger.LogWarning("Event {EventId} not found", dto.EventId);
             throw new NotFoundException("Event not found");
         }
 
+        // Check if user already in waitlist
         var existing = await _context.Waitlists
             .FirstOrDefaultAsync(w => w.UserId == userId
                 && w.EventId == dto.EventId
@@ -88,6 +94,13 @@ public class WaitlistService : IWaitlistService
         if (existing != null)
         {
             throw new ConflictException("You are already on the waitlist for this event");
+        }
+
+        // Load user information
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            throw new NotFoundException("User not found");
         }
 
         if (dto.TicketTypeId.HasValue)
@@ -122,8 +135,13 @@ public class WaitlistService : IWaitlistService
                 && !w.HasPurchased)
             .CountAsync() + 1;
 
+        // Reload with navigation properties
         await _context.Entry(waitlistEntry)
             .Reference(w => w.Event)
+            .LoadAsync();
+
+        await _context.Entry(waitlistEntry)
+            .Reference(w => w.User)
             .LoadAsync();
 
         if (waitlistEntry.TicketTypeId.HasValue)
@@ -133,12 +151,15 @@ public class WaitlistService : IWaitlistService
                 .LoadAsync();
         }
 
+        _logger.LogInformation("User {UserId} joined waitlist for event {EventId}. Position: {Position}",
+            userId, dto.EventId, position);
+
         return new WaitlistDto
         {
             WaitlistId = waitlistEntry.Id,
             UserId = waitlistEntry.UserId,
-            UserName = "",
-            UserEmail = "",
+            UserName = waitlistEntry.User?.FullName ?? user.FullName,
+            UserEmail = waitlistEntry.User?.Email ?? user.Email,
             EventId = waitlistEntry.EventId,
             EventTitle = waitlistEntry.Event?.Title ?? "",
             EventBanner = waitlistEntry.Event?.BannerImage,

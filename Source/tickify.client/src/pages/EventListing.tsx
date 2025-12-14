@@ -160,6 +160,11 @@ export function EventListing({ onNavigate }: EventListingProps) {
     });
   }
 
+  // Get unique categories from events
+  const availableCategories = Array.from(
+    new Set(events.map((e) => e.categoryName || e.category).filter(Boolean))
+  ) as Category[];
+
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Filter Bar - Sticky below header */}
@@ -170,6 +175,43 @@ export function EventListing({ onNavigate }: EventListingProps) {
           resultCount={filteredEvents.length}
         />
       </div>
+
+      {/* Categories Filter */}
+      <section className="bg-white border-b border-neutral-100">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            <button
+              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${
+                !filters.categories || filters.categories.length === 0
+                  ? "bg-teal-500 text-white"
+                  : "bg-neutral-100 hover:bg-neutral-200 text-neutral-700"
+              }`}
+              onClick={() => setFilters({ ...filters, categories: [] })}
+            >
+              {t("events.allEvents", "All Events")}
+            </button>
+            {availableCategories.map((category) => (
+              <button
+                key={category}
+                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${
+                  filters.categories?.includes(category)
+                    ? "bg-teal-500 text-white"
+                    : "bg-neutral-100 hover:bg-neutral-200 text-neutral-700"
+                }`}
+                onClick={() => {
+                  const currentCategories = filters.categories || [];
+                  const newCategories = currentCategories.includes(category)
+                    ? currentCategories.filter((c) => c !== category)
+                    : [category];
+                  setFilters({ ...filters, categories: newCategories });
+                }}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Mobile Filter Toggle + Sort Controls */}

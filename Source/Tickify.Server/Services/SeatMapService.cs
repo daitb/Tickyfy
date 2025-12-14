@@ -55,7 +55,23 @@ namespace Tickify.Services
         public async Task<SeatMapResponseDto?> GetSeatMapByEventIdAsync(int eventId)
         {
             var seatMap = await _seatMapRepository.GetByEventIdAsync(eventId);
-            return seatMap != null ? _mapper.Map<SeatMapResponseDto>(seatMap) : null;
+            if (seatMap == null) return null;
+
+            var response = _mapper.Map<SeatMapResponseDto>(seatMap);
+
+            // Calculate real-time available seats for each zone
+            foreach (var zone in response.Zones)
+            {
+                var availableCount = await _dbContext.Seats
+                    .Where(s => s.SeatZoneId == zone.Id &&
+                               s.Status == SeatStatus.Available &&
+                               !s.IsBlocked)
+                    .CountAsync();
+
+                zone.AvailableSeats = availableCount;
+            }
+
+            return response;
         }
 
         public async Task<List<SeatMapResponseDto>> GetTemplatesAsync()
@@ -80,7 +96,7 @@ namespace Tickify.Services
                 .ToListAsync();
 
             var result = _mapper.Map<List<SeatMapResponseDto>>(seatMaps);
-            
+
             // Add event title to each seat map for display
             foreach (var sm in result)
             {
@@ -100,12 +116,12 @@ namespace Tickify.Services
             {
                 // Lấy tất cả seats của event thông qua ticket types
                 var seats = await _seatRepository.GetByEventIdAsync(eventId);
-                
+
                 if (seats == null || !seats.Any())
                 {
                     return new List<SeatResponseDto>();
                 }
-                
+
                 var seatDtos = _mapper.Map<List<SeatResponseDto>>(seats);
                 return seatDtos;
             }
@@ -119,17 +135,17 @@ namespace Tickify.Services
         {
             var seatMap = _mapper.Map<SeatMap>(dto);
             seatMap.CreatedAt = DateTime.UtcNow;
-            
+
             var created = await _seatMapRepository.CreateAsync(seatMap);
-            
+
             // Parse layoutConfig and create zones and seats
             await CreateZonesAndSeatsFromLayoutAsync(created.Id, dto.LayoutConfig, dto.EventId);
-            
+
             // Reload seat map to include newly created zones
             var reloaded = await _dbContext.SeatMaps
                 .Include(sm => sm.Zones)
                 .FirstOrDefaultAsync(sm => sm.Id == created.Id);
-            
+
             return _mapper.Map<SeatMapResponseDto>(reloaded ?? created);
         }
 
@@ -148,58 +164,58 @@ namespace Tickify.Services
                 if (dto.Description != null) seatMap.Description = dto.Description;
                 if (dto.TotalRows.HasValue) seatMap.TotalRows = dto.TotalRows.Value;
                 if (dto.TotalColumns.HasValue) seatMap.TotalColumns = dto.TotalColumns.Value;
-                if (dto.LayoutConfig != null) 
+                if (dto.LayoutConfig != null)
                 {
                     // CRITICAL: Check if any tickets have been sold (Confirmed status) before allowing seat map changes
                     // Only check Confirmed bookings - Pending/Expired bookings haven't been paid yet
                     var hasTicketsSold = await _dbContext.Tickets
-                        .AnyAsync(t => t.Booking != null && 
+                        .AnyAsync(t => t.Booking != null &&
                                       t.Booking.EventId == seatMap.EventId &&
                                       t.Booking.Status == Tickify.Models.BookingStatus.Confirmed);
-                    
+
                     if (hasTicketsSold)
                     {
                         throw new InvalidOperationException(
                             "Cannot modify seat map after tickets have been sold. " +
                             "This would affect existing bookings and seat assignments.");
                     }
-                    
+
                     seatMap.LayoutConfig = dto.LayoutConfig;
-                    
+
                     // Delete old zones and seats, then recreate from new layoutConfig
                     // First get zone IDs to delete associated seats
                     var oldZoneIds = await _dbContext.SeatZones
                         .Where(z => z.SeatMapId == id)
                         .Select(z => z.Id)
                         .ToListAsync();
-                    
+
                     // Delete seats in those zones
                     var oldSeats = _dbContext.Seats.Where(s => s.SeatZoneId.HasValue && oldZoneIds.Contains(s.SeatZoneId.Value));
                     _dbContext.Seats.RemoveRange(oldSeats);
-                    
+
                     // Delete zones
                     var oldZones = _dbContext.SeatZones.Where(z => z.SeatMapId == id);
                     _dbContext.SeatZones.RemoveRange(oldZones);
-                    
+
                     await _dbContext.SaveChangesAsync();
-                    
+
                     // Create new zones and seats - this will throw if validation fails
                     await CreateZonesAndSeatsFromLayoutAsync(id, dto.LayoutConfig, seatMap.EventId);
                 }
                 if (dto.IsActive.HasValue) seatMap.IsActive = dto.IsActive.Value;
-                
+
                 seatMap.UpdatedAt = DateTime.UtcNow;
 
                 var updated = await _seatMapRepository.UpdateAsync(seatMap);
-                
+
                 // Commit transaction only if everything succeeded
                 await transaction.CommitAsync();
-                
+
                 // Reload seat map to include newly created zones
                 var reloaded = await _dbContext.SeatMaps
                     .Include(sm => sm.Zones)
                     .FirstOrDefaultAsync(sm => sm.Id == updated.Id);
-                
+
                 return _mapper.Map<SeatMapResponseDto>(reloaded ?? updated);
             }
             catch
@@ -229,17 +245,17 @@ namespace Tickify.Services
         {
             return await _seatRepository.ReleaseExpiredReservationsAsync();
         }
-        
+
         public async Task<bool> ExtendReservationAsync(List<int> seatIds, int userId)
         {
             return await _seatRepository.ExtendReservationAsync(seatIds, userId);
         }
-        
+
         public async Task<bool> AdminLockSeatsAsync(List<int> seatIds, int adminId, string reason)
         {
             return await _seatRepository.AdminLockSeatsAsync(seatIds, adminId, reason);
         }
-        
+
         public async Task<bool> AdminUnlockSeatsAsync(List<int> seatIds)
         {
             return await _seatRepository.AdminUnlockSeatsAsync(seatIds);
@@ -256,7 +272,7 @@ namespace Tickify.Services
                 {
                     PropertyNameCaseInsensitive = true
                 };
-                
+
                 var layout = JsonSerializer.Deserialize<LayoutData>(layoutConfig, options);
                 if (layout == null || layout.Zones == null || layout.Seats == null)
                 {
@@ -287,7 +303,7 @@ namespace Tickify.Services
                         eventTicketTypes.Add(newTicketType);
                     }
                     await _dbContext.SaveChangesAsync(); // Save to get IDs
-                    
+
                     // Reload to get generated IDs
                     eventTicketTypes = await _dbContext.TicketTypes
                         .Where(tt => tt.EventId == eventId)
@@ -302,9 +318,9 @@ namespace Tickify.Services
                 var unmatchedZones = new List<(string Name, decimal Price, int Capacity)>();
                 foreach (var zone in layout.Zones)
                 {
-                    var hasMatch = eventTicketTypes.Any(tt => 
+                    var hasMatch = eventTicketTypes.Any(tt =>
                         tt.Name.Equals(zone.Name, StringComparison.OrdinalIgnoreCase));
-                    
+
                     if (!hasMatch)
                     {
                         unmatchedZones.Add((zone.Name, zone.Price, zone.Capacity));
@@ -329,7 +345,7 @@ namespace Tickify.Services
                         eventTicketTypes.Add(newTicketType);
                     }
                     await _dbContext.SaveChangesAsync(); // Save to get IDs
-                    
+
                     // Reload to get generated IDs
                     eventTicketTypes = await _dbContext.TicketTypes
                         .Where(tt => tt.EventId == eventId)
@@ -350,16 +366,16 @@ namespace Tickify.Services
                             $"Zone '{zone.Name}' price ({zone.Price:N0} VND) exceeds maximum limit of {MAX_ZONE_PRICE:N0} VND. " +
                             $"This is due to payment gateway limitations (MoMo: 50M VND max per transaction).");
                     }
-                    
+
                     // Find existing ticket type by name
-                    var ticketType = eventTicketTypes.FirstOrDefault(tt => 
+                    var ticketType = eventTicketTypes.FirstOrDefault(tt =>
                         tt.Name.Equals(zone.Name, StringComparison.OrdinalIgnoreCase));
-                    
+
                     if (ticketType == null)
                     {
                         throw new InvalidOperationException($"Failed to find or create ticket type for zone '{zone.Name}'");
                     }
-                    
+
                     // Update existing ticket type to match seat map configuration
                     ticketType.Price = zone.Price; // Update price from zone
                     ticketType.TotalQuantity = zone.Capacity; // Updated from actual seat count
@@ -384,10 +400,10 @@ namespace Tickify.Services
                         CreatedAt = DateTime.UtcNow
                     };
                     _dbContext.SeatZones.Add(seatZone);
-                    
+
                     // Save immediately to get SeatZone ID
                     await _dbContext.SaveChangesAsync();
-                    
+
                     // Map frontend zone.Id → DB SeatZone.Id for seat assignment
                     zoneIdMap[zone.Id] = seatZone.Id;
                     ticketTypeToZoneId[ticketType.Id] = seatZone.Id;
@@ -397,24 +413,24 @@ namespace Tickify.Services
                 var createdZones = await _dbContext.SeatZones
                     .Where(z => z.SeatMapId == seatMapId)
                     .ToListAsync();
-                
+
                 for (int i = 0; i < createdZones.Count; i++)
                 {
                     for (int j = i + 1; j < createdZones.Count; j++)
                     {
                         var zone1 = createdZones[i];
                         var zone2 = createdZones[j];
-                        
+
                         // Skip zones with zero ranges (dynamically positioned zones)
                         if (zone1.StartRow == 0 && zone1.EndRow == 0 && zone1.StartColumn == 0 && zone1.EndColumn == 0)
                             continue;
                         if (zone2.StartRow == 0 && zone2.EndRow == 0 && zone2.StartColumn == 0 && zone2.EndColumn == 0)
                             continue;
-                        
+
                         // Check for overlap: zones overlap if their ranges intersect
                         bool rowsOverlap = zone1.StartRow <= zone2.EndRow && zone2.StartRow <= zone1.EndRow;
                         bool colsOverlap = zone1.StartColumn <= zone2.EndColumn && zone2.StartColumn <= zone1.EndColumn;
-                        
+
                         if (rowsOverlap && colsOverlap)
                         {
                             throw new InvalidOperationException(
@@ -428,7 +444,7 @@ namespace Tickify.Services
                 var seatsCreated = 0;
                 var seatsSkipped = 0;
                 var missingZoneMappings = new List<string>();
-                
+
                 foreach (var seatData in layout.Seats)
                 {
                     if (string.IsNullOrEmpty(seatData.ZoneId))
@@ -447,7 +463,7 @@ namespace Tickify.Services
                         seatsSkipped++;
                         continue;
                     }
-                    
+
                     // Get SeatZone to find TicketTypeId
                     var seatZone = await _dbContext.SeatZones.FindAsync(seatZoneId);
                     if (seatZone == null)
