@@ -80,7 +80,7 @@ Total Paid: ${formatPrice(order.total)}
 
 Tickets: ${order.tickets.length}
 ${order.tickets
-  .map((t, i) => `  ${i + 1}. Ticket #${t.id} - ${t.type}`)
+  .map((t, i) => `  ${i + 1}. Ticket #${t.id} - ${t.tierName}`)
   .join("\n")}
 
 Thank you for your purchase!
