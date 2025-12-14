@@ -12,6 +12,8 @@ import {
   History,
   UserCog,
   MessageCircle,
+  DollarSign,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { InlineSearchBar } from "./InlineSearchBar";
@@ -192,7 +194,8 @@ export function Header({
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-56">
+                  {/* User Menu Items */}
                   <DropdownMenuItem onClick={() => onNavigate("my-tickets")}>
                     <Ticket size={16} className="mr-2" />
                     {t("header.myTickets")}
@@ -210,6 +213,14 @@ export function Header({
                     <Clock size={16} className="mr-2" />
                     {t("header.waitlist")}
                   </DropdownMenuItem>
+                  
+                  {/* Refund Menu - For All Users */}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onNavigate("refund-history")}>
+                    <RefreshCw size={16} className="mr-2 text-purple-600" />
+                    <span>{t("header.refundHistory", "My Refunds")}</span>
+                  </DropdownMenuItem>
+                  
                   <DropdownMenuSeparator />
                   {(userRole === "organizer" || userRole === "admin") && (
                     <>
@@ -260,6 +271,23 @@ export function Header({
                       >
                         <Shield size={16} className="mr-2" />
                         {t("header.adminPanel")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("manage-refunds")}
+                      >
+                        <DollarSign size={16} className="mr-2 text-green-600" />
+                        <span>{t("header.manageRefunds", "Manage Refunds")}</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {userRole === "staff" && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("manage-refunds")}
+                      >
+                        <DollarSign size={16} className="mr-2 text-green-600" />
+                        <span>{t("header.manageRefunds", "Manage Refunds")}</span>
                       </DropdownMenuItem>
                     </>
                   )}
