@@ -9,9 +9,6 @@ using Tickify.Models;
 
 namespace Tickify.Services;
 
-/// <summary>
-/// Handles wishlist operations and projections for the authenticated user.
-/// </summary>
 public class WishlistService : IWishlistService
 {
     private readonly ApplicationDbContext _context;

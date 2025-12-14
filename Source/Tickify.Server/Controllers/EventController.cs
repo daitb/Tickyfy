@@ -50,7 +50,7 @@ public class EventController : ControllerBase
     public async Task<ActionResult<ApiResponse<List<EventCardDto>>>> GetFeaturedEvents(
         [FromQuery] int count = 10)
     {
-        if (count > 50) count = 50; 
+        if (count > 50) count = 50;
         if (count < 1) count = 10;
 
         _logger.LogInformation("Getting {Count} featured events", count);
@@ -60,6 +60,24 @@ public class EventController : ControllerBase
         return Ok(ApiResponse<List<EventCardDto>>.SuccessResponse(
             events,
             $"Retrieved {events.Count} featured events"
+        ));
+    }
+
+    [HttpGet("trending")]
+    [ProducesResponseType(typeof(ApiResponse<List<EventCardDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<EventCardDto>>>> GetTrendingEvents(
+        [FromQuery] int count = 10)
+    {
+        if (count > 50) count = 50;
+        if (count < 1) count = 10;
+
+        _logger.LogInformation("Getting {Count} trending events", count);
+
+        var events = await _eventService.GetTrendingEventsAsync(count);
+
+        return Ok(ApiResponse<List<EventCardDto>>.SuccessResponse(
+            events,
+            $"Retrieved {events.Count} trending events"
         ));
     }
 
@@ -180,7 +198,7 @@ public class EventController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating event: {Message}. DTO: {@Dto}", ex.Message, dto);
-            throw; 
+            throw;
         }
     }
 
@@ -439,14 +457,14 @@ public class EventController : ControllerBase
                     .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                     .FirstOrDefaultAsync(u => u.Id == userId);
-                
+
                 if (user == null)
                 {
                     throw new UnauthorizedAccessException($"User {userId} not found.");
                 }
 
                 var hasOrganizerRole = user.UserRoles?.Any(ur => ur.Role.Name == "Organizer") ?? false;
-                
+
                 if (!hasOrganizerRole)
                 {
                     _logger.LogWarning("User {UserId} has Organizer role in token but not in database. This may indicate a token issue.", userId);
@@ -455,7 +473,7 @@ public class EventController : ControllerBase
 
                 var approvedRequest = await _context.OrganizerRequests
                     .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == "Approved");
-                
+
                 if (approvedRequest == null)
                 {
                     _logger.LogWarning("User {UserId} has Organizer role in database but no approved organizer request. This may indicate a data inconsistency.", userId);
@@ -480,14 +498,14 @@ public class EventController : ControllerBase
 
                 _context.Organizers.Add(organizer);
                 await _context.SaveChangesAsync();
-                
+
                 _logger.LogInformation("Created organizer {OrganizerId} for user {UserId} from approved request", organizer.Id, userId);
             }
             else
             {
                 _logger.LogInformation("Found organizer {OrganizerId} for user {UserId}", organizer.Id, userId);
             }
-            
+
             return organizer.Id;
         }
 

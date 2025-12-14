@@ -63,6 +63,12 @@ public class EventService : IEventService
         return events.Select(MapToEventCardDto).ToList();
     }
 
+    public async Task<List<EventCardDto>> GetTrendingEventsAsync(int count = 10)
+    {
+        var events = await _eventRepository.GetTrendingEventsAsync(count);
+        return events.Select(MapToEventCardDto).ToList();
+    }
+
     public async Task<List<EventCardDto>> GetUpcomingEventsAsync(int count = 20)
     {
         var events = await _eventRepository.GetUpcomingEventsAsync(count);
@@ -107,16 +113,16 @@ public class EventService : IEventService
 
             _logger.LogInformation("Looking up category {CategoryId}", dto.CategoryId);
             var category = await _context.Categories.FindAsync(dto.CategoryId);
-            _logger.LogInformation("Category lookup result: Found={Found}, Active={Active}", 
+            _logger.LogInformation("Category lookup result: Found={Found}, Active={Active}",
                 category != null, category?.IsActive);
 
             if (category == null || !category.IsActive)
                 throw new NotFoundException($"Category with ID {dto.CategoryId} not found or inactive");
 
-            _logger.LogInformation("Validating event dates: Start={Start}, End={End}", 
+            _logger.LogInformation("Validating event dates: Start={Start}, End={End}",
                 dto.StartDate, dto.EndDate);
             ValidateEventDates(dto.StartDate, dto.EndDate);
-            
+
             _logger.LogInformation("Validating ticket types: Count={Count}", dto.TicketTypes?.Count ?? 0);
             ValidateTicketTypes(dto.TicketTypes);
 
@@ -136,8 +142,8 @@ public class EventService : IEventService
                 Status = EventStatus.Pending,
                 CreatedAt = DateTime.UtcNow
             };
-            
-            _logger.LogInformation("Event status set to: {Status} (Value: {StatusValue})", 
+
+            _logger.LogInformation("Event status set to: {Status} (Value: {StatusValue})",
                 eventEntity.Status, (int)eventEntity.Status);
 
             _logger.LogInformation("Adding event to database");
@@ -689,7 +695,7 @@ public class EventService : IEventService
     private void ValidateEventDates(DateTime startDate, DateTime endDate)
     {
         var now = DateTime.UtcNow;
-        
+
         if (startDate < now)
             throw new BadRequestException(
                 $"Event start date cannot be in the past. " +

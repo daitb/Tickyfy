@@ -29,24 +29,23 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
 
   useEffect(() => {
     setIsLoading(true);
-    // Fetch all events for categories and upcoming events
     Promise.all([
       eventService.getEvents(),
       eventService.getFeaturedEvents(4),
-      eventService.getUpcomingEvents(3),
+      eventService.getTrendingEvents(3),
+      eventService.getUpcomingEvents(20),
     ])
-      .then(([allEvents, featured, upcoming]) => {
+      .then(([allEvents, featured, trending, upcoming]) => {
         setEvents(allEvents || []);
         const cats = Array.from(
           new Set((allEvents || []).map((e: any) => e.category).filter(Boolean))
         );
         setAvailableCategories(cats);
-        setTrendingEvents(upcoming || []);
+        setTrendingEvents(trending || []);
         setSpecialEvents(featured || []);
-        setUpcomingEventsList(allEvents || []);
+        setUpcomingEventsList(upcoming || []);
       })
       .catch((error: any) => {
-        // Silent fail for home page, just show empty state
         setEvents([]);
         setAvailableCategories([]);
         setTrendingEvents([]);

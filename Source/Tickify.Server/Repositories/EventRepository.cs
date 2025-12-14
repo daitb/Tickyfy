@@ -139,6 +139,29 @@ public class EventRepository : IEventRepository
             .ToListAsync();
     }
 
+    public async Task<List<Event>> GetTrendingEventsAsync(int count = 10)
+    {
+        // Get events with booking counts using a subquery approach
+        var eventsWithBookingCounts = await _context.Events
+            .Include(e => e.Category)
+            .Include(e => e.Organizer)
+                .ThenInclude(o => o!.User)
+            .Include(e => e.TicketTypes)
+            .Where(e => e.Status == EventStatus.Published && e.StartDate > DateTime.UtcNow)
+            .Select(e => new
+            {
+                Event = e,
+                BookingCount = e.Bookings!
+                    .Count(b => b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Pending)
+            })
+            .OrderByDescending(x => x.BookingCount)
+            .ThenBy(x => x.Event.StartDate)
+            .Take(count)
+            .ToListAsync();
+
+        return eventsWithBookingCounts.Select(x => x.Event).ToList();
+    }
+
     public async Task<List<Event>> GetUpcomingEventsAsync(int count = 20)
     {
         return await _context.Events
