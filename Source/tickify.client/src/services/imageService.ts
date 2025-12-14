@@ -81,16 +81,22 @@ class ImageService {
    * @param file - File to validate
    * @returns Error message if invalid, null if valid
    */
-  validateImageFile(file: File): string | null {
+  validateImageFile(file: File): { key: string; params?: any } | null {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     const maxSize = 5 * 1024 * 1024; // 5MB
 
     if (!allowedTypes.includes(file.type)) {
-      return 'Loại file không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF và WebP.';
+      return { 
+        key: 'image.validation.invalidType',
+        params: { type: file.type }
+      };
     }
 
     if (file.size > maxSize) {
-      return `Kích thước file vượt quá 5MB. File của bạn: ${(file.size / 1024 / 1024).toFixed(2)}MB`;
+      return { 
+        key: 'image.validation.sizeTooLarge',
+        params: { size: (file.size / 1024 / 1024).toFixed(2) }
+      };
     }
 
     return null;

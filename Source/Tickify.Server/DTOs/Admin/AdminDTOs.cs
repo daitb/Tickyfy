@@ -24,3 +24,16 @@ public class UserBasicDto
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
 }
+
+public class AdminBookingDto
+{
+    public int BookingId { get; set; }
+    public string BookingCode { get; set; } = string.Empty;
+    public DateTime BookingDate { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string EventTitle { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public string CustomerEmail { get; set; } = string.Empty;
+    public int TotalTickets { get; set; }
+    public decimal TotalAmount { get; set; }
+}

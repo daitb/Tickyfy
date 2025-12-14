@@ -54,121 +54,176 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
   // Validation functions
   const validateField = (name: string, value: string): string => {
     switch (name) {
-      case 'companyName':
+      case "companyName":
         if (!value.trim()) {
-          return t('organizer.validation.companyNameRequired', 'Tên tổ chức là bắt buộc');
+          return t(
+            "organizer.validation.companyNameRequired",
+            "Tên tổ chức là bắt buộc"
+          );
         }
         if (value.trim().length < 3) {
-          return t('organizer.validation.companyNameTooShort', 'Tên tổ chức phải có ít nhất 3 ký tự');
+          return t(
+            "organizer.validation.companyNameTooShort",
+            "Tên tổ chức phải có ít nhất 3 ký tự"
+          );
         }
         if (value.trim().length > 200) {
-          return t('organizer.validation.companyNameTooLong', 'Tên tổ chức không được vượt quá 200 ký tự');
+          return t(
+            "organizer.validation.companyNameTooLong",
+            "Tên tổ chức không được vượt quá 200 ký tự"
+          );
         }
         // Check for valid characters (letters, numbers, spaces, and common punctuation)
         const nameRegex = /^[a-zA-ZÀ-ỹ0-9\s\.,\-&()]+$/;
         if (!nameRegex.test(value.trim())) {
-          return t('organizer.validation.companyNameInvalid', 'Tên tổ chức chứa ký tự không hợp lệ');
+          return t(
+            "organizer.validation.companyNameInvalid",
+            "Tên tổ chức chứa ký tự không hợp lệ"
+          );
         }
-        return '';
-      
-      case 'companyPhone':
+        return "";
+
+      case "companyPhone":
         if (!value.trim()) {
-          return t('organizer.validation.phoneRequired', 'Số điện thoại là bắt buộc');
+          return t(
+            "organizer.validation.phoneRequired",
+            "Số điện thoại là bắt buộc"
+          );
         }
         // Remove spaces, dashes, parentheses for validation
-        const cleanPhone = value.replace(/[\s\-()]/g, '');
+        const cleanPhone = value.replace(/[\s\-()]/g, "");
         // Support Vietnamese phone formats: 0xxxxxxxxx or +84xxxxxxxxx
         const phoneRegex = /^(\+84|84|0)(3|5|7|8|9)\d{8}$/;
         if (!phoneRegex.test(cleanPhone)) {
-          return t('organizer.validation.phoneInvalid', 'Số điện thoại không hợp lệ. VD: 0901234567 hoặc +84901234567');
+          return t(
+            "organizer.validation.phoneInvalid",
+            "Số điện thoại không hợp lệ. VD: 0901234567 hoặc +84901234567"
+          );
         }
-        return '';
-      
-      case 'companyEmail':
+        return "";
+
+      case "companyEmail":
         if (value && value.trim()) {
           const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
           if (!emailRegex.test(value.trim())) {
-            return t('organizer.validation.emailInvalid', 'Email không hợp lệ. VD: contact@company.com');
+            return t(
+              "organizer.validation.emailInvalid",
+              "Email không hợp lệ. VD: contact@company.com"
+            );
           }
           if (value.trim().length > 100) {
-            return t('organizer.validation.emailTooLong', 'Email không được vượt quá 100 ký tự');
+            return t(
+              "organizer.validation.emailTooLong",
+              "Email không được vượt quá 100 ký tự"
+            );
           }
         }
-        return '';
-      
-      case 'website':
+        return "";
+
+      case "website":
         if (value && value.trim()) {
           // Check URL format
-          const urlRegex = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
+          const urlRegex =
+            /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
           if (!urlRegex.test(value.trim())) {
-            return t('organizer.validation.websiteInvalid', 'URL website không hợp lệ. VD: https://www.company.com');
+            return t(
+              "organizer.validation.websiteInvalid",
+              "URL website không hợp lệ. VD: https://www.company.com"
+            );
           }
           // Check if starts with http or https
-          if (!value.trim().startsWith('http://') && !value.trim().startsWith('https://')) {
-            return t('organizer.validation.websiteProtocol', 'Website phải bắt đầu bằng http:// hoặc https://');
+          if (
+            !value.trim().startsWith("http://") &&
+            !value.trim().startsWith("https://")
+          ) {
+            return t(
+              "organizer.validation.websiteProtocol",
+              "Website phải bắt đầu bằng http:// hoặc https://"
+            );
           }
         }
-        return '';
-      
-      case 'companyAddress':
+        return "";
+
+      case "companyAddress":
         if (!value.trim()) {
-          return t('organizer.validation.addressRequired', 'Địa chỉ là bắt buộc');
+          return t(
+            "organizer.validation.addressRequired",
+            "Địa chỉ là bắt buộc"
+          );
         }
         if (value.trim().length < 5) {
-          return t('organizer.validation.addressTooShort', 'Địa chỉ phải có ít nhất 5 ký tự');
+          return t(
+            "organizer.validation.addressTooShort",
+            "Địa chỉ phải có ít nhất 5 ký tự"
+          );
         }
         if (value.trim().length > 500) {
-          return t('organizer.validation.addressTooLong', 'Địa chỉ không được vượt quá 500 ký tự');
+          return t(
+            "organizer.validation.addressTooLong",
+            "Địa chỉ không được vượt quá 500 ký tự"
+          );
         }
-        return '';
-      
-      case 'taxCode':
+        return "";
+
+      case "taxCode":
         if (value && value.trim()) {
           // Vietnamese tax code format: 10 or 13 digits (10 digits + dash + 3 digits)
           const taxCodeRegex = /^[0-9]{10}(-[0-9]{3})?$/;
           if (!taxCodeRegex.test(value.trim())) {
-            return t('organizer.validation.taxCodeInvalid', 'Mã số thuế không hợp lệ. VD: 0123456789 hoặc 0123456789-001');
+            return t(
+              "organizer.validation.taxCodeInvalid",
+              "Mã số thuế không hợp lệ. VD: 0123456789 hoặc 0123456789-001"
+            );
           }
         }
-        return '';
-      
-      case 'businessRegistrationNumber':
+        return "";
+
+      case "businessRegistrationNumber":
         if (value && value.trim()) {
           // Vietnamese business registration: 10-13 digits
           const businessRegex = /^[0-9]{10,13}$/;
           if (!businessRegex.test(value.trim())) {
-            return t('organizer.validation.businessRegInvalid', 'Số đăng ký kinh doanh phải có 10-13 chữ số');
+            return t(
+              "organizer.validation.businessRegInvalid",
+              "Số đăng ký kinh doanh phải có 10-13 chữ số"
+            );
           }
         }
-        return '';
-      
-      case 'description':
+        return "";
+
+      case "description":
         if (value && value.trim()) {
           if (value.trim().length < 20) {
-            return t('organizer.validation.descriptionTooShort', 'Mô tả phải có ít nhất 20 ký tự');
+            return t(
+              "organizer.validation.descriptionTooShort",
+              "Mô tả phải có ít nhất 20 ký tự"
+            );
           }
           if (value.trim().length > 2000) {
-            return t('organizer.validation.descriptionTooLong', 'Mô tả không được vượt quá 2000 ký tự');
+            return t(
+              "organizer.validation.descriptionTooLong",
+              "Mô tả không được vượt quá 2000 ký tự"
+            );
           }
         }
-        return '';
-      
+        return "";
+
       default:
-        return '';
+        return "";
     }
   };
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     // Validate all fields
-    Object.keys(formData).forEach(key => {
+    Object.keys(formData).forEach((key) => {
       const error = validateField(key, formData[key as keyof typeof formData]);
       if (error) {
         errors[key] = error;
       }
     });
-    
+
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -182,24 +237,30 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
     // Validate form before submit
     if (!validateForm()) {
       setIsSubmitting(false);
-      
+
       // Count errors
       const errorCount = Object.keys(fieldErrors).length;
-      const errorFields = Object.keys(fieldErrors).join(', ');
-      
-      toast.error(t('organizer.validation.formHasErrors', 'Vui lòng kiểm tra lại thông tin đã nhập'), {
-        description: `${errorCount} lỗi được tìm thấy. Hãy kiểm tra các trường đã đánh dấu màu đỏ.`,
-        duration: 5000,
-      });
-      
+      const errorFields = Object.keys(fieldErrors).join(", ");
+
+      toast.error(
+        t(
+          "organizer.validation.formHasErrors",
+          "Vui lòng kiểm tra lại thông tin đã nhập"
+        ),
+        {
+          description: `${errorCount} lỗi được tìm thấy. Hãy kiểm tra các trường đã đánh dấu màu đỏ.`,
+          duration: 5000,
+        }
+      );
+
       // Scroll to first error
       const firstErrorField = Object.keys(fieldErrors)[0];
       const element = document.getElementById(firstErrorField);
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
         element.focus();
       }
-      
+
       return;
     }
 
@@ -251,29 +312,31 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    
+
     setFormData({
       ...formData,
       [name]: value,
     });
-    
+
     // Real-time validation
     if (fieldErrors[name]) {
       const error = validateField(name, value);
-      setFieldErrors(prev => ({
+      setFieldErrors((prev) => ({
         ...prev,
-        [name]: error
+        [name]: error,
       }));
     }
   };
 
   // Validate field on blur
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleBlur = (
+    e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     const error = validateField(name, value);
-    setFieldErrors(prev => ({
+    setFieldErrors((prev) => ({
       ...prev,
-      [name]: error
+      [name]: error,
     }));
   };
 
@@ -491,8 +554,11 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
             {/* Info Banner */}
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>📝 {t('organizer.formNote', 'Lưu ý')}:</strong>{' '}
-                {t('organizer.formNoteDesc', 'Vui lòng điền đầy đủ và chính xác các thông tin bắt buộc (*). Thông tin này sẽ được admin xem xét trước khi phê duyệt.')}
+                <strong>📝 {t("organizer.formNote", "Lưu ý")}:</strong>{" "}
+                {t(
+                  "organizer.formNoteDesc",
+                  "Vui lòng điền đầy đủ và chính xác các thông tin bắt buộc (*). Thông tin này sẽ được admin xem xét trước khi phê duyệt."
+                )}
               </p>
             </div>
 
@@ -509,14 +575,22 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   value={formData.companyName}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  placeholder={t('organizer.orgNamePlaceholder', 'VD: Công ty TNHH ABC')}
+                  placeholder={t(
+                    "organizer.orgNamePlaceholder",
+                    "VD: Công ty TNHH ABC"
+                  )}
                   required
                   maxLength={200}
-                  className={fieldErrors.companyName ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  className={
+                    fieldErrors.companyName
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }
                 />
                 {!fieldErrors.companyName && formData.companyName && (
                   <p className="text-xs text-neutral-500">
-                    {formData.companyName.length}/200 {t('common.characters', 'ký tự')}
+                    {formData.companyName.length}/200{" "}
+                    {t("common.characters", "ký tự")}
                   </p>
                 )}
                 {fieldErrors.companyName && (
@@ -539,15 +613,26 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   value={formData.businessRegistrationNumber}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  placeholder={t('organizer.businessRegPlaceholder', 'VD: 0123456789')}
+                  placeholder={t(
+                    "organizer.businessRegPlaceholder",
+                    "VD: 0123456789"
+                  )}
                   maxLength={13}
-                  className={fieldErrors.businessRegistrationNumber ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  className={
+                    fieldErrors.businessRegistrationNumber
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }
                 />
-                {!fieldErrors.businessRegistrationNumber && !formData.businessRegistrationNumber && (
-                  <p className="text-xs text-neutral-500">
-                    {t('organizer.businessRegHelper', 'Số ĐKKD gồm 10-13 chữ số')}
-                  </p>
-                )}
+                {!fieldErrors.businessRegistrationNumber &&
+                  !formData.businessRegistrationNumber && (
+                    <p className="text-xs text-neutral-500">
+                      {t(
+                        "organizer.businessRegHelper",
+                        "Số ĐKKD gồm 10-13 chữ số"
+                      )}
+                    </p>
+                  )}
                 {fieldErrors.businessRegistrationNumber && (
                   <p className="text-sm text-red-600 flex items-center gap-1">
                     <AlertCircle size={14} />
@@ -570,11 +655,18 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   onBlur={handleBlur}
                   placeholder="VD: 0123456789 hoặc 0123456789-001"
                   maxLength={14}
-                  className={fieldErrors.taxCode ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  className={
+                    fieldErrors.taxCode
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }
                 />
                 {!fieldErrors.taxCode && !formData.taxCode && (
                   <p className="text-xs text-neutral-500">
-                    {t('organizer.taxCodeHelper', 'Mã số thuế gồm 10 chữ số hoặc 10 chữ số + dấu gạch ngang + 3 chữ số')}
+                    {t(
+                      "organizer.taxCodeHelper",
+                      "Mã số thuế gồm 10 chữ số hoặc 10 chữ số + dấu gạch ngang + 3 chữ số"
+                    )}
                   </p>
                 )}
                 {fieldErrors.taxCode && (
@@ -598,14 +690,24 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   value={formData.companyPhone}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  placeholder={t('organizer.phonePlaceholder', 'VD: 0901234567')}
+                  placeholder={t(
+                    "organizer.phonePlaceholder",
+                    "VD: 0901234567"
+                  )}
                   required
                   maxLength={15}
-                  className={fieldErrors.companyPhone ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  className={
+                    fieldErrors.companyPhone
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }
                 />
                 {!fieldErrors.companyPhone && !formData.companyPhone && (
                   <p className="text-xs text-neutral-500">
-                    {t('organizer.phoneHelper', 'Số điện thoại di động Việt Nam (10 chữ số)')}
+                    {t(
+                      "organizer.phoneHelper",
+                      "Số điện thoại di động Việt Nam (10 chữ số)"
+                    )}
                   </p>
                 )}
                 {fieldErrors.companyPhone && (
@@ -631,11 +733,18 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   onBlur={handleBlur}
                   placeholder="contact@company.com"
                   maxLength={100}
-                  className={fieldErrors.companyEmail ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  className={
+                    fieldErrors.companyEmail
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }
                 />
                 {!fieldErrors.companyEmail && !formData.companyEmail && (
                   <p className="text-xs text-neutral-500">
-                    {t('organizer.emailHelper', 'Email liên hệ chính của tổ chức')}
+                    {t(
+                      "organizer.emailHelper",
+                      "Email liên hệ chính của tổ chức"
+                    )}
                   </p>
                 )}
                 {fieldErrors.companyEmail && (
@@ -660,11 +769,18 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   onBlur={handleBlur}
                   placeholder="https://www.company.com"
                   maxLength={200}
-                  className={fieldErrors.website ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  className={
+                    fieldErrors.website
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }
                 />
                 {!fieldErrors.website && !formData.website && (
                   <p className="text-xs text-neutral-500">
-                    {t('organizer.websiteHelper', 'URL phải bắt đầu bằng http:// hoặc https://')}
+                    {t(
+                      "organizer.websiteHelper",
+                      "URL phải bắt đầu bằng http:// hoặc https://"
+                    )}
                   </p>
                 )}
                 {fieldErrors.website && (
@@ -686,14 +802,22 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   value={formData.companyAddress}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  placeholder={t('organizer.addressPlaceholder', 'VD: 123 Đường ABC, Quận 1, TP.HCM')}
+                  placeholder={t(
+                    "organizer.addressPlaceholder",
+                    "VD: 123 Đường ABC, Quận 1, TP.HCM"
+                  )}
                   required
                   maxLength={500}
-                  className={fieldErrors.companyAddress ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  className={
+                    fieldErrors.companyAddress
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }
                 />
                 {!fieldErrors.companyAddress && formData.companyAddress && (
                   <p className="text-xs text-neutral-500">
-                    {formData.companyAddress.length}/500 {t('common.characters', 'ký tự')}
+                    {formData.companyAddress.length}/500{" "}
+                    {t("common.characters", "ký tự")}
                   </p>
                 )}
                 {fieldErrors.companyAddress && (
@@ -715,19 +839,30 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   value={formData.description}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  placeholder={t('organizer.descriptionPlaceholder', 'Giới thiệu về tổ chức của bạn và loại sự kiện bạn muốn tổ chức...')}
+                  placeholder={t(
+                    "organizer.descriptionPlaceholder",
+                    "Giới thiệu về tổ chức của bạn và loại sự kiện bạn muốn tổ chức..."
+                  )}
                   rows={4}
                   maxLength={2000}
-                  className={fieldErrors.description ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                  className={
+                    fieldErrors.description
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }
                 />
                 {!fieldErrors.description && !formData.description && (
                   <p className="text-xs text-neutral-500">
-                    {t('organizer.descriptionHelper', 'Mô tả về tổ chức và kinh nghiệm tổ chức sự kiện (tối thiểu 20 ký tự)')}
+                    {t(
+                      "organizer.descriptionHelper",
+                      "Mô tả về tổ chức và kinh nghiệm tổ chức sự kiện (tối thiểu 20 ký tự)"
+                    )}
                   </p>
                 )}
                 {!fieldErrors.description && formData.description && (
                   <p className="text-xs text-neutral-500">
-                    {formData.description.length}/2000 {t('common.characters', 'ký tự')}
+                    {formData.description.length}/2000{" "}
+                    {t("common.characters", "ký tự")}
                   </p>
                 )}
                 {fieldErrors.description && (
@@ -737,26 +872,6 @@ export function BecomeOrganizer({ onNavigate }: BecomeOrganizerProps) {
                   </p>
                 )}
               </div>
-
-              {/* Validation Errors Summary */}
-              {Object.keys(fieldErrors).length > 0 && (
-                <div className="flex items-start gap-2 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <AlertCircle
-                    className="text-amber-600 flex-shrink-0 mt-0.5"
-                    size={20}
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-amber-800 mb-2">
-                      {t('organizer.validation.errorsFound', 'Vui lòng sửa các lỗi sau:')}
-                    </p>
-                    <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
-                      {Object.entries(fieldErrors).map(([field, error]) => (
-                        <li key={field}>{error}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
 
               {/* Error Message */}
               {submitStatus === "error" && (
