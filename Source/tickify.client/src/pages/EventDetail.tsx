@@ -23,6 +23,7 @@ import { eventService } from "../services/eventService";
 import { seatMapService } from "../services/seatMapService";
 import { WishlistButton } from "../components/WishlistButton";
 import { authService } from "../services/authService";
+import { waitlistService } from "../services/waitlistService";
 import type { CartItem } from "../types";
 import { MiniCartBar } from "../components/MiniCartBar";
 
@@ -32,7 +33,11 @@ interface EventDetailProps {
   onAddToCart: (items: CartItem[]) => void;
 }
 
-export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailProps) {
+export function EventDetail({
+  eventId,
+  onNavigate,
+  onAddToCart,
+}: EventDetailProps) {
   const { t } = useTranslation();
   const isAuthenticated = authService.isAuthenticated();
   const [event, setEvent] = useState<any | null>(null);
@@ -43,49 +48,83 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
   const [checkingSeatMap, setCheckingSeatMap] = useState(true);
   const [seatMapZones, setSeatMapZones] = useState<any[]>([]); // Store seat map zones
   const [minPrice, setMinPrice] = useState<number>(0); // Minimum ticket price
+  const [isInWaitlist, setIsInWaitlist] = useState(false);
+  const [joiningWaitlist, setJoiningWaitlist] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Helper function to get category translation key
   const getCategoryTranslationKey = (categoryName: string): string => {
     // Remove special characters and spaces, convert to camelCase for translation key
     const normalized = categoryName
-      .replace(/[&\s]+/g, '') // Remove & and spaces
+      .replace(/[&\s]+/g, "") // Remove & and spaces
       .replace(/^./, (str) => str.toLowerCase()); // First char lowercase
-    
+
     // Map common category names to translation keys
     const categoryMap: Record<string, string> = {
-      'music': 'Music',
-      'musicconcerts': 'MusicAndConcerts',
-      'sports': 'Sports',
-      'sportsfitness': 'Sports',
-      'arts': 'Arts',
-      'artsculture': 'Arts',
-      'food': 'Food',
-      'fooddrink': 'Food',
-      'business': 'Business',
-      'businessprofessional': 'Business',
-      'technology': 'Technology',
-      'technologyinnovation': 'Technology',
-      'education': 'Education',
-      'educationlearning': 'Education',
-      'conference': 'Conference',
-      'health': 'Health',
-      'healthwellness': 'Health',
-      'entertainment': 'Entertainment',
-      'fashion': 'Fashion',
-      'fashionbeauty': 'Fashion',
+      music: "Music",
+      musicconcerts: "MusicAndConcerts",
+      sports: "Sports",
+      sportsfitness: "Sports",
+      arts: "Arts",
+      artsculture: "Arts",
+      food: "Food",
+      fooddrink: "Food",
+      business: "Business",
+      businessprofessional: "Business",
+      technology: "Technology",
+      technologyinnovation: "Technology",
+      education: "Education",
+      educationlearning: "Education",
+      conference: "Conference",
+      health: "Health",
+      healthwellness: "Health",
+      entertainment: "Entertainment",
+      fashion: "Fashion",
+      fashionbeauty: "Fashion",
     };
-    
-    const key = categoryMap[normalized.toLowerCase()] || categoryName.split(/[&\s]/)[0];
+
+    const key =
+      categoryMap[normalized.toLowerCase()] || categoryName.split(/[&\s]/)[0];
     return `editEvent.category${key}`;
   };
 
   useEffect(() => {
     let mounted = true;
-    eventService.getEventByIdentifier(eventId)
-      .then((ev) => { if (mounted) setEvent(ev); })
-      .catch(() => { if (mounted) setEvent(null); });
-    return () => { mounted = false; };
-  }, [eventId]);
+    eventService
+      .getEventByIdentifier(eventId)
+      .then((ev) => {
+        if (mounted) setEvent(ev);
+      })
+      .catch(() => {
+        if (mounted) setEvent(null);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [eventId, refreshKey]);
+
+  // Check if user is in waitlist
+  useEffect(() => {
+    if (!event?.id || !isAuthenticated) return;
+
+    waitlistService
+      .checkWaitlist(event.id)
+      .then((inWaitlist) => setIsInWaitlist(inWaitlist))
+      .catch(() => setIsInWaitlist(false));
+  }, [event?.id, isAuthenticated]);
+
+  // Refresh event data when component becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        setRefreshKey((prev) => prev + 1);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   // Check if event has seat map and fetch zone pricing
   useEffect(() => {
@@ -134,11 +173,12 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
   // Get related events from the same category
   useEffect(() => {
     if (event?.category) {
-      eventService.getEvents()
-        .then(events => {
-          const related = events.filter(e => 
-            e.category === event.category && e.id !== event.id
-          ).slice(0, 4);
+      eventService
+        .getEvents()
+        .then((events) => {
+          const related = events
+            .filter((e) => e.category === event.category && e.id !== event.id)
+            .slice(0, 4);
           setRelatedEvents(related);
         })
         .catch(() => setRelatedEvents([]));
@@ -149,9 +189,9 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2>{t('events.eventNotFound')}</h2>
-          <Button onClick={() => onNavigate('home')} className="mt-4">
-            {t('common.returnHome')}
+          <h2>{t("events.eventNotFound")}</h2>
+          <Button onClick={() => onNavigate("home")} className="mt-4">
+            {t("common.returnHome")}
           </Button>
         </div>
       </div>
@@ -164,17 +204,20 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
 
     const currentQty = quantities[tierId] || 0;
     const newQty = Math.max(0, Math.min(tier.available, currentQty + delta));
-    
+
     setQuantities({ ...quantities, [tierId]: newQty });
-    
+
     if (newQty > 0 && !showTimer) {
       setShowTimer(true);
     }
   };
 
-  const totalItems = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
+  const totalItems = Object.values(quantities).reduce(
+    (sum, qty) => sum + qty,
+    0
+  );
   const subtotal = event.ticketTiers.reduce((sum: number, tier: any) => {
-    return sum + (tier.price * (quantities[tier.id] || 0));
+    return sum + tier.price * (quantities[tier.id] || 0);
   }, 0);
 
   const handleCheckout = () => {
@@ -188,27 +231,49 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
         tierId: tier.id,
         tierName: tier.name,
         price: tier.price,
-        quantity: quantities[tier.id]
+        quantity: quantities[tier.id],
       }));
-    
+
     onAddToCart(items);
-    onNavigate('cart');
+    onNavigate("cart");
+  };
+
+  const handleJoinWaitlist = async () => {
+    if (!isAuthenticated) {
+      onNavigate("login");
+      return;
+    }
+
+    setJoiningWaitlist(true);
+    try {
+      await waitlistService.joinWaitlist({
+        eventId: event.id,
+        requestedQuantity: 1,
+      });
+      setIsInWaitlist(true);
+      alert(`${t("waitlist.joined")}\n${t("waitlist.notification")}`);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || t("waitlist.error");
+      alert(`${t("common.error")}\n${errorMsg}`);
+    } finally {
+      setJoiningWaitlist(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long',
-      month: 'long', 
-      day: 'numeric',
-      year: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
@@ -223,27 +288,27 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
           alt={event.title}
           className="w-full h-full object-cover opacity-90"
         />
-        
+
         {/* Action Buttons Overlay */}
         <div className="absolute top-4 right-4 z-10 flex gap-2">
           {isAuthenticated && (
-            <WishlistButton
-              eventId={parseInt(eventId, 10)}
-              size="lg"
-            />
+            <WishlistButton eventId={parseInt(eventId, 10)} size="lg" />
           )}
           <Popover>
             <PopoverTrigger asChild>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 size="sm"
                 className="bg-white/90 hover:bg-white backdrop-blur-sm"
               >
                 <Share2 size={16} className="mr-2" />
-                {t('common.share')}
+                {t("common.share")}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 border-0 shadow-xl" align="end">
+            <PopoverContent
+              className="w-auto p-0 border-0 shadow-xl"
+              align="end"
+            >
               <ShareButtons eventTitle={event.title} eventUrl={eventUrl} />
             </PopoverContent>
           </Popover>
@@ -256,17 +321,26 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-8 shadow-lg">
               <div className="flex items-start justify-between mb-4">
-                <Badge className="bg-teal-500 hover:bg-teal-600">{t(getCategoryTranslationKey(event.category))}</Badge>
-                {showTimer && <HoldTimer onExpire={() => setShowTimer(false)} />}
+                <Badge className="bg-teal-500 hover:bg-teal-600">
+                  {t(getCategoryTranslationKey(event.category))}
+                </Badge>
+                {showTimer && (
+                  <HoldTimer onExpire={() => setShowTimer(false)} />
+                )}
               </div>
 
               <h1 className="mb-6">{event.title}</h1>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div className="flex items-start gap-3">
-                  <Calendar className="text-teal-500 mt-1 flex-shrink-0" size={20} />
+                  <Calendar
+                    className="text-teal-500 mt-1 flex-shrink-0"
+                    size={20}
+                  />
                   <div>
-                    <div className="text-sm text-neutral-500">{t('events.dateTime')}</div>
+                    <div className="text-sm text-neutral-500">
+                      {t("events.dateTime")}
+                    </div>
                     <div className="text-neutral-900">
                       {formatDate(event.date)}
                     </div>
@@ -275,9 +349,14 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <MapPin className="text-teal-500 mt-1 flex-shrink-0" size={20} />
+                  <MapPin
+                    className="text-teal-500 mt-1 flex-shrink-0"
+                    size={20}
+                  />
                   <div>
-                    <div className="text-sm text-neutral-500">{t('common.venue')}</div>
+                    <div className="text-sm text-neutral-500">
+                      {t("common.venue")}
+                    </div>
                     <div className="text-neutral-900">{event.venue}</div>
                     <div className="text-neutral-600">{event.city}</div>
                   </div>
@@ -287,7 +366,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
               <Separator className="my-8" />
 
               <div>
-                <h3 className="mb-4">{t('events.aboutThisEvent')}</h3>
+                <h3 className="mb-4">{t("events.aboutThisEvent")}</h3>
                 <div className="text-neutral-600 leading-relaxed space-y-4 whitespace-pre-line">
                   {event.fullDescription || event.description}
                 </div>
@@ -297,7 +376,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
 
               {/* Organizer */}
               <div>
-                <h3 className="mb-4">{t('events.organizer')}</h3>
+                <h3 className="mb-4">{t("events.organizer")}</h3>
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
                     <AvatarFallback className="bg-teal-100 text-teal-600">
@@ -305,15 +384,21 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="text-neutral-900">{event.organizerName}</div>
-                    <div className="text-sm text-neutral-500">{t('events.eventOrganizer')}</div>
+                    <div className="text-neutral-900">
+                      {event.organizerName}
+                    </div>
+                    <div className="text-sm text-neutral-500">
+                      {t("events.eventOrganizer")}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Event Highlights */}
-            {event.highlights && <EventHighlights highlights={event.highlights} />}
+            {event.highlights && (
+              <EventHighlights highlights={event.highlights} />
+            )}
 
             {/* Location Map */}
             {event.venueDetails && (
@@ -336,7 +421,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                 currentEventId={event.id}
                 relatedEvents={relatedEvents}
                 onEventClick={(id) => {
-                  onNavigate('event-detail', id);
+                  onNavigate("event-detail", id);
                   window.scrollTo(0, 0);
                 }}
               />
@@ -346,7 +431,7 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
           {/* Ticket Selection Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl p-6 shadow-lg sticky top-20">
-              <h3 className="mb-6">{t('events.selectTickets')}</h3>
+              <h3 className="mb-6">{t("events.selectTickets")}</h3>
 
               {checkingSeatMap ? (
                 <div className="p-6 text-center">
@@ -376,19 +461,64 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => {
-                      if (!isAuthenticated) {
-                        onNavigate("login");
-                        return;
-                      }
-                      onNavigate("seat-selection", event.id);
-                      setShowTimer(true);
-                    }}
-                    className="w-full bg-teal-600 hover:bg-teal-700 text-white h-12 text-base font-semibold"
-                  >
-                    Select Seats & Book
-                  </Button>
+                  {(() => {
+                    const totalAvailable = seatMapZones.reduce(
+                      (sum, zone) => sum + (zone.availableSeats || 0),
+                      0
+                    );
+                    const isSoldOut = totalAvailable === 0;
+
+                    if (isSoldOut) {
+                      return (
+                        <div className="space-y-3">
+                          <div className="text-center py-2">
+                            <span className="text-red-600 font-semibold">
+                              {t("common.soldOut")}
+                            </span>
+                          </div>
+                          {isInWaitlist ? (
+                            <Button
+                              disabled
+                              className="w-full bg-neutral-400 text-white h-12 text-base font-semibold cursor-not-allowed"
+                            >
+                              {t("waitlist.alreadyJoined")}
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={handleJoinWaitlist}
+                              disabled={joiningWaitlist}
+                              className="w-full bg-amber-600 hover:bg-amber-700 text-white h-12 text-base font-semibold"
+                            >
+                              {joiningWaitlist ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  {t("common.loading")}
+                                </>
+                              ) : (
+                                t("events.addToWaitlist")
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <Button
+                        onClick={() => {
+                          if (!isAuthenticated) {
+                            onNavigate("login");
+                            return;
+                          }
+                          onNavigate("seat-selection", event.id);
+                          setShowTimer(true);
+                        }}
+                        className="w-full bg-teal-600 hover:bg-teal-700 text-white h-12 text-base font-semibold"
+                      >
+                        Select Seats & Book
+                      </Button>
+                    );
+                  })()}
                 </div>
               ) : (
                 /* Regular Ticket Selection - Show when no seat map */
@@ -423,20 +553,47 @@ export function EventDetail({ eventId, onNavigate, onAddToCart }: EventDetailPro
                         </div>
                       </div>
 
-                      <Button
-                        onClick={() => {
-                          if (!isAuthenticated) {
-                            onNavigate("login");
-                            return;
-                          }
-                          // Navigate to checkout with this ticket tier
-                          onNavigate("checkout", event.id);
-                        }}
-                        disabled={tier.available <= 0}
-                        className="w-full"
-                      >
-                        {tier.available > 0 ? t("common.bookNow") : t("common.soldOut")}
-                      </Button>
+                      {tier.available > 0 ? (
+                        <Button
+                          onClick={() => {
+                            if (!isAuthenticated) {
+                              onNavigate("login");
+                              return;
+                            }
+                            // Navigate to checkout with this ticket tier
+                            onNavigate("checkout", event.id);
+                          }}
+                          className="w-full"
+                        >
+                          {t("common.bookNow")}
+                        </Button>
+                      ) : (
+                        <div className="space-y-2">
+                          {isInWaitlist ? (
+                            <Button
+                              disabled
+                              className="w-full bg-neutral-400 cursor-not-allowed"
+                            >
+                              {t("waitlist.alreadyJoined")}
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={handleJoinWaitlist}
+                              disabled={joiningWaitlist}
+                              className="w-full bg-amber-600 hover:bg-amber-700"
+                            >
+                              {joiningWaitlist ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  {t("common.loading")}
+                                </>
+                              ) : (
+                                t("events.addToWaitlist")
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

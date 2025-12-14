@@ -168,6 +168,16 @@
   "events": {
     "title": "Events",
     "category": "Category",
+    "categoryMusic": "Music",
+    "categorySports": "Sports",
+    "categoryArts": "Arts & Culture",
+    "categoryTechnology": "Technology",
+    "entertainment": "Entertainment",
+    "categoryFood": "Food & Drink",
+    "categoryBusiness": "Business",
+    "categoryHealth": "Health & Wellness",
+    "categoryEducation": "Education",
+    "categoryFashion": "Fashion & Beauty",
     "allCategories": "All Categories",
     "date": "Date",
     "location": "Location",
@@ -480,6 +490,7 @@
     }
   },
   "organizer": {
+    "accessRequiredTitle": "Organizer access required",
     "becomeOrganizer": "Become an Organizer",
     "title": "Apply to Become an Event Organizer",
     "description": "Create and manage your own events on Tickify. Fill in the information below to submit your request.",
@@ -567,6 +578,7 @@
     "publishEvent": "Publish Event",
     "createNewEvent": "Create New Event",
     "dashboard": {
+      "accessRequiredDescription": "Please apply to become an organizer to view performance dashboards.",
       "title": "Organizer Dashboard",
       "subtitle": "Manage your events and track performance",
       "overview": "Overview",
@@ -1073,6 +1085,7 @@
       "subtitle": "Platform management and analytics"
     },
     "overview": "Overview",
+    "revenue": "Revenue",
     "totalUsers": "Total Users",
     "totalEvents": "Total Events",
     "totalRevenue": "Total Revenue",
@@ -1546,7 +1559,10 @@
       "leftError": "Unable to leave the waitlist",
       "nextInLine": "Next in line!",
       "inWaitlist": "in waitlist",
-      "joined": "Joined",
+      "joined": "Joined waitlist successfully",
+      "alreadyJoined": "Already in Waitlist",
+      "notification": "We'll notify you when tickets become available",
+      "error": "Failed to join waitlist",
       "tickets": "tickets",
       "purchased": "Purchased",
       "whatNext": "What happens next?",
