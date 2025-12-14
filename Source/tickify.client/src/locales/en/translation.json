@@ -23,9 +23,7 @@
     "profileSettings": "Profile & Settings",
     "signOut": "Sign Out",
     "chat": "Chat",
-    "pendingApproval": "Pending Approval",
-    "refundHistory": "My Refunds",
-    "manageRefunds": "Manage Refunds"
+    "pendingApproval": "Pending Approval"
   },
   "home": {
     "title": "Discover Amazing Events",
@@ -515,39 +513,17 @@
     "validation": {
       "companyNameRequired": "Organization name is required",
       "companyNameTooShort": "Organization name must be at least 3 characters",
-      "companyNameTooLong": "Organization name cannot exceed 200 characters",
-      "companyNameInvalid": "Organization name contains invalid characters",
       "phoneRequired": "Phone number is required",
-      "phoneInvalid": "Invalid phone number. E.g: 0901234567 or +84901234567",
-      "emailInvalid": "Invalid email. E.g: contact@company.com",
-      "emailTooLong": "Email cannot exceed 100 characters",
-      "websiteInvalid": "Invalid website URL. E.g: https://www.company.com",
-      "websiteProtocol": "Website must start with http:// or https://",
+      "phoneInvalid": "Phone number must be 10-11 digits",
+      "emailInvalid": "Invalid email format",
+      "websiteInvalid": "Invalid website URL (e.g., https://example.com)",
       "addressRequired": "Address is required",
       "addressTooShort": "Address must be at least 10 characters",
-      "addressTooLong": "Address cannot exceed 500 characters",
-      "taxCodeInvalid": "Invalid tax code. E.g: 0123456789 or 0123456789-001",
+      "taxCodeInvalid": "Invalid tax code format (e.g., 0123456789 or 0123456789-001)",
       "businessRegInvalid": "Business registration number must be 10-13 digits",
       "descriptionTooShort": "Description must be at least 20 characters",
-      "descriptionTooLong": "Description cannot exceed 2000 characters",
-      "formHasErrors": "Please check the information you entered",
-      "errorsFound": "Please fix the following errors:"
+      "formHasErrors": "Please check the information you entered"
     },
-    "taxCode": "Tax Code",
-    "email": "Company Email",
-    "website": "Website",
-    "businessRegHelper": "Business registration number consists of 10-13 digits",
-    "taxCodeHelper": "Tax code consists of 10 digits or 10 digits + dash + 3 digits",
-    "phoneHelper": "Vietnamese mobile phone number (10 digits)",
-    "emailHelper": "Main contact email of the organization",
-    "websiteHelper": "URL must start with http:// or https://",
-    "descriptionHelper": "Description about the organization and event organizing experience (minimum 20 characters)",
-    "formNote": "Note",
-    "formNoteDesc": "Please fill in all required information (*) accurately. This information will be reviewed by admin before approval.",
-    "pendingRequest": "Request Pending Approval",
-    "pendingRequestDesc": "Your organizer request is being reviewed by admin. You will receive an email notification when there is a result.",
-    "requestDate": "Request Date",
-    "status": "Status",
     "alreadyOrganizer": "You are already an Organizer",
     "alreadyOrganizerDesc": "Your account already has permission to create and manage events.",
     "goToDashboard": "Go to Organizer Dashboard",
@@ -661,7 +637,9 @@
       "revenueByEvent": "Revenue by Event",
       "eventComparison": "Comparison of event performance",
       "salesRate": "Ticket Sales Rate",
-      "percentageSold": "Percentage of tickets sold"
+      "percentageSold": "Percentage of tickets sold",
+      "reason": "Reason",
+      "searchOrders": "Search orders, customers..."
     }
   },
   "editEvent": {
@@ -827,15 +805,7 @@
     "amount": "Amount",
     "completed": "Completed",
     "pending": "Pending",
-    "failed": "Failed",
-    "noSalesData": "No sales data yet",
-    "noSalesDataDescription": "Sales data will appear here once customers start purchasing tickets for your event.",
-    "noTicketSalesData": "No ticket sales yet",
-    "noTicketSalesDataDescription": "Ticket sales data will be displayed here as customers purchase tickets.",
-    "noTopBuyers": "No buyers yet",
-    "noTopBuyersDescription": "Top buyers will appear here once tickets are sold.",
-    "noTransactions": "No transactions yet",
-    "noTransactionsDescription": "Recent transactions will be displayed here after ticket purchases."
+    "failed": "Failed"
   },
   "eventManagement": {
     "myEvents": "My Events",
@@ -1761,40 +1731,6 @@
     "beFirst": "Be the first to review"
   },
   "payment": {
-    "selectMethod": "Select Payment Method",
-    "popular": "Popular",
-    "methods": {
-      "momoWallet": "MoMo E-Wallet",
-      "momoDescription": "Pay with MoMo wallet",
-      "vnpay": "VNPay",
-      "vnpayDescription": "Pay via VNPay gateway",
-      "creditCard": "Credit/Debit Card",
-      "creditCardDescription": "Visa, Mastercard, JCB accepted"
-    },
-    "momo": {
-      "howToPay": "How to pay with MoMo:",
-      "step1": "Enter your MoMo phone number",
-      "step2": "Click 'Continue to Review'",
-      "step3": "Open MoMo app to confirm payment",
-      "step4": "Complete payment within 5 minutes",
-      "phoneNumber": "MoMo Phone Number",
-      "validPhone": "Valid phone number",
-      "phoneNote": "Enter the phone number registered with your MoMo account"
-    },
-    "vnpay": {
-      "howToPay": "How to pay with VNPay:",
-      "step1": "Click 'Continue to Review'",
-      "step2": "You will be redirected to VNPay",
-      "step3": "Select your bank and login",
-      "step4": "Confirm payment on your bank app",
-      "supportedBanks": "Supported Banks"
-    },
-    "creditCard": {
-      "enterFullInfo": "Please enter full credit card information",
-      "invalidExpiryFormat": "Invalid expiry date format",
-      "invalidExpiry": "Card has expired or invalid expiry date",
-      "verifying": "Verifying card information..."
-    },
     "return": {
       "processing": "Processing Payment...",
       "success": "Payment Successful!",
@@ -1803,34 +1739,64 @@
       "failedMessage": "There was an issue processing your payment",
       "returnToHome": "Return to Home",
       "tryAgain": "Try Again",
-      "contactSupport": "Contact Support",
-      "successTitle": "Payment Successful!",
-      "failedTitle": "Payment Failed",
-      "amount": "Amount",
-      "method": "Payment Method",
-      "transactionId": "Transaction ID",
-      "time": "Time",
-      "status": "Status",
-      "completed": "Completed",
-      "viewTickets": "View My Tickets",
-      "viewOrderDetails": "View Order Details",
-      "paymentId": "Payment ID",
-      "verifying": "Verifying Payment...",
-      "pleaseWait": "Please wait a moment...",
-      "retrying": "Retrying verification ({{count}})...",
-      "retryAttempts": "Retry attempts",
-      "paymentIdNotFound": "Payment ID not found",
-      "invalidPaymentId": "Invalid payment ID: {{paymentId}}",
-      "verificationFailed": "Verification failed: {{error}}",
-      "verificationPending": "Payment verification is pending",
-      "verificationError": "Payment verification error",
-      "freeBookingConfirmed": "Free booking confirmed successfully",
-      "cancelledMessage": "Payment was cancelled",
-      "paymentFailed": "Payment failed",
-      "vnpayFailed": "VNPay payment failed (Code: {{code}})",
-      "momoFailedResult": "MoMo payment failed (Result: {{code}})",
-      "momoFailedError": "MoMo payment failed (Error: {{code}})",
-      "message": "Message"
+      "contactSupport": "Contact Support"
+    },
+    "creditCard": {
+      "enterFullInfo": "Please enter full card information",
+      "invalidExpiryFormat": "Invalid expiry format. Use MM/YY",
+      "invalidExpiry": "Card has expired or invalid expiry date",
+      "verifying": "Verifying card information..."
+    },
+    "methods": {
+      "momoWallet": "MoMo E-Wallet",
+      "momoDescription": "Pay instantly with MoMo wallet",
+      "vnpay": "VNPay Gateway",
+      "vnpayDescription": "Bank cards, QR code, e-wallets",
+      "creditCard": "Credit/Debit Card",
+      "creditCardDescription": "Visa, Mastercard, etc."
+    },
+    "selectMethod": "Select Payment Method",
+    "popular": "Popular",
+    "momo": {
+      "howToPay": "How to pay with MoMo:",
+      "step1": "Click 'Complete Payment' below",
+      "step2": "You'll be redirected to MoMo app/website",
+      "step3": "Confirm payment in your MoMo app",
+      "step4": "You'll be redirected back after payment",
+      "phoneNumber": "MoMo Phone Number",
+      "phoneNote": "Enter the phone number linked to your MoMo account",
+      "validPhone": "Valid phone number"
+    },
+    "vnpay": {
+      "howToPay": "How to pay with VNPay:",
+      "step1": "Click 'Complete Payment' below",
+      "step2": "You'll be redirected to VNPay payment gateway",
+      "step3": "Select payment method (Bank card/E-wallet/QR)",
+      "step4": "Complete payment and you'll be redirected back",
+      "supportedBanks": "Supported Banks:",
+      "banksNote": "Supports most banks and e-wallets in Vietnam",
+      "banks": {
+        "vietcombank": "Vietcombank",
+        "techcombank": "Techcombank",
+        "vietinbank": "VietinBank",
+        "bidv": "BIDV",
+        "acb": "ACB",
+        "mbbank": "MB Bank",
+        "vpbank": "VPBank",
+        "tpbank": "TPBank",
+        "agribank": "Agribank"
+      }
+    },
+    "creditCard": {
+      "securePayment": "Your payment is secure",
+      "instructions": "All transactions are encrypted and processed securely through our trusted payment partners. We never store your full payment details.",
+      "cardNumber": "Card Number",
+      "cardholderName": "Cardholder Name",
+      "expiryDate": "Expiry Date",
+      "cvv": "CVV",
+      "validCardNumber": "Valid card number",
+      "validCardholderName": "Valid cardholder name",
+      "valid": "Valid"
     }
   },
   "transfer": {
@@ -1990,7 +1956,7 @@
       "reviewPublish": "Review & Publish",
       "eventTitle": "Event Title *",
       "eventTitlePlaceholder": "e.g., Summer Music Festival 2025",
-      "urlSlug": "URL Slug",
+      "urlSlug": "URL Slug *",
       "urlSlugPlaceholder": "summer-music-festival-2025",
       "urlSlugHint": "tickify.vn/events/",
       "category": "Category *",
@@ -1998,7 +1964,7 @@
       "description": "Description * (minimum 50 characters)",
       "descriptionPlaceholder": "Describe your event in detail... (minimum 50 characters required)",
       "descriptionHint": "characters minimum",
-      "eventImage": "Event Image *",
+      "eventImage": "Event Image",
       "clickToUpload": "Click to upload image",
       "imageFormats": "PNG, JPG, GIF, WebP up to 5MB",
       "uploadingToAzure": "Uploading to Azure Storage...",
@@ -2259,6 +2225,37 @@
       "deletedSuccessfully": "Promo code deleted successfully",
       "activatedSuccessfully": "Promo code activated successfully",
       "deactivatedSuccessfully": "Promo code deactivated successfully"
+    },
+    "seat": {
+      "builder": {
+        "title": "Seat Map Builder",
+        "subtitle": "Design your venue seating layout",
+        "seatMapName": "Seat Map for {eventTitle}",
+        "rows": "Rows",
+        "seatsPerRow": "Seats per Row",
+        "templates": {
+          "theaterStyle": "Theater Style",
+          "theaterDescription": "Traditional theater seating",
+          "stadium": "Stadium",
+          "stadiumDescription": "Curved stadium layout",
+          "conference": "Conference",
+          "conferenceDescription": "Tables and chairs",
+          "concertHall": "Concert Hall",
+          "concertDescription": "Mix of seated and standing"
+        },
+        "zone": {
+          "createNewZone": "Create New Zone",
+          "editZone": "Edit Zone",
+          "zoneDescription": "Define the zone name, color, and pricing",
+          "zoneName": "Zone Name",
+          "zoneNamePlaceholder": "e.g., VIP Section",
+          "zoneColor": "Zone Color",
+          "pricePerSeat": "Price per Seat (VND)",
+          "cancel": "Cancel",
+          "createZone": "Create Zone",
+          "updateZone": "Update Zone"
+        }
+      }
     }
   },
   "seat": {
@@ -2337,6 +2334,7 @@
       "rows": "Rows",
       "cols": "Cols",
       "autoNumberSeats": "Auto-Number Seats",
+      "seatMapName": "Seat Map for {eventTitle}",
       "clearAll": "Clear All",
       "zonesAndPricing": "Zones & Pricing",
       "add": "Add",
@@ -2393,6 +2391,28 @@
       "concertHall": "Concert Hall",
       "concertDescription": "Mix of seated and standing",
       "seatMapPreview": "Seat Map Preview",
+      "templates": {
+        "theaterStyle": "Theater Style",
+        "theaterDescription": "Traditional theater seating",
+        "stadium": "Stadium",
+        "stadiumDescription": "Curved stadium layout",
+        "conference": "Conference",
+        "conferenceDescription": "Tables and chairs",
+        "concertHall": "Concert Hall",
+        "concertDescription": "Mix of seated and standing"
+      },
+      "zone": {
+        "createNewZone": "Create New Zone",
+        "editZone": "Edit Zone",
+        "zoneDescription": "Define the zone name, color, and pricing",
+        "zoneName": "Zone Name",
+        "zoneNamePlaceholder": "e.g., VIP Section",
+        "zoneColor": "Zone Color",
+        "pricePerSeat": "Price per Seat (VND)",
+        "cancel": "Cancel",
+        "createZone": "Create Zone",
+        "updateZone": "Update Zone"
+      },
       "howUsersWillSee": "This is how users will see your seat map",
       "copySeatMap": "Copy Seat Map from Another Event",
       "selectExistingMap": "Select an existing seat map to copy its layout",
@@ -3102,6 +3122,99 @@
     },
     "sources": {
       "title": "Reference sources:"
+    }
+  },
+  "seatMapBuilder": {
+    "title": "Seat Map Builder",
+    "back": "Back",
+    "topBar": {
+      "undo": "Undo",
+      "redo": "Redo",
+      "zoomOut": "Zoom Out",
+      "zoomIn": "Zoom In",
+      "fitToScreen": "Fit to Screen",
+      "showGrid": "Show Grid",
+      "preview": "Preview",
+      "saveDraft": "Save Draft",
+      "publish": "Publish"
+    },
+    "eventInfo": {
+      "title": "Event Information",
+      "event": "Event",
+      "venue": "Venue",
+      "totalCapacity": "Total Capacity"
+    },
+    "drawingTools": {
+      "title": "Drawing Tools",
+      "standardSeat": "Standard Seat",
+      "wheelchairAccessible": "Wheelchair Accessible",
+      "eraser": "Eraser",
+      "gridSize": "Grid Size",
+      "rows": "Rows",
+      "cols": "Cols",
+      "autoNumber": "Auto-Number Seats",
+      "clearAll": "Clear All"
+    },
+    "zones": {
+      "title": "Zones & Pricing",
+      "add": "Add",
+      "autoSync": "Auto-Sync: Zones and ticket types are automatically synchronized.",
+      "newZonesInfo": "New zones will create matching ticket types automatically.",
+      "price": "Price",
+      "capacity": "Capacity",
+      "addZone": "Add Zone",
+      "editZone": "Edit Zone",
+      "zoneName": "Zone Name",
+      "zoneColor": "Zone Color",
+      "zonePrice": "Zone Price",
+      "cancel": "Cancel",
+      "save": "Save",
+      "delete": "Delete"
+    },
+    "templates": {
+      "title": "Templates",
+      "loadTemplate": "Load Template",
+      "copyFromEvent": "Copy from Event",
+      "theaterStyle": "Theater Style",
+      "theaterDescription": "Traditional theater seating with center aisle",
+      "conferenceHall": "Conference Hall",
+      "conferenceDescription": "Large conference room with table seating",
+      "arenaStyle": "Arena Style",
+      "arenaDescription": "Stadium seating in sections"
+    },
+    "stage": "STAGE",
+    "tips": {
+      "title": "Tips & Instructions",
+      "howToUse": "How to use:",
+      "selectZone": "Select a zone from the left sidebar",
+      "chooseTool": "Choose a drawing tool",
+      "clickDrag": "Click or drag on the grid to place seats",
+      "useEraser": "Use eraser to remove seats",
+      "autoNumberInfo": "Auto-number assigns seat labels",
+      "keyboardShortcuts": "Keyboard Shortcuts:",
+      "undo": "Ctrl+Z: Undo",
+      "redo": "Ctrl+Y: Redo",
+      "save": "Ctrl+S: Save",
+      "delete": "Delete: Remove selected",
+      "currentSelection": "Current Selection:",
+      "tool": "Tool",
+      "zone": "Zone"
+    },
+    "messages": {
+      "zoneDeleted": "Zone deleted",
+      "templateApplied": "Template applied successfully",
+      "seatsNumbered": "Seats numbered automatically",
+      "eventIdMissing": "Event ID is missing",
+      "addZoneFirst": "Please add at least one zone before saving",
+      "zonesMustHaveNames": "All zones must have names",
+      "zonePriceExceedsMax": "Zone prices cannot exceed {max} VND. Invalid zones: {zones}",
+      "seatMapUpdated": "Seat map updated successfully",
+      "seatMapSaved": "Seat map saved successfully",
+      "saveFailed": "Failed to save seat map",
+      "addSeatsFirst": "Please add seats before publishing",
+      "seatMapPublished": "Seat map published successfully!",
+      "failedToLoadSeatMaps": "Failed to load seat maps",
+      "cannotModifyAfterSales": "Cannot modify seat map after tickets have been sold. This would affect existing bookings and seat assignments."
     }
   }
 }

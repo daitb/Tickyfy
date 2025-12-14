@@ -1,10 +1,21 @@
-import { useTranslation } from 'react-i18next';
-import { CheckCircle, Download, Mail, Calendar, MapPin, Ticket, Info, Share2 } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { QRTicketCard } from '../components/QRTicketCard';
-import { Separator } from '../components/ui/separator';
-import type { Order } from '../types';
-import { mockEvents } from '../mockData';
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  CheckCircle,
+  Download,
+  Mail,
+  Calendar,
+  MapPin,
+  Ticket,
+  Info,
+  Share2,
+  Loader2,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { QRTicketCard } from "../components/QRTicketCard";
+import { Separator } from "../components/ui/separator";
+import type { Order } from "../types";
+import { mockEvents } from "../mockData";
 
 interface SuccessProps {
   order: Order | null;
@@ -13,36 +24,107 @@ interface SuccessProps {
 
 export function Success({ order, onNavigate }: SuccessProps) {
   const { t } = useTranslation();
+  const [isSharing, setIsSharing] = useState(false);
+
   if (!order) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2>{t('booking.success.noOrder')}</h2>
-          <Button onClick={() => onNavigate('home')} className="mt-4">
-            {t('common.returnHome')}
+          <h2>{t("booking.success.noOrder")}</h2>
+          <Button onClick={() => onNavigate("home")} className="mt-4">
+            {t("common.returnHome")}
           </Button>
         </div>
       </div>
     );
   }
 
-  const event = mockEvents.find(e => e.id === order.eventId);
+  const event = mockEvents.find((e) => e.id === order.eventId);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long',
-      month: 'long', 
-      day: 'numeric',
-      year: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
     });
+  };
+
+  const handleDownloadReceipt = () => {
+    // Generate receipt content
+    const receiptContent = `
+TICKIFY - ORDER RECEIPT
+========================
+
+Order ID: ${order.id}
+Date: ${new Date(order.createdAt).toLocaleString()}
+Email: ${order.userEmail}
+
+Event: ${event?.title || "Event"}
+Date: ${event ? formatDate(event.date) : "N/A"}
+Time: ${event?.time || "N/A"}
+Venue: ${event?.venue || "N/A"}, ${event?.city || ""}
+
+--- ORDER SUMMARY ---
+Subtotal: ${formatPrice(order.subtotal)}
+Service Fee: ${formatPrice(order.serviceFee)}
+Total Paid: ${formatPrice(order.total)}
+
+Tickets: ${order.tickets.length}
+${order.tickets
+  .map((t, i) => `  ${i + 1}. Ticket #${t.id} - ${t.tierName}`)
+  .join("\n")}
+
+Thank you for your purchase!
+    `;
+
+    const blob = new Blob([receiptContent], { type: "text/plain" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `receipt-${order.id}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleShareWithFriends = async () => {
+    if (!event) return;
+
+    try {
+      setIsSharing(true);
+      const shareData = {
+        title: event.title,
+        text: `${t("booking.success.imGoingTo")} ${event.title}! ${t(
+          "booking.success.joinMe"
+        )}`,
+        url: window.location.origin,
+      };
+
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.origin);
+        alert(
+          t("booking.ticketDetail.linkCopied") || "Link copied to clipboard!"
+        );
+      }
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        console.error("Share error:", err);
+      }
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   return (
@@ -53,9 +135,10 @@ export function Success({ order, onNavigate }: SuccessProps) {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-teal-100 rounded-full mb-4 animate-in zoom-in duration-300">
             <CheckCircle className="text-teal-600" size={40} />
           </div>
-          <h1 className="mb-3">{t('booking.success.title')}</h1>
+          <h1 className="mb-3">{t("booking.success.title")}</h1>
           <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
-            {t('booking.success.subtitle')} <strong className="text-neutral-900">{order.userEmail}</strong>
+            {t("booking.success.subtitle")}{" "}
+            <strong className="text-neutral-900">{order.userEmail}</strong>
           </p>
         </div>
 
@@ -65,44 +148,57 @@ export function Success({ order, onNavigate }: SuccessProps) {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Ticket className="text-teal-500" size={20} />
-                <h3>{t('booking.success.orderConfirmation')}</h3>
+                <h3>{t("booking.success.orderConfirmation")}</h3>
               </div>
               <p className="text-sm text-neutral-500">
-                {t('booking.success.orderId')}: <span className="font-mono text-neutral-900">{order.id}</span>
+                {t("booking.success.orderId")}:{" "}
+                <span className="font-mono text-neutral-900">{order.id}</span>
               </p>
               <p className="text-sm text-neutral-500">
-                {new Date(order.createdAt).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
+                {new Date(order.createdAt).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
                 })}
               </p>
             </div>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleDownloadReceipt}>
               <Download size={16} className="mr-2" />
-              {t('booking.success.downloadReceipt')}
+              {t("booking.success.downloadReceipt")}
             </Button>
           </div>
 
           {/* Event Details */}
           {event && (
             <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl p-6 mb-6">
-              <h4 className="mb-4">{t('booking.success.eventDetails')}</h4>
+              <h4 className="mb-4">{t("booking.success.eventDetails")}</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-start gap-3">
-                  <Calendar className="text-teal-500 mt-1 flex-shrink-0" size={20} />
+                  <Calendar
+                    className="text-teal-500 mt-1 flex-shrink-0"
+                    size={20}
+                  />
                   <div>
-                    <div className="text-sm text-neutral-600">{t('events.dateTime')}</div>
-                    <div className="text-neutral-900">{formatDate(event.date)}</div>
+                    <div className="text-sm text-neutral-600">
+                      {t("events.dateTime")}
+                    </div>
+                    <div className="text-neutral-900">
+                      {formatDate(event.date)}
+                    </div>
                     <div className="text-neutral-600">{event.time}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <MapPin className="text-teal-500 mt-1 flex-shrink-0" size={20} />
+                  <MapPin
+                    className="text-teal-500 mt-1 flex-shrink-0"
+                    size={20}
+                  />
                   <div>
-                    <div className="text-sm text-neutral-600">{t('common.venue')}</div>
+                    <div className="text-sm text-neutral-600">
+                      {t("common.venue")}
+                    </div>
                     <div className="text-neutral-900">{event.venue}</div>
                     <div className="text-neutral-600">{event.city}</div>
                   </div>
@@ -115,19 +211,25 @@ export function Success({ order, onNavigate }: SuccessProps) {
 
           {/* Order Breakdown */}
           <div>
-            <h4 className="mb-4">{t('booking.success.orderSummary')}</h4>
+            <h4 className="mb-4">{t("booking.success.orderSummary")}</h4>
             <div className="space-y-3">
               <div className="flex justify-between text-neutral-600">
-                <span>{t('booking.subtotal')} ({order.tickets.length} {order.tickets.length === 1 ? t('booking.success.ticket') : t('booking.success.tickets')})</span>
+                <span>
+                  {t("booking.subtotal")} ({order.tickets.length}{" "}
+                  {order.tickets.length === 1
+                    ? t("booking.success.ticket")
+                    : t("booking.success.tickets")}
+                  )
+                </span>
                 <span>{formatPrice(order.subtotal)}</span>
               </div>
               <div className="flex justify-between text-neutral-600">
-                <span>{t('booking.serviceFee')}</span>
+                <span>{t("booking.serviceFee")}</span>
                 <span>{formatPrice(order.serviceFee)}</span>
               </div>
               <Separator />
               <div className="flex justify-between text-neutral-900">
-                <span>{t('booking.success.totalPaid')}</span>
+                <span>{t("booking.success.totalPaid")}</span>
                 <span>{formatPrice(order.total)}</span>
               </div>
             </div>
@@ -139,13 +241,16 @@ export function Success({ order, onNavigate }: SuccessProps) {
           <div className="flex items-start gap-3">
             <Mail className="text-blue-600 mt-0.5 flex-shrink-0" size={20} />
             <div className="flex-1">
-              <h4 className="text-blue-900 mb-2">{t('booking.success.checkEmail')}</h4>
+              <h4 className="text-blue-900 mb-2">
+                {t("booking.success.checkEmail")}
+              </h4>
               <p className="text-sm text-blue-700 mb-3">
-                {t('booking.success.emailSent')} <strong>{order.userEmail}</strong>. 
-                {t('booking.success.emailNote')}
+                {t("booking.success.emailSent")}{" "}
+                <strong>{order.userEmail}</strong>.
+                {t("booking.success.emailNote")}
               </p>
               <p className="text-sm text-blue-700">
-                {t('booking.success.ticketsAvailable')}
+                {t("booking.success.ticketsAvailable")}
               </p>
             </div>
           </div>
@@ -154,9 +259,12 @@ export function Success({ order, onNavigate }: SuccessProps) {
         {/* QR Tickets */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2>{t('booking.success.yourTickets')}</h2>
+            <h2>{t("booking.success.yourTickets")}</h2>
             <p className="text-sm text-neutral-600">
-              {order.tickets.length} {order.tickets.length === 1 ? t('booking.success.ticket') : t('booking.success.tickets')}
+              {order.tickets.length}{" "}
+              {order.tickets.length === 1
+                ? t("booking.success.ticket")
+                : t("booking.success.tickets")}
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -164,9 +272,9 @@ export function Success({ order, onNavigate }: SuccessProps) {
               <QRTicketCard
                 key={ticket.id}
                 ticket={ticket}
-                eventTitle={event?.title || 'Event'}
-                eventDate={event?.date || ''}
-                eventVenue={event?.venue || ''}
+                eventTitle={event?.title || "Event"}
+                eventDate={event?.date || ""}
+                eventVenue={event?.venue || ""}
               />
             ))}
           </div>
@@ -176,24 +284,24 @@ export function Success({ order, onNavigate }: SuccessProps) {
         <div className="bg-white rounded-xl p-6 mb-8 shadow-sm">
           <div className="flex items-start gap-3 mb-4">
             <Info className="text-teal-500 mt-0.5 flex-shrink-0" size={20} />
-            <h4>{t('booking.success.whatsNext')}</h4>
+            <h4>{t("booking.success.whatsNext")}</h4>
           </div>
           <ul className="space-y-3 text-sm text-neutral-600 ml-8">
             <li className="flex items-start gap-2">
               <span className="text-teal-500">1.</span>
-              <span>{t('booking.success.step1')}</span>
+              <span>{t("booking.success.step1")}</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-teal-500">2.</span>
-              <span>{t('booking.success.step2')}</span>
+              <span>{t("booking.success.step2")}</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-teal-500">3.</span>
-              <span>{t('booking.success.step3')}</span>
+              <span>{t("booking.success.step3")}</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-teal-500">4.</span>
-              <span>{t('booking.success.step4')}</span>
+              <span>{t("booking.success.step4")}</span>
             </li>
           </ul>
         </div>
@@ -201,28 +309,40 @@ export function Success({ order, onNavigate }: SuccessProps) {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
-            onClick={() => onNavigate('my-tickets')}
+            onClick={() => onNavigate("my-tickets")}
             size="lg"
             className="bg-teal-500 hover:bg-teal-600"
           >
             <Ticket size={20} className="mr-2" />
-            {t('booking.success.viewAllMyTickets')}
+            {t("booking.success.viewAllMyTickets")}
           </Button>
           <Button
-            onClick={() => onNavigate('home')}
+            onClick={() => onNavigate("home")}
             variant="outline"
             size="lg"
           >
-            {t('booking.success.discoverMore')}
+            {t("booking.success.discoverMore")}
           </Button>
         </div>
 
         {/* Share */}
         <div className="text-center mt-8">
-          <p className="text-sm text-neutral-500 mb-3">{t('booking.success.excited')}</p>
-          <Button variant="ghost" size="sm" className="text-teal-600 hover:bg-teal-50">
-            <Share2 size={16} className="mr-2" />
-            {t('booking.success.shareWithFriends')}
+          <p className="text-sm text-neutral-500 mb-3">
+            {t("booking.success.excited")}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-teal-600 hover:bg-teal-50"
+            onClick={handleShareWithFriends}
+            disabled={isSharing}
+          >
+            {isSharing ? (
+              <Loader2 size={16} className="mr-2 animate-spin" />
+            ) : (
+              <Share2 size={16} className="mr-2" />
+            )}
+            {t("booking.success.shareWithFriends")}
           </Button>
         </div>
       </div>

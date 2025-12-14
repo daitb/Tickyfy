@@ -135,12 +135,9 @@ export function SeatSelectionReal({
               await seatMapService.releaseSeats(seatMapData.id, seatIds);
               // Wait a bit for SignalR to update before loading fresh data
               await new Promise((resolve) => setTimeout(resolve, 300));
-            } catch (error) {
-              console.error("Failed to release seats:", error);
-            }
+            } catch (error) {}
           }
         } catch (error) {
-          console.error("Error checking for reserved seats:", error);
         } finally {
           // Load seat data after release attempt
           loadSeatData(eventId);
@@ -169,8 +166,6 @@ export function SeatSelectionReal({
         reservedByUserId?: number;
         reason?: string;
       }) => {
-        console.log("Seats updated:", update);
-
         // Update seat status in real-time
         setSeats((prevSeats) =>
           prevSeats.map((seat) => {
@@ -213,7 +208,6 @@ export function SeatSelectionReal({
 
     // Handle reconnection - refresh seat data
     connection.onreconnected(() => {
-      console.log("SignalR reconnected - refreshing seat data");
       if (eventId) {
         loadSeatData(eventId);
       }
@@ -221,18 +215,18 @@ export function SeatSelectionReal({
     });
 
     connection.onreconnecting(() => {
-      console.log("SignalR reconnecting...");
       alert(t("seat.selection.alerts.connectionLost"));
     });
 
     connection
       .start()
       .then(() => {
-        console.log("SignalR connected");
         connection.invoke("JoinEventSeatMap", parseInt(eventId));
         setSeatConnection(connection);
       })
-      .catch((err) => console.error("SignalR connection error:", err));
+      .catch(() => {
+        // Connection failed
+      });
 
     return () => {
       // Cleanup SignalR connection safely
@@ -257,7 +251,6 @@ export function SeatSelectionReal({
           }
         } catch {
           // Ignore errors during cleanup - connection may already be closed
-          console.debug("SignalR cleanup - connection may already be closed");
         }
       };
       cleanup();
@@ -310,7 +303,7 @@ export function SeatSelectionReal({
           if (seatMap && selectedSeats.length > 0) {
             seatMapService
               .releaseSeats(seatMap.id, selectedSeats)
-              .catch(console.error);
+              .catch(() => {});
           }
           setSelectedSeats([]);
           sessionStorage.removeItem("selectedSeats");
@@ -343,18 +336,15 @@ export function SeatSelectionReal({
 
       // Prevent double release
       if (hasReleasedOnUnmount) {
-        console.log("[SeatSelection] Already released, skipping");
         return;
       }
 
       if (seats.length > 0 && !navigating && map) {
-        console.log("[SeatSelection] Releasing seats on page leave:", seats);
         hasReleasedOnUnmount = true;
         const token = localStorage.getItem("token");
 
         // Only release if user is authenticated
         if (!token) {
-          console.warn("[SeatSelection] No token found, skipping seat release");
           return;
         }
 
@@ -368,12 +358,8 @@ export function SeatSelectionReal({
           body: JSON.stringify(seats),
           keepalive: true,
         })
-          .then(() => {
-            console.log("[SeatSelection] Seats released successfully");
-          })
-          .catch((err) => {
-            console.error("[SeatSelection] Failed to release seats:", err);
-          });
+          .then(() => {})
+          .catch((err) => {});
 
         // Clear session storage
         sessionStorage.removeItem("selectedSeats");
@@ -381,11 +367,6 @@ export function SeatSelectionReal({
         sessionStorage.removeItem("eventId");
         sessionStorage.removeItem("totalPrice");
       } else {
-        console.log("[SeatSelection] No release needed:", {
-          hasSeats: seats.length > 0,
-          navigating,
-          hasMap: !!map,
-        });
       }
     };
 
@@ -435,9 +416,7 @@ export function SeatSelectionReal({
     if (selectedSeats.length > 0 && seatMap) {
       try {
         await seatMapService.releaseSeats(seatMap.id, selectedSeats);
-      } catch (error) {
-        console.error("Failed to release seats:", error);
-      }
+      } catch (error) {}
 
       // Clear session storage
       sessionStorage.removeItem("selectedSeats");
@@ -485,11 +464,9 @@ export function SeatSelectionReal({
           }, 2000);
         }
       } catch (err) {
-        console.error("Error loading seat map:", err);
         setError("This event does not have a seat map configured yet.");
       }
     } catch (err) {
-      console.error("Error loading event data:", err);
       setError("Failed to load event information");
     } finally {
       setLoading(false);
@@ -539,7 +516,6 @@ export function SeatSelectionReal({
         alert(data.message || t("seat.selection.alerts.failedToExtend"));
       }
     } catch (error) {
-      console.error("Failed to extend reservation:", error);
       alert(t("seat.selection.alerts.failedToExtend"));
     } finally {
       setIsExtending(false);
@@ -562,10 +538,6 @@ export function SeatSelectionReal({
         try {
           await seatMapService.releaseSeats(seatMap.id, [seatId]);
 
-          console.log(
-            `✅ Seat ${seat.row}${seat.seatNumber} released and available for others`
-          );
-
           // Update session storage
           if (newSelectedSeats.length > 0) {
             sessionStorage.setItem(
@@ -583,7 +555,6 @@ export function SeatSelectionReal({
             setTimeRemaining(600); // Reset timer
           }
         } catch (error) {
-          console.error("Failed to release seat:", error);
           // Revert selection on error
           setSelectedSeats(selectedSeats);
           alert(t("seat.selection.alerts.failedToRelease"));
@@ -627,12 +598,7 @@ export function SeatSelectionReal({
           JSON.stringify(newSelectedSeats)
         );
         sessionStorage.setItem("reservationExpiresAt", expiresAt.toISOString());
-
-        console.log(
-          `✅ Seat ${seat.row}${seat.seatNumber} reserved successfully`
-        );
       } catch (error) {
-        console.error("Failed to reserve seat:", error);
         // Revert selection if reservation fails
         setSelectedSeats(selectedSeats);
         alert(t("seat.selection.alerts.unableToReserve"));
@@ -742,7 +708,11 @@ export function SeatSelectionReal({
             }}
             title={`${seat.row}${seat.seatNumber} - ${formatVND(seat.price)}${
               seat.zoneName ? ` (${seat.zoneName})` : ""
-            }${seat.isWheelchair ? ` - ${t("management.seat.selection.wheelchairAccessible")}` : ""}${
+            }${
+              seat.isWheelchair
+                ? ` - ${t("management.seat.selection.wheelchairAccessible")}`
+                : ""
+            }${
               selectedSeats.includes(seat.id)
                 ? ` - ${t("management.seat.selection.clickToDeselect")}`
                 : ""
@@ -839,7 +809,9 @@ export function SeatSelectionReal({
           </Button>
 
           <div className="text-white">
-            <h1 className="text-2xl mb-1">{event?.title || t("management.seat.selection.selectSeats")}</h1>
+            <h1 className="text-2xl mb-1">
+              {event?.title || t("management.seat.selection.selectSeats")}
+            </h1>
             <div className="flex items-center gap-4 text-sm opacity-90">
               <div className="flex items-center gap-2">
                 <MapPin size={16} />

@@ -155,11 +155,6 @@ public class PromoCodeService : IPromoCodeService
         }
         catch (Exception ex)
         {
-            // Log detailed error information
-            Console.WriteLine($"[PromoCodeService.CreateAsync] Error creating promo code '{createDto?.Code}': {ex.Message}");
-            Console.WriteLine($"[PromoCodeService.CreateAsync] CreatedByUserId: {createdByUserId}");
-            Console.WriteLine($"[PromoCodeService.CreateAsync] EventId: {createDto?.EventId}");
-            Console.WriteLine($"[PromoCodeService.CreateAsync] StackTrace: {ex.StackTrace}");
             throw;
         }
     }
@@ -310,15 +305,6 @@ public async Task<PromoCodeDto> UpdateAsync(int id, UpdatePromoCodeDto updateDto
     }
     catch (Exception ex)
     {
-        // Log detailed error information
-        Console.WriteLine($"[PromoCodeService.UpdateAsync] Error updating promo code ID {id}: {ex.Message}");
-        Console.WriteLine($"[PromoCodeService.UpdateAsync] UpdateDto Code: {updateDto?.Code}");
-        Console.WriteLine($"[PromoCodeService.UpdateAsync] CurrentUserId: {currentUserId}");
-        Console.WriteLine($"[PromoCodeService.UpdateAsync] StackTrace: {ex.StackTrace}");
-        if (ex.InnerException != null)
-        {
-            Console.WriteLine($"[PromoCodeService.UpdateAsync] InnerException: {ex.InnerException.Message}");
-        }
         throw;
     }
 }

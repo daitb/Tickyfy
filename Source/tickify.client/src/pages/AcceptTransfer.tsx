@@ -83,8 +83,6 @@ export function AcceptTransfer({ onNavigate }: AcceptTransferProps) {
           message?: string;
         };
 
-        console.error("Accept transfer error:", err);
-
         if (err.response?.status === 401) {
           localStorage.removeItem("authToken");
           localStorage.removeItem("token"); // Also remove old key if exists

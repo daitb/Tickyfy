@@ -116,41 +116,22 @@ public class PromoCodeController : ControllerBase
         }
         catch (BadRequestException ex)
         {
-            Console.WriteLine($"[PromoCodeController.Create] BadRequest: {ex.Message}");
-            Console.WriteLine($"[PromoCodeController.Create] CreateDto Code: {createDto?.Code}");
             return BadRequest(ApiResponse<PromoCodeDto>.FailureResponse(ex.Message));
         }
         catch (ConflictException ex)
         {
-            // Log duplicate code error with details
-            Console.WriteLine($"[PromoCodeController.Create] Conflict - Duplicate code: {createDto?.Code}");
-            Console.WriteLine($"[PromoCodeController.Create] UserId: {User.FindFirst("userId")?.Value ?? "Unknown"}");
-            Console.WriteLine($"[PromoCodeController.Create] StackTrace: {Environment.StackTrace}");
             return Conflict(ApiResponse<PromoCodeDto>.FailureResponse(ex.Message));
         }
         catch (ForbiddenException ex)
         {
-            Console.WriteLine($"[PromoCodeController.Create] Forbidden: {ex.Message}");
             return StatusCode(403, ApiResponse<PromoCodeDto>.FailureResponse(ex.Message));
         }
         catch (NotFoundException ex)
         {
-            Console.WriteLine($"[PromoCodeController.Create] NotFound: {ex.Message}");
             return NotFound(ApiResponse<PromoCodeDto>.FailureResponse(ex.Message));
         }
         catch (Exception ex)
         {
-            // Log detailed error information
-            Console.WriteLine($"[PromoCodeController.Create] Unexpected error: {ex.Message}");
-            Console.WriteLine($"[PromoCodeController.Create] CreateDto Code: {createDto?.Code}");
-            Console.WriteLine($"[PromoCodeController.Create] CreateDto EventId: {createDto?.EventId}");
-            Console.WriteLine($"[PromoCodeController.Create] UserId: {User.FindFirst("userId")?.Value ?? "Unknown"}");
-            Console.WriteLine($"[PromoCodeController.Create] StackTrace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"[PromoCodeController.Create] InnerException: {ex.InnerException.Message}");
-                Console.WriteLine($"[PromoCodeController.Create] InnerException StackTrace: {ex.InnerException.StackTrace}");
-            }
             return StatusCode(500, ApiResponse<PromoCodeDto>.FailureResponse($"An error occurred while creating the promo code: {ex.Message}"));
         }
     }
@@ -195,8 +176,6 @@ public class PromoCodeController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[PromoCodeController.Update] Unexpected error: {ex.Message}");
-            Console.WriteLine($"[PromoCodeController.Update] StackTrace: {ex.StackTrace}");
             return StatusCode(500, ApiResponse<PromoCodeDto>.FailureResponse($"An error occurred while updating the promo code: {ex.Message}"));
         }
     }

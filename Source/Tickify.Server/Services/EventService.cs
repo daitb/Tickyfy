@@ -126,7 +126,8 @@ public class EventService : IEventService
             _logger.LogInformation("Validating ticket types: Count={Count}", dto.TicketTypes?.Count ?? 0);
             ValidateTicketTypes(dto.TicketTypes);
 
-            _logger.LogInformation("Creating event entity");
+            _logger.LogInformation("Creating event entity with AllowTransfer={AllowTransfer}, AllowRefund={AllowRefund}", 
+                dto.AllowTransfer, dto.AllowRefund);
             var eventEntity = new Event
             {
                 Title = dto.Title.Trim(),
@@ -140,11 +141,15 @@ public class EventService : IEventService
                 CategoryId = dto.CategoryId,
                 OrganizerId = organizerId,
                 Status = EventStatus.Pending,
+                AllowTransfer = dto.AllowTransfer,
+                AllowRefund = dto.AllowRefund,
                 CreatedAt = DateTime.UtcNow
             };
 
             _logger.LogInformation("Event status set to: {Status} (Value: {StatusValue})",
                 eventEntity.Status, (int)eventEntity.Status);
+            _logger.LogInformation("Event entity created with AllowTransfer={AllowTransfer}, AllowRefund={AllowRefund}", 
+                eventEntity.AllowTransfer, eventEntity.AllowRefund);
 
             _logger.LogInformation("Adding event to database");
             var createdEvent = await _eventRepository.AddAsync(eventEntity);
@@ -243,6 +248,9 @@ public class EventService : IEventService
 
         ValidateEventDates(dto.StartDate, dto.EndDate);
 
+        _logger.LogInformation("Updating event {EventId} with AllowTransfer={AllowTransfer}, AllowRefund={AllowRefund}", 
+            id, dto.AllowTransfer, dto.AllowRefund);
+
         eventEntity.Title = dto.Title.Trim();
         eventEntity.Description = dto.Description.Trim();
         eventEntity.Location = dto.Venue.Trim();
@@ -252,6 +260,8 @@ public class EventService : IEventService
         eventEntity.EndDate = dto.EndDate;
         eventEntity.MaxCapacity = dto.TotalSeats;
         eventEntity.CategoryId = dto.CategoryId;
+        eventEntity.AllowTransfer = dto.AllowTransfer;
+        eventEntity.AllowRefund = dto.AllowRefund;
         eventEntity.UpdatedAt = DateTime.UtcNow;
 
         await _eventRepository.UpdateAsync(eventEntity);
