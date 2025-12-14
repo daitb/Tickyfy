@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Tickify.Common;
 using Tickify.DTOs.Waitlist;
+using Tickify.Exceptions;
 using Tickify.Interfaces.Services;
 
 namespace Tickify.Controllers;
@@ -55,12 +56,22 @@ public class WaitlistController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<WaitlistDto>>> JoinWaitlist([FromBody] JoinWaitlistDto dto)
     {
+        _logger.LogInformation("JoinWaitlist endpoint called with EventId: {EventId}, RequestedQuantity: {Quantity}",
+            dto?.EventId, dto?.RequestedQuantity);
+
+        if (dto == null)
+        {
+            return BadRequest(ApiResponse<WaitlistDto>.FailureResponse("Request body is required"));
+        }
+
         if (!ModelState.IsValid)
         {
             var errors = ModelState.Values
                 .SelectMany(v => v.Errors)
                 .Select(e => e.ErrorMessage)
                 .ToList();
+
+            _logger.LogWarning("JoinWaitlist validation failed: {Errors}", string.Join(", ", errors));
 
             return BadRequest(ApiResponse<WaitlistDto>.FailureResponse(
                 "Validation failed",
@@ -84,6 +95,16 @@ public class WaitlistController : ControllerBase
                     "Successfully joined waitlist"
                 )
             );
+        }
+        catch (ConflictException ex)
+        {
+            _logger.LogWarning("User {UserId} already on waitlist for event {EventId}", userId, dto.EventId);
+            return Conflict(ApiResponse<WaitlistDto>.FailureResponse(ex.Message));
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Resource not found for user {UserId}, event {EventId}", userId, dto.EventId);
+            return NotFound(ApiResponse<WaitlistDto>.FailureResponse(ex.Message));
         }
         catch (Exception ex)
         {

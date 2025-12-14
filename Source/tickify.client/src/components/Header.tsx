@@ -33,6 +33,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { useWishlistToggle } from "../hooks/useWishlistToggle";
+import { useWaitlistToggle } from "../hooks/useWaitlistToggle";
 import { useEffect, useState } from "react";
 
 interface HeaderProps {
@@ -52,8 +53,9 @@ export function Header({
 }: HeaderProps) {
   const { t } = useTranslation();
   const { wishlistCount } = useWishlistToggle();
+  const { waitlistCount, notifiedCount } = useWaitlistToggle();
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
-  
+
   // Check if user has pending organizer request
   useEffect(() => {
     const checkPendingRequest = async () => {
@@ -72,20 +74,28 @@ export function Header({
 
     checkPendingRequest();
   }, [isAuthenticated, userRole]);
-  
+
   const handleEventClick = (eventId: string) => {
     onNavigate("event-detail", eventId);
   };
 
   const handleCategoryClick = (category: Category) => {
     // Navigate to listing with category filter
-    window.history.pushState({}, '', `/listing?category=${encodeURIComponent(category)}`);
+    window.history.pushState(
+      {},
+      "",
+      `/listing?category=${encodeURIComponent(category)}`
+    );
     onNavigate("listing");
   };
 
   const handleCityClick = (city: string) => {
     // Navigate to listing with city filter
-    window.history.pushState({}, '', `/listing?city=${encodeURIComponent(city)}`);
+    window.history.pushState(
+      {},
+      "",
+      `/listing?city=${encodeURIComponent(city)}`
+    );
     onNavigate("listing");
   };
 
@@ -145,7 +155,7 @@ export function Header({
                 <span className="hidden sm:inline">{t("header.chat")}</span>
               </Button>
             )}
-            
+
             {/* Create Event Button - Only for Organizers */}
             {isAuthenticated && userRole === "organizer" && (
               <Button
@@ -190,7 +200,8 @@ export function Header({
                       </AvatarFallback>
                     </Avatar>
                     <span className="hidden sm:inline">
-                      {authService.getCurrentUser()?.fullName || t("header.account")}
+                      {authService.getCurrentUser()?.fullName ||
+                        t("header.account")}
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
@@ -204,7 +215,10 @@ export function Header({
                     <Heart size={16} className="mr-2" />
                     {t("header.wishlist")}
                     {wishlistCount > 0 && (
-                      <Badge variant="secondary" className="ml-auto h-5 min-w-[20px] flex items-center justify-center px-1.5">
+                      <Badge
+                        variant="secondary"
+                        className="ml-auto h-5 min-w-[20px] flex items-center justify-center px-1.5"
+                      >
                         {wishlistCount}
                       </Badge>
                     )}
@@ -212,15 +226,31 @@ export function Header({
                   <DropdownMenuItem onClick={() => onNavigate("waitlist")}>
                     <Clock size={16} className="mr-2" />
                     {t("header.waitlist")}
+                    {waitlistCount > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className={`ml-auto h-5 min-w-[20px] flex items-center justify-center px-1.5 ${
+                          notifiedCount > 0
+                            ? "bg-green-100 text-green-700 border-green-200"
+                            : "bg-amber-100 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        {notifiedCount > 0
+                          ? `${notifiedCount}!`
+                          : waitlistCount}
+                      </Badge>
+                    )}
                   </DropdownMenuItem>
-                  
+
                   {/* Refund Menu - For All Users */}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => onNavigate("refund-history")}>
+                  <DropdownMenuItem
+                    onClick={() => onNavigate("refund-history")}
+                  >
                     <RefreshCw size={16} className="mr-2 text-purple-600" />
                     <span>{t("header.refundHistory", "My Refunds")}</span>
                   </DropdownMenuItem>
-                  
+
                   <DropdownMenuSeparator />
                   {(userRole === "organizer" || userRole === "admin") && (
                     <>
@@ -276,7 +306,9 @@ export function Header({
                         onClick={() => onNavigate("manage-refunds")}
                       >
                         <DollarSign size={16} className="mr-2 text-green-600" />
-                        <span>{t("header.manageRefunds", "Manage Refunds")}</span>
+                        <span>
+                          {t("header.manageRefunds", "Manage Refunds")}
+                        </span>
                       </DropdownMenuItem>
                     </>
                   )}
@@ -287,7 +319,9 @@ export function Header({
                         onClick={() => onNavigate("manage-refunds")}
                       >
                         <DollarSign size={16} className="mr-2 text-green-600" />
-                        <span>{t("header.manageRefunds", "Manage Refunds")}</span>
+                        <span>
+                          {t("header.manageRefunds", "Manage Refunds")}
+                        </span>
                       </DropdownMenuItem>
                     </>
                   )}
@@ -307,7 +341,8 @@ export function Header({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem disabled className="text-neutral-500">
                         <Plus size={16} className="mr-2" />
-                        {t("header.becomeOrganizer")} - {t("header.pendingApproval")}
+                        {t("header.becomeOrganizer")} -{" "}
+                        {t("header.pendingApproval")}
                       </DropdownMenuItem>
                     </>
                   )}

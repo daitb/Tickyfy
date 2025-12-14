@@ -69,6 +69,9 @@ export function SeatSelectionReal({
   const [isNavigating, setIsNavigating] = useState(false);
   const [hasExtendedReservation, setHasExtendedReservation] = useState(false);
   const [isExtending, setIsExtending] = useState(false);
+  const [isSoldOut, setIsSoldOut] = useState(false);
+  const [isInWaitlist, setIsInWaitlist] = useState(false);
+  const [joiningWaitlist, setJoiningWaitlist] = useState(false);
 
   // Refs to track latest values for cleanup
   const selectedSeatsRef = useRef<number[]>([]);
@@ -457,11 +460,27 @@ export function SeatSelectionReal({
           (s) => s.status === "Available"
         );
         if (availableSeats.length === 0) {
-          setError(t("seat.selection.noSeatsAvailable"));
-          alert(t("seat.selection.alerts.soldOut"));
-          setTimeout(() => {
-            onNavigate("event-detail", id);
-          }, 2000);
+          setIsSoldOut(true);
+          // Check if user is already in waitlist
+          try {
+            const token = localStorage.getItem("token");
+            if (token) {
+              const response = await fetch(
+                `http://localhost:5179/api/waitlist/check/${eventData.id}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              );
+              if (response.ok) {
+                const inWaitlist = await response.json();
+                setIsInWaitlist(inWaitlist);
+              }
+            }
+          } catch (err) {
+            console.error("Error checking waitlist:", err);
+          }
         }
       } catch (err) {
         setError("This event does not have a seat map configured yet.");
@@ -470,6 +489,40 @@ export function SeatSelectionReal({
       setError("Failed to load event information");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleJoinWaitlist = async () => {
+    if (!event) return;
+
+    setJoiningWaitlist(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5179/api/waitlist/join", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          eventId: event.id,
+          requestedQuantity: 1,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setIsInWaitlist(true);
+        toast.success(result.message || t("waitlist.joined"));
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || t("waitlist.error"));
+      }
+    } catch (error) {
+      console.error("Error joining waitlist:", error);
+      toast.error(t("waitlist.error"));
+    } finally {
+      setJoiningWaitlist(false);
     }
   };
 
@@ -758,6 +811,90 @@ export function SeatSelectionReal({
     );
   }
 
+  // Handle sold out case with waitlist option
+  if (isSoldOut && event) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="max-w-lg w-full">
+          <CardContent className="pt-8 pb-8">
+            <div className="text-center space-y-6">
+              {/* Sold Out Icon */}
+              <div className="text-6xl">😔</div>
+
+              {/* Sold Out Message */}
+              <div>
+                <h2 className="text-2xl font-bold text-red-600 mb-2">
+                  {t("common.soldOut")}
+                </h2>
+                <p className="text-gray-600">
+                  {t("seat.selection.noSeatsAvailable")}
+                </p>
+              </div>
+
+              {/* Event Info */}
+              <div className="bg-gray-50 rounded-lg p-4 text-left">
+                <h3 className="font-semibold mb-2">{event.title}</h3>
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                  <MapPin size={14} />
+                  {event.venue}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Calendar size={14} />
+                  {event.date && new Date(event.date).toLocaleDateString()}
+                </div>
+              </div>
+
+              {/* Waitlist Section */}
+              <div className="space-y-3">
+                <div className="text-sm text-gray-600">
+                  {t("waitlist.notification") ||
+                    "Join the waitlist to be notified when tickets become available"}
+                </div>
+
+                {isInWaitlist ? (
+                  <Button
+                    disabled
+                    className="w-full bg-teal-600 text-white cursor-default opacity-90"
+                    size="lg"
+                  >
+                    ✓ {t("waitlist.alreadyJoined")}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleJoinWaitlist}
+                    disabled={joiningWaitlist}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-white shadow-md"
+                    size="lg"
+                  >
+                    {joiningWaitlist ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t("common.loading")}
+                      </>
+                    ) : (
+                      <>🔔 {t("events.addToWaitlist")}</>
+                    )}
+                  </Button>
+                )}
+              </div>
+
+              {/* Back Button */}
+              <Button
+                onClick={() => onNavigate("event-detail", event.id.toString())}
+                variant="outline"
+                className="w-full"
+              >
+                <ArrowLeft size={16} className="mr-2" />
+                {t("seat.selection.backToEvent")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Handle other errors
   if (error || !event) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

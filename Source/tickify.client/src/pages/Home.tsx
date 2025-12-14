@@ -82,43 +82,6 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
       {/* Hero Slider - pauses when search is open */}
       <HeroSlider onViewDetails={handleViewDetails} isPaused={isSearchOpen} />
 
-      {/* Categories Filter */}
-      <section className="bg-white border-b border-neutral-100">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            <Badge
-              variant={selectedCategory === "all" ? "default" : "secondary"}
-              className={`cursor-pointer whitespace-nowrap ${
-                selectedCategory === "all"
-                  ? "bg-teal-500 hover:bg-teal-600 text-white"
-                  : "bg-neutral-100 hover:bg-neutral-200"
-              }`}
-              onClick={() => setSelectedCategory("all")}
-            >
-              {t("home.categories.all")}
-            </Badge>
-            {availableCategories.map((category) => (
-              <Badge
-                key={category}
-                variant={
-                  selectedCategory === category ? "default" : "secondary"
-                }
-                className={`cursor-pointer whitespace-nowrap ${
-                  selectedCategory === category
-                    ? "bg-teal-500 hover:bg-teal-600 text-white"
-                    : "bg-neutral-100 hover:bg-neutral-200"
-                }`}
-                onClick={() =>
-                  setSelectedCategory(category as Category | "all")
-                }
-              >
-                {category}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Special Events */}
       <section className="py-12 bg-gradient-to-br from-teal-50 to-white">
         <div className="max-w-7xl mx-auto px-4">
