@@ -230,7 +230,7 @@ export function SeatMapBuilder({
         setSeats(loadedSeats);
         addToHistory(loadedSeats);
 
-        toast.success("Seat map loaded successfully");
+        toast.success("Đã tải sơ đồ chỗ ngồi thành công");
       } catch (err: any) {
         // Handle 404 gracefully - this is expected for new seat maps
         if (
@@ -352,7 +352,7 @@ export function SeatMapBuilder({
 
   const handleAddZone = () => {
     if (!newZone.name || newZone.price <= 0) {
-      toast.error("Please fill in all zone details");
+      toast.error("Vui lòng điền đầy đủ thông tin khu vực");
       return;
     }
 
@@ -360,7 +360,7 @@ export function SeatMapBuilder({
     const MAX_ZONE_PRICE = 50_000_000;
     if (newZone.price > MAX_ZONE_PRICE) {
       toast.error(
-        `Zone price cannot exceed ${MAX_ZONE_PRICE.toLocaleString()} VND due to payment gateway limitations (MoMo: 50M VND max per transaction)`
+        `Giá khu vực không được vượt quá ${MAX_ZONE_PRICE.toLocaleString()} VND do hạn chế của cổng thanh toán (MoMo: tối đa 50M VND mỗi giao dịch)`
       );
       return;
     }
@@ -379,7 +379,7 @@ export function SeatMapBuilder({
             : z
         )
       );
-      toast.success("Zone updated successfully");
+      toast.success("Đã cập nhật khu vực thành công");
     } else {
       // Create new zone
       const zone: Zone = {
@@ -389,7 +389,7 @@ export function SeatMapBuilder({
       };
       setZones([...zones, zone]);
       setSelectedZone(zone.id);
-      toast.success("Zone created successfully");
+      toast.success("Đã tạo khu vực thành công");
     }
 
     setNewZone({ name: "", color: "#00C16A", price: 0 });
@@ -403,7 +403,7 @@ export function SeatMapBuilder({
     setSeats(
       seats.map((s) => (s.zoneId === zoneId ? { ...s, zoneId: null } : s))
     );
-    toast.success("Zone deleted");
+    toast.success(t("seatMapBuilder.messages.zoneDeleted"));
   };
 
   const handleApplyTemplate = (template: (typeof predefinedTemplates)[0]) => {
@@ -439,7 +439,7 @@ export function SeatMapBuilder({
     setGridSize({ rows: rowsToCreate, cols: colsToCreate });
     addToHistory(newSeats);
     setShowTemplateModal(false);
-    toast.success("Template applied successfully");
+    toast.success(t("seatMapBuilder.messages.templateApplied"));
   };
 
   const autoNumberSeats = () => {
@@ -466,7 +466,7 @@ export function SeatMapBuilder({
     });
 
     setSeats(labeledSeats);
-    toast.success("Seats numbered automatically");
+    toast.success(t("seatMapBuilder.messages.seatsNumbered"));
   };
 
   const getSeatColor = (seat: GridSeat) => {
@@ -509,19 +509,19 @@ export function SeatMapBuilder({
 
   const handleSave = async () => {
     if (!eventId) {
-      toast.error("Event ID is missing");
+      toast.error(t("seatMapBuilder.messages.eventIdMissing"));
       return;
     }
 
     // Validate zones have proper names
     if (zones.length === 0) {
-      toast.error("Please add at least one zone before saving");
+      toast.error(t("seatMapBuilder.messages.addZoneFirst"));
       return;
     }
 
     const emptyZoneNames = zones.filter((z) => !z.name || z.name.trim() === "");
     if (emptyZoneNames.length > 0) {
-      toast.error("All zones must have names");
+      toast.error(t("seatMapBuilder.messages.zonesMustHaveNames"));
       return;
     }
 
@@ -530,8 +530,10 @@ export function SeatMapBuilder({
     const invalidZones = zones.filter((z) => z.price > MAX_ZONE_PRICE);
     if (invalidZones.length > 0) {
       toast.error(
-        `Zone prices cannot exceed ${MAX_ZONE_PRICE.toLocaleString()} VND. ` +
-          `Invalid zones: ${invalidZones.map((z) => z.name).join(", ")}`
+        t("seatMapBuilder.messages.zonePriceExceedsMax", {
+          max: MAX_ZONE_PRICE.toLocaleString(),
+          zones: invalidZones.map((z) => z.name).join(", "),
+        })
       );
       return;
     }
@@ -556,6 +558,10 @@ export function SeatMapBuilder({
           color: z.color,
           price: z.price,
           capacity: z.capacity, // Now contains actual seat count
+          startRow: 0,
+          endRow: 0,
+          startColumn: 0,
+          endColumn: 0,
         })),
         seats: seats.map((s) => ({
           ...s,
@@ -567,7 +573,9 @@ export function SeatMapBuilder({
 
       const payload = {
         eventId: eventId,
-        name: t("management.seat.builder.seatMapName", { eventTitle: eventTitle || t("common.eventTitle") }),
+        name: t("management.seat.builder.seatMapName", {
+          eventTitle: eventTitle || t("common.eventTitle"),
+        }),
         description: "Seat map created with builder",
         totalRows: gridSize.rows,
         totalColumns: gridSize.cols,
@@ -575,12 +583,17 @@ export function SeatMapBuilder({
       };
 
       if (seatMapId) {
-        // Update existing
+        // Update existing - only send layoutConfig for updates to trigger backend processing
+        // Backend will check if tickets are sold and reject if structure changes
         await seatMapService.updateSeatMap(seatMapId.toString(), {
-          ...payload,
+          name: payload.name,
+          description: payload.description,
+          totalRows: payload.totalRows,
+          totalColumns: payload.totalColumns,
+          layoutConfig: payload.layoutConfig,
           isActive: true,
         });
-        toast.success("Seat map updated successfully");
+        toast.success(t("seatMapBuilder.messages.seatMapUpdated"));
 
         // Reload data to get updated zones and seats with DB IDs
         await loadSeatMapData();
@@ -594,28 +607,38 @@ export function SeatMapBuilder({
           "[SeatMapBuilder] Created new seat map with ID:",
           newSeatMapId
         );
-        toast.success("Seat map saved successfully");
+        toast.success(t("seatMapBuilder.messages.seatMapSaved"));
 
         // Reload data to get zones and seats with DB IDs
         // Wait a bit for backend to finish processing
         await new Promise((resolve) => setTimeout(resolve, 500));
         await loadSeatMapData();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving seat map:", error);
-      toast.error("Failed to save seat map");
+
+      // Check if error is due to tickets already sold
+      if (error?.response?.data?.message?.includes("tickets have been sold")) {
+        toast.error(
+          "Không thể chỉnh sửa sơ đồ chỗ ngồi sau khi đã bán vé. " +
+            "Điều này sẽ ảnh hưởng đến các đặt chỗ hiện có.",
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(t("seatMapBuilder.messages.saveFailed"));
+      }
     }
   };
 
   const handlePublish = async () => {
     if (seats.length === 0) {
-      toast.error("Please add seats before publishing");
+      toast.error(t("seatMapBuilder.messages.addSeatsFirst"));
       return;
     }
 
     await handleSave();
-    toast.success("Seat map published successfully!");
-    
+    toast.success(t("seatMapBuilder.messages.seatMapPublished"));
+
     // Navigate back to wizard with eventId after publishing
     setTimeout(() => {
       if (eventId) {
@@ -647,12 +670,14 @@ export function SeatMapBuilder({
                   }
                 }}
               >
-                ← Back
+                ← {t("seatMapBuilder.back")}
               </Button>
               <div>
-                <h2 className="text-lg text-neutral-900">Seat Map Builder</h2>
+                <h2 className="text-lg text-neutral-900">
+                  {t("seatMapBuilder.title")}
+                </h2>
                 <p className="text-xs text-neutral-500">
-                  Summer Music Festival 2024
+                  {eventTitle || "Summer Music Festival 2024"}
                 </p>
               </div>
             </div>
@@ -717,12 +742,12 @@ export function SeatMapBuilder({
                 onClick={() => setShowPreview(true)}
               >
                 <Eye size={16} className="mr-2" />
-                Preview
+                {t("seatMapBuilder.topBar.preview")}
               </Button>
 
               <Button variant="outline" size="sm" onClick={handleSave}>
                 <Save size={16} className="mr-2" />
-                Save Draft
+                {t("seatMapBuilder.topBar.saveDraft")}
               </Button>
 
               <Button
@@ -731,7 +756,7 @@ export function SeatMapBuilder({
                 onClick={handlePublish}
               >
                 <Check size={16} className="mr-2" />
-                Publish
+                {t("seatMapBuilder.topBar.publish")}
               </Button>
             </div>
           </div>
@@ -745,21 +770,29 @@ export function SeatMapBuilder({
             {/* Event Info */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Event Information</CardTitle>
+                <CardTitle className="text-sm">
+                  {t("seatMapBuilder.eventInfo.title")}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div>
-                  <span className="text-neutral-500">Event:</span>
+                  <span className="text-neutral-500">
+                    {t("seatMapBuilder.eventInfo.event")}:
+                  </span>
                   <div className="text-neutral-900">
-                    Summer Music Festival 2024
+                    {eventTitle || "Summer Music Festival 2024"}
                   </div>
                 </div>
                 <div>
-                  <span className="text-neutral-500">Venue:</span>
+                  <span className="text-neutral-500">
+                    {t("seatMapBuilder.eventInfo.venue")}:
+                  </span>
                   <div className="text-neutral-900">Madison Square Garden</div>
                 </div>
                 <div>
-                  <span className="text-neutral-500">Total Capacity:</span>
+                  <span className="text-neutral-500">
+                    {t("seatMapBuilder.eventInfo.totalCapacity")}:
+                  </span>
                   <div className="text-neutral-900 text-xl">
                     {getTotalCapacity()}
                   </div>
@@ -770,7 +803,9 @@ export function SeatMapBuilder({
             {/* Drawing Tools */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Drawing Tools</CardTitle>
+                <CardTitle className="text-sm">
+                  {t("seatMapBuilder.drawingTools.title")}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button
@@ -780,7 +815,7 @@ export function SeatMapBuilder({
                   onClick={() => setSelectedTool("seat")}
                 >
                   <Armchair size={16} className="mr-2" />
-                  Standard Seat
+                  {t("seatMapBuilder.drawingTools.standardSeat")}
                 </Button>
 
                 <Button
@@ -792,7 +827,7 @@ export function SeatMapBuilder({
                   onClick={() => setSelectedTool("wheelchair")}
                 >
                   <Users size={16} className="mr-2" />
-                  Wheelchair Accessible
+                  {t("seatMapBuilder.drawingTools.wheelchairAccessible")}
                 </Button>
 
                 <Button
@@ -802,15 +837,17 @@ export function SeatMapBuilder({
                   onClick={() => setSelectedTool("eraser")}
                 >
                   <Eraser size={16} className="mr-2" />
-                  Eraser
+                  {t("seatMapBuilder.drawingTools.eraser")}
                 </Button>
 
                 <div className="pt-2">
-                  <Label className="text-xs">Grid Size</Label>
+                  <Label className="text-xs">
+                    {t("seatMapBuilder.drawingTools.gridSize")}
+                  </Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <Input
                       type="number"
-                      placeholder="Rows"
+                      placeholder={t("seatMapBuilder.drawingTools.rows")}
                       value={gridSize.rows}
                       onChange={(e) =>
                         setGridSize({
@@ -822,7 +859,7 @@ export function SeatMapBuilder({
                     />
                     <Input
                       type="number"
-                      placeholder="Cols"
+                      placeholder={t("seatMapBuilder.drawingTools.cols")}
                       value={gridSize.cols}
                       onChange={(e) =>
                         setGridSize({
@@ -841,7 +878,7 @@ export function SeatMapBuilder({
                   className="w-full"
                   onClick={autoNumberSeats}
                 >
-                  Auto-Number Seats
+                  {t("seatMapBuilder.drawingTools.autoNumber")}
                 </Button>
 
                 <Button
@@ -854,7 +891,7 @@ export function SeatMapBuilder({
                   }}
                 >
                   <RotateCcw size={16} className="mr-2" />
-                  Clear All
+                  {t("seatMapBuilder.drawingTools.clearAll")}
                 </Button>
               </CardContent>
             </Card>
@@ -863,10 +900,12 @@ export function SeatMapBuilder({
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">Zones & Pricing</CardTitle>
+                  <CardTitle className="text-sm">
+                    {t("seatMapBuilder.zones.title")}
+                  </CardTitle>
                   <Button size="sm" onClick={() => setShowZoneModal(true)}>
                     <Plus size={14} className="mr-1" />
-                    Add
+                    {t("seatMapBuilder.zones.add")}
                   </Button>
                 </div>
               </CardHeader>
@@ -879,12 +918,10 @@ export function SeatMapBuilder({
                       className="text-blue-600 flex-shrink-0 mt-0.5"
                     />
                     <div className="text-xs text-blue-800">
-                      <strong>Auto-Sync:</strong> Zones and ticket types are
-                      automatically synchronized.
+                      <strong>{t("seatMapBuilder.zones.autoSync")}</strong>
                       {eventTitle && (
                         <div className="mt-1 text-blue-700">
-                          New zones will create matching ticket types
-                          automatically.
+                          {t("seatMapBuilder.zones.newZonesInfo")}
                         </div>
                       )}
                     </div>
@@ -943,11 +980,15 @@ export function SeatMapBuilder({
                     </div>
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-neutral-500">Price:</span>
+                        <span className="text-neutral-500">
+                          {t("seatMapBuilder.zones.price")}:
+                        </span>
                         <span className="text-neutral-900">${zone.price}</span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-neutral-500">Capacity:</span>
+                        <span className="text-neutral-500">
+                          {t("seatMapBuilder.zones.capacity")}:
+                        </span>
                         <span className="text-neutral-900">
                           {getZoneCapacity(zone.id)}
                         </span>
@@ -961,7 +1002,9 @@ export function SeatMapBuilder({
             {/* Templates */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Templates</CardTitle>
+                <CardTitle className="text-sm">
+                  {t("seatMapBuilder.templates.title")}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button
@@ -971,7 +1014,7 @@ export function SeatMapBuilder({
                   onClick={() => setShowTemplateModal(true)}
                 >
                   <Layout size={16} className="mr-2" />
-                  Load Template
+                  {t("seatMapBuilder.templates.loadTemplate")}
                 </Button>
                 <Button
                   variant="outline"
@@ -1000,7 +1043,7 @@ export function SeatMapBuilder({
                   }}
                 >
                   <Copy size={16} className="mr-2" />
-                  Copy from Event
+                  {t("seatMapBuilder.templates.copyFromEvent")}
                 </Button>
               </CardContent>
             </Card>
@@ -1014,7 +1057,9 @@ export function SeatMapBuilder({
             <div className="mb-8 text-center">
               <div className="inline-block bg-neutral-200 px-16 py-6 rounded-lg">
                 <div className="text-2xl mb-2">🎭</div>
-                <div className="text-sm text-neutral-700">STAGE</div>
+                <div className="text-sm text-neutral-700">
+                  {t("seatMapBuilder.stage")}
+                </div>
               </div>
             </div>
 
@@ -1091,42 +1136,52 @@ export function SeatMapBuilder({
         <div className="w-72 bg-white border-l overflow-y-auto p-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Tips & Instructions</CardTitle>
+              <CardTitle className="text-sm">
+                {t("seatMapBuilder.tips.title")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-xs text-neutral-600">
               <div>
-                <strong className="text-neutral-900">How to use:</strong>
+                <strong className="text-neutral-900">
+                  {t("seatMapBuilder.tips.howToUse")}
+                </strong>
                 <ul className="mt-1 space-y-1 ml-4">
-                  <li>• Select a zone from the left sidebar</li>
-                  <li>• Choose a drawing tool</li>
-                  <li>• Click or drag on the grid to place seats</li>
-                  <li>• Use eraser to remove seats</li>
-                  <li>• Auto-number assigns seat labels</li>
+                  <li>• {t("seatMapBuilder.tips.selectZone")}</li>
+                  <li>• {t("seatMapBuilder.tips.chooseTool")}</li>
+                  <li>• {t("seatMapBuilder.tips.clickDrag")}</li>
+                  <li>• {t("seatMapBuilder.tips.useEraser")}</li>
+                  <li>• {t("seatMapBuilder.tips.autoNumberInfo")}</li>
                 </ul>
               </div>
 
               <div>
                 <strong className="text-neutral-900">
-                  Keyboard Shortcuts:
+                  {t("seatMapBuilder.tips.keyboardShortcuts")}
                 </strong>
                 <ul className="mt-1 space-y-1 ml-4">
-                  <li>• Ctrl+Z: Undo</li>
-                  <li>• Ctrl+Y: Redo</li>
-                  <li>• Ctrl+S: Save</li>
-                  <li>• Delete: Remove selected</li>
+                  <li>• {t("seatMapBuilder.tips.undo")}</li>
+                  <li>• {t("seatMapBuilder.tips.redo")}</li>
+                  <li>• {t("seatMapBuilder.tips.save")}</li>
+                  <li>• {t("seatMapBuilder.tips.delete")}</li>
                 </ul>
               </div>
 
               <div className="pt-3 border-t">
-                <strong className="text-neutral-900">Current Selection:</strong>
+                <strong className="text-neutral-900">
+                  {t("seatMapBuilder.tips.currentSelection")}
+                </strong>
                 <div className="mt-2 p-2 bg-neutral-50 rounded">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-neutral-500">Tool:</span>
+                    <span className="text-neutral-500">
+                      {t("seatMapBuilder.tips.tool")}:
+                    </span>
                     <Badge variant="secondary">{selectedTool}</Badge>
                   </div>
                   {selectedZone && (
                     <div className="flex items-center gap-2">
-                      <span className="text-neutral-500">Zone:</span>
+                      <span className="text-neutral-500">
+                        {t("seatMapBuilder.tips.zone")}:
+                      </span>
                       <div className="flex items-center gap-1">
                         <div
                           className="w-3 h-3 rounded"
@@ -1154,7 +1209,9 @@ export function SeatMapBuilder({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingZone ? t("management.seat.builder.zone.editZone") : t("management.seat.builder.zone.createNewZone")}
+              {editingZone
+                ? t("management.seat.builder.zone.editZone")
+                : t("management.seat.builder.zone.createNewZone")}
             </DialogTitle>
             <DialogDescription>
               {t("management.seat.builder.zone.zoneDescription")}
@@ -1165,7 +1222,9 @@ export function SeatMapBuilder({
             <div>
               <Label>{t("management.seat.builder.zone.zoneName")}</Label>
               <Input
-                placeholder={t("management.seat.builder.zone.zoneNamePlaceholder")}
+                placeholder={t(
+                  "management.seat.builder.zone.zoneNamePlaceholder"
+                )}
                 value={newZone.name}
                 onChange={(e) =>
                   setNewZone({ ...newZone, name: e.target.value })
@@ -1232,7 +1291,9 @@ export function SeatMapBuilder({
               {t("management.seat.builder.zone.cancel")}
             </Button>
             <Button onClick={handleAddZone}>
-              {editingZone ? t("management.seat.builder.zone.updateZone") : t("management.seat.builder.zone.createZone")}
+              {editingZone
+                ? t("management.seat.builder.zone.updateZone")
+                : t("management.seat.builder.zone.createZone")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1262,7 +1323,8 @@ export function SeatMapBuilder({
                   {t(template.descriptionKey)}
                 </div>
                 <div className="text-xs text-neutral-400">
-                  {template.rows} {t('management.seat.builder.rows')} × {template.cols} {t('management.seat.builder.seatsPerRow')}
+                  {template.rows} {t("management.seat.builder.rows")} ×{" "}
+                  {template.cols} {t("management.seat.builder.seatsPerRow")}
                 </div>
               </button>
             ))}
