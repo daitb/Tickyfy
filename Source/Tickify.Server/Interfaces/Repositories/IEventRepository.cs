@@ -11,7 +11,9 @@ public interface IEventRepository
     Task<PagedResult<Event>> GetAllAsync(EventFilterDto filter);
 
     Task<List<Event>> GetFeaturedEventsAsync(int count = 10);
-    
+
+    Task<List<Event>> GetTrendingEventsAsync(int count = 10);
+
     Task<List<Event>> GetUpcomingEventsAsync(int count = 20);
 
     Task<PagedResult<Event>> SearchEventsAsync(string searchTerm, int pageNumber = 1, int pageSize = 20);

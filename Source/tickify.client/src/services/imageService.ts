@@ -54,7 +54,6 @@ class ImageService {
 
       return response.data;
     } catch (error: any) {
-      // Silent fail for image URL retrieval, don't show toast
       throw error;
     }
   }

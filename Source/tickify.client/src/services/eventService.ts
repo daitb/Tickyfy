@@ -254,6 +254,22 @@ class EventService {
     }
   }
 
+  async getTrendingEvents(count: number = 10): Promise<Event[]> {
+    try {
+      const resp = await apiClient.get<EventListDto[]>(
+        `/events/trending?count=${count}`
+      );
+      if (Array.isArray(resp.data)) {
+        return resp.data
+          .filter((item) => item && item.eventId)
+          .map(mapEventListToEvent);
+      }
+      return [];
+    } catch (error: any) {
+      return [];
+    }
+  }
+
   async getUpcomingEvents(count: number = 20): Promise<Event[]> {
     try {
       const resp = await apiClient.get<EventListDto[]>(

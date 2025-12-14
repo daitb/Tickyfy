@@ -262,7 +262,8 @@ export default function App() {
     if (path === "/wishlist") return "wishlist";
     if (path === "/waitlist") return "waitlist";
     if (path === "/create-event") return "create-event";
-    if (path === "/organizer-wizard" || path.startsWith("/organizer-wizard/")) return "organizer-wizard";
+    if (path === "/organizer-wizard" || path.startsWith("/organizer-wizard/"))
+      return "organizer-wizard";
     if (path === "/organizer-dashboard") return "organizer-dashboard";
     if (path === "/event-management") return "event-management";
     if (path.startsWith("/event-analytics/")) return "event-analytics";
@@ -327,13 +328,13 @@ export default function App() {
   >(() => {
     const user = authService.getCurrentUser();
     if (!user) return "guest";
+
+    // Map backend roles to frontend roles
+    const role = user?.role?.toLowerCase();
+    if (role === "customer") return "user";
+
     return (
-      (user?.role?.toLowerCase() as
-        | "guest"
-        | "user"
-        | "organizer"
-        | "staff"
-        | "admin") || "user"
+      (role as "guest" | "user" | "organizer" | "staff" | "admin") || "user"
     );
   });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -411,14 +412,16 @@ export default function App() {
       if (authenticated) {
         const user = authService.getCurrentUser();
         if (user) {
-          setUserRole(
-            (user.role?.toLowerCase() as
-              | "guest"
-              | "user"
-              | "organizer"
-              | "staff"
-              | "admin") || "user"
-          );
+          // Map backend roles to frontend roles
+          const role = user.role?.toLowerCase();
+          if (role === "customer") {
+            setUserRole("user");
+          } else {
+            setUserRole(
+              (role as "guest" | "user" | "organizer" | "staff" | "admin") ||
+                "user"
+            );
+          }
         }
       } else {
         setUserRole("guest");
@@ -603,10 +606,17 @@ export default function App() {
         return <CreateEvent onNavigate={handleNavigate} />;
 
       case "organizer-wizard":
-        return <OrganizerWizard onNavigate={handleNavigate} eventId={selectedEventId || undefined} />;
+        return (
+          <OrganizerWizard
+            onNavigate={handleNavigate}
+            eventId={selectedEventId || undefined}
+          />
+        );
 
       case "organizer-dashboard":
-        return <OrganizerDashboard key={Date.now()} onNavigate={handleNavigate} />;
+        return (
+          <OrganizerDashboard key={Date.now()} onNavigate={handleNavigate} />
+        );
 
       case "event-management":
         return <EventManagement onNavigate={handleNavigate} />;

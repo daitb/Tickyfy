@@ -22,9 +22,6 @@ public class UsersController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// GET /api/users - List users (Admin only, with pagination and search)
-    /// </summary>
     [HttpGet]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<UserListDto>>), StatusCodes.Status200OK)]
@@ -49,9 +46,6 @@ public class UsersController : ControllerBase
         ));
     }
 
-    /// <summary>
-    /// GET /api/users/{id} - Get user by ID (Admin only)
-    /// </summary>
     [HttpGet("{id}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<UserDetailDto>), StatusCodes.Status200OK)]
@@ -68,9 +62,6 @@ public class UsersController : ControllerBase
         ));
     }
 
-    /// <summary>
-    /// GET /api/users/profile - Get current user profile (JWT authenticated)
-    /// </summary>
     [HttpGet("profile")]
     [ProducesResponseType(typeof(ApiResponse<UserProfileDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
@@ -92,9 +83,6 @@ public class UsersController : ControllerBase
         ));
     }
 
-    /// <summary>
-    /// PUT /api/users/profile - Update current user profile
-    /// </summary>
     [HttpPut("profile")]
     [ProducesResponseType(typeof(ApiResponse<UserProfileDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -116,9 +104,6 @@ public class UsersController : ControllerBase
         ));
     }
 
-    /// <summary>
-    /// POST /api/users/{id}/assign-role - Assign role to user (Admin only)
-    /// </summary>
     [HttpPost("{id}/assign-role")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
@@ -126,7 +111,6 @@ public class UsersController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AssignRole(int id, [FromBody] AssignRoleDto assignRoleDto)
     {
-        // Use the id from route, not from DTO
         await _userService.AssignRoleAsync(id, assignRoleDto.RoleId);
 
         _logger.LogInformation("Admin assigned role {RoleId} to user {UserId}", assignRoleDto.RoleId, id);
@@ -153,9 +137,6 @@ public class UsersController : ControllerBase
         ));
     }
 
-    /// <summary>
-    /// DELETE /api/users/{id} - Soft delete user (Admin only)
-    /// </summary>
     [HttpDelete("{id}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
@@ -172,9 +153,6 @@ public class UsersController : ControllerBase
         ));
     }
 
-    /// <summary>
-    /// POST /api/users/profile/avatar - Upload avatar for current user
-    /// </summary>
     [HttpPost("profile/avatar")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -191,14 +169,12 @@ public class UsersController : ControllerBase
             return BadRequest(ApiResponse<object>.FailureResponse("Vui lòng chọn file để upload"));
         }
 
-        // Validate file type
         var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif" };
         if (!allowedTypes.Contains(file.ContentType.ToLower()))
         {
             return BadRequest(ApiResponse<object>.FailureResponse("Chỉ chấp nhận file ảnh (JPEG, PNG, GIF)"));
         }
 
-        // Validate file size (5MB max)
         if (file.Length > 5 * 1024 * 1024)
         {
             return BadRequest(ApiResponse<object>.FailureResponse("Kích thước file không được vượt quá 5MB"));

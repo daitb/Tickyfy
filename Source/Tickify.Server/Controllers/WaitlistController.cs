@@ -30,9 +30,6 @@ public class WaitlistController : ControllerBase
         return userId;
     }
 
-    /// <summary>
-    /// GET /api/waitlist/my - Get current user's waitlist entries
-    /// </summary>
     [HttpGet("my")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<List<WaitlistDto>>), StatusCodes.Status200OK)]
@@ -51,9 +48,6 @@ public class WaitlistController : ControllerBase
         ));
     }
 
-    /// <summary>
-    /// POST /api/waitlist/join - Join waitlist for an event
-    /// </summary>
     [HttpPost("join")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<WaitlistDto>), StatusCodes.Status201Created)]
@@ -98,9 +92,6 @@ public class WaitlistController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// DELETE /api/waitlist/{id} - Leave/remove from waitlist
-    /// </summary>
     [HttpDelete("{id}")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
@@ -125,7 +116,7 @@ public class WaitlistController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error leaving waitlist for user {UserId}, waitlist {WaitlistId}", userId, id);
-            
+
             if (ex.Message.Contains("not found"))
             {
                 return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
@@ -135,9 +126,6 @@ public class WaitlistController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// GET /api/waitlist/check/{eventId} - Check if user is on waitlist for an event
-    /// </summary>
     [HttpGet("check/{eventId}")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]

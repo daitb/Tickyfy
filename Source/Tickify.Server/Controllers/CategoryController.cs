@@ -6,7 +6,6 @@ using Tickify.Interfaces.Services;
 
 namespace Tickify.Controllers;
 
-/// Category Controller - Manages event categories
 [ApiController]
 [Route("api/categories")]
 [Produces("application/json")]
@@ -23,7 +22,6 @@ public class CategoryController : ControllerBase
         _logger = logger;
     }
 
-    /// GET /api/categories - List all active categories
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<List<CategoryDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<CategoryDto>>>> GetCategories()
@@ -38,7 +36,6 @@ public class CategoryController : ControllerBase
         ));
     }
 
-    /// GET /api/categories/{id} - Get category details by ID
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ApiResponse<CategoryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CategoryDto>), StatusCodes.Status404NotFound)]
@@ -61,7 +58,6 @@ public class CategoryController : ControllerBase
         ));
     }
 
-    /// POST /api/categories - Create new category (Admin only)
     [HttpPost]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<CategoryDto>), StatusCodes.Status201Created)]
@@ -98,7 +94,6 @@ public class CategoryController : ControllerBase
         );
     }
 
-    /// PUT /api/categories/{id} - Update existing category (Admin only)
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<CategoryDto>), StatusCodes.Status200OK)]
@@ -133,7 +128,6 @@ public class CategoryController : ControllerBase
         ));
     }
 
-    /// DELETE /api/categories/{id} - Delete category (Admin only)
     [HttpDelete("{id}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]

@@ -14,7 +14,7 @@ public class AzureStorageService : IAzureStorageService
     public AzureStorageService(IConfiguration configuration, ILogger<AzureStorageService> logger)
     {
         var connectionString = configuration["Azure:StorageAccount:ConnectionString"];
-        
+
         if (string.IsNullOrEmpty(connectionString))
         {
             throw new InvalidOperationException("Azure Storage connection string is not configured in appsettings.json");
@@ -37,22 +37,18 @@ public class AzureStorageService : IAzureStorageService
             var container = containerName ?? _defaultContainerName;
             var containerClient = _blobServiceClient.GetBlobContainerClient(container);
 
-            // Create container if not exists (private by default)
             await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
 
-            // Generate unique filename
             var fileExtension = Path.GetExtension(file.FileName);
             var blobName = $"{Guid.NewGuid()}{fileExtension}";
 
             var blobClient = containerClient.GetBlobClient(blobName);
 
-            // Set content type based on file extension
             var blobHttpHeaders = new BlobHttpHeaders
             {
                 ContentType = GetContentType(fileExtension)
             };
 
-            // Upload file
             await using var stream = file.OpenReadStream();
             await blobClient.UploadAsync(stream, new BlobUploadOptions
             {
@@ -60,8 +56,7 @@ public class AzureStorageService : IAzureStorageService
             });
 
             _logger.LogInformation("File uploaded successfully: {BlobName}", blobName);
-            
-            // Return only blob name (not full URL)
+
             return blobName;
         }
         catch (Exception ex)
@@ -79,7 +74,6 @@ public class AzureStorageService : IAzureStorageService
             var containerClient = _blobServiceClient.GetBlobContainerClient(container);
             var blobClient = containerClient.GetBlobClient(blobName);
 
-            // Check if blob exists
             if (!await blobClient.ExistsAsync())
             {
                 throw new FileNotFoundException($"Blob not found: {blobName}");
@@ -91,11 +85,10 @@ public class AzureStorageService : IAzureStorageService
                 BlobContainerName = container,
                 BlobName = blobName,
                 Resource = "b", // "b" for blob
-                StartsOn = DateTimeOffset.UtcNow.AddMinutes(-5), // Start 5 minutes ago to account for clock skew
+                StartsOn = DateTimeOffset.UtcNow.AddMinutes(-5),
                 ExpiresOn = DateTimeOffset.UtcNow.AddHours(expiryHours)
             };
 
-            // Set permissions (Read only)
             sasBuilder.SetPermissions(BlobSasPermissions.Read);
 
             // Generate URI with SAS token
@@ -119,7 +112,7 @@ public class AzureStorageService : IAzureStorageService
             var blobClient = containerClient.GetBlobClient(blobName);
 
             var result = await blobClient.DeleteIfExistsAsync();
-            
+
             if (result.Value)
             {
                 _logger.LogInformation("Blob deleted successfully: {BlobName}", blobName);

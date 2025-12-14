@@ -12,6 +12,8 @@ public interface IEventService
 
     Task<List<EventCardDto>> GetFeaturedEventsAsync(int count = 10);
 
+    Task<List<EventCardDto>> GetTrendingEventsAsync(int count = 10);
+
     Task<List<EventCardDto>> GetUpcomingEventsAsync(int count = 20);
 
     Task<PagedResult<EventListDto>> SearchEventsAsync(string searchTerm, int pageNumber = 1, int pageSize = 20);
