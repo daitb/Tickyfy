@@ -66,7 +66,7 @@ export default function PaymentReturn() {
           }
         } catch (err: any) {
           lastError = err;
-          console.error(`[PaymentReturn] Verification attempt ${attempt + 1} failed:`, err);
+
           // Wait before retrying on error too
           if (attempt < maxRetries - 1) {
             const delay = retryDelay * (attempt + 1);
@@ -101,7 +101,7 @@ export default function PaymentReturn() {
       }
     } catch (err: any) {
       setIsRetrying(false);
-      console.error("[PaymentReturn] Payment verification error:", err);
+
       setStatus("failed");
       setMessage(
         err.response?.data?.message || 
@@ -189,7 +189,7 @@ export default function PaymentReturn() {
       if (!paymentIdParam) {
         setStatus("failed");
         setMessage(t("payment.return.paymentIdNotFound"));
-        console.error("[PaymentReturn] Payment ID not found in query parameters");
+
         return;
       }
 
@@ -197,7 +197,7 @@ export default function PaymentReturn() {
       if (isNaN(parsedPaymentId) || parsedPaymentId <= 0) {
         setStatus("failed");
         setMessage(t("payment.return.invalidPaymentId", { paymentId: paymentIdParam }));
-        console.error("[PaymentReturn] Invalid payment ID:", paymentIdParam);
+
         return;
       }
 
@@ -241,7 +241,7 @@ export default function PaymentReturn() {
           }
         }
         setMessage(errorMessage);
-        console.error("[PaymentReturn] Payment failed based on provider response codes");
+
         return;
       }
 
@@ -249,24 +249,23 @@ export default function PaymentReturn() {
       // This is more reliable when webhooks can't reach localhost
       if (hasVnPayResponse || hasMomoResponse || hasCreditCardResponse) {
         try {
-          console.log("[PaymentReturn] Attempting return URL verification...");
+
           const verifiedFromReturnUrl = await verifyPaymentFromReturnUrl(parsedPaymentId, query);
           if (verifiedFromReturnUrl) {
             setStatus("success");
             setMessage(t("payment.return.successMessage"));
-            console.log("[PaymentReturn] Payment verified from return URL");
-            
+
             // Fetch payment details to display
             try {
               const paymentData = await getPaymentById(parsedPaymentId);
               setPaymentDetails(paymentData);
             } catch (err) {
-              console.error("[PaymentReturn] Failed to fetch payment details:", err);
+
             }
             return; // Success, exit early
           }
         } catch (err: any) {
-          console.error("[PaymentReturn] Return URL verification failed, falling back to standard verification:", err);
+
           // Fall through to standard verification
         }
       }

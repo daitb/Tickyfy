@@ -66,7 +66,7 @@ export function Cart({ items, onNavigate, onUpdateCart }: CartProps) {
       setDiscount(discountAmount);
       setPromoError("");
     } catch (error: any) {
-      console.error("Promo validation error:", error);
+
       setDiscount(0);
       setPromoError(
         error.response?.data?.message || "Failed to validate promo code"

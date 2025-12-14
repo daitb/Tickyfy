@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useMemo } from "react";
 import {
   ArrowLeft,
   ArrowRight,

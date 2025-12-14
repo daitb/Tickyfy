@@ -47,7 +47,7 @@ export default function Waitlist({ onNavigate }: WaitlistProps) {
       const entries = await waitlistService.getMyWaitlist();
       setWaitlistEntries(entries);
     } catch (error: any) {
-      console.error("Error loading waitlist:", error);
+
       toast.error("Không thể tải danh sách chờ", {
         description: error.response?.data?.message || error.message,
       });
@@ -160,7 +160,7 @@ export default function Waitlist({ onNavigate }: WaitlistProps) {
       // Reload waitlist
       await loadWaitlist();
     } catch (error: any) {
-      console.error("Error leaving waitlist:", error);
+
       toast.error(
         t("pages.waitlist.leftError", "Không thể rời danh sách chờ"),
         {

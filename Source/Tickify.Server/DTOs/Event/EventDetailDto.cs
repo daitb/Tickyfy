@@ -12,6 +12,8 @@ public class EventDetailDto
     public int TotalSeats { get; set; }
     public int AvailableSeats { get; set; }
     public bool IsFeatured { get; set; }
+    public bool AllowTransfer { get; set; }
+    public bool AllowRefund { get; set; }
     public string Status { get; set; } = string.Empty;
     
     public int CategoryId { get; set; }

@@ -187,6 +187,8 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
         totalSeats:
           ticketTypes.reduce((sum, tt) => sum + tt.quantity, 0) || 100,
         isFeatured: false,
+        allowTransfer: true,
+        allowRefund: true,
       };
 
       // PUT /api/events/{id} - Update event

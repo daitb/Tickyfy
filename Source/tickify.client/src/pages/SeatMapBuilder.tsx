@@ -178,7 +178,6 @@ export function SeatMapBuilder({
 
     try {
       setLoading(true);
-      console.log("[SeatMapBuilder] Loading data for event:", eventId);
 
       // Load event info
       const event = await eventService.getEventById(parseInt(eventId));
@@ -187,7 +186,6 @@ export function SeatMapBuilder({
       // Try to load existing seat map
       try {
         const seatMapData = await seatMapService.getSeatMapByEvent(eventId);
-        console.log("[SeatMapBuilder] Loaded existing seat map:", seatMapData);
 
         setSeatMapId(parseInt(seatMapData.id.toString()));
         setGridSize({
@@ -197,10 +195,6 @@ export function SeatMapBuilder({
 
         // Load zones from seat map
         if (seatMapData.zones && seatMapData.zones.length > 0) {
-          console.log(
-            "[SeatMapBuilder] Raw zones from API:",
-            seatMapData.zones
-          );
           const loadedZones: Zone[] = seatMapData.zones.map((z) => ({
             id: z.id.toString(),
             name: z.name,
@@ -208,14 +202,12 @@ export function SeatMapBuilder({
             price: z.zonePrice,
             capacity: z.capacity,
           }));
-          console.log("[SeatMapBuilder] Mapped zones:", loadedZones);
           setZones(loadedZones);
           setSelectedZone(loadedZones[0]?.id || null);
         }
 
         // Load seats
         const seatsData = await seatMapService.getEventSeats(eventId);
-        console.log("[SeatMapBuilder] Loaded seats:", seatsData.length);
 
         const loadedSeats: GridSeat[] = seatsData.map((s) => ({
           id: s.id.toString(),
@@ -237,10 +229,6 @@ export function SeatMapBuilder({
           err?.response?.status === 404 ||
           err?.message?.includes("not found")
         ) {
-          console.log(
-            "[SeatMapBuilder] No existing seat map, auto-creating zones from ticket types"
-          );
-
           // AUTO-CREATE ZONES FROM TICKET TYPES
           if (event.ticketTiers && event.ticketTiers.length > 0) {
             const autoZones: Zone[] = event.ticketTiers.map((tt, index) => ({
@@ -254,7 +242,6 @@ export function SeatMapBuilder({
             }));
             setZones(autoZones);
             setSelectedZone(autoZones[0]?.id || null);
-            console.log("[SeatMapBuilder] Auto-created zones:", autoZones);
             toast.success(
               `Auto-created ${autoZones.length} zones from ticket types`
             );
@@ -262,12 +249,10 @@ export function SeatMapBuilder({
             toast.info("Creating new seat map - add zones manually");
           }
         } else {
-          console.error("[SeatMapBuilder] Error loading seat map:", err);
           toast.error("Failed to load seat map data");
         }
       }
     } catch (error) {
-      console.error("Error loading seat map data:", error);
       toast.error("Failed to load event data");
     } finally {
       setLoading(false);
@@ -545,11 +530,6 @@ export function SeatMapBuilder({
         capacity: getZoneCapacity(z.id), // Count actual seats assigned to this zone
       }));
 
-      console.log(
-        "[SeatMapBuilder] Saving zones with updated capacities:",
-        updatedZones.map((z) => ({ name: z.name, capacity: z.capacity }))
-      );
-
       // Include all seat properties including wheelchair status
       const layoutData = {
         zones: updatedZones.map((z) => ({
@@ -569,7 +549,6 @@ export function SeatMapBuilder({
           isBlocked: s.isBlocked || false,
         })),
       };
-      console.log("[SeatMapBuilder] Saving layout:", layoutData);
 
       const payload = {
         eventId: eventId,
@@ -603,10 +582,6 @@ export function SeatMapBuilder({
         const newSeatMapId = created.id;
         setSeatMapId(newSeatMapId);
 
-        console.log(
-          "[SeatMapBuilder] Created new seat map with ID:",
-          newSeatMapId
-        );
         toast.success(t("seatMapBuilder.messages.seatMapSaved"));
 
         // Reload data to get zones and seats with DB IDs
@@ -615,8 +590,6 @@ export function SeatMapBuilder({
         await loadSeatMapData();
       }
     } catch (error: any) {
-      console.error("Error saving seat map:", error);
-
       // Check if error is due to tickets already sold
       if (error?.response?.data?.message?.includes("tickets have been sold")) {
         toast.error(
@@ -1035,7 +1008,6 @@ export function SeatMapBuilder({
                         setAvailableSeatMaps(maps);
                       }
                     } catch (err) {
-                      console.error("Failed to load seat maps:", err);
                       toast.error("Failed to load seat maps");
                     } finally {
                       setLoadingSeatMaps(false);
@@ -1479,7 +1451,6 @@ export function SeatMapBuilder({
                         toast.success("Seat map copied successfully!");
                         setShowCopyModal(false);
                       } catch (error) {
-                        console.error("Failed to copy seat map:", error);
                         toast.error("Failed to copy seat map");
                       }
                     }}
