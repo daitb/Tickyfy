@@ -26,6 +26,12 @@ const EventReviews = lazy(() =>
 const RefundRequest = lazy(() =>
   import("./pages/RefundRequest").then((m) => ({ default: m.RefundRequest }))
 );
+const RefundHistory = lazy(() =>
+  import("./pages/RefundHistory").then((m) => ({ default: m.RefundHistory }))
+);
+const ManageRefunds = lazy(() =>
+  import("./pages/ManageRefunds").then((m) => ({ default: m.default }))
+);
 const NotificationPreferences = lazy(() =>
   import("./pages/NotificationPreferences").then((m) => ({
     default: m.NotificationPreferences,
@@ -222,6 +228,8 @@ type Page =
   | "password-change"
   | "event-reviews"
   | "refund-request"
+  | "refund-history"
+  | "manage-refunds"
   | "admin-dashboard"
   | "chat"
   | "staff-chat"
@@ -292,6 +300,8 @@ export default function App() {
       return "event-reviews";
     }
     if (path === "/refund-request") return "refund-request";
+    if (path === "/refund-history") return "refund-history";
+    if (path === "/manage-refunds") return "manage-refunds";
     if (path === "/admin-dashboard") return "admin-dashboard";
     if (path === "/chat") return "chat";
     if (path === "/staff-chat") return "staff-chat";
@@ -709,6 +719,12 @@ export default function App() {
 
       case "refund-request":
         return <RefundRequest onNavigate={handleNavigate} />;
+
+      case "refund-history":
+        return <RefundHistory onNavigate={handleNavigate} />;
+
+      case "manage-refunds":
+        return <ManageRefunds />;
 
       case "admin-dashboard":
         return <AdminDashboard onNavigate={handleNavigate} />;

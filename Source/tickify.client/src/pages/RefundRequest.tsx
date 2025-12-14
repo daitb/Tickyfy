@@ -87,57 +87,81 @@ export function RefundRequest({ orderId, onNavigate }: RefundRequestProps) {
   return (
     <div className="min-h-screen bg-neutral-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-neutral-600 mb-6">
-          <button onClick={() => onNavigate('user-profile')} className="hover:text-neutral-900">
+        {/* Enhanced Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-neutral-600 mb-6 bg-white p-3 rounded-lg shadow-sm">
+          <button onClick={() => onNavigate('user-profile')} className="hover:text-purple-600 transition-colors">
             Dashboard
           </button>
           <span>/</span>
-          <button onClick={() => onNavigate('my-tickets')} className="hover:text-neutral-900">
+          <button onClick={() => onNavigate('my-tickets')} className="hover:text-purple-600 transition-colors">
             Orders
           </button>
           <span>/</span>
-          <span className="text-neutral-900">Refund Request</span>
+          <span className="text-purple-600 font-medium">Refund Request</span>
         </div>
 
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="mb-2">Request Refund</h1>
-          <p className="text-neutral-600">We're sorry to see you go. Please tell us why.</p>
-          <Button variant="link" className="p-0 h-auto text-purple-600 mt-1">
-            View Refund Policy →
-          </Button>
+        {/* Enhanced Page Header */}
+        <div className="mb-8 text-center md:text-left">
+          <h1 className="mb-3 text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Request Refund
+          </h1>
+          <p className="text-neutral-600 text-lg mb-3">We're sorry to see you go. Please tell us why.</p>
+          <div className="flex items-center gap-4 flex-wrap">
+            <Button 
+              variant="link" 
+              className="p-0 h-auto text-purple-600 hover:text-purple-700 font-medium"
+              onClick={() => onNavigate('refund-policy')}
+            >
+              View Refund Policy →
+            </Button>
+            <Alert className="inline-flex items-center gap-2 bg-blue-50 border-blue-200 px-4 py-2 rounded-lg">
+              <AlertCircle className="text-blue-600" size={16} />
+              <span className="text-sm text-blue-800">Refunds are processed within 5-7 business days</span>
+            </Alert>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* Main Form */}
           <div className="md:col-span-2 space-y-6">
-            {/* Eligibility Check */}
+            {/* Enhanced Eligibility Check */}
             {!selectedOrderId && (
-              <Alert className="bg-blue-50 border-blue-200">
-                <AlertCircle className="text-blue-600" size={16} />
-                <AlertDescription className="text-blue-800">
-                  Check if your order is eligible for refund
+              <Alert className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300 shadow-sm">
+                <AlertCircle className="text-blue-600" size={18} />
+                <AlertDescription className="text-blue-900">
+                  <strong>Step 1:</strong> Select an order below to check refund eligibility
                 </AlertDescription>
               </Alert>
             )}
 
-            {/* Order Selection */}
+            {/* Enhanced Order Selection */}
             {!orderId && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Select Order</CardTitle>
+              <Card className="shadow-md border-2 border-purple-100">
+                <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold">
+                      1
+                    </div>
+                    Select Order
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-3 pt-6">
                   <RadioGroup value={selectedOrderId} onValueChange={setSelectedOrderId}>
                     {mockOrders.map((order) => {
                       const orderEvent = mockEvents.find((e) => e.id === order.eventId);
                       return (
-                        <div key={order.id} className="flex items-start gap-3 p-4 border rounded-lg">
-                          <RadioGroupItem value={order.id} id={order.id} />
+                        <div 
+                          key={order.id} 
+                          className={`flex items-start gap-3 p-4 border-2 rounded-lg transition-all duration-200 hover:shadow-md ${
+                            selectedOrderId === order.id 
+                              ? 'border-purple-500 bg-purple-50' 
+                              : 'border-neutral-200 hover:border-purple-300'
+                          }`}
+                        >
+                          <RadioGroupItem value={order.id} id={order.id} className="mt-1" />
                           <label htmlFor={order.id} className="flex-1 cursor-pointer">
                             <div className="flex gap-3">
-                              <div className="w-20 h-20 rounded bg-neutral-100 overflow-hidden flex-shrink-0">
+                              <div className="w-24 h-24 rounded-lg bg-neutral-100 overflow-hidden flex-shrink-0 border-2 border-white shadow-sm">
                                 <ImageWithFallback
                                   src={orderEvent?.image || ''}
                                   alt={orderEvent?.title || ''}
@@ -145,18 +169,31 @@ export function RefundRequest({ orderId, onNavigate }: RefundRequestProps) {
                                 />
                               </div>
                               <div className="flex-1">
-                                <div className="text-sm text-neutral-500 mb-1">#{order.id}</div>
-                                <div className="text-neutral-900 mb-1">{orderEvent?.title}</div>
-                                <div className="text-sm text-neutral-600">{orderEvent?.date}</div>
-                                <div className="text-sm text-neutral-600">
-                                  {order.tickets.length} tickets • ${order.total.toFixed(2)}
+                                <Badge variant="outline" className="mb-2 font-mono text-xs">
+                                  #{order.id}
+                                </Badge>
+                                <div className="font-semibold text-neutral-900 mb-1 text-lg">
+                                  {orderEvent?.title}
+                                </div>
+                                <div className="text-sm text-neutral-600 flex items-center gap-2 mb-2">
+                                  <Clock size={14} />
+                                  {orderEvent?.date}
+                                </div>
+                                <div className="flex items-center gap-3 text-sm">
+                                  <span className="text-neutral-700">
+                                    <strong>{order.tickets.length}</strong> tickets
+                                  </span>
+                                  <span className="text-neutral-400">•</span>
+                                  <span className="font-bold text-purple-700">
+                                    ${order.total.toFixed(2)}
+                                  </span>
                                 </div>
                               </div>
-                              <div>
-                                <Badge className="bg-green-100 text-green-700">
-                                  Full Refund Eligible
+                              <div className="text-right">
+                                <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm mb-2">
+                                  ✓ Full Refund Eligible
                                 </Badge>
-                                <div className="text-xs text-neutral-500 mt-1">
+                                <div className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded">
                                   {daysUntilEvent} days remaining
                                 </div>
                               </div>
@@ -352,44 +389,113 @@ export function RefundRequest({ orderId, onNavigate }: RefundRequestProps) {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Refund Policy */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Refund Policy</CardTitle>
+            {/* Enhanced Refund Policy */}
+            <Card className="shadow-md border-2 border-purple-100">
+              <CardHeader className="bg-gradient-to-br from-purple-50 to-pink-50 border-b">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertCircle className="text-purple-600" size={20} />
+                  Refund Policy
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex gap-2">
-                  <Check size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-neutral-700">Full refund: 7+ days before event</span>
+              <CardContent className="space-y-4 text-sm pt-4">
+                <div className="flex gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <Check size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-green-800 mb-1">100% Full Refund</p>
+                    <p className="text-green-700 text-xs">7+ days before event</p>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Check size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-neutral-700">50% refund: 3-7 days before event</span>
+                <div className="flex gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <Check size={18} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-yellow-800 mb-1">50% Partial Refund</p>
+                    <p className="text-yellow-700 text-xs">3-7 days before event</p>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-neutral-700">No refund: {'<'}3 days before event</span>
+                <div className="flex gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                  <AlertCircle size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-red-800 mb-1">No Refund</p>
+                    <p className="text-red-700 text-xs">Less than 3 days before event</p>
+                  </div>
                 </div>
                 <Separator />
-                <p className="text-xs text-neutral-500">Service fees are non-refundable</p>
+                <div className="bg-neutral-50 p-3 rounded-lg border border-neutral-200">
+                  <p className="text-xs text-neutral-600">
+                    <strong>Important:</strong> Service fees are non-refundable. Processing time: 5-7 business days.
+                  </p>
+                </div>
+                <Button 
+                  variant="link" 
+                  className="w-full text-purple-600 hover:text-purple-700 p-0"
+                  onClick={() => onNavigate('refund-policy')}
+                >
+                  Read Full Policy →
+                </Button>
               </CardContent>
             </Card>
 
-            {/* Help */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Need Help?</CardTitle>
+            {/* Enhanced Help Section */}
+            <Card className="shadow-md border-2 border-blue-100">
+              <CardHeader className="bg-gradient-to-br from-blue-50 to-cyan-50 border-b">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertCircle className="text-blue-600" size={20} />
+                  Need Help?
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start">
-                  <AlertCircle size={16} className="mr-2" />
+              <CardContent className="space-y-3 pt-4">
+                <p className="text-sm text-neutral-600 mb-3">
+                  Our support team is here to assist you 24/7
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                >
+                  <AlertCircle size={16} className="mr-2 text-blue-600" />
                   Contact Support
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  Live Chat
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                >
+                  💬 Live Chat
                 </Button>
+                <Separator />
+                <div className="text-xs text-neutral-500 space-y-1">
+                  <p>📧 support@tickify.com</p>
+                  <p>📞 1-800-TICKIFY</p>
+                  <p>⏰ Available 24/7</p>
+                </div>
               </CardContent>
             </Card>
+
+            {/* Processing Time Info */}
+            {selectedOrder && (
+              <Card className="shadow-md bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200">
+                <CardContent className="pt-4">
+                  <div className="flex items-start gap-3">
+                    <Clock className="text-purple-600 mt-1" size={20} />
+                    <div className="text-sm">
+                      <p className="font-semibold text-purple-900 mb-2">Estimated Timeline</p>
+                      <ul className="space-y-1 text-purple-800">
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-purple-600 rounded-full"></span>
+                          Review: 24-48 hours
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-purple-600 rounded-full"></span>
+                          Processing: 2-3 days
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-purple-600 rounded-full"></span>
+                          Bank transfer: 5-7 days
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

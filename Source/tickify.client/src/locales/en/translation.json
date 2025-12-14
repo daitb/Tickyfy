@@ -23,7 +23,9 @@
     "profileSettings": "Profile & Settings",
     "signOut": "Sign Out",
     "chat": "Chat",
-    "pendingApproval": "Pending Approval"
+    "pendingApproval": "Pending Approval",
+    "refundHistory": "My Refunds",
+    "manageRefunds": "Manage Refunds"
   },
   "home": {
     "title": "Discover Amazing Events",
