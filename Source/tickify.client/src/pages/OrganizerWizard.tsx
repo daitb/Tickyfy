@@ -470,12 +470,23 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
       }
 
       // Validate ticket tier prices and quantities
+      const MAX_TIER_PRICE = 50_000_000;
       for (let i = 0; i < ticketTiers.length; i++) {
         const tier = ticketTiers[i];
         if (!tier.price || tier.price <= 0) {
           toast.error(t("wizard.organizer.validation.tierPriceInvalid"), {
             description: t("wizard.organizer.validation.tierPriceInvalidDesc"),
             duration: 2000,
+            closeButton: false,
+          });
+          return;
+        }
+        if (tier.price > MAX_TIER_PRICE) {
+          toast.error("Giá vé vượt quá giới hạn", {
+            description: `Giá vé "${
+              tier.name
+            }" không được vượt quá ${MAX_TIER_PRICE.toLocaleString()} VND (Giới hạn cổng thanh toán MoMo: 50 triệu VND/giao dịch)`,
+            duration: 3000,
             closeButton: false,
           });
           return;

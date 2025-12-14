@@ -163,6 +163,20 @@ namespace Tickify.Services
                 if (dto.TotalColumns.HasValue) seatMap.TotalColumns = dto.TotalColumns.Value;
                 if (dto.LayoutConfig != null) 
                 {
+                    // CRITICAL: Check if any tickets have been sold (Confirmed status) before allowing seat map changes
+                    // Only check Confirmed bookings - Pending/Expired bookings haven't been paid yet
+                    var hasTicketsSold = await _dbContext.Tickets
+                        .AnyAsync(t => t.Booking != null && 
+                                      t.Booking.EventId == seatMap.EventId &&
+                                      t.Booking.Status == Tickify.Models.BookingStatus.Confirmed);
+                    
+                    if (hasTicketsSold)
+                    {
+                        throw new InvalidOperationException(
+                            "Cannot modify seat map after tickets have been sold. " +
+                            "This would affect existing bookings and seat assignments.");
+                    }
+                    
                     seatMap.LayoutConfig = dto.LayoutConfig;
                     
                     // Delete old zones and seats, then recreate from new layoutConfig

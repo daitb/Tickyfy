@@ -8,7 +8,7 @@ import {
 import { QRTicketCard } from "../components/QRTicketCard";
 import { ticketService, type TicketDto } from "../services/ticketService";
 import { authService } from "../services/authService";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/ui/skeleton";
@@ -36,8 +36,9 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
         loadTickets();
       }
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
   // Reload tickets when tickets are updated (e.g., after transfer)
@@ -45,8 +46,9 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
     const handleTicketsUpdated = () => {
       loadTickets();
     };
-    window.addEventListener('tickets-updated', handleTicketsUpdated);
-    return () => window.removeEventListener('tickets-updated', handleTicketsUpdated);
+    window.addEventListener("tickets-updated", handleTicketsUpdated);
+    return () =>
+      window.removeEventListener("tickets-updated", handleTicketsUpdated);
   }, []);
 
   const loadTickets = async () => {
@@ -59,7 +61,7 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
       }
 
       const userTickets = await ticketService.getMyTickets();
-      
+
       if (userTickets && Array.isArray(userTickets)) {
         setTickets(userTickets);
         setError(""); // Clear any previous errors
@@ -73,7 +75,10 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
         toast.error(errorMsg);
       }
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || err.message || "Không thể tải danh sách vé. Vui lòng thử lại.";
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "Không thể tải danh sách vé. Vui lòng thử lại.";
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -82,34 +87,40 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
   };
 
   // Group tickets by booking
-  const ticketsByBooking = tickets.reduce((acc, ticket) => {
-    const bookingId = ticket.bookingId.toString();
-    if (!acc[bookingId]) {
-      acc[bookingId] = {
-        bookingId: ticket.bookingId,
-        bookingNumber: ticket.bookingNumber,
-        eventId: ticket.eventId,
-        eventTitle: ticket.eventTitle,
-        eventVenue: ticket.eventVenue,
-        eventStartDate: ticket.eventStartDate,
-        eventEndDate: ticket.eventEndDate,
-        createdAt: ticket.createdAt,
-        tickets: []
-      };
-    }
-    acc[bookingId].tickets.push(ticket);
-    return acc;
-  }, {} as Record<string, {
-    bookingId: number;
-    bookingNumber: string;
-    eventId: number;
-    eventTitle: string;
-    eventVenue: string;
-    eventStartDate: string;
-    eventEndDate: string;
-    createdAt: string;
-    tickets: TicketDto[];
-  }>);
+  const ticketsByBooking = tickets.reduce(
+    (acc, ticket) => {
+      const bookingId = ticket.bookingId.toString();
+      if (!acc[bookingId]) {
+        acc[bookingId] = {
+          bookingId: ticket.bookingId,
+          bookingNumber: ticket.bookingNumber,
+          eventId: ticket.eventId,
+          eventTitle: ticket.eventTitle,
+          eventVenue: ticket.eventVenue,
+          eventStartDate: ticket.eventStartDate,
+          eventEndDate: ticket.eventEndDate,
+          createdAt: ticket.createdAt,
+          tickets: [],
+        };
+      }
+      acc[bookingId].tickets.push(ticket);
+      return acc;
+    },
+    {} as Record<
+      string,
+      {
+        bookingId: number;
+        bookingNumber: string;
+        eventId: number;
+        eventTitle: string;
+        eventVenue: string;
+        eventStartDate: string;
+        eventEndDate: string;
+        createdAt: string;
+        tickets: TicketDto[];
+      }
+    >
+  );
 
   const bookingGroups = Object.values(ticketsByBooking);
 
@@ -143,11 +154,13 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
               />
             </svg>
           </div>
-          <h3 className="text-neutral-900 mb-2">{t('booking.myTickets.noTickets')}</h3>
+          <h3 className="text-neutral-900 mb-2">
+            {t("booking.myTickets.noTickets")}
+          </h3>
           <p className="text-neutral-600">
             {activeTab === "upcoming"
-              ? t('booking.myTickets.noUpcoming')
-              : t('booking.myTickets.noPast')}
+              ? t("booking.myTickets.noUpcoming")
+              : t("booking.myTickets.noPast")}
           </p>
         </div>
       );
@@ -161,11 +174,14 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
               <div className="flex items-center justify-between mb-1">
                 <h3 className="mb-1">{group.eventTitle}</h3>
                 <Badge variant="secondary" className="text-xs">
-                  {group.tickets.length} {group.tickets.length === 1 ? t('booking.myTickets.ticket') : t('booking.myTickets.tickets')}
+                  {group.tickets.length}{" "}
+                  {group.tickets.length === 1
+                    ? t("booking.myTickets.ticket")
+                    : t("booking.myTickets.tickets")}
                 </Badge>
               </div>
               <p className="text-sm text-neutral-500">
-                {t('booking.myTickets.booking')} {group.bookingNumber} •{" "}
+                {t("booking.myTickets.booking")} {group.bookingNumber} •{" "}
                 {new Date(group.createdAt).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
@@ -173,22 +189,28 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
                 })}
               </p>
               <p className="text-xs text-neutral-400 mt-1">
-                {group.eventVenue} • {new Date(group.eventStartDate).toLocaleDateString("en-US", {
+                {group.eventVenue} •{" "}
+                {new Date(group.eventStartDate).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
                   year: "numeric",
                   hour: "2-digit",
-                  minute: "2-digit"
+                  minute: "2-digit",
                 })}
               </p>
             </div>
             <div className="flex items-center justify-between mb-4">
               <div></div>
               <button
-                onClick={() => onNavigate("order-detail", group.bookingId?.toString() || group.bookingNumber)}
+                onClick={() =>
+                  onNavigate(
+                    "order-detail",
+                    group.bookingId?.toString() || group.bookingNumber
+                  )
+                }
                 className="text-sm text-teal-600 hover:text-teal-700 underline"
               >
-                {t('booking.myTickets.viewOrderDetails')}
+                {t("booking.myTickets.viewOrderDetails")}
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -201,7 +223,10 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
                     tierName: ticket.ticketTypeName,
                     price: ticket.price,
                     qrCode: ticket.qrCode || ticket.ticketNumber,
-                    status: ticket.status.toLowerCase() as 'valid' | 'used' | 'cancelled',
+                    status: ticket.status.toLowerCase() as
+                      | "valid"
+                      | "used"
+                      | "cancelled",
                     seatInfo: ticket.seatNumber || undefined,
                     checkInTime: ticket.usedAt || undefined,
                   }}
@@ -228,7 +253,10 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
           </div>
           <div className="space-y-6">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="bg-white rounded-lg p-6 border border-neutral-200">
+              <div
+                key={index}
+                className="bg-white rounded-lg p-6 border border-neutral-200"
+              >
                 <Skeleton className="h-6 w-64 mb-4" />
                 <Skeleton className="h-4 w-48 mb-6" />
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -254,7 +282,7 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
             onClick={loadTickets}
             className="text-teal-500 hover:text-teal-600"
           >
-            {t('common.tryAgain')}
+            {t("common.tryAgain")}
           </button>
         </div>
       </div>
@@ -264,14 +292,16 @@ export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="mb-8">{t('booking.myTickets.title')}</h1>
+        <h1 className="mb-8">{t("booking.myTickets.title")}</h1>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-8">
             <TabsTrigger value="upcoming">
-              {t('booking.myTickets.upcoming')} ({upcomingBookings.length})
+              {t("booking.myTickets.upcoming")} ({upcomingBookings.length})
             </TabsTrigger>
-            <TabsTrigger value="past">{t('booking.myTickets.past')} ({pastBookings.length})</TabsTrigger>
+            <TabsTrigger value="past">
+              {t("booking.myTickets.past")} ({pastBookings.length})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="upcoming">
