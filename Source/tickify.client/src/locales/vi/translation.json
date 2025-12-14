@@ -983,6 +983,27 @@
     "userManagement": "Quản lý người dùng",    "users": "Người dùng", 
     "payouts": "Thanh toán",
     "organizerRequests": "Yêu cầu trở thành nhà tổ chức",
+    "paymentsTab": "Thanh toán",
+    "payments": {
+      "title": "Quản lý thanh toán",
+      "subtitle": "Xem xét và phê duyệt yêu cầu thanh toán của nhà tổ chức",
+      "search": "Tìm kiếm mã đơn hàng, số tiền...",
+      "customer": "Khách hàng",
+      "event": "Sự kiện",
+      "tickets": "Vé",
+      "amount": "Số tiền",
+      "date": "Ngày",
+      "status": "Trạng thái",
+      "total": "Tổng",
+      "payments": "thanh toán",
+      "completed": "Hoàn thành",
+      "pending": "Đang chờ",
+      "failed": "Thất bại",
+      "cancelled": "Đã hủy",
+      "confirmed": "Đã xác nhận",
+      "noData": "Không có dữ liệu thanh toán",
+      "loadError": "Không thể tải dữ liệu thanh toán"
+    },
     "userId": "ID người dùng",
     "email": "Email",
     "fullName": "Họ và tên",
@@ -1920,6 +1941,12 @@
       "exportData": "Xuất dữ liệu"
     }
   },
+  "image": {
+    "validation": {
+      "invalidType": "Loại file không hợp lệ. Chỉ chấp nhận ảnh JPG, PNG, GIF hoặc WebP.",
+      "sizeTooLarge": "Kích thước file quá lớn. Tối đa 5MB. File của bạn: {{size}}MB"
+    }
+  },
   "wizard": {
     "organizer": {
       "title": "Tạo sự kiện của bạn",
@@ -2017,6 +2044,7 @@
       "publish": "Xuất bản sự kiện",
       "saveDraft": "Lưu nháp",
       "backHome": "Về trang chủ",
+      "imageUploadError": "Lỗi tải ảnh lên",
       "validation": {
         "missingFields": "Thiếu thông tin bắt buộc",
         "missingFieldsDesc": "Vui lòng điền đầy đủ các trường bắt buộc",

@@ -104,7 +104,7 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
         venueType: "physical",
         venueName: eventData.venue,
         address: eventData.venue,
-        city: eventData.city,
+
         district: "",
         mapsLink: "",
         onlineLink: "",
@@ -136,7 +136,7 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
     venueType: "physical",
     venueName: "",
     address: "",
-    city: "",
+
     district: "",
     mapsLink: "",
     onlineLink: "",
@@ -627,30 +627,7 @@ export function EditEvent({ eventId, onNavigate }: EditEventProps) {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="city">{t("editEvent.city")}</Label>
-                        <Select
-                          value={formData.city}
-                          onValueChange={(v) => handleInputChange("city", v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Ho Chi Minh City">
-                              {t("editEvent.cityHCM")}
-                            </SelectItem>
-                            <SelectItem value="Hanoi">
-                              {t("editEvent.cityHanoi")}
-                            </SelectItem>
-                            <SelectItem value="Da Nang">
-                              {t("editEvent.cityDaNang")}
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
+                    <div>
                       <div>
                         <Label htmlFor="district">
                           {t("editEvent.district")}

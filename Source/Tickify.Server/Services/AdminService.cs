@@ -189,7 +189,7 @@ public class AdminService : IAdminService
 
         var hasSeatMap = await _context.SeatMaps
             .AnyAsync(sm => sm.EventId == eventId && sm.IsActive);
-        
+
         if (!hasSeatMap)
         {
             throw new BadRequestException(
@@ -201,7 +201,7 @@ public class AdminService : IAdminService
         var seatMap = await _context.SeatMaps
             .Include(sm => sm.Zones)
             .FirstOrDefaultAsync(sm => sm.EventId == eventId && sm.IsActive);
-        
+
         if (seatMap != null)
         {
             var hasSeatZones = seatMap.Zones != null && seatMap.Zones.Any();
@@ -217,7 +217,7 @@ public class AdminService : IAdminService
             var seatCount = await _context.Seats
                 .Where(s => s.SeatZoneId.HasValue && zoneIds.Contains(s.SeatZoneId.Value))
                 .CountAsync();
-            
+
             if (seatCount == 0)
             {
                 throw new BadRequestException(
@@ -534,7 +534,7 @@ public class AdminService : IAdminService
                 u.CreatedAt,
                 Orders = _context.Bookings.Count(b => b.UserId == u.Id && b.Status == BookingStatus.Confirmed),
                 Spent = _context.Bookings
-                    .Where(b => b.UserId == u.Id && 
+                    .Where(b => b.UserId == u.Id &&
                                b.Status == BookingStatus.Confirmed &&
                                b.Payment != null &&
                                b.Payment.Status == PaymentStatus.Completed)
@@ -583,5 +583,29 @@ public class AdminService : IAdminService
             Revenue = o.Revenue,
             Status = o.IsVerified ? "verified" : "pending"
         }).ToList();
+    }
+
+    public async Task<List<AdminBookingDto>> GetAllBookingsAsync()
+    {
+        var bookings = await _context.Bookings
+            .Include(b => b.Event)
+            .Include(b => b.User)
+            .Include(b => b.Tickets)
+            .OrderByDescending(b => b.BookingDate)
+            .Select(b => new AdminBookingDto
+            {
+                BookingId = b.Id,
+                BookingCode = b.BookingCode,
+                BookingDate = b.BookingDate,
+                Status = b.Status.ToString(),
+                EventTitle = b.Event!.Title,
+                CustomerName = b.User!.FullName,
+                CustomerEmail = b.User.Email,
+                TotalTickets = b.Tickets!.Count,
+                TotalAmount = b.TotalAmount
+            })
+            .ToListAsync();
+
+        return bookings;
     }
 }

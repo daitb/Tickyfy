@@ -101,7 +101,6 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [eventData, setEventData] = useState<Partial<Event>>({
     category: "Music",
-    city: cities[0],
     ticketTiers: [],
     policies: {
       refundable: true,
@@ -185,7 +184,6 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
           title: event.title,
           category: event.category,
           venue: event.venue,
-          city: event.city || prev.city || cities[0], // Preserve existing or use default
           date: dateStr,
           time: timeStr,
           description: event.fullDescription || event.description,
@@ -235,11 +233,11 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
   }, [eventId]);
 
   const steps = [
-    { number: 1, label: t('wizard.organizer.stepLabel1') },
-    { number: 2, label: t('wizard.organizer.stepLabel2') },
-    { number: 3, label: t('wizard.organizer.stepLabel3') },
-    { number: 4, label: t('wizard.organizer.stepLabel4') },
-    { number: 5, label: t('wizard.organizer.stepLabel5') },
+    { number: 1, label: t("wizard.organizer.stepLabel1") },
+    { number: 2, label: t("wizard.organizer.stepLabel2") },
+    { number: 3, label: t("wizard.organizer.stepLabel3") },
+    { number: 4, label: t("wizard.organizer.stepLabel4") },
+    { number: 5, label: t("wizard.organizer.stepLabel5") },
   ];
 
   const handleInputChange = (field: string, value: any) => {
@@ -275,8 +273,15 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
     // Validate file
     const validationError = imageService.validateImageFile(file);
     if (validationError) {
-      setUploadError(validationError);
-      toast.error(validationError);
+      const errorMessage = String(
+        t(validationError.key, validationError.params)
+      );
+      setUploadError(errorMessage);
+      toast.error(t("wizard.organizer.imageUploadError") as string, {
+        description: errorMessage,
+        duration: 3000,
+        closeButton: false,
+      });
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -313,7 +318,7 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
 
       setUploadedImageUrl(response.imageUrl);
       handleInputChange("image", response.imageUrl);
-      
+
       // Silent success - no toast notification
     } catch (error: any) {
       const errorMsg =
@@ -905,25 +910,6 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                   className="mt-1"
                 />
               </div>
-
-              <div>
-                <Label htmlFor="city">{t("wizard.organizer.city")}</Label>
-                <Select
-                  value={eventData.city}
-                  onValueChange={(value) => handleInputChange("city", value)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map((city) => (
-                      <SelectItem key={city} value={city}>
-                        {city}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           )}
 
@@ -1043,7 +1029,7 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                       {t("wizard.organizer.seatMapSetupTitle")}
                     </h3>
                     <p className="text-sm text-neutral-600">
-                      {isEditMode 
+                      {isEditMode
                         ? t("wizard.organizer.seatMapSetupDescEdit")
                         : t("wizard.organizer.seatMapSetupDescCreate")}
                     </p>
@@ -1053,7 +1039,10 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                     onClick={async () => {
                       if (isEditMode && eventId) {
                         // Save current step before navigating to seat map
-                        sessionStorage.setItem(`wizard-step-${eventId}`, currentStep.toString());
+                        sessionStorage.setItem(
+                          `wizard-step-${eventId}`,
+                          currentStep.toString()
+                        );
                         // Edit mode: navigate directly to seat map
                         onNavigate("edit-seat-map", eventId);
                       } else {
@@ -1202,9 +1191,7 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                       <dt className="text-neutral-500">
                         {t("wizard.organizer.venueLabel")}
                       </dt>
-                      <dd className="text-neutral-900">
-                        {eventData.venue}, {eventData.city}
-                      </dd>
+                      <dd className="text-neutral-900">{eventData.venue}</dd>
                     </div>
                   </dl>
                 </div>

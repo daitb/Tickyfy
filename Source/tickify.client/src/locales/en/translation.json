@@ -984,6 +984,27 @@
     "users": "Users",
     "payouts": "Payouts",
     "organizerRequests": "Organizer Requests",
+    "paymentsTab": "Payments",
+    "payments": {
+      "title": "Payment Management",
+      "subtitle": "Review and approve organizer payment requests",
+      "search": "Search booking code, amount...",
+      "customer": "Customer",
+      "event": "Event",
+      "tickets": "Tickets",
+      "amount": "Amount",
+      "date": "Date",
+      "status": "Status",
+      "total": "Total",
+      "payments": "payments",
+      "completed": "Completed",
+      "pending": "Pending",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "confirmed": "Confirmed",
+      "noData": "No payment data available",
+      "loadError": "Failed to load payment data"
+    },
     "userId": "User ID",
     "email": "Email",
     "fullName": "Full Name",
@@ -1921,6 +1942,12 @@
       "exportData": "Export Data"
     }
   },
+  "image": {
+    "validation": {
+      "invalidType": "Invalid file type. Only JPG, PNG, GIF, and WebP images are accepted.",
+      "sizeTooLarge": "File size too large. Maximum 5MB. Your file: {{size}}MB"
+    }
+  },
   "wizard": {
     "organizer": {
       "title": "Create Your Event",
@@ -2018,6 +2045,7 @@
       "publish": "Publish Event",
       "saveDraft": "Save as Draft",
       "backHome": "Back to Home",
+      "imageUploadError": "Image Upload Error",
       "validation": {
         "missingFields": "Missing required fields",
         "missingFieldsDesc": "Please fill in all required fields",

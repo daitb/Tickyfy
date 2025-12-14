@@ -246,6 +246,17 @@ public class AdminController : ControllerBase
 
         return userId;
     }
+
+    /// <summary>
+    /// GET /api/admin/bookings - Get all bookings for admin dashboard
+    /// </summary>
+    [HttpGet("bookings")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllBookings()
+    {
+        var bookings = await _adminService.GetAllBookingsAsync();
+        return Ok(ApiResponse<object>.SuccessResponse(bookings, $"Retrieved {bookings.Count} bookings"));
+    }
 }
 
 public class RejectRequestDto
