@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { EventCard } from "../components/EventCard";
 import { FilterBar } from "../components/FilterBar";
 import type { FilterBarState } from "../components/FilterBar";
+import type { Category } from "../types";
 import {
   Select,
   SelectContent,
@@ -31,17 +32,17 @@ export function EventListing({ onNavigate }: EventListingProps) {
   // Load filters from URL parameters on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const category = params.get('category');
-    const city = params.get('city');
-    
+    const category = params.get("category");
+    const city = params.get("city");
+
     const initialFilters: FilterBarState = {};
     if (category) {
-      initialFilters.categories = [category];
+      initialFilters.categories = [category as Category];
     }
     if (city) {
       initialFilters.city = city;
     }
-    
+
     if (Object.keys(initialFilters).length > 0) {
       setFilters(initialFilters);
     }

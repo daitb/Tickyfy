@@ -103,27 +103,14 @@ namespace Tickify.Services
                 
                 if (seats == null || !seats.Any())
                 {
-                    Console.WriteLine($"[SeatMapService] GetEventSeatsAsync: No seats found for event {eventId}");
                     return new List<SeatResponseDto>();
                 }
                 
-                Console.WriteLine($"[SeatMapService] GetEventSeatsAsync: Event {eventId}, Found {seats.Count()} seats");
-                
                 var seatDtos = _mapper.Map<List<SeatResponseDto>>(seats);
-                
-                // Validate mapping results
-                var invalidSeats = seatDtos.Where(s => s.Id <= 0 || string.IsNullOrEmpty(s.Row)).ToList();
-                if (invalidSeats.Any())
-                {
-                    Console.WriteLine($"[SeatMapService] WARNING: Found {invalidSeats.Count} invalid seats after mapping");
-                }
-                
                 return seatDtos;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SeatMapService] GetEventSeatsAsync error for event {eventId}: {ex.Message}");
-                Console.WriteLine($"[SeatMapService] Stack trace: {ex.StackTrace}");
                 throw;
             }
         }
@@ -273,25 +260,17 @@ namespace Tickify.Services
                 var layout = JsonSerializer.Deserialize<LayoutData>(layoutConfig, options);
                 if (layout == null || layout.Zones == null || layout.Seats == null)
                 {
-                    Console.WriteLine($"[SeatMapService] Failed to parse layoutConfig: {layoutConfig}");
                     return;
                 }
-
-                Console.WriteLine($"[SeatMapService] Parsed {layout.Zones.Count} zones and {layout.Seats.Count} seats from layoutConfig");
-                Console.WriteLine($"[SeatMapService] Zone names from layout: {string.Join(", ", layout.Zones.Select(z => $"'{z.Name}'"))}");
 
                 // Get event's ticket types for zone mapping
                 var eventTicketTypes = await _dbContext.TicketTypes
                     .Where(tt => tt.EventId == eventId)
                     .ToListAsync();
 
-                Console.WriteLine($"[SeatMapService] Found {eventTicketTypes.Count} ticket types for event {eventId}");
-                Console.WriteLine($"[SeatMapService] Ticket type names: {string.Join(", ", eventTicketTypes.Select(tt => $"'{tt.Name}'"))}");
-
                 // AUTO-CREATE TICKET TYPES FROM ZONES (if no ticket types exist)
                 if (eventTicketTypes.Count == 0 && layout.Zones.Any())
                 {
-                    Console.WriteLine($"[SeatMapService] No ticket types found. Auto-creating from zones...");
                     foreach (var zone in layout.Zones)
                     {
                         var newTicketType = new TicketType
@@ -306,7 +285,6 @@ namespace Tickify.Services
                         };
                         _dbContext.TicketTypes.Add(newTicketType);
                         eventTicketTypes.Add(newTicketType);
-                        Console.WriteLine($"[SeatMapService] ✅ Auto-created ticket type '{zone.Name}' from zone");
                     }
                     await _dbContext.SaveChangesAsync(); // Save to get IDs
                     
@@ -317,7 +295,6 @@ namespace Tickify.Services
                 }
                 else if (eventTicketTypes.Count == 0)
                 {
-                    Console.WriteLine($"[SeatMapService] ERROR: No ticket types and no zones provided.");
                     throw new BadRequestException("Cannot create seat map: No ticket types found and no zones provided.");
                 }
 
@@ -336,7 +313,6 @@ namespace Tickify.Services
 
                 if (unmatchedZones.Any())
                 {
-                    Console.WriteLine($"[SeatMapService] Found {unmatchedZones.Count} zones without ticket types. Auto-creating...");
                     foreach (var (name, price, capacity) in unmatchedZones)
                     {
                         var newTicketType = new TicketType
@@ -351,7 +327,6 @@ namespace Tickify.Services
                         };
                         _dbContext.TicketTypes.Add(newTicketType);
                         eventTicketTypes.Add(newTicketType);
-                        Console.WriteLine($"[SeatMapService] ✅ Auto-created ticket type '{name}' from new zone");
                     }
                     await _dbContext.SaveChangesAsync(); // Save to get IDs
                     
@@ -367,8 +342,6 @@ namespace Tickify.Services
 
                 foreach (var zone in layout.Zones)
                 {
-                    Console.WriteLine($"[SeatMapService] Processing zone: '{zone.Name}' (ID: '{zone.Id}', Price: {zone.Price}, Capacity: {zone.Capacity})");
-                    
                     // Validate zone price
                     const decimal MAX_ZONE_PRICE = 50_000_000m; // 50 triệu VND
                     if (zone.Price > MAX_ZONE_PRICE)
@@ -384,8 +357,6 @@ namespace Tickify.Services
                     
                     if (ticketType == null)
                     {
-                        Console.WriteLine($"[SeatMapService] ❌ ERROR: No ticket type found for zone '{zone.Name}' after auto-creation!");
-                        Console.WriteLine($"[SeatMapService] Available ticket types: {string.Join(", ", eventTicketTypes.Select(tt => $"'{tt.Name}'"))}");
                         throw new InvalidOperationException($"Failed to find or create ticket type for zone '{zone.Name}'");
                     }
                     
@@ -395,8 +366,6 @@ namespace Tickify.Services
                     ticketType.AvailableQuantity = zone.Capacity;
                     ticketType.HasSeatSelection = true;
                     _dbContext.TicketTypes.Update(ticketType);
-                    
-                    Console.WriteLine($"[SeatMapService] ✅ Matched zone '{zone.Name}' → ticket type '{ticketType.Name}' (ID: {ticketType.Id})");
 
                     // Create seat zone
                     var seatZone = new SeatZone
@@ -422,11 +391,7 @@ namespace Tickify.Services
                     // Map frontend zone.Id → DB SeatZone.Id for seat assignment
                     zoneIdMap[zone.Id] = seatZone.Id;
                     ticketTypeToZoneId[ticketType.Id] = seatZone.Id;
-                    
-                    Console.WriteLine($"[SeatMapService] Created SeatZone (ID: {seatZone.Id}) for zone '{zone.Name}'");
                 }
-
-                Console.WriteLine($"[SeatMapService] All zones created successfully. Zone mapping: {string.Join(", ", zoneIdMap.Select(kvp => $"{kvp.Key}→{kvp.Value}"))}");
 
                 // Validate zone overlaps (check if any zones have overlapping row/column ranges)
                 var createdZones = await _dbContext.SeatZones
@@ -478,7 +443,6 @@ namespace Tickify.Services
                         if (!missingZoneMappings.Contains(seatData.ZoneId))
                         {
                             missingZoneMappings.Add(seatData.ZoneId);
-                            Console.WriteLine($"[SeatMapService] ❌ WARNING: No zone mapping found for zoneId '{seatData.ZoneId}'. Available mappings: {string.Join(", ", zoneIdMap.Keys)}");
                         }
                         seatsSkipped++;
                         continue;
@@ -488,7 +452,6 @@ namespace Tickify.Services
                     var seatZone = await _dbContext.SeatZones.FindAsync(seatZoneId);
                     if (seatZone == null)
                     {
-                        Console.WriteLine($"[SeatMapService] ERROR: SeatZone {seatZoneId} not found");
                         seatsSkipped++;
                         continue;
                     }
@@ -511,25 +474,9 @@ namespace Tickify.Services
                 }
 
                 await _dbContext.SaveChangesAsync();
-                
-                if (missingZoneMappings.Any())
-                {
-                    Console.WriteLine($"[SeatMapService] ⚠️ SUMMARY: {seatsCreated} seats created, {seatsSkipped} seats skipped due to missing zone mappings: {string.Join(", ", missingZoneMappings)}");
-                }
-                else
-                {
-                    Console.WriteLine($"[SeatMapService] ✅ SUCCESS: Created {seatsCreated} seats successfully (skipped {seatsSkipped} seats without zones)");
-                }
             }
             catch (Exception ex)
             {
-                // Log detailed error information
-                Console.WriteLine($"[SeatMapService] ❌ ERROR creating zones/seats from layout: {ex.Message}");
-                Console.WriteLine($"[SeatMapService] Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"[SeatMapService] Inner exception: {ex.InnerException.Message}");
-                }
                 throw; // Re-throw to let caller know about the error
             }
         }

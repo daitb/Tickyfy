@@ -386,7 +386,7 @@ public class EmailService : IEmailService
                     <p>The ticket is now in your account and ready to use. You can view it in your ticket dashboard.</p>
                     
                     <div style='text-align: center; margin: 30px 0;'>
-                        <a href='{_frontendUrl}/tickets' 
+                        <a href='{_frontendUrl}/my-tickets' 
                            style='background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>
                             View My Tickets
                         </a>

@@ -103,8 +103,8 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
     category: "Music",
     ticketTiers: [],
     policies: {
-      refundable: true,
-      transferable: true,
+      refundable: false,
+      transferable: false,
     },
   });
   const isEditMode = Boolean(eventId);
@@ -241,7 +241,7 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
   ];
 
   const handleInputChange = (field: string, value: any) => {
-    setEventData({ ...eventData, [field]: value });
+    setEventData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleAddTier = () => {
@@ -530,6 +530,8 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
             0
           ),
           isFeatured: false,
+          allowTransfer: eventData.policies?.transferable ?? false,
+          allowRefund: eventData.policies?.refundable ?? false,
         };
 
         const updatedEvent = await eventService.updateEvent(
@@ -565,6 +567,8 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
             0
           ),
           isFeatured: false,
+          allowTransfer: eventData.policies?.transferable ?? false,
+          allowRefund: eventData.policies?.refundable ?? false,
           ticketTypes: ticketTiers.map((tier) => ({
             typeName: tier.name || "General",
             price: tier.price || 0,
@@ -1099,10 +1103,14 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                   <Switch
                     checked={eventData.policies?.refundable || false}
                     onCheckedChange={(checked) =>
-                      handleInputChange("policies", {
-                        ...eventData.policies,
-                        refundable: checked,
-                      })
+                      setEventData((prev) => ({
+                        ...prev,
+                        policies: {
+                          refundable: checked,
+                          transferable: prev.policies?.transferable || false,
+                          refundDeadline: prev.policies?.refundDeadline,
+                        },
+                      }))
                     }
                   />
                 </div>
@@ -1125,10 +1133,14 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                       }
                       value={eventData.policies?.refundDeadline || ""}
                       onChange={(e) =>
-                        handleInputChange("policies", {
-                          ...eventData.policies,
-                          refundDeadline: e.target.value,
-                        })
+                        setEventData((prev) => ({
+                          ...prev,
+                          policies: {
+                            refundable: prev.policies?.refundable || false,
+                            transferable: prev.policies?.transferable || false,
+                            refundDeadline: e.target.value,
+                          },
+                        }))
                       }
                       className="mt-1"
                     />
@@ -1150,10 +1162,14 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
                   <Switch
                     checked={eventData.policies?.transferable || false}
                     onCheckedChange={(checked) =>
-                      handleInputChange("policies", {
-                        ...eventData.policies,
-                        transferable: checked,
-                      })
+                      setEventData((prev) => ({
+                        ...prev,
+                        policies: {
+                          refundable: prev.policies?.refundable || false,
+                          transferable: checked,
+                          refundDeadline: prev.policies?.refundDeadline,
+                        },
+                      }))
                     }
                   />
                 </div>

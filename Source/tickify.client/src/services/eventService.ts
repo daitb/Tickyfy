@@ -29,6 +29,8 @@ export interface EventDetailDto {
   totalSeats: number;
   availableSeats: number;
   isFeatured: boolean;
+  allowTransfer: boolean;
+  allowRefund: boolean;
   status: string;
   categoryId: number;
   categoryName: string;
@@ -160,8 +162,8 @@ function mapEventDetailToEvent(dto: EventDetailDto): Event {
     organizerName: dto.organizerName || "",
     ticketTiers,
     policies: {
-      refundable: true,
-      transferable: true,
+      refundable: dto.allowRefund || false,
+      transferable: dto.allowTransfer || false,
     },
     status: (dto.status?.toLowerCase() || "published") as
       | "draft"
@@ -201,8 +203,7 @@ class EventService {
     if (m) {
       try {
         return await this.getEventById(parseInt(m[1], 10));
-      } catch {
-      }
+      } catch {}
     }
 
     try {
@@ -367,6 +368,8 @@ export interface CreateEventDto {
   endDate: string;
   totalSeats: number;
   isFeatured?: boolean;
+  allowTransfer?: boolean;
+  allowRefund?: boolean;
   seatMapId?: number;
   ticketTypes?: CreateTicketTypeDto[];
 }
@@ -388,6 +391,8 @@ export interface UpdateEventDto {
   endDate: string;
   totalSeats: number;
   isFeatured: boolean;
+  allowTransfer: boolean;
+  allowRefund: boolean;
 }
 
 export interface EventStatsDto {

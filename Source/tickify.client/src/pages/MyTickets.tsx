@@ -14,11 +14,10 @@ import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/ui/skeleton";
 
 interface MyTicketsProps {
-  orders: any[];
   onNavigate: (page: string, id?: string) => void;
 }
 
-export function MyTickets({ orders, onNavigate }: MyTicketsProps) {
+export function MyTickets({ onNavigate }: MyTicketsProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("upcoming");
   const [tickets, setTickets] = useState<TicketDto[]>([]);
