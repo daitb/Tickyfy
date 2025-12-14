@@ -653,6 +653,17 @@ namespace Tickify.Data
                     "CK_Events_Dates_Valid",
                     "[EndDate] >= [StartDate]"));
 
+            // Events - AllowTransfer and AllowRefund configuration
+            modelBuilder.Entity<Event>()
+                .Property(e => e.AllowTransfer)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            modelBuilder.Entity<Event>()
+                .Property(e => e.AllowRefund)
+                .IsRequired()
+                .HasDefaultValue(false);
+
             // TicketTypes - Inventory and pricing rules
             modelBuilder.Entity<TicketType>()
                 .ToTable(t => t.HasCheckConstraint(

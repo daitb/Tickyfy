@@ -181,8 +181,8 @@ public class EventController : ControllerBase
 
             var organizerId = await GetOrganizerIdFromClaimsAsync();
 
-            _logger.LogInformation("Organizer {OrganizerId} creating event: {EventTitle}",
-                organizerId, dto.Title);
+            _logger.LogInformation("Organizer {OrganizerId} creating event: {EventTitle}, AllowTransfer: {AllowTransfer}, AllowRefund: {AllowRefund}",
+                organizerId, dto.Title, dto.AllowTransfer, dto.AllowRefund);
 
             var createdEvent = await _eventService.CreateEventAsync(dto, organizerId);
 

@@ -71,6 +71,10 @@ public sealed class RefundService : IRefundService
         if (booking.Status != BookingStatus.Confirmed)
             throw new InvalidOperationException($"Cannot request refund for booking with status: {booking.Status}. Only confirmed bookings can be refunded.");
 
+        // Check if event allows refunds
+        if (booking.Event != null && !booking.Event.AllowRefund)
+            throw new InvalidOperationException("This event does not allow ticket refunds");
+
         // Check if booking already has a pending refund request
         var existingRefund = await _context.RefundRequests
             .FirstOrDefaultAsync(r => r.BookingId == booking.Id && r.Status == "Pending");

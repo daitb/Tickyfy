@@ -552,9 +552,7 @@ export default function App() {
         return <Success order={lastOrder} onNavigate={handleNavigate} />;
 
       case "my-tickets":
-        return (
-          <MyTickets orders={completedOrders} onNavigate={handleNavigate} />
-        );
+        return <MyTickets onNavigate={handleNavigate} />;
 
       case "order-detail": {
         // Extract orderId from URL directly
@@ -580,7 +578,6 @@ export default function App() {
         return (
           <TicketDetail
             ticketId={ticketIdFromUrl || undefined}
-            orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
