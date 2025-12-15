@@ -84,22 +84,16 @@ public class RagService : IRagService
 
     private string GetSystemPrompt(string? language)
     {
-        // Default to Vietnamese if language is not specified or not "en"
         return language?.ToLowerInvariant() == "en" ? SystemPromptEn : SystemPromptVi;
     }
 
-    /// <summary>
-    /// Detect language from message content
-    /// Prioritizes message content over UI language setting
-    /// </summary>
     private string DetectLanguageFromMessage(string message)
     {
         if (string.IsNullOrWhiteSpace(message))
             return "vi";
 
         var messageLower = message.ToLowerInvariant();
-        
-        // Common English words/phrases (expanded list)
+
         var englishIndicators = new[]
         {
             "the", "is", "are", "can", "will", "what", "where", "when", "how", "why",
@@ -109,7 +103,6 @@ public class RagService : IRagService
             "tell", "about", "information", "details", "price", "date", "time", "location"
         };
 
-        // Common Vietnamese words/phrases
         var vietnameseIndicators = new[]
         {
             "cho", "tôi", "bạn", "của", "và", "với", "có", "không", "được", "là",
@@ -120,12 +113,10 @@ public class RagService : IRagService
         int englishCount = 0;
         int vietnameseCount = 0;
 
-        // Count English indicators
         foreach (var indicator in englishIndicators)
         {
-            // Use word boundary matching for better accuracy
-            if (messageLower.Contains($" {indicator} ") || 
-                messageLower.StartsWith($"{indicator} ") || 
+            if (messageLower.Contains($" {indicator} ") ||
+                messageLower.StartsWith($"{indicator} ") ||
                 messageLower.EndsWith($" {indicator}") ||
                 messageLower == indicator)
             {
@@ -133,61 +124,53 @@ public class RagService : IRagService
             }
         }
 
-        // Count Vietnamese indicators
         foreach (var indicator in vietnameseIndicators)
         {
             if (messageLower.Contains(indicator))
                 vietnameseCount++;
         }
 
-        // Check for Vietnamese characters (most reliable indicator)
-        var vietnameseChars = new[] { 
-            'ă', 'â', 'đ', 'ê', 'ô', 'ơ', 'ư', 
-            'á', 'à', 'ả', 'ã', 'ạ', 
-            'é', 'è', 'ẻ', 'ẽ', 'ẹ', 
-            'í', 'ì', 'ỉ', 'ĩ', 'ị', 
-            'ó', 'ò', 'ỏ', 'õ', 'ọ', 
-            'ú', 'ù', 'ủ', 'ũ', 'ụ', 
-            'ý', 'ỳ', 'ỷ', 'ỹ', 'ỵ' 
+        var vietnameseChars = new[] {
+            'ă', 'â', 'đ', 'ê', 'ô', 'ơ', 'ư',
+            'á', 'à', 'ả', 'ã', 'ạ',
+            'é', 'è', 'ẻ', 'ẽ', 'ẹ',
+            'í', 'ì', 'ỉ', 'ĩ', 'ị',
+            'ó', 'ò', 'ỏ', 'õ', 'ọ',
+            'ú', 'ù', 'ủ', 'ũ', 'ụ',
+            'ý', 'ỳ', 'ỷ', 'ỹ', 'ỵ'
         };
         bool hasVietnameseChars = message.Any(c => vietnameseChars.Contains(char.ToLowerInvariant(c)));
 
-        // Decision logic (prioritize Vietnamese characters)
         if (hasVietnameseChars)
         {
             _logger.LogDebug("Detected Vietnamese characters in message");
             return "vi";
         }
-        
-        // If has English words and no Vietnamese words, likely English
+
         if (englishCount > 0 && vietnameseCount == 0)
         {
             _logger.LogDebug("Detected English from indicators: {Count} English words found", englishCount);
             return "en";
         }
-        
-        // If has more English than Vietnamese indicators
+
         if (englishCount > vietnameseCount && englishCount > 0)
         {
             _logger.LogDebug("Detected English: {EnglishCount} vs {VietnameseCount} indicators", englishCount, vietnameseCount);
             return "en";
         }
-        
-        // If has Vietnamese indicators
+
         if (vietnameseCount > 0)
         {
             _logger.LogDebug("Detected Vietnamese from indicators: {Count} Vietnamese words found", vietnameseCount);
             return "vi";
         }
 
-        // Default: if message contains common English words, assume English
         if (englishCount > 0)
         {
             _logger.LogDebug("Defaulting to English based on {Count} English indicators", englishCount);
             return "en";
         }
 
-        // Default to Vietnamese
         _logger.LogDebug("Defaulting to Vietnamese (no clear indicators)");
         return "vi";
     }
@@ -211,39 +194,39 @@ public class RagService : IRagService
     }
 
     private async Task<string> ChatWithLlmAsync(
-        string systemPrompt, 
-        string userMessage, 
+        string systemPrompt,
+        string userMessage,
         List<ChatMessage>? history = null)
     {
         if (_groqService != null)
         {
             return await _groqService.ChatAsync(systemPrompt, userMessage, history);
         }
-        
+
         throw new InvalidOperationException("No LLM provider configured. Please set GroqApiKey.");
     }
 
     private IAsyncEnumerable<string> StreamChatWithLlmAsync(
-        string systemPrompt, 
-        string userMessage, 
+        string systemPrompt,
+        string userMessage,
         List<ChatMessage>? history = null)
     {
         if (_groqService != null)
         {
             return _groqService.StreamChatAsync(systemPrompt, userMessage, history);
         }
-        
+
         throw new InvalidOperationException("No LLM provider configured.");
     }
 
     public async Task<ChatResponse> ProcessQueryAsync(ChatRequest request)
     {
         var conversationId = request.ConversationId ?? Guid.NewGuid().ToString();
-        
+
         try
         {
             _logger.LogInformation("Processing query: {Query}", request.Message);
-            
+
             // 1. Create embedding for query
             var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Message);
             _logger.LogInformation("Created embedding with {Dims} dimensions", queryEmbedding.Length);
@@ -254,8 +237,8 @@ public class RagService : IRagService
             _logger.LogInformation("Found {Count} relevant documents from Qdrant", searchResults.Count);
             foreach (var r in searchResults)
             {
-                _logger.LogInformation("  - Score: {Score:F4}, Type: {Type}, Source: {Source}", 
-                    r.Score, 
+                _logger.LogInformation("  - Score: {Score:F4}, Type: {Type}, Source: {Source}",
+                    r.Score,
                     r.Payload.GetValueOrDefault("source_type", "unknown"),
                     r.Payload.GetValueOrDefault("source", "unknown"));
             }
@@ -263,31 +246,31 @@ public class RagService : IRagService
             // 3. Build context
             var context = BuildContext(searchResults);
             var sources = ExtractSources(searchResults);
-            
-            _logger.LogInformation("Built context: {ContextPreview}...", 
+
+            _logger.LogInformation("Built context: {ContextPreview}...",
                 context.Length > 200 ? context[..200] : context);
 
             // 4. Detect language - prioritize message content over UI language
             // If user types in English, they want English response regardless of UI language
             var detectedLanguage = DetectLanguageFromMessage(request.Message);
             var language = detectedLanguage; // Always use detected language from message
-            
-            _logger.LogInformation("Detected language from message: {DetectedLanguage} (UI language was: {UILanguage})", 
+
+            _logger.LogInformation("Detected language from message: {DetectedLanguage} (UI language was: {UILanguage})",
                 detectedLanguage, request.Language ?? "not provided");
-            
+
             var systemPrompt = GetSystemPrompt(language);
             var promptWithContext = systemPrompt.Replace("{context}", context);
 
             // 5. Add explicit language instruction to user message
-            var languageInstruction = language == "en" 
-                ? "[IMPORTANT: Answer in English only]" 
+            var languageInstruction = language == "en"
+                ? "[IMPORTANT: Answer in English only]"
                 : "[QUAN TRỌNG: Trả lời bằng tiếng Việt]";
             var userMessageWithLanguage = $"{languageInstruction}\n\n{request.Message}";
 
             // 6. Get LLM response
             var response = await ChatWithLlmAsync(
-                promptWithContext, 
-                userMessageWithLanguage, 
+                promptWithContext,
+                userMessageWithLanguage,
                 request.History);
 
             return new ChatResponse
@@ -306,11 +289,11 @@ public class RagService : IRagService
             {
                 language = DetectLanguageFromMessage(request.Message);
             }
-            
-            var errorMessage = language?.ToLowerInvariant() == "en" 
+
+            var errorMessage = language?.ToLowerInvariant() == "en"
                 ? "Sorry, an error occurred. Please try again later."
                 : "Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.";
-            
+
             return new ChatResponse
             {
                 Message = errorMessage,
@@ -324,7 +307,7 @@ public class RagService : IRagService
     public async IAsyncEnumerable<string> StreamQueryAsync(ChatRequest request)
     {
         _logger.LogInformation("StreamQuery: Processing query '{Query}'", request.Message);
-        
+
         var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Message);
         _logger.LogInformation("StreamQuery: Created embedding with {Dims} dimensions", queryEmbedding.Length);
 
@@ -332,37 +315,37 @@ public class RagService : IRagService
         var searchResults = await SmartSearchAsync(queryEmbedding, request.Message);
 
         _logger.LogInformation("StreamQuery: Found {Count} relevant documents", searchResults.Count);
-        
+
         foreach (var result in searchResults)
         {
-            _logger.LogInformation("StreamQuery: Doc score={Score:F4}, type={Type}, source={Source}", 
-                result.Score, 
+            _logger.LogInformation("StreamQuery: Doc score={Score:F4}, type={Type}, source={Source}",
+                result.Score,
                 result.Payload.GetValueOrDefault("source_type", "unknown"),
                 result.Payload.GetValueOrDefault("source", "unknown"));
         }
 
         var context = BuildContext(searchResults);
         _logger.LogInformation("StreamQuery: Context length = {Len} chars", context.Length);
-        
+
         // Detect language - prioritize message content over UI language
         var detectedLanguage = DetectLanguageFromMessage(request.Message);
         var language = detectedLanguage; // Always use detected language from message
-        
-        _logger.LogInformation("StreamQuery: Detected language from message: {DetectedLanguage} (UI language was: {UILanguage})", 
+
+        _logger.LogInformation("StreamQuery: Detected language from message: {DetectedLanguage} (UI language was: {UILanguage})",
             detectedLanguage, request.Language ?? "not provided");
-        
+
         var systemPrompt = GetSystemPrompt(language);
         var promptWithContext = systemPrompt.Replace("{context}", context);
 
         // Add explicit language instruction to user message
-        var languageInstruction = language == "en" 
-            ? "[IMPORTANT: Answer in English only]" 
+        var languageInstruction = language == "en"
+            ? "[IMPORTANT: Answer in English only]"
             : "[QUAN TRỌNG: Trả lời bằng tiếng Việt]";
         var userMessageWithLanguage = $"{languageInstruction}\n\n{request.Message}";
 
         await foreach (var chunk in StreamChatWithLlmAsync(
-            promptWithContext, 
-            userMessageWithLanguage, 
+            promptWithContext,
+            userMessageWithLanguage,
             request.History))
         {
             yield return chunk;
@@ -378,31 +361,31 @@ public class RagService : IRagService
     private async Task<List<QdrantSearchResult>> SmartSearchAsync(float[] queryEmbedding, string query)
     {
         var queryLower = query.ToLowerInvariant();
-        
+
         // Keywords cho event queries
-        var eventKeywords = new[] { 
-            "sự kiện", "event", "concert", "show", "lịch", "ngày", "địa điểm", 
-            "vé", "ticket", "giá", "danh sách", "tìm", "có những", "nào", 
+        var eventKeywords = new[] {
+            "sự kiện", "event", "concert", "show", "lịch", "ngày", "địa điểm",
+            "vé", "ticket", "giá", "danh sách", "tìm", "có những", "nào",
             "đang diễn ra", "sắp tới", "hôm nay", "tuần này", "tháng này",
             "nhạc hội", "festival", "workshop", "hội thảo", "biểu diễn"
         };
-        
+
         // Keywords cho FAQ queries  
-        var faqKeywords = new[] { 
-            "làm sao", "làm thế nào", "cách", "hướng dẫn", "thế nào", 
+        var faqKeywords = new[] {
+            "làm sao", "làm thế nào", "cách", "hướng dẫn", "thế nào",
             "tại sao", "bao lâu", "ở đâu", "liên hệ", "hỗ trợ", "hotline",
-            "hoàn tiền", "đổi vé", "hủy", "thanh toán", "payment", 
+            "hoàn tiền", "đổi vé", "hủy", "thanh toán", "payment",
             "đăng ký", "đăng nhập", "tài khoản", "mật khẩu", "email",
             "quy định", "chính sách", "điều khoản"
         };
-        
+
         var isEventQuery = eventKeywords.Any(k => queryLower.Contains(k));
         var isFaqQuery = faqKeywords.Any(k => queryLower.Contains(k));
-        
+
         _logger.LogInformation("Query classification: isEvent={IsEvent}, isFaq={IsFaq}", isEventQuery, isFaqQuery);
-        
+
         List<QdrantSearchResult> results;
-        
+
         if (isEventQuery && !isFaqQuery)
         {
             // Chỉ hỏi về events -> lấy nhiều events
@@ -425,7 +408,7 @@ public class RagService : IRagService
             var faqResults = await _qdrantService.SearchWithFilterAsync(queryEmbedding, "faq", 3, 0.0);
             results = eventResults.Concat(faqResults).ToList();
         }
-        
+
         // Sort by score descending
         return results.OrderByDescending(r => r.Score).ToList();
     }
@@ -441,30 +424,30 @@ public class RagService : IRagService
         foreach (var doc in documents)
         {
             var chunks = _documentProcessor.ChunkText(
-                doc.Content, 
-                doc.Source, 
-                doc.SourceType, 
+                doc.Content,
+                doc.Source,
+                doc.SourceType,
                 doc.Metadata);
-            
+
             allChunks.AddRange(chunks);
         }
 
         _logger.LogInformation("Creating embeddings for {Count} chunks", allChunks.Count);
-        
+
         var batchSize = 10;
         for (var i = 0; i < allChunks.Count; i += batchSize)
         {
             var batch = allChunks.Skip(i).Take(batchSize).ToList();
-            
+
             foreach (var chunk in batch)
             {
                 chunk.Embedding = await _embeddingService.GetEmbeddingAsync(chunk.Content);
             }
 
             await _qdrantService.UpsertAsync(batch);
-            
-            _logger.LogInformation("Indexed batch {Batch}/{Total}", 
-                i / batchSize + 1, 
+
+            _logger.LogInformation("Indexed batch {Batch}/{Total}",
+                i / batchSize + 1,
                 (allChunks.Count + batchSize - 1) / batchSize);
         }
 
@@ -478,7 +461,7 @@ public class RagService : IRagService
         var events = await _dbContext.Events
             .Include(e => e.Category)
             .Include(e => e.Organizer)
-            .Where(e => e.Status == Tickify.Models.EventStatus.Published || 
+            .Where(e => e.Status == Tickify.Models.EventStatus.Published ||
                        e.Status == Tickify.Models.EventStatus.Approved)
             .ToListAsync();
 
@@ -504,13 +487,13 @@ public class RagService : IRagService
 
         // Đường dẫn đến file FAQ
         var faqPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "FAQ.md");
-        
+
         // Fallback nếu chạy từ bin folder
         if (!File.Exists(faqPath))
         {
             faqPath = Path.Combine(AppContext.BaseDirectory, "AI", "Data", "FAQ.md");
         }
-        
+
         // Fallback cho development
         if (!File.Exists(faqPath))
         {
@@ -525,12 +508,12 @@ public class RagService : IRagService
         }
 
         var content = await File.ReadAllTextAsync(faqPath);
-        
+
         // Parse FAQ sections
         var faqDocuments = ParseFaqContent(content);
-        
+
         await IndexDocumentsAsync(faqDocuments);
-        
+
         _logger.LogInformation("Indexed {Count} FAQ entries", faqDocuments.Count);
     }
 
@@ -538,7 +521,7 @@ public class RagService : IRagService
     {
         var documents = new List<IndexDocumentRequest>();
         var lines = content.Split('\n');
-        
+
         string? currentCategory = null;
         string? currentQuestion = null;
         var currentAnswer = new System.Text.StringBuilder();
@@ -546,7 +529,7 @@ public class RagService : IRagService
         foreach (var line in lines)
         {
             var trimmedLine = line.Trim();
-            
+
             // Category header (## ...)
             if (trimmedLine.StartsWith("## "))
             {
@@ -555,7 +538,7 @@ public class RagService : IRagService
                 {
                     documents.Add(CreateFaqDocument(currentCategory, currentQuestion, currentAnswer.ToString()));
                 }
-                
+
                 currentCategory = trimmedLine[3..].Trim();
                 currentQuestion = null;
                 currentAnswer.Clear();
@@ -568,7 +551,7 @@ public class RagService : IRagService
                 {
                     documents.Add(CreateFaqDocument(currentCategory, currentQuestion, currentAnswer.ToString()));
                 }
-                
+
                 currentQuestion = trimmedLine[4..].Trim();
                 currentAnswer.Clear();
             }
@@ -589,8 +572,8 @@ public class RagService : IRagService
     }
 
     private static IndexDocumentRequest CreateFaqDocument(
-        string? category, 
-        string question, 
+        string? category,
+        string question,
         string answer)
     {
         return new IndexDocumentRequest
@@ -635,7 +618,7 @@ public class RagService : IRagService
         }
 
         var contextBuilder = new System.Text.StringBuilder();
-        
+
         foreach (var result in results)
         {
             if (result.Payload.TryGetValue("content", out var content))

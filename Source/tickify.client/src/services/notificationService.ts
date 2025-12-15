@@ -57,6 +57,7 @@ function mapNotificationType(backendType: string): Notification['type'] {
 function formatTimestamp(timestamp: string): string {
   const now = new Date();
   const time = new Date(timestamp);
+  time.setHours(time.getHours() + 7);
   const diff = now.getTime() - time.getTime();
   
   const minutes = Math.floor(diff / 60000);

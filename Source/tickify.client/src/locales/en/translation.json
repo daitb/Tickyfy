@@ -432,6 +432,8 @@
       "generalAdmission": "General Admission",
       "category": "Category",
       "seatNumber": "Seat Number",
+      "refundNotAllowed": "Refund Not Available",
+      "refundNotAllowedMessage": "This event does not allow ticket refunds. Please contact support if you have any questions.",
       "transfer": "Transfer",
       "downloadPdf": "Download PDF",
       "share": "Share",
