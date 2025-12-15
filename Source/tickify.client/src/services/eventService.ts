@@ -162,8 +162,8 @@ function mapEventDetailToEvent(dto: EventDetailDto): Event {
     organizerName: dto.organizerName || "",
     ticketTiers,
     policies: {
-      refundable: dto.allowRefund || false,
-      transferable: dto.allowTransfer || false,
+      refundable: dto.allowRefund ?? false,
+      transferable: dto.allowTransfer ?? false,
     },
     status: (dto.status?.toLowerCase() || "published") as
       | "draft"

@@ -103,8 +103,8 @@ export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
     category: "Music",
     ticketTiers: [],
     policies: {
-      refundable: false,
-      transferable: false,
+      refundable: true,
+      transferable: true,
     },
   });
   const isEditMode = Boolean(eventId);
