@@ -422,6 +422,8 @@
       "generalAdmission": "Vé thường",
       "category": "Danh mục",
       "seatNumber": "Số ghế",
+      "refundNotAllowed": "Không cho phép hoàn tiền",
+      "refundNotAllowedMessage": "Sự kiện này không cho phép hoàn tiền vé. Vui lòng liên hệ hỗ trợ nếu bạn có bất kỳ câu hỏi nào.",
       "transfer": "Chuyển vé",
       "downloadPdf": "Tải PDF",
       "share": "Chia sẻ",
