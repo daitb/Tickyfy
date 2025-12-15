@@ -757,6 +757,8 @@ public class EventService : IEventService
             TotalSeats = eventEntity.MaxCapacity ?? 0,
             AvailableSeats = eventEntity.TicketTypes?.Sum(tt => tt.AvailableQuantity) ?? 0,
             IsFeatured = false,
+            AllowTransfer = eventEntity.AllowTransfer,
+            AllowRefund = eventEntity.AllowRefund,
             Status = eventEntity.Status.ToString(),
             CategoryId = eventEntity.CategoryId,
             CategoryName = eventEntity.Category?.Name ?? "",
