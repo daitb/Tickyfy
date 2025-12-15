@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Tickify.Server.AI.Models;
-using Tickify.Server.AI.Services;
+using Tickify.Server.Models;
+using Tickify.Server.Services.AI;
 
-namespace Tickify.Server.AI.Controllers;
+namespace Tickify.Server.Controllers;
 
 /// <summary>
 /// API Controller cho RAG Chatbot
@@ -23,11 +23,8 @@ public class ChatbotController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Gửi tin nhắn và nhận phản hồi từ chatbot
-    /// </summary>
     [HttpPost("chat")]
-    [AllowAnonymous] // Hoặc [Authorize] nếu cần đăng nhập
+    [AllowAnonymous]
     public async Task<ActionResult<ChatResponse>> Chat([FromBody] ChatRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Message))
@@ -55,9 +52,6 @@ public class ChatbotController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Stream phản hồi từ chatbot (Server-Sent Events)
-    /// </summary>
     [HttpPost("chat/stream")]
     [AllowAnonymous]
     public async Task StreamChat([FromBody] ChatRequest request)
@@ -84,9 +78,6 @@ public class ChatbotController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Lấy status của RAG system
-    /// </summary>
     [HttpGet("status")]
     [AllowAnonymous]
     public async Task<ActionResult<RagStatus>> GetStatus()
@@ -95,33 +86,6 @@ public class ChatbotController : ControllerBase
         return Ok(status);
     }
 
-    /// <summary>
-    /// Index documents vào vector database
-    /// </summary>
-    [HttpPost("index")]
-    [Authorize(Roles = "Admin")] // Chỉ admin mới được index
-    public async Task<IActionResult> IndexDocuments([FromBody] BatchIndexRequest request)
-    {
-        if (request.Documents == null || !request.Documents.Any())
-        {
-            return BadRequest("No documents provided");
-        }
-
-        try
-        {
-            await _ragService.IndexDocumentsAsync(request.Documents);
-            return Ok(new { message = $"Successfully indexed {request.Documents.Count} documents" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error indexing documents");
-            return StatusCode(500, new { error = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// Index events từ database vào vector database
-    /// </summary>
     [HttpPost("index/events")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> IndexEvents()
@@ -138,33 +102,22 @@ public class ChatbotController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Index file markdown
-    /// </summary>
-    [HttpPost("index/markdown")]
+    [HttpPost("index/faq")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> IndexMarkdown([FromBody] IndexMarkdownRequest request)
+    public async Task<IActionResult> IndexFaq()
     {
-        if (string.IsNullOrWhiteSpace(request.FilePath))
-        {
-            return BadRequest("FilePath is required");
-        }
-
         try
         {
-            await _ragService.IndexMarkdownFileAsync(request.FilePath);
-            return Ok(new { message = $"Successfully indexed {request.FilePath}" });
+            await _ragService.IndexFaqAsync();
+            return Ok(new { message = "Successfully indexed FAQ" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error indexing markdown file");
+            _logger.LogError(ex, "Error indexing FAQ");
             return StatusCode(500, new { error = ex.Message });
         }
     }
 
-    /// <summary>
-    /// Reset collection - xóa và tạo lại collection trong Qdrant
-    /// </summary>
     [HttpPost("reset")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ResetCollection([FromServices] IQdrantService qdrantService)
@@ -181,9 +134,4 @@ public class ChatbotController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
-}
-
-public class IndexMarkdownRequest
-{
-    public string FilePath { get; set; } = string.Empty;
 }

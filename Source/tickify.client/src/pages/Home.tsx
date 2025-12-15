@@ -29,24 +29,23 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
 
   useEffect(() => {
     setIsLoading(true);
-    // Fetch all events for categories and upcoming events
     Promise.all([
       eventService.getEvents(),
       eventService.getFeaturedEvents(4),
-      eventService.getUpcomingEvents(3),
+      eventService.getTrendingEvents(3),
+      eventService.getUpcomingEvents(6),
     ])
-      .then(([allEvents, featured, upcoming]) => {
+      .then(([allEvents, featured, trending, upcoming]) => {
         setEvents(allEvents || []);
         const cats = Array.from(
           new Set((allEvents || []).map((e: any) => e.category).filter(Boolean))
         );
         setAvailableCategories(cats);
-        setTrendingEvents(upcoming || []);
+        setTrendingEvents(trending || []);
         setSpecialEvents(featured || []);
-        setUpcomingEventsList(allEvents || []);
+        setUpcomingEventsList(upcoming || []);
       })
       .catch((error: any) => {
-        // Silent fail for home page, just show empty state
         setEvents([]);
         setAvailableCategories([]);
         setTrendingEvents([]);
@@ -82,43 +81,6 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
     <div className="min-h-screen bg-white">
       {/* Hero Slider - pauses when search is open */}
       <HeroSlider onViewDetails={handleViewDetails} isPaused={isSearchOpen} />
-
-      {/* Categories Filter */}
-      <section className="bg-white border-b border-neutral-100">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            <Badge
-              variant={selectedCategory === "all" ? "default" : "secondary"}
-              className={`cursor-pointer whitespace-nowrap ${
-                selectedCategory === "all"
-                  ? "bg-teal-500 hover:bg-teal-600 text-white"
-                  : "bg-neutral-100 hover:bg-neutral-200"
-              }`}
-              onClick={() => setSelectedCategory("all")}
-            >
-              {t("home.categories.all")}
-            </Badge>
-            {availableCategories.map((category) => (
-              <Badge
-                key={category}
-                variant={
-                  selectedCategory === category ? "default" : "secondary"
-                }
-                className={`cursor-pointer whitespace-nowrap ${
-                  selectedCategory === category
-                    ? "bg-teal-500 hover:bg-teal-600 text-white"
-                    : "bg-neutral-100 hover:bg-neutral-200"
-                }`}
-                onClick={() =>
-                  setSelectedCategory(category as Category | "all")
-                }
-              >
-                {category}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Special Events */}
       <section className="py-12 bg-gradient-to-br from-teal-50 to-white">

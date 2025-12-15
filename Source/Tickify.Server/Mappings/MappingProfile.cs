@@ -116,11 +116,15 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.TicketTypeName, opt => opt.MapFrom(src => src.TicketType != null ? src.TicketType.Name : string.Empty))
             .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.Price))
             .ForMember(dest => dest.SeatId, opt => opt.MapFrom(src => src.SeatId))
-            .ForMember(dest => dest.SeatNumber, opt => opt.MapFrom(src => src.Seat != null ? src.Seat.SeatNumber : (src.SeatNumber ?? null)))
+            .ForMember(dest => dest.Row, opt => opt.MapFrom(src => src.Seat != null ? src.Seat.Row : null))
+            .ForMember(dest => dest.SeatNumber, opt => opt.MapFrom(src => 
+                src.Seat != null ? src.Seat.Row + src.Seat.SeatNumber : (src.SeatNumber ?? null)))
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
             .ForMember(dest => dest.QrCode, opt => opt.MapFrom(src => src.TicketCode))
             .ForMember(dest => dest.IsUsed, opt => opt.MapFrom(src => src.Status == TicketStatus.Used))
             .ForMember(dest => dest.UsedAt, opt => opt.MapFrom(src => src.UsedAt))
+            .ForMember(dest => dest.AllowTransfer, opt => opt.MapFrom(src => src.Booking != null && src.Booking.Event != null ? src.Booking.Event.AllowTransfer : false))
+            .ForMember(dest => dest.AllowRefund, opt => opt.MapFrom(src => src.Booking != null && src.Booking.Event != null ? src.Booking.Event.AllowRefund : false))
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt));
 
         // Seat mappings (original)

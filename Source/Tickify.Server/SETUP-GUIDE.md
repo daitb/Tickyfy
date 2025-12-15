@@ -1,4 +1,4 @@
-# 🤖 AI Chatbot RAG - Hướng Dẫn Cài Đặt (GROQ Edition)
+# 🤖 AI Chatbot RAG - Hướng Dẫn Cài Đặt
 
 ## 🚀 Giới Thiệu
 
@@ -8,19 +8,21 @@ AI Chatbot sử dụng **RAG (Retrieval-Augmented Generation)** với các công
 |-----------|----------|------|-------|
 | **LLM** | Groq Cloud API | FREE | 14,400 req/ngày, cực nhanh |
 | **Vector DB** | Qdrant Local | FREE | ~50MB, không Docker |
-| **Embeddings** | HuggingFace API / Local | FREE | Tùy chọn |
+| **Embeddings** | HuggingFace API | FREE | sentence-transformers |
 
-## ⚡ Bước 1: Lấy Groq API Key (1 phút)
+## ⚡ Bước 1: Lấy API Keys (5 phút)
 
+### 1.1 Groq API Key:
 1. Truy cập: https://console.groq.com/
 2. Đăng ký/đăng nhập bằng Google hoặc GitHub
 3. Vào **API Keys** → **Create API Key**
 4. Copy API key (bắt đầu bằng `gsk_...`)
 
-> 💡 **Groq cho miễn phí:**
-> - 14,400 requests/ngày
-> - 500,000 tokens/phút
-> - Models: llama-3.3-70b, mixtral-8x7b, gemma-7b
+### 1.2 HuggingFace API Key:
+1. Truy cập: https://huggingface.co/
+2. Đăng ký/đăng nhập
+3. Vào **Settings** → **Access Tokens** → **New token**
+4. Copy API key (bắt đầu bằng `hf_...`)
 
 ## ⚡ Bước 2: Cài Đặt Qdrant (Vector Database)
 
@@ -44,10 +46,10 @@ Qdrant sẽ chạy tại: `http://localhost:6333`
 ```json
 {
   "Rag": {
-    "GroqApiKey": "gsk_YOUR_API_KEY_HERE",
-    "HuggingFaceApiKey": "",
+    "GroqApiKey": "gsk_YOUR_GROQ_KEY",
+    "HuggingFaceApiKey": "hf_YOUR_HF_KEY",
     "LlmProvider": "groq",
-    "EmbeddingProvider": "",
+    "EmbeddingProvider": "huggingface",
     "GroqModel": "llama-3.3-70b-versatile",
     "QdrantBaseUrl": "http://localhost:6333",
     "CollectionName": "tickify_documents",

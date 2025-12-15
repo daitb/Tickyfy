@@ -76,7 +76,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
   const [bookings, setBookings] = useState<OrganizerBookingDto[]>([]);
   const [error, setError] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all"); // all, draft, pending, approved, rejected
-  
+
   // Search and filter states
   const [eventSearchTerm, setEventSearchTerm] = useState("");
   const [eventDateFilter, setEventDateFilter] = useState("all");
@@ -84,7 +84,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
   const [orderSearchTerm, setOrderSearchTerm] = useState("");
   const [orderDateFilter, setOrderDateFilter] = useState("all");
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
-  
+
   // Pagination states
   const [eventsPage, setEventsPage] = useState(1);
   const [ordersPage, setOrdersPage] = useState(1);
@@ -107,8 +107,9 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [organizerId]);
 
   const loadDashboardData = async (targetOrganizerId?: number) => {
@@ -154,67 +155,87 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
   };
 
   const formatPrice = (price: number) => {
-    const isVietnamese = i18n.language === 'vi';
-    
+    const isVietnamese = i18n.language === "vi";
+
     if (isVietnamese) {
       // Tiếng Việt: 10.000 ₫
-      return new Intl.NumberFormat('vi-VN', {
-        style: 'currency',
-        currency: 'VND',
+      return new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
       }).format(price);
     } else {
       // Tiếng Anh: 10,000 VND
-      return new Intl.NumberFormat('en-US', {
-        style: 'decimal',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(price) + ' VND';
+      return (
+        new Intl.NumberFormat("en-US", {
+          style: "decimal",
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(price) + " VND"
+      );
     }
   };
 
   const formatCompactPrice = (price: number) => {
-    const isVietnamese = i18n.language === 'vi';
-    
+    const isVietnamese = i18n.language === "vi";
+
     if (isVietnamese) {
       // Tiếng Việt: tr, tỷ
       if (price >= 1000000000) {
         const billions = price / 1000000000;
-        return (billions % 1 === 0 ? billions.toFixed(0) : billions.toFixed(1)) + 'tỷ ₫';
+        return (
+          (billions % 1 === 0 ? billions.toFixed(0) : billions.toFixed(1)) +
+          "tỷ ₫"
+        );
       } else if (price >= 1000000) {
         const millions = price / 1000000;
-        return (millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)) + 'tr ₫';
+        return (
+          (millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)) +
+          "tr ₫"
+        );
       } else if (price >= 1000) {
         const thousands = price / 1000;
-        return (thousands % 1 === 0 ? thousands.toFixed(0) : thousands.toFixed(1)) + 'k ₫';
+        return (
+          (thousands % 1 === 0 ? thousands.toFixed(0) : thousands.toFixed(1)) +
+          "k ₫"
+        );
       }
-      return price.toString() + ' ₫';
+      return price.toString() + " ₫";
     } else {
       // Tiếng Anh: M, B
       if (price >= 1000000000) {
         const billions = price / 1000000000;
-        return (billions % 1 === 0 ? billions.toFixed(0) : billions.toFixed(1)) + 'B VND';
+        return (
+          (billions % 1 === 0 ? billions.toFixed(0) : billions.toFixed(1)) +
+          "B VND"
+        );
       } else if (price >= 1000000) {
         const millions = price / 1000000;
-        return (millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)) + 'M VND';
+        return (
+          (millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)) +
+          "M VND"
+        );
       } else if (price >= 1000) {
         const thousands = price / 1000;
-        return (thousands % 1 === 0 ? thousands.toFixed(0) : thousands.toFixed(1)) + 'K VND';
+        return (
+          (thousands % 1 === 0 ? thousands.toFixed(0) : thousands.toFixed(1)) +
+          "K VND"
+        );
       }
-      return price.toString() + ' VND';
+      return price.toString() + " VND";
     }
   };
 
   // Calculate smart Y-axis ticks with 5 segments closer to actual data
   const getYAxisTicks = () => {
-    const revenues = salesData.map(d => d.revenue || 0);
+    const revenues = salesData.map((d) => d.revenue || 0);
     const maxRevenue = Math.max(...revenues, 0);
-    
+
     if (maxRevenue === 0) return [0];
-    
+
     // Calculate raw interval for 4 segments (5 ticks including 0)
     // Use 1.25x multiplier instead of direct division to get closer fit
     const rawInterval = (maxRevenue * 1.25) / 4;
-    
+
     // Round to nice numbers
     let niceInterval;
     if (rawInterval <= 250000) {
@@ -266,28 +287,36 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
       // Round to nearest 1b
       niceInterval = Math.ceil(rawInterval / 1000000000) * 1000000000;
     }
-    
+
     // Generate exactly 5 ticks (0, 1x, 2x, 3x, 4x)
-    return [0, niceInterval, niceInterval * 2, niceInterval * 3, niceInterval * 4];
+    return [
+      0,
+      niceInterval,
+      niceInterval * 2,
+      niceInterval * 3,
+      niceInterval * 4,
+    ];
   };
 
   // Filter events by status, search, and date
   const filteredEvents = events.filter((event) => {
     // Status filter
-    const matchesStatus = statusFilter === "all" || 
+    const matchesStatus =
+      statusFilter === "all" ||
       event.status.toLowerCase() === statusFilter.toLowerCase();
-    
+
     // Search filter
-    const matchesSearch = !eventSearchTerm || 
+    const matchesSearch =
+      !eventSearchTerm ||
       event.title?.toLowerCase().includes(eventSearchTerm.toLowerCase());
-    
+
     // Date filter logic
     let matchesDate = true;
     if (eventDateFilter !== "all" && event.startDate) {
       const eventDate = new Date(event.startDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       switch (eventDateFilter) {
         case "today":
           const todayEnd = new Date(today);
@@ -304,7 +333,11 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
           break;
         case "thisMonth":
           const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-          const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          const monthEnd = new Date(
+            today.getFullYear(),
+            today.getMonth() + 1,
+            0
+          );
           monthEnd.setHours(23, 59, 59, 999);
           matchesDate = eventDate >= monthStart && eventDate <= monthEnd;
           break;
@@ -316,30 +349,38 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
           break;
       }
     }
-    
+
     return matchesStatus && matchesSearch && matchesDate;
   });
 
   // Filter bookings by search, date, and status
   const filteredBookings = bookings.filter((booking) => {
     // Search filter
-    const matchesSearch = !orderSearchTerm || 
-      booking.bookingCode?.toLowerCase().includes(orderSearchTerm.toLowerCase()) ||
-      booking.customerName?.toLowerCase().includes(orderSearchTerm.toLowerCase()) ||
-      booking.customerEmail?.toLowerCase().includes(orderSearchTerm.toLowerCase()) ||
+    const matchesSearch =
+      !orderSearchTerm ||
+      booking.bookingCode
+        ?.toLowerCase()
+        .includes(orderSearchTerm.toLowerCase()) ||
+      booking.customerName
+        ?.toLowerCase()
+        .includes(orderSearchTerm.toLowerCase()) ||
+      booking.customerEmail
+        ?.toLowerCase()
+        .includes(orderSearchTerm.toLowerCase()) ||
       booking.eventTitle?.toLowerCase().includes(orderSearchTerm.toLowerCase());
-    
+
     // Status filter
-    const matchesStatus = orderStatusFilter === "all" || 
+    const matchesStatus =
+      orderStatusFilter === "all" ||
       booking.status.toLowerCase() === orderStatusFilter.toLowerCase();
-    
+
     // Date filter logic
     let matchesDate = true;
     if (orderDateFilter !== "all" && booking.bookingDate) {
       const bookingDate = new Date(booking.bookingDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       switch (orderDateFilter) {
         case "today":
           const todayEnd = new Date(today);
@@ -356,13 +397,17 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
           break;
         case "thisMonth":
           const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-          const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          const monthEnd = new Date(
+            today.getFullYear(),
+            today.getMonth() + 1,
+            0
+          );
           monthEnd.setHours(23, 59, 59, 999);
           matchesDate = bookingDate >= monthStart && bookingDate <= monthEnd;
           break;
       }
     }
-    
+
     return matchesSearch && matchesStatus && matchesDate;
   });
 
@@ -372,94 +417,154 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
   const _totalEvents = events.length;
   const activeEvents = events.filter((e) => e.status === "Approved").length;
   const pendingEvents = events.filter((e) => e.status === "Pending").length;
-  const ongoingEvents = events.filter((e) => e.status === "Approved" || e.status === "Published").length;
+  const ongoingEvents = events.filter(
+    (e) => e.status === "Approved" || e.status === "Published"
+  ).length;
 
   // Calculate revenue growth (mock calculation - should come from API)
-  const revenueGrowth = earnings?.monthlyRevenue && earnings.monthlyRevenue.length >= 2 
-    ? {
-        isPositive: (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 1]?.revenue || 0) >= 
-                   (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]?.revenue || 0),
-        percentage: earnings.monthlyRevenue.length >= 2
-          ? Math.abs(
-              ((earnings.monthlyRevenue[earnings.monthlyRevenue.length - 1]?.revenue || 0) - 
-               (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]?.revenue || 0)) / 
-              (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]?.revenue || 1) * 100
-            ).toFixed(1)
-          : '0.0'
-      }
-    : null;
+  const revenueGrowth =
+    earnings?.monthlyRevenue && earnings.monthlyRevenue.length >= 2
+      ? {
+          isPositive:
+            (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 1]
+              ?.revenue || 0) >=
+            (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]
+              ?.revenue || 0),
+          percentage:
+            earnings.monthlyRevenue.length >= 2
+              ? Math.abs(
+                  (((earnings.monthlyRevenue[earnings.monthlyRevenue.length - 1]
+                    ?.revenue || 0) -
+                    (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]
+                      ?.revenue || 0)) /
+                    (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]
+                      ?.revenue || 1)) *
+                    100
+                ).toFixed(1)
+              : "0.0",
+        }
+      : null;
 
   // Calculate tickets sold growth from monthly data
-  const ticketsSoldGrowth = earnings?.monthlyRevenue && earnings.monthlyRevenue.length >= 2
-    ? {
-        isPositive: (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 1]?.ticketsSold || 0) >= 
-                   (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]?.ticketsSold || 0),
-        percentage: earnings.monthlyRevenue.length >= 2
-          ? Math.abs(
-              ((earnings.monthlyRevenue[earnings.monthlyRevenue.length - 1]?.ticketsSold || 0) - 
-               (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]?.ticketsSold || 0)) / 
-              (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]?.ticketsSold || 1) * 100
-            ).toFixed(1)
-          : '0.0'
-      }
-    : null;
+  const ticketsSoldGrowth =
+    earnings?.monthlyRevenue && earnings.monthlyRevenue.length >= 2
+      ? {
+          isPositive:
+            (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 1]
+              ?.ticketsSold || 0) >=
+            (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]
+              ?.ticketsSold || 0),
+          percentage:
+            earnings.monthlyRevenue.length >= 2
+              ? Math.abs(
+                  (((earnings.monthlyRevenue[earnings.monthlyRevenue.length - 1]
+                    ?.ticketsSold || 0) -
+                    (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]
+                      ?.ticketsSold || 0)) /
+                    (earnings.monthlyRevenue[earnings.monthlyRevenue.length - 2]
+                      ?.ticketsSold || 1)) *
+                    100
+                ).toFixed(1)
+              : "0.0",
+        }
+      : null;
 
   // Format monthly revenue for chart
   const salesData = earnings?.monthlyRevenue || [];
-  
+
   // Filter salesData based on chartDateFilter for Sales Trend chart
   const getFilteredSalesData = () => {
     if (chartDateFilter === "all") return salesData;
-    
+
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth(); // 0-11
-    
+
     return salesData.filter((item) => {
       // Parse month string (e.g., "Jan 2024" or "Tháng 1, 2024")
       const monthMatch = item.month.match(/(\d+)/); // Extract year
       if (!monthMatch) return false;
-      
+
       const year = parseInt(monthMatch[0]);
-      
+
       // Get month index from month name
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const viMonthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
-      
-      let monthIndex = monthNames.findIndex(m => item.month.includes(m));
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      const viMonthNames = [
+        "Tháng 1",
+        "Tháng 2",
+        "Tháng 3",
+        "Tháng 4",
+        "Tháng 5",
+        "Tháng 6",
+        "Tháng 7",
+        "Tháng 8",
+        "Tháng 9",
+        "Tháng 10",
+        "Tháng 11",
+        "Tháng 12",
+      ];
+
+      let monthIndex = monthNames.findIndex((m) => item.month.includes(m));
       if (monthIndex === -1) {
-        monthIndex = viMonthNames.findIndex(m => item.month.includes(m));
+        monthIndex = viMonthNames.findIndex((m) => item.month.includes(m));
       }
-      
+
       if (monthIndex === -1) return false;
-      
+
       switch (chartDateFilter) {
         case "thisMonth": // This Month
           return year === currentYear && monthIndex === currentMonth;
         case "lastMonth": // Last Month
           const lastMonthIndex = currentMonth === 0 ? 11 : currentMonth - 1;
-          const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+          const lastMonthYear =
+            currentMonth === 0 ? currentYear - 1 : currentYear;
           return year === lastMonthYear && monthIndex === lastMonthIndex;
         default:
           return true;
       }
     });
   };
-  
+
   // Format month labels based on language
   const formatMonthLabel = (monthStr: string): string => {
-    const isVietnamese = i18n.language === 'vi';
-    
+    const isVietnamese = i18n.language === "vi";
+
     // Parse "Jan 2025" or "Feb 2025" format
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
     const yearMatch = monthStr.match(/(\d{4})/);
     if (!yearMatch) return monthStr;
-    
+
     const year = yearMatch[0];
-    const monthIndex = monthNames.findIndex(m => monthStr.includes(m));
-    
+    const monthIndex = monthNames.findIndex((m) => monthStr.includes(m));
+
     if (monthIndex === -1) return monthStr;
-    
+
     if (isVietnamese) {
       // Format as T1-2025, T2-2025, etc.
       return `T${monthIndex + 1}-${year}`;
@@ -468,10 +573,10 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
       return monthStr;
     }
   };
-  
-  const filteredSalesData = getFilteredSalesData().map(item => ({
+
+  const filteredSalesData = getFilteredSalesData().map((item) => ({
     ...item,
-    month: formatMonthLabel(item.month)
+    month: formatMonthLabel(item.month),
   }));
 
   if (!organizerId) {
@@ -581,13 +686,25 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                 <CardContent>
                   <div className="text-2xl">{formatPrice(totalRevenue)}</div>
                   {revenueGrowth ? (
-                    <p className={`text-xs mt-1 ${revenueGrowth.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                    <p
+                      className={`text-xs mt-1 ${
+                        revenueGrowth.isPositive
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
                       <TrendingUp size={12} className="inline mr-1" />
-                      {revenueGrowth.isPositive ? '+' : ''}{revenueGrowth.percentage}% {t('organizer.dashboard.fromLastMonth', 'from last month')}
+                      {revenueGrowth.isPositive ? "+" : ""}
+                      {revenueGrowth.percentage}%{" "}
+                      {t(
+                        "organizer.dashboard.fromLastMonth",
+                        "from last month"
+                      )}
                     </p>
                   ) : (
                     <p className="text-xs text-neutral-500 mt-1">
-                      {t('organizer.dashboard.netEarnings', 'Net earnings')}: {formatPrice(earnings?.netEarnings || 0)}
+                      {t("organizer.dashboard.netEarnings", "Net earnings")}:{" "}
+                      {formatPrice(earnings?.netEarnings || 0)}
                     </p>
                   )}
                 </CardContent>
@@ -603,15 +720,27 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                 <CardContent>
                   <div className="text-2xl">{totalSold}</div>
                   {ticketsSoldGrowth ? (
-                    <p className={`text-xs mt-1 ${
-                      ticketsSoldGrowth.isPositive ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <p
+                      className={`text-xs mt-1 ${
+                        ticketsSoldGrowth.isPositive
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
                       <TrendingUp size={12} className="inline mr-1" />
-                      {ticketsSoldGrowth.isPositive ? '+' : ''}{ticketsSoldGrowth.percentage}% {t('organizer.dashboard.fromLastMonth', 'from last month')}
+                      {ticketsSoldGrowth.isPositive ? "+" : ""}
+                      {ticketsSoldGrowth.percentage}%{" "}
+                      {t(
+                        "organizer.dashboard.fromLastMonth",
+                        "from last month"
+                      )}
                     </p>
                   ) : (
                     <p className="text-xs text-neutral-500 mt-1">
-                      {t('organizer.dashboard.totalTicketsSold', 'Total tickets sold')}
+                      {t(
+                        "organizer.dashboard.totalTicketsSold",
+                        "Total tickets sold"
+                      )}
                     </p>
                   )}
                 </CardContent>
@@ -639,12 +768,17 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm text-neutral-600">
-                    {t("organizer.dashboard.availableBalance", "Available Balance")}
+                    {t(
+                      "organizer.dashboard.availableBalance",
+                      "Available Balance"
+                    )}
                   </CardTitle>
                   <DollarSign className="text-orange-500" size={20} />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl">{formatPrice(earnings?.availableBalance || 0)}</div>
+                  <div className="text-2xl">
+                    {formatPrice(earnings?.availableBalance || 0)}
+                  </div>
                   <p className="text-xs text-neutral-500 mt-1">
                     {t(
                       "organizer.dashboard.readyForPayout",
@@ -691,7 +825,10 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                       )}
                     </CardDescription>
                   </div>
-                  <Select value={chartDateFilter} onValueChange={setChartDateFilter}>
+                  <Select
+                    value={chartDateFilter}
+                    onValueChange={setChartDateFilter}
+                  >
                     <SelectTrigger className="w-[160px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -710,64 +847,100 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                 </div>
               </CardHeader>
               <CardContent>
-                {filteredSalesData && filteredSalesData.length > 0 && filteredSalesData.some(d => d.revenue > 0) ? (
-                <div className="pr-8">
-                  <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={filteredSalesData} margin={{ left: 10, right: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis 
-                      width={80}
-                      tickFormatter={(value) => {
-                        const isVietnamese = i18n.language === 'vi';
-                        if (isVietnamese) {
-                          // Tiếng Việt: 380tr ₫
-                          if (value < 1000) {
-                            return value + "₫";
-                          } else if (value < 1000000) {
-                            return (value / 1000).toFixed(0) + "k ₫";
-                          } else if (value < 1000000000) {
-                            return (value / 1000000).toFixed(1).replace(".0", "") + "tr ₫";
-                          } else {
-                            return (value / 1000000000).toFixed(1).replace(".0", "") + "tỷ ₫";
-                          }
-                        } else {
-                          // Tiếng Anh: 380M VND
-                          if (value < 1000) {
-                            return value + "VND";
-                          } else if (value < 1000000) {
-                            return (value / 1000).toFixed(0) + "K";
-                          } else if (value < 1000000000) {
-                            return (value / 1000000).toFixed(1).replace(".0", "") + "M";
-                          } else {
-                            return (value / 1000000000).toFixed(1).replace(".0", "") + "B";
-                          }
+                {filteredSalesData &&
+                filteredSalesData.length > 0 &&
+                filteredSalesData.some((d) => d.revenue > 0) ? (
+                  <div className="pr-8">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart
+                        data={filteredSalesData}
+                        margin={{ left: 10, right: 10 }}
+                        barSize={
+                          filteredSalesData.length === 1 ? 80 : undefined
                         }
-                      }}
-                    />
-                    <Tooltip
-                      formatter={(value: number) => formatPrice(value)}
-                      labelFormatter={(label) => label}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#f97316"
-                      strokeWidth={2}
-                      name={t("organizer.dashboard.revenue", "Revenue")}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-                </div>
+                        barCategoryGap={
+                          filteredSalesData.length <= 3 ? "30%" : "20%"
+                        }
+                      >
+                        <XAxis dataKey="month" />
+                        <YAxis
+                          width={80}
+                          tickFormatter={(value) => {
+                            const isVietnamese = i18n.language === "vi";
+                            if (isVietnamese) {
+                              // Tiếng Việt: 380tr ₫
+                              if (value < 1000) {
+                                return value + "₫";
+                              } else if (value < 1000000) {
+                                return (value / 1000).toFixed(0) + "k ₫";
+                              } else if (value < 1000000000) {
+                                return (
+                                  (value / 1000000)
+                                    .toFixed(1)
+                                    .replace(".0", "") + "tr ₫"
+                                );
+                              } else {
+                                return (
+                                  (value / 1000000000)
+                                    .toFixed(1)
+                                    .replace(".0", "") + "tỷ ₫"
+                                );
+                              }
+                            } else {
+                              // Tiếng Anh: 380M VND
+                              if (value < 1000) {
+                                return value + "VND";
+                              } else if (value < 1000000) {
+                                return (value / 1000).toFixed(0) + "K";
+                              } else if (value < 1000000000) {
+                                return (
+                                  (value / 1000000)
+                                    .toFixed(1)
+                                    .replace(".0", "") + "M"
+                                );
+                              } else {
+                                return (
+                                  (value / 1000000000)
+                                    .toFixed(1)
+                                    .replace(".0", "") + "B"
+                                );
+                              }
+                            }
+                          }}
+                        />
+                        <Tooltip
+                          formatter={(value: number) => formatPrice(value)}
+                          labelFormatter={(label) => label}
+                          cursor={{ fill: "rgba(0, 0, 0, 0.05)" }}
+                        />
+                        <Bar
+                          dataKey="revenue"
+                          fill="#94a3b8"
+                          radius={[8, 8, 0, 0]}
+                          activeBar={{ fill: "#64748b" }}
+                          name={t("organizer.dashboard.revenue", "Revenue")}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 ) : (
                   <div className="flex items-center justify-center h-[300px]">
                     <div className="text-center">
-                      <TrendingUp className="mx-auto mb-3 text-neutral-300" size={48} />
+                      <TrendingUp
+                        className="mx-auto mb-3 text-neutral-300"
+                        size={48}
+                      />
                       <p className="text-base font-medium text-neutral-600">
-                        {t("organizer.dashboard.noSalesData", "No sales data available yet")}
+                        {t(
+                          "organizer.dashboard.noSalesData",
+                          "No sales data available yet"
+                        )}
                       </p>
                       <p className="text-sm text-neutral-400 mt-1">
-                        {t("organizer.dashboard.salesDataHint", "Sales data will appear here once you have bookings")}
+                        {t(
+                          "organizer.dashboard.salesDataHint",
+                          "Sales data will appear here once you have bookings"
+                        )}
                       </p>
                     </div>
                   </div>
@@ -795,7 +968,9 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                       <div
                         key={event.eventId}
                         className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors cursor-pointer"
-                        onClick={() => onNavigate("event-analytics", String(event.eventId))}
+                        onClick={() =>
+                          onNavigate("event-analytics", String(event.eventId))
+                        }
                       >
                         <div className="flex-1">
                           <div className="text-neutral-900 font-medium mb-1">
@@ -819,17 +994,19 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                         </div>
                       </div>
                     ))
-                  ) : events.filter(e => e.revenue > 0).length > 0 ? (
+                  ) : events.filter((e) => e.revenue > 0).length > 0 ? (
                     // Fallback: show events sorted by revenue from events data
                     events
-                      .filter(e => e.revenue > 0)
+                      .filter((e) => e.revenue > 0)
                       .sort((a, b) => b.revenue - a.revenue)
                       .slice(0, 5)
                       .map((event) => (
                         <div
                           key={event.eventId}
                           className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors cursor-pointer"
-                          onClick={() => onNavigate("event-analytics", String(event.eventId))}
+                          onClick={() =>
+                            onNavigate("event-analytics", String(event.eventId))
+                          }
                         >
                           <div className="flex-1">
                             <div className="text-neutral-900 font-medium mb-1">
@@ -856,12 +1033,21 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                   ) : (
                     <div className="flex items-center justify-center py-12 text-neutral-500">
                       <div className="text-center">
-                        <Calendar className="mx-auto mb-3 text-neutral-300" size={48} />
+                        <Calendar
+                          className="mx-auto mb-3 text-neutral-300"
+                          size={48}
+                        />
                         <p className="text-base font-medium text-neutral-600">
-                          {t("organizer.dashboard.noEventsYet", "No events created yet")}
+                          {t(
+                            "organizer.dashboard.noEventsYet",
+                            "No events created yet"
+                          )}
                         </p>
                         <p className="text-sm text-neutral-400 mt-1">
-                          {t("organizer.dashboard.createFirstEvent", "Create your first event to start selling tickets")}
+                          {t(
+                            "organizer.dashboard.createFirstEvent",
+                            "Create your first event to start selling tickets"
+                          )}
                         </p>
                       </div>
                     </div>
@@ -894,7 +1080,10 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                         size={16}
                       />
                       <Input
-                        placeholder={t("organizer.dashboard.searchEvents", "Tìm kiếm sự kiện...")}
+                        placeholder={t(
+                          "organizer.dashboard.searchEvents",
+                          "Tìm kiếm sự kiện..."
+                        )}
                         value={eventSearchTerm}
                         onChange={(e) => setEventSearchTerm(e.target.value)}
                         className="pl-9"
@@ -905,7 +1094,9 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                       onValueChange={setEventDateFilter}
                     >
                       <SelectTrigger className="w-36">
-                        <SelectValue placeholder={t("admin.filterByDate", "Lọc theo ngày")} />
+                        <SelectValue
+                          placeholder={t("admin.filterByDate", "Lọc theo ngày")}
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">
@@ -957,7 +1148,8 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                       </SelectContent>
                     </Select>
                     <div className="text-sm text-neutral-600 whitespace-nowrap">
-                      Total: {filteredEvents.length} {t("admin.events", "Events")}
+                      Total: {filteredEvents.length}{" "}
+                      {t("admin.events", "Events")}
                     </div>
                   </div>
                 </div>
@@ -1030,7 +1222,10 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                     <TableBody>
                       {filteredEvents
                         .sort((a, b) => b.eventId - a.eventId) // Sort by ID descending (newest first)
-                        .slice((eventsPage - 1) * itemsPerPage, eventsPage * itemsPerPage)
+                        .slice(
+                          (eventsPage - 1) * itemsPerPage,
+                          eventsPage * itemsPerPage
+                        )
                         .map((event) => {
                           const salesRate =
                             event.totalSeats > 0
@@ -1042,169 +1237,221 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
 
                           return (
                             <TableRow key={event.eventId}>
-                            <TableCell className="w-[18%]">
-                              <div className="flex flex-col items-center">
-                                <div className="text-neutral-900 font-medium truncate max-w-full">
-                                  {event.title}
+                              <TableCell className="w-[18%]">
+                                <div className="flex flex-col items-center">
+                                  <div className="text-neutral-900 font-medium truncate max-w-full">
+                                    {event.title}
+                                  </div>
+                                  <div className="text-sm text-neutral-500">
+                                    ID: #{event.eventId}
+                                  </div>
                                 </div>
-                                <div className="text-sm text-neutral-500">
-                                  ID: #{event.eventId}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="w-[14%] text-center">
-                              <div className="text-sm whitespace-nowrap">
-                                {new Date(event.startDate).toLocaleDateString(
-                                  i18n.language === 'vi' ? 'vi-VN' : 'en-US',
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                  }
-                                )}
-                              </div>
-                              <div className="text-xs text-neutral-500 whitespace-nowrap">
-                                {new Date(event.startDate).toLocaleTimeString(
-                                  i18n.language === 'vi' ? 'vi-VN' : 'en-US',
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="w-[12%] text-center">
-                              <div className="flex justify-center">
-                                <Badge
-                                  variant="outline"
-                                  style={
-                                    event.status === "Published"
-                                      ? { backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }
-                                      : event.status === "Approved"
-                                      ? { backgroundColor: '#d1fae5', color: '#047857', borderColor: '#a7f3d0' }
-                                      : event.status === "Completed"
-                                      ? { backgroundColor: '#ccfbf1', color: '#0f766e', borderColor: '#99f6e4' }
-                                      : event.status === "Pending"
-                                      ? { backgroundColor: '#fef3c7', color: '#b45309', borderColor: '#fde68a' }
-                                      : event.status === "Rejected"
-                                      ? { backgroundColor: '#ffe4e6', color: '#be123c', borderColor: '#fecdd3' }
-                                      : event.status === "Cancelled"
-                                      ? { backgroundColor: '#f3f4f6', color: '#4b5563', borderColor: '#d1d5db' }
-                                      : event.status === "Draft"
-                                      ? { backgroundColor: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' }
-                                      : { backgroundColor: '#f5f5f5', color: '#525252', borderColor: '#d4d4d4' }
-                                  }
-                                >
-                                  {t(`organizer.dashboard.${event.status.toLowerCase()}`, event.status)}
-                                </Badge>
-                              </div>
-                            </TableCell>
-                            <TableCell className="w-[18%]">
-                              <div className="flex flex-col items-center">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-sm font-medium whitespace-nowrap">
-                                    {event.soldSeats} / {event.totalSeats}
-                                  </span>
-                                  <span className="text-xs text-neutral-500">
-                                    ({salesRate}%)
-                                  </span>
-                                </div>
-                                <div className="w-full max-w-[120px] bg-neutral-200 rounded-full h-1.5">
-                                  <div
-                                    className="bg-orange-500 h-1.5 rounded-full"
-                                    style={{ width: `${salesRate}%` }}
-                                  />
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="w-[20%] text-center">
-                              {event.rejectionReason ? (
-                                <div className="text-sm text-red-600 max-w-[200px] mx-auto truncate" title={event.rejectionReason}>
-                                  {event.rejectionReason}
-                                </div>
-                              ) : (
-                                <span className="text-sm text-neutral-400">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="w-[18%]">
-                              <div className="flex gap-2 justify-center flex-wrap">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    onNavigate(
-                                      "event-analytics",
-                                      String(event.eventId)
-                                    )
-                                  }
-                                  className="text-teal-600 hover:bg-teal-50 px-3 h-8 text-xs"
-                                >
-                                  {t(
-                                    "organizer.dashboard.analytics",
-                                    "Analytics"
+                              </TableCell>
+                              <TableCell className="w-[14%] text-center">
+                                <div className="text-sm whitespace-nowrap">
+                                  {new Date(event.startDate).toLocaleDateString(
+                                    i18n.language === "vi" ? "vi-VN" : "en-US",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    }
                                   )}
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    onNavigate(
-                                      "edit-seat-map",
-                                      String(event.eventId)
-                                    )
-                                  }
-                                  className="text-purple-600 hover:bg-purple-50 px-3 h-8 text-xs"
-                                  title="Edit seat map for this event"
-                                >
-                                  {t("organizer.dashboard.seatMap", "Seat Map")}
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    onNavigate(
-                                      "event-detail",
-                                      String(event.eventId)
-                                    )
-                                  }
-                                  className="px-3 h-8 text-xs"
-                                >
-                                  {t("organizer.dashboard.view", "View")}
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                                </div>
+                                <div className="text-xs text-neutral-500 whitespace-nowrap">
+                                  {new Date(event.startDate).toLocaleTimeString(
+                                    i18n.language === "vi" ? "vi-VN" : "en-US",
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    }
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="w-[12%] text-center">
+                                <div className="flex justify-center">
+                                  <Badge
+                                    variant="outline"
+                                    style={
+                                      event.status === "Published"
+                                        ? {
+                                            backgroundColor: "#eff6ff",
+                                            color: "#1d4ed8",
+                                            borderColor: "#bfdbfe",
+                                          }
+                                        : event.status === "Approved"
+                                        ? {
+                                            backgroundColor: "#d1fae5",
+                                            color: "#047857",
+                                            borderColor: "#a7f3d0",
+                                          }
+                                        : event.status === "Completed"
+                                        ? {
+                                            backgroundColor: "#ccfbf1",
+                                            color: "#0f766e",
+                                            borderColor: "#99f6e4",
+                                          }
+                                        : event.status === "Pending"
+                                        ? {
+                                            backgroundColor: "#fef3c7",
+                                            color: "#b45309",
+                                            borderColor: "#fde68a",
+                                          }
+                                        : event.status === "Rejected"
+                                        ? {
+                                            backgroundColor: "#ffe4e6",
+                                            color: "#be123c",
+                                            borderColor: "#fecdd3",
+                                          }
+                                        : event.status === "Cancelled"
+                                        ? {
+                                            backgroundColor: "#f3f4f6",
+                                            color: "#4b5563",
+                                            borderColor: "#d1d5db",
+                                          }
+                                        : event.status === "Draft"
+                                        ? {
+                                            backgroundColor: "#f1f5f9",
+                                            color: "#475569",
+                                            borderColor: "#cbd5e1",
+                                          }
+                                        : {
+                                            backgroundColor: "#f5f5f5",
+                                            color: "#525252",
+                                            borderColor: "#d4d4d4",
+                                          }
+                                    }
+                                  >
+                                    {t(
+                                      `organizer.dashboard.${event.status.toLowerCase()}`,
+                                      event.status
+                                    )}
+                                  </Badge>
+                                </div>
+                              </TableCell>
+                              <TableCell className="w-[18%]">
+                                <div className="flex flex-col items-center">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-medium whitespace-nowrap">
+                                      {event.soldSeats} / {event.totalSeats}
+                                    </span>
+                                    <span className="text-xs text-neutral-500">
+                                      ({salesRate}%)
+                                    </span>
+                                  </div>
+                                  <div className="w-full max-w-[120px] bg-neutral-200 rounded-full h-1.5">
+                                    <div
+                                      className="bg-orange-500 h-1.5 rounded-full"
+                                      style={{ width: `${salesRate}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="w-[20%] text-center">
+                                {event.rejectionReason ? (
+                                  <div
+                                    className="text-sm text-red-600 max-w-[200px] mx-auto truncate"
+                                    title={event.rejectionReason}
+                                  >
+                                    {event.rejectionReason}
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-neutral-400">
+                                    -
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="w-[18%]">
+                                <div className="flex gap-2 justify-center flex-wrap">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      onNavigate(
+                                        "event-analytics",
+                                        String(event.eventId)
+                                      )
+                                    }
+                                    className="text-teal-600 hover:bg-teal-50 px-3 h-8 text-xs"
+                                  >
+                                    {t(
+                                      "organizer.dashboard.analytics",
+                                      "Analytics"
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      onNavigate(
+                                        "edit-seat-map",
+                                        String(event.eventId)
+                                      )
+                                    }
+                                    className="text-purple-600 hover:bg-purple-50 px-3 h-8 text-xs"
+                                    title="Edit seat map for this event"
+                                  >
+                                    {t(
+                                      "organizer.dashboard.seatMap",
+                                      "Seat Map"
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      onNavigate(
+                                        "event-detail",
+                                        String(event.eventId)
+                                      )
+                                    }
+                                    className="px-3 h-8 text-xs"
+                                  >
+                                    {t("organizer.dashboard.view", "View")}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                     </TableBody>
                   </Table>
                 )}
-                {filteredEvents.length > itemsPerPage && (() => {
-                  const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
-                  return (
-                    <div className="flex items-center justify-center gap-2 mt-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEventsPage((p: number) => Math.max(1, p - 1))}
-                        disabled={eventsPage === 1}
-                      >
-                        <ChevronLeft size={16} />
-                      </Button>
-                      <span className="text-sm text-neutral-600">
-                        {eventsPage} / {totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEventsPage((p: number) => Math.min(totalPages, p + 1))}
-                        disabled={eventsPage === totalPages}
-                      >
-                        <ChevronRight size={16} />
-                      </Button>
-                    </div>
-                  );
-                })()}
+                {filteredEvents.length > itemsPerPage &&
+                  (() => {
+                    const totalPages = Math.ceil(
+                      filteredEvents.length / itemsPerPage
+                    );
+                    return (
+                      <div className="flex items-center justify-center gap-2 mt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setEventsPage((p: number) => Math.max(1, p - 1))
+                          }
+                          disabled={eventsPage === 1}
+                        >
+                          <ChevronLeft size={16} />
+                        </Button>
+                        <span className="text-sm text-neutral-600">
+                          {eventsPage} / {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setEventsPage((p: number) =>
+                              Math.min(totalPages, p + 1)
+                            )
+                          }
+                          disabled={eventsPage === totalPages}
+                        >
+                          <ChevronRight size={16} />
+                        </Button>
+                      </div>
+                    );
+                  })()}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1232,7 +1479,10 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                         size={16}
                       />
                       <Input
-                        placeholder={t("organizer.dashboard.searchOrders", "Tìm kiếm đơn hàng, khách hàng...")}
+                        placeholder={t(
+                          "organizer.dashboard.searchOrders",
+                          "Tìm kiếm đơn hàng, khách hàng..."
+                        )}
                         value={orderSearchTerm}
                         onChange={(e) => setOrderSearchTerm(e.target.value)}
                         className="pl-9"
@@ -1243,7 +1493,9 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                       onValueChange={setOrderDateFilter}
                     >
                       <SelectTrigger className="w-36">
-                        <SelectValue placeholder={t("admin.filterByDate", "Lọc theo ngày")} />
+                        <SelectValue
+                          placeholder={t("admin.filterByDate", "Lọc theo ngày")}
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">
@@ -1280,7 +1532,8 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                       </SelectContent>
                     </Select>
                     <div className="text-sm text-neutral-600 whitespace-nowrap">
-                      Total: {filteredBookings.length} {t("organizer.dashboard.orders", "Orders")}
+                      Total: {filteredBookings.length}{" "}
+                      {t("organizer.dashboard.orders", "Orders")}
                     </div>
                   </div>
                 </div>
@@ -1315,13 +1568,22 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                   <TableBody>
                     {filteredBookings.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-neutral-500">
-                          {t('organizer.dashboard.noBookings', 'No bookings found')}
+                        <TableCell
+                          colSpan={7}
+                          className="text-center py-8 text-neutral-500"
+                        >
+                          {t(
+                            "organizer.dashboard.noBookings",
+                            "No bookings found"
+                          )}
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredBookings
-                        .slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage)
+                        .slice(
+                          (ordersPage - 1) * itemsPerPage,
+                          ordersPage * itemsPerPage
+                        )
                         .map((booking) => {
                           return (
                             <TableRow key={booking.bookingId}>
@@ -1338,35 +1600,54 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                {booking.eventTitle}
-                              </TableCell>
+                              <TableCell>{booking.eventTitle}</TableCell>
                               <TableCell>{booking.totalTickets}</TableCell>
-                              <TableCell>{formatPrice(booking.totalAmount)}</TableCell>
+                              <TableCell>
+                                {formatPrice(booking.totalAmount)}
+                              </TableCell>
                               <TableCell>
                                 <div className="text-sm text-neutral-600">
-                                  {new Date(booking.bookingDate).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
-                                    year: 'numeric',
-                                    month: '2-digit',
-                                    day: '2-digit'
-                                  })}
+                                  {new Date(
+                                    booking.bookingDate
+                                  ).toLocaleDateString(
+                                    i18n.language === "vi" ? "vi-VN" : "en-US",
+                                    {
+                                      year: "numeric",
+                                      month: "2-digit",
+                                      day: "2-digit",
+                                    }
+                                  )}
                                   <div className="text-xs text-neutral-500">
-                                    {new Date(booking.bookingDate).toLocaleTimeString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
+                                    {new Date(
+                                      booking.bookingDate
+                                    ).toLocaleTimeString(
+                                      i18n.language === "vi"
+                                        ? "vi-VN"
+                                        : "en-US",
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      }
+                                    )}
                                   </div>
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <Badge className={
-                                  booking.status.toLowerCase() === 'confirmed' ? 'bg-green-100 text-green-700' :
-                                  booking.status.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                  'bg-neutral-100 text-neutral-700'
-                                }>
-                                  {booking.status.toLowerCase() === 'confirmed' ? t('booking.status.confirmed') : 
-                                   booking.status.toLowerCase() === 'pending' ? t('booking.status.pending') : 
-                                   booking.status}
+                                <Badge
+                                  className={
+                                    booking.status.toLowerCase() === "confirmed"
+                                      ? "bg-green-100 text-green-700"
+                                      : booking.status.toLowerCase() ===
+                                        "pending"
+                                      ? "bg-yellow-100 text-yellow-700"
+                                      : "bg-neutral-100 text-neutral-700"
+                                  }
+                                >
+                                  {booking.status.toLowerCase() === "confirmed"
+                                    ? t("booking.status.confirmed")
+                                    : booking.status.toLowerCase() === "pending"
+                                    ? t("booking.status.pending")
+                                    : booking.status}
                                 </Badge>
                               </TableCell>
                             </TableRow>
@@ -1375,32 +1656,41 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                     )}
                   </TableBody>
                 </Table>
-                {filteredBookings.length > itemsPerPage && (() => {
-                  const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
-                  return (
-                    <div className="flex items-center justify-center gap-2 mt-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setOrdersPage((p: number) => Math.max(1, p - 1))}
-                        disabled={ordersPage === 1}
-                      >
-                        <ChevronLeft size={16} />
-                      </Button>
-                      <span className="text-sm text-neutral-600">
-                        {ordersPage} / {totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setOrdersPage((p: number) => Math.min(totalPages, p + 1))}
-                        disabled={ordersPage === totalPages}
-                      >
-                        <ChevronRight size={16} />
-                      </Button>
-                    </div>
-                  );
-                })()}
+                {filteredBookings.length > itemsPerPage &&
+                  (() => {
+                    const totalPages = Math.ceil(
+                      filteredBookings.length / itemsPerPage
+                    );
+                    return (
+                      <div className="flex items-center justify-center gap-2 mt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setOrdersPage((p: number) => Math.max(1, p - 1))
+                          }
+                          disabled={ordersPage === 1}
+                        >
+                          <ChevronLeft size={16} />
+                        </Button>
+                        <span className="text-sm text-neutral-600">
+                          {ordersPage} / {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setOrdersPage((p: number) =>
+                              Math.min(totalPages, p + 1)
+                            )
+                          }
+                          disabled={ordersPage === totalPages}
+                        >
+                          <ChevronRight size={16} />
+                        </Button>
+                      </div>
+                    );
+                  })()}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1424,76 +1714,105 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {(earnings?.topEvents && earnings.topEvents.length > 0) || events.filter(e => e.revenue > 0).length > 0 ? (
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart 
-                      data={
-                        earnings?.topEvents && earnings.topEvents.length > 0
-                          ? earnings.topEvents.slice(0, 5)
-                          : events
-                              .filter(e => e.revenue > 0)
-                              .sort((a, b) => b.revenue - a.revenue)
-                              .slice(0, 5)
-                              .map(e => ({
-                                eventId: e.eventId,
-                                title: e.title.length > 20 ? e.title.substring(0, 20) + '...' : e.title,
-                                revenue: e.revenue,
-                                ticketsSold: e.soldSeats
-                              }))
-                      } 
-                      margin={{ top: 20, right: 30, left: -15, bottom: 25 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="title" 
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                        interval={0}
-                        tick={{ fontSize: 12 }}
-                      />
-                      <YAxis 
-                        width={80}
-                        tickFormatter={(value) => {
-                          const isVietnamese = i18n.language === 'vi';
-                          if (isVietnamese) {
-                            if (value < 1000) {
-                              return value + "₫";
-                            } else if (value < 1000000) {
-                              return (value / 1000).toFixed(0) + "k ₫";
-                            } else if (value < 1000000000) {
-                              return (value / 1000000).toFixed(1).replace(".0", "") + "tr ₫";
+                  {(earnings?.topEvents && earnings.topEvents.length > 0) ||
+                  events.filter((e) => e.revenue > 0).length > 0 ? (
+                    <ResponsiveContainer width="100%" height={350}>
+                      <BarChart
+                        data={
+                          earnings?.topEvents && earnings.topEvents.length > 0
+                            ? earnings.topEvents.slice(0, 5)
+                            : events
+                                .filter((e) => e.revenue > 0)
+                                .sort((a, b) => b.revenue - a.revenue)
+                                .slice(0, 5)
+                                .map((e) => ({
+                                  eventId: e.eventId,
+                                  title:
+                                    e.title.length > 20
+                                      ? e.title.substring(0, 20) + "..."
+                                      : e.title,
+                                  revenue: e.revenue,
+                                  ticketsSold: e.soldSeats,
+                                }))
+                        }
+                        margin={{ top: 20, right: 30, left: -15, bottom: 25 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="title"
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          interval={0}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <YAxis
+                          width={80}
+                          tickFormatter={(value) => {
+                            const isVietnamese = i18n.language === "vi";
+                            if (isVietnamese) {
+                              if (value < 1000) {
+                                return value + "₫";
+                              } else if (value < 1000000) {
+                                return (value / 1000).toFixed(0) + "k ₫";
+                              } else if (value < 1000000000) {
+                                return (
+                                  (value / 1000000)
+                                    .toFixed(1)
+                                    .replace(".0", "") + "tr ₫"
+                                );
+                              } else {
+                                return (
+                                  (value / 1000000000)
+                                    .toFixed(1)
+                                    .replace(".0", "") + "tỷ ₫"
+                                );
+                              }
                             } else {
-                              return (value / 1000000000).toFixed(1).replace(".0", "") + "tỷ ₫";
+                              if (value < 1000) {
+                                return value + "VND";
+                              } else if (value < 1000000) {
+                                return (value / 1000).toFixed(0) + "K";
+                              } else if (value < 1000000000) {
+                                return (
+                                  (value / 1000000)
+                                    .toFixed(1)
+                                    .replace(".0", "") + "M"
+                                );
+                              } else {
+                                return (
+                                  (value / 1000000000)
+                                    .toFixed(1)
+                                    .replace(".0", "") + "B"
+                                );
+                              }
                             }
-                          } else {
-                            if (value < 1000) {
-                              return value + "VND";
-                            } else if (value < 1000000) {
-                              return (value / 1000).toFixed(0) + "K";
-                            } else if (value < 1000000000) {
-                              return (value / 1000000).toFixed(1).replace(".0", "") + "M";
-                            } else {
-                              return (value / 1000000000).toFixed(1).replace(".0", "") + "B";
-                            }
-                          }
-                        }}
-                      />
-                      <Tooltip
-                        formatter={(value: number) => formatPrice(value)}
-                      />
-                      <Bar dataKey="revenue" fill="#f97316" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                          }}
+                        />
+                        <Tooltip
+                          formatter={(value: number) => formatPrice(value)}
+                        />
+                        <Bar dataKey="revenue" fill="#f97316" />
+                      </BarChart>
+                    </ResponsiveContainer>
                   ) : (
                     <div className="flex items-center justify-center h-[300px]">
                       <div className="text-center">
-                        <Calendar className="mx-auto mb-3 text-neutral-300" size={48} />
+                        <Calendar
+                          className="mx-auto mb-3 text-neutral-300"
+                          size={48}
+                        />
                         <p className="text-base font-medium text-neutral-600">
-                          {t("organizer.dashboard.noRevenueData", "No revenue data available")}
+                          {t(
+                            "organizer.dashboard.noRevenueData",
+                            "No revenue data available"
+                          )}
                         </p>
                         <p className="text-sm text-neutral-400 mt-1">
-                          {t("organizer.dashboard.revenueDataHint", "Revenue data will appear here when tickets are purchased")}
+                          {t(
+                            "organizer.dashboard.revenueDataHint",
+                            "Revenue data will appear here when tickets are purchased"
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1517,18 +1836,29 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                   <div className="space-y-3">
                     {(() => {
                       // Get events that have sold at least 1 ticket
-                      const eventsWithSales = events.filter(e => e.soldSeats > 0);
+                      const eventsWithSales = events.filter(
+                        (e) => e.soldSeats > 0
+                      );
 
                       if (eventsWithSales.length === 0) {
                         return (
                           <div className="flex items-center justify-center py-12">
                             <div className="text-center">
-                              <Ticket className="mx-auto mb-3 text-neutral-300" size={48} />
+                              <Ticket
+                                className="mx-auto mb-3 text-neutral-300"
+                                size={48}
+                              />
                               <p className="text-base font-medium text-neutral-600">
-                                {t("organizer.dashboard.noTicketsSold", "No tickets sold yet")}
+                                {t(
+                                  "organizer.dashboard.noTicketsSold",
+                                  "No tickets sold yet"
+                                )}
                               </p>
                               <p className="text-sm text-neutral-400 mt-1">
-                                {t("organizer.dashboard.ticketSalesHint", "Sales data will appear here once customers purchase tickets")}
+                                {t(
+                                  "organizer.dashboard.ticketSalesHint",
+                                  "Sales data will appear here once customers purchase tickets"
+                                )}
                               </p>
                             </div>
                           </div>
@@ -1542,15 +1872,24 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                         })
                         .slice(0, 5)
                         .map((event) => {
-                          const salesRate = event.totalSeats > 0
-                            ? ((event.soldSeats / event.totalSeats) * 100).toFixed(1)
-                            : "0";
+                          const salesRate =
+                            event.totalSeats > 0
+                              ? (
+                                  (event.soldSeats / event.totalSeats) *
+                                  100
+                                ).toFixed(1)
+                              : "0";
 
                           return (
-                            <div 
+                            <div
                               key={event.eventId}
                               className="hover:bg-neutral-50 p-2.5 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-orange-200"
-                              onClick={() => onNavigate("event-analytics", String(event.eventId))}
+                              onClick={() =>
+                                onNavigate(
+                                  "event-analytics",
+                                  String(event.eventId)
+                                )
+                              }
                             >
                               <div className="flex justify-between items-start mb-1.5">
                                 <div className="flex-1 pr-3">
@@ -1558,11 +1897,17 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                                     {event.title}
                                   </span>
                                   <span className="text-xs text-neutral-500 mt-0.5 block">
-                                    {event.soldSeats.toLocaleString()} {t("organizer.dashboard.ticketsSoldLabel", "tickets sold")}
+                                    {event.soldSeats.toLocaleString()}{" "}
+                                    {t(
+                                      "organizer.dashboard.ticketsSoldLabel",
+                                      "tickets sold"
+                                    )}
                                   </span>
                                 </div>
                                 <div className="text-right">
-                                  <span className="text-sm font-semibold text-orange-600 whitespace-nowrap">{salesRate}%</span>
+                                  <span className="text-sm font-semibold text-orange-600 whitespace-nowrap">
+                                    {salesRate}%
+                                  </span>
                                   <span className="text-xs text-neutral-500 block mt-0.5 whitespace-nowrap">
                                     {event.soldSeats}/{event.totalSeats}
                                   </span>

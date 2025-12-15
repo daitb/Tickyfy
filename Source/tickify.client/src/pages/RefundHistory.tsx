@@ -51,6 +51,8 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [bookings, setBookings] = useState<Map<number, BookingDto>>(new Map());
   const [events, setEvents] = useState<Map<string, any>>(new Map());
+  const [detailedBooking, setDetailedBooking] = useState<any>(null);
+  const [loadingBookingDetails, setLoadingBookingDetails] = useState(false);
 
   useEffect(() => {
     loadRefunds();
@@ -159,6 +161,18 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
     try {
       const details = await getRefundById(refund.id);
       setSelectedRefund(details);
+      
+      // Fetch detailed booking information with tickets
+      setLoadingBookingDetails(true);
+      try {
+        const booking = await bookingService.getBookingById(refund.bookingId);
+        setDetailedBooking(booking);
+      } catch (err) {
+        console.error('Failed to load booking details:', err);
+      } finally {
+        setLoadingBookingDetails(false);
+      }
+      
       setShowDetails(true);
     } catch (err: any) {
       console.error('Failed to load refund details:', err);
@@ -381,62 +395,215 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
           </DialogHeader>
 
           {selectedRefund && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-neutral-600 mb-1">Refund ID</div>
-                  <div className="font-semibold">#{selectedRefund.id}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-neutral-600 mb-1">Status</div>
-                  <div>{getStatusBadge(selectedRefund.status)}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-neutral-600 mb-1">Booking ID</div>
-                  <div className="font-semibold">#{selectedRefund.bookingId}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-neutral-600 mb-1">Refund Amount</div>
-                  <div className="text-xl font-bold text-green-600">
-                    {formatCurrency(selectedRefund.refundAmount)}
+            <div className="space-y-6">
+              {/* Refund Status Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Refund Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-neutral-600 mb-1">Refund ID</div>
+                      <div className="font-semibold">#{selectedRefund.id}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-neutral-600 mb-1">Status</div>
+                      <div>{getStatusBadge(selectedRefund.status)}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-neutral-600 mb-1">Booking ID</div>
+                      <div className="font-semibold">#{selectedRefund.bookingId}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-neutral-600 mb-1">Refund Amount</div>
+                      <div className="text-xl font-bold text-green-600">
+                        {formatCurrency(selectedRefund.refundAmount)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-neutral-600 mb-1">Requested</div>
+                      <div>{formatDate(selectedRefund.createdAt)}</div>
+                    </div>
+                    {selectedRefund.reviewedAt && (
+                      <div>
+                        <div className="text-sm text-neutral-600 mb-1">Reviewed</div>
+                        <div>{formatDate(selectedRefund.reviewedAt)}</div>
+                      </div>
+                    )}
+                    {selectedRefund.processedAt && (
+                      <div>
+                        <div className="text-sm text-neutral-600 mb-1">Processed</div>
+                        <div>{formatDate(selectedRefund.processedAt)}</div>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div>
-                  <div className="text-sm text-neutral-600 mb-1">Requested</div>
-                  <div>{formatDate(selectedRefund.createdAt)}</div>
-                </div>
-                {selectedRefund.reviewedAt && (
+
+                  <Separator />
+
                   <div>
-                    <div className="text-sm text-neutral-600 mb-1">Reviewed</div>
-                    <div>{formatDate(selectedRefund.reviewedAt)}</div>
+                    <div className="text-sm text-neutral-600 mb-1">Reason</div>
+                    <div className="p-3 bg-neutral-50 rounded-lg">{selectedRefund.reason}</div>
                   </div>
-                )}
-                {selectedRefund.processedAt && (
-                  <div>
-                    <div className="text-sm text-neutral-600 mb-1">Processed</div>
-                    <div>{formatDate(selectedRefund.processedAt)}</div>
-                  </div>
-                )}
-              </div>
 
-              <Separator />
+                  {selectedRefund.staffNotes && (
+                    <div>
+                      <div className="text-sm text-neutral-600 mb-1">Staff Notes</div>
+                      <div className="p-3 bg-blue-50 rounded-lg">{selectedRefund.staffNotes}</div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-              <div>
-                <div className="text-sm text-neutral-600 mb-1">Reason</div>
-                <div className="p-3 bg-neutral-50 rounded-lg">{selectedRefund.reason}</div>
-              </div>
+              {/* Booking & Event Details */}
+              {loadingBookingDetails ? (
+                <Card>
+                  <CardContent className="py-8 text-center text-neutral-500">
+                    Loading booking details...
+                  </CardContent>
+                </Card>
+              ) : detailedBooking ? (
+                <>
+                  {/* Event Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Calendar className="w-5 h-5" />
+                        Event Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <div className="text-sm text-neutral-600 mb-1">Event Title</div>
+                        <div className="font-semibold">{getEventTitle(selectedRefund)}</div>
+                      </div>
+                      {detailedBooking.event && (
+                        <>
+                          <div className="grid grid-cols-2 gap-4">
+                            {detailedBooking.event.startDate && (
+                              <div>
+                                <div className="text-sm text-neutral-600 mb-1">Event Date</div>
+                                <div>{formatDate(detailedBooking.event.startDate)}</div>
+                              </div>
+                            )}
+                            {detailedBooking.event.venue && (
+                              <div>
+                                <div className="text-sm text-neutral-600 mb-1">Venue</div>
+                                <div>{detailedBooking.event.venue}</div>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
 
-              {selectedRefund.staffNotes && (
-                <div>
-                  <div className="text-sm text-neutral-600 mb-1">Staff Notes</div>
-                  <div className="p-3 bg-blue-50 rounded-lg">{selectedRefund.staffNotes}</div>
-                </div>
+                  {/* Ticket Information */}
+                  {detailedBooking.tickets && detailedBooking.tickets.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <DollarSign className="w-5 h-5" />
+                          Ticket Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {detailedBooking.tickets.map((ticket: any, index: number) => (
+                            <div key={ticket.id || index} className="p-4 border rounded-lg bg-neutral-50">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <div className="text-sm text-neutral-600 mb-1">Ticket Code</div>
+                                  <div className="font-mono font-semibold text-sm">{ticket.ticketCode || 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-neutral-600 mb-1">Status</div>
+                                  <Badge variant="secondary">{ticket.status || 'Valid'}</Badge>
+                                </div>
+                                {ticket.ticketType && (
+                                  <div>
+                                    <div className="text-sm text-neutral-600 mb-1">Ticket Type</div>
+                                    <div className="font-semibold">{ticket.ticketType.name || 'Standard'}</div>
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="text-sm text-neutral-600 mb-1">Price</div>
+                                  <div className="font-semibold">{formatCurrency(ticket.price || 0)}</div>
+                                </div>
+                                {ticket.seatNumber && (
+                                  <div className="col-span-2">
+                                    <div className="text-sm text-neutral-600 mb-1">Seat Position</div>
+                                    <div className="font-semibold text-purple-600">
+                                      {ticket.seat 
+                                        ? `Row ${ticket.seat.row || 'N/A'}, Seat ${ticket.seat.number || ticket.seatNumber}`
+                                        : ticket.seatNumber
+                                      }
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          
+                          <Separator />
+                          
+                          <div className="flex justify-between items-center font-semibold text-lg">
+                            <span>Total Ticket Value:</span>
+                            <span className="text-green-600">
+                              {formatCurrency(detailedBooking.tickets.reduce((sum: number, t: any) => sum + (t.price || 0), 0))}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Booking Summary */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Booking Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-sm text-neutral-600 mb-1">Quantity</div>
+                          <div className="font-semibold">{detailedBooking.quantity || detailedBooking.tickets?.length || 0} ticket(s)</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-neutral-600 mb-1">Booking Date</div>
+                          <div>{formatDate(detailedBooking.bookingDate)}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-neutral-600 mb-1">Total Amount</div>
+                          <div className="font-semibold">{formatCurrency(detailedBooking.totalAmount || 0)}</div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-neutral-600 mb-1">Payment Status</div>
+                          <Badge>{detailedBooking.paymentStatus || 'Paid'}</Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <Card>
+                  <CardContent className="py-8 text-center text-neutral-500">
+                    Booking details not available
+                  </CardContent>
+                </Card>
               )}
 
+              {/* Action Buttons */}
               <div className="flex gap-2 pt-4">
                 <Button
                   variant="outline"
-                  onClick={() => setShowDetails(false)}
+                  onClick={() => {
+                    setShowDetails(false);
+                    setDetailedBooking(null);
+                  }}
                   className="flex-1"
                 >
                   Close
@@ -444,6 +611,7 @@ export function RefundHistory({ onNavigate }: RefundHistoryProps) {
                 <Button
                   onClick={() => {
                     setShowDetails(false);
+                    setDetailedBooking(null);
                     onNavigate('refund-request', selectedRefund.bookingId.toString());
                   }}
                   className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"

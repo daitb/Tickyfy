@@ -29,7 +29,7 @@ public class BookingController : ControllerBase
         _promoCodeService = promoCodeService;
     }
 
-    /// Create a new booking with transaction locking to prevent race conditions
+    /// Create a new booking
     [HttpPost]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<BookingConfirmationDto>), StatusCodes.Status200OK)]

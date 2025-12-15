@@ -16,9 +16,6 @@ public class EventRepository : IEventRepository
         _context = context;
     }
 
-    #region Query Methods
-
-    /// Get event by ID with optional eager loading
     public async Task<Event?> GetByIdAsync(int id, bool includeRelated = false)
     {
         var query = _context.Events.AsQueryable();
@@ -41,13 +38,10 @@ public class EventRepository : IEventRepository
         return await query.FirstOrDefaultAsync(e => e.Id == id);
     }
 
-    /// Get all events with comprehensive filtering, sorting and pagination
     public async Task<PagedResult<Event>> GetAllAsync(EventFilterDto filter)
     {
-        // Validate pagination
         filter.ValidatePageSize();
 
-        // Start with base query
         var query = _context.Events
             .Include(e => e.Category)
             .Include(e => e.Organizer)
@@ -55,7 +49,6 @@ public class EventRepository : IEventRepository
             .Include(e => e.TicketTypes)
             .AsQueryable();
 
-        // Search by keyword (title, description, location)
         if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
         {
             var searchLower = filter.SearchTerm.ToLower();
@@ -67,19 +60,16 @@ public class EventRepository : IEventRepository
             );
         }
 
-        // Filter by category
         if (filter.CategoryId.HasValue)
         {
             query = query.Where(e => e.CategoryId == filter.CategoryId.Value);
         }
 
-        // Filter by organizer
         if (filter.OrganizerId.HasValue)
         {
             query = query.Where(e => e.OrganizerId == filter.OrganizerId.Value);
         }
 
-        // Filter by status
         if (!string.IsNullOrWhiteSpace(filter.Status))
         {
             if (Enum.TryParse<EventStatus>(filter.Status, true, out var status))
@@ -88,7 +78,6 @@ public class EventRepository : IEventRepository
             }
         }
 
-        // Filter by start date range
         if (filter.StartDateFrom.HasValue)
         {
             query = query.Where(e => e.StartDate >= filter.StartDateFrom.Value);
@@ -99,7 +88,6 @@ public class EventRepository : IEventRepository
             query = query.Where(e => e.StartDate <= filter.StartDateTo.Value);
         }
 
-        // Filter by location/city
         if (!string.IsNullOrWhiteSpace(filter.Location))
         {
             var locationLower = filter.Location.ToLower();
@@ -109,15 +97,10 @@ public class EventRepository : IEventRepository
             );
         }
 
-        // Filter by featured
         if (filter.IsFeatured.HasValue)
         {
-            // Note: IsFeatured might need to be added to Event model
-            // For now, we'll skip this filter if the property doesn't exist
-            // query = query.Where(e => e.IsFeatured == filter.IsFeatured.Value);
         }
 
-        // Filter by price range (min/max price from ticket types)
         if (filter.MinPrice.HasValue || filter.MaxPrice.HasValue)
         {
             if (filter.MinPrice.HasValue)
@@ -131,13 +114,10 @@ public class EventRepository : IEventRepository
             }
         }
 
-        // ===== GET TOTAL COUNT (before pagination) =====
         var totalCount = await query.CountAsync();
 
-        // ===== APPLY SORTING =====
         query = ApplySorting(query, filter.SortBy, filter.SortOrder);
 
-        // ===== APPLY PAGINATION =====
         var items = await query
             .Skip((filter.PageNumber - 1) * filter.PageSize)
             .Take(filter.PageSize)
@@ -146,7 +126,6 @@ public class EventRepository : IEventRepository
         return new PagedResult<Event>(items, totalCount, filter.PageNumber, filter.PageSize);
     }
 
-    /// Get featured events (for homepage carousel/banner)
     public async Task<List<Event>> GetFeaturedEventsAsync(int count = 10)
     {
         return await _context.Events
@@ -155,14 +134,34 @@ public class EventRepository : IEventRepository
                 .ThenInclude(o => o!.User)
             .Include(e => e.TicketTypes)
             .Where(e => e.Status == EventStatus.Published && e.StartDate > DateTime.UtcNow)
-            // TODO: Add IsFeatured column to Event model
-            // .Where(e => e.IsFeatured)
             .OrderBy(e => e.StartDate)
             .Take(count)
             .ToListAsync();
     }
 
-    /// Get upcoming events (published and in the future)
+    public async Task<List<Event>> GetTrendingEventsAsync(int count = 10)
+    {
+        // Get events with booking counts using a subquery approach
+        var eventsWithBookingCounts = await _context.Events
+            .Include(e => e.Category)
+            .Include(e => e.Organizer)
+                .ThenInclude(o => o!.User)
+            .Include(e => e.TicketTypes)
+            .Where(e => e.Status == EventStatus.Published && e.StartDate > DateTime.UtcNow)
+            .Select(e => new
+            {
+                Event = e,
+                BookingCount = e.Bookings!
+                    .Count(b => b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Pending)
+            })
+            .OrderByDescending(x => x.BookingCount)
+            .ThenBy(x => x.Event.StartDate)
+            .Take(count)
+            .ToListAsync();
+
+        return eventsWithBookingCounts.Select(x => x.Event).ToList();
+    }
+
     public async Task<List<Event>> GetUpcomingEventsAsync(int count = 20)
     {
         return await _context.Events
@@ -176,7 +175,6 @@ public class EventRepository : IEventRepository
             .ToListAsync();
     }
 
-    /// Search events by keyword with pagination
     public async Task<PagedResult<Event>> SearchEventsAsync(string searchTerm, int pageNumber = 1, int pageSize = 20)
     {
         if (pageSize > 100) pageSize = 100;
@@ -208,7 +206,6 @@ public class EventRepository : IEventRepository
         return new PagedResult<Event>(items, totalCount, pageNumber, pageSize);
     }
 
-    /// Get events by organizer ID with pagination
     public async Task<PagedResult<Event>> GetByOrganizerIdAsync(int organizerId, int pageNumber = 1, int pageSize = 20)
     {
         if (pageSize > 100) pageSize = 100;
@@ -230,7 +227,6 @@ public class EventRepository : IEventRepository
         return new PagedResult<Event>(items, totalCount, pageNumber, pageSize);
     }
 
-    /// Get events by category ID with pagination
     public async Task<PagedResult<Event>> GetByCategoryIdAsync(int categoryId, int pageNumber = 1, int pageSize = 20)
     {
         if (pageSize > 100) pageSize = 100;
@@ -254,7 +250,6 @@ public class EventRepository : IEventRepository
         return new PagedResult<Event>(items, totalCount, pageNumber, pageSize);
     }
 
-    /// Get events pending admin approval
     public async Task<List<Event>> GetPendingApprovalAsync()
     {
         return await _context.Events
@@ -267,28 +262,21 @@ public class EventRepository : IEventRepository
             .ToListAsync();
     }
 
-    /// Check if event exists
     public async Task<bool> ExistsAsync(int id)
     {
         return await _context.Events.AnyAsync(e => e.Id == id);
     }
 
-    /// Check if organizer owns the event
     public async Task<bool> IsOrganizerOwnerAsync(int eventId, int organizerId)
     {
         return await _context.Events
             .AnyAsync(e => e.Id == eventId && e.OrganizerId == organizerId);
     }
 
-    #endregion
-
-    #region Command Methods
-
-    /// Add new event to database
     public async Task<Event> AddAsync(Event eventEntity)
     {
         eventEntity.CreatedAt = DateTime.UtcNow;
-        eventEntity.Status = EventStatus.Pending; // Default status
+        eventEntity.Status = EventStatus.Pending;
 
         await _context.Events.AddAsync(eventEntity);
         await _context.SaveChangesAsync();
@@ -296,7 +284,6 @@ public class EventRepository : IEventRepository
         return (await GetByIdAsync(eventEntity.Id, includeRelated: true))!;
     }
 
-    /// Update existing event
     public async Task<Event> UpdateAsync(Event eventEntity)
     {
         eventEntity.UpdatedAt = DateTime.UtcNow;
@@ -304,27 +291,20 @@ public class EventRepository : IEventRepository
         _context.Events.Update(eventEntity);
         await _context.SaveChangesAsync();
 
-        // Reload with related data
         return (await GetByIdAsync(eventEntity.Id, includeRelated: true))!;
     }
 
-    /// Delete event (soft delete recommended - change status to Cancelled)
     public async Task<bool> DeleteAsync(int id)
     {
         var eventEntity = await _context.Events.FindAsync(id);
         if (eventEntity == null)
             return false;
 
-        // Soft delete: Change status to Cancelled
         eventEntity.Status = EventStatus.Cancelled;
         eventEntity.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
         return true;
-
-        // Hard delete (not recommended):
-        // _context.Events.Remove(eventEntity);
-        // return await _context.SaveChangesAsync() > 0;
     }
 
     /// Save changes to database
@@ -333,11 +313,6 @@ public class EventRepository : IEventRepository
         return await _context.SaveChangesAsync();
     }
 
-    #endregion
-
-    #region Statistics
-
-    /// Get total events count with optional status filter
     public async Task<int> GetTotalCountAsync(EventStatus? status = null)
     {
         var query = _context.Events.AsQueryable();
@@ -350,18 +325,12 @@ public class EventRepository : IEventRepository
         return await query.CountAsync();
     }
 
-    /// Get events count by organizer
     public async Task<int> GetCountByOrganizerAsync(int organizerId)
     {
         return await _context.Events
             .CountAsync(e => e.OrganizerId == organizerId);
     }
 
-    #endregion
-
-    #region Private Helper Methods
-
-    /// Apply sorting to query based on sort field and order
     private IQueryable<Event> ApplySorting(IQueryable<Event> query, string sortBy, string sortOrder)
     {
         var isDescending = sortOrder.ToLower() == "desc";
@@ -385,6 +354,4 @@ public class EventRepository : IEventRepository
                 : query.OrderBy(e => e.StartDate),
         };
     }
-
-    #endregion
 }

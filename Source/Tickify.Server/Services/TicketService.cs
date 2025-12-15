@@ -89,6 +89,14 @@ public class TicketService : ITicketService
         if (ticket.Status != TicketStatus.Valid)
             throw new BadRequestException("Only valid tickets can be transferred");
 
+        // Check if event allows transfer
+        var eventData = await _eventRepository.GetByIdAsync(booking.EventId);
+        if (eventData == null)
+            throw new NotFoundException($"Event not found");
+        
+        if (!eventData.AllowTransfer)
+            throw new BadRequestException("This event does not allow ticket transfers");
+
         // Get recipient user by email
         var recipientUser = await _userRepository.GetUserByEmailAsync(transferDto.RecipientEmail);
         if (recipientUser == null)
@@ -245,7 +253,6 @@ public class TicketService : ITicketService
         {
             // Log error but don't fail the transfer
             // Email sending failure shouldn't prevent transfer completion
-            Console.WriteLine($"Error sending email notifications: {ex.Message}");
         }
         
         return _mapper.Map<TicketDto>(updatedTicket);
@@ -307,7 +314,6 @@ public class TicketService : ITicketService
         {
             // Log error but don't fail the rejection
             // Email sending failure shouldn't prevent transfer rejection
-            Console.WriteLine($"Error sending email notifications: {ex.Message}");
         }
 
         return true;

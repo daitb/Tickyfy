@@ -15,11 +15,14 @@ export interface TicketDto {
   ticketTypeName: string;
   price: number;
   seatId?: number;
+  row?: string;
   seatNumber?: string;
   status: string;
   qrCode?: string;
   isUsed: boolean;
   usedAt?: string;
+  allowTransfer: boolean;
+  allowRefund: boolean;
   createdAt: string;
 }
 

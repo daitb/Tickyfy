@@ -10,14 +10,28 @@ public sealed class EfRefundRequestRepository : IRefundRequestRepository
     public EfRefundRequestRepository(ApplicationDbContext db) => _db = db;
 
     public Task<RefundRequest?> GetByIdAsync(int id) =>
-        _db.RefundRequests.Include(x => x.Booking).FirstOrDefaultAsync(x => x.Id == id);
+        _db.RefundRequests
+            .Include(x => x.User)
+            .Include(x => x.Booking)
+                .ThenInclude(b => b!.Event)
+            .FirstOrDefaultAsync(x => x.Id == id);
 
     public async Task<IEnumerable<RefundRequest>> GetAllAsync() =>
-        await _db.RefundRequests.OrderByDescending(x => x.CreatedAt).ToListAsync();
+        await _db.RefundRequests
+            .Include(x => x.User)
+            .Include(x => x.Booking)
+                .ThenInclude(b => b!.Event)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync();
 
     public async Task<IEnumerable<RefundRequest>> GetByUserIdAsync(int userId) =>
-        await _db.RefundRequests.Where(x => x.UserId == userId)
-            .OrderByDescending(x => x.CreatedAt).ToListAsync();
+        await _db.RefundRequests
+            .Include(x => x.User)
+            .Include(x => x.Booking)
+                .ThenInclude(b => b!.Event)
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync();
 
     public async Task<RefundRequest> CreateAsync(RefundRequest req)
     {

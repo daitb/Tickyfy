@@ -14,7 +14,7 @@ using Tickify.Interfaces.Services; // Chứa các Interface chung (IUserService,
 using Tickify.Services;
 using Tickify.Services.Email;
 using Tickify.Services.Reviews;
-using Tickify.Server.AI;
+using Tickify.Server.Extensions;
 using Tickify.Services.Payments;
 using Tickify.Services.Refunds;
 using Tickify.Services.Payouts;

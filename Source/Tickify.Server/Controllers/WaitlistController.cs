@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Tickify.Common;
 using Tickify.DTOs.Waitlist;
+using Tickify.Exceptions;
 using Tickify.Interfaces.Services;
 
 namespace Tickify.Controllers;
@@ -30,9 +31,6 @@ public class WaitlistController : ControllerBase
         return userId;
     }
 
-    /// <summary>
-    /// GET /api/waitlist/my - Get current user's waitlist entries
-    /// </summary>
     [HttpGet("my")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<List<WaitlistDto>>), StatusCodes.Status200OK)]
@@ -51,9 +49,6 @@ public class WaitlistController : ControllerBase
         ));
     }
 
-    /// <summary>
-    /// POST /api/waitlist/join - Join waitlist for an event
-    /// </summary>
     [HttpPost("join")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<WaitlistDto>), StatusCodes.Status201Created)]
@@ -61,12 +56,22 @@ public class WaitlistController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<WaitlistDto>>> JoinWaitlist([FromBody] JoinWaitlistDto dto)
     {
+        _logger.LogInformation("JoinWaitlist endpoint called with EventId: {EventId}, RequestedQuantity: {Quantity}",
+            dto?.EventId, dto?.RequestedQuantity);
+
+        if (dto == null)
+        {
+            return BadRequest(ApiResponse<WaitlistDto>.FailureResponse("Request body is required"));
+        }
+
         if (!ModelState.IsValid)
         {
             var errors = ModelState.Values
                 .SelectMany(v => v.Errors)
                 .Select(e => e.ErrorMessage)
                 .ToList();
+
+            _logger.LogWarning("JoinWaitlist validation failed: {Errors}", string.Join(", ", errors));
 
             return BadRequest(ApiResponse<WaitlistDto>.FailureResponse(
                 "Validation failed",
@@ -91,6 +96,16 @@ public class WaitlistController : ControllerBase
                 )
             );
         }
+        catch (ConflictException ex)
+        {
+            _logger.LogWarning("User {UserId} already on waitlist for event {EventId}", userId, dto.EventId);
+            return Conflict(ApiResponse<WaitlistDto>.FailureResponse(ex.Message));
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Resource not found for user {UserId}, event {EventId}", userId, dto.EventId);
+            return NotFound(ApiResponse<WaitlistDto>.FailureResponse(ex.Message));
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error joining waitlist for user {UserId}, event {EventId}", userId, dto.EventId);
@@ -98,9 +113,6 @@ public class WaitlistController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// DELETE /api/waitlist/{id} - Leave/remove from waitlist
-    /// </summary>
     [HttpDelete("{id}")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
@@ -125,7 +137,7 @@ public class WaitlistController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error leaving waitlist for user {UserId}, waitlist {WaitlistId}", userId, id);
-            
+
             if (ex.Message.Contains("not found"))
             {
                 return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
@@ -135,9 +147,6 @@ public class WaitlistController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// GET /api/waitlist/check/{eventId} - Check if user is on waitlist for an event
-    /// </summary>
     [HttpGet("check/{eventId}")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]

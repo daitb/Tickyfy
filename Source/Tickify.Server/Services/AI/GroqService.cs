@@ -1,9 +1,9 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Tickify.Server.AI.Models;
+using Tickify.Server.Models;
 
-namespace Tickify.Server.AI.Services;
+namespace Tickify.Server.Services.AI;
 
 /// <summary>
 /// Service for interacting with Groq Cloud API

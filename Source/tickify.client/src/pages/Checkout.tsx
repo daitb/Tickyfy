@@ -139,12 +139,12 @@ export function Checkout({
               setSeatDetails(selectedSeatDetails);
             })
             .catch((err) => {
-              console.error("Failed to load seat details:", err);
+
               toast.error(t("booking.checkout.failedToLoadSeatInfo"));
             });
         }
       } catch (e) {
-        console.error("Failed to parse selected seats:", e);
+
       }
     }
   }, [onNavigate]);
@@ -668,14 +668,6 @@ export function Checkout({
         code: promoCode.trim().toUpperCase(),
         eventId: eventId,
         orderTotal: subtotal,
-      });
-
-      console.log('[Checkout] Promo code applied:', {
-        code: promoCode.trim().toUpperCase(),
-        discount: discount,
-        subtotal: subtotal,
-        serviceFee: subtotal * 0.05,
-        total: subtotal + (subtotal * 0.05) - discount
       });
 
       setAppliedPromoCode(validatedPromo);
