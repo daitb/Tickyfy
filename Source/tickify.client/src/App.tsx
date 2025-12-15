@@ -101,9 +101,7 @@ const EventAnalytics = lazy(() =>
 const EditEvent = lazy(() =>
   import("./pages/EditEvent").then((m) => ({ default: m.EditEvent }))
 );
-const ScanHistory = lazy(() =>
-  import("./pages/ScanHistory").then((m) => ({ default: m.ScanHistory }))
-);
+
 const PromoCodeManagement = lazy(() =>
   import("./pages/PromoCodeManagement").then((m) => ({
     default: m.PromoCodeManagement,
@@ -135,9 +133,7 @@ const ReviewSubmission = lazy(() =>
     default: m.ReviewSubmission,
   }))
 );
-const QRScanner = lazy(() =>
-  import("./pages/QRScanner").then((m) => ({ default: m.QRScanner }))
-);
+
 const EmailVerification = lazy(() =>
   import("./pages/EmailVerification").then((m) => ({
     default: m.EmailVerification,
@@ -213,7 +209,6 @@ type Page =
   | "event-analytics"
   | "edit-event"
   | "edit-seat-map"
-  | "scan-history"
   | "promo-codes"
   | "organizer-payouts"
   | "notifications"
@@ -223,7 +218,6 @@ type Page =
   | "seat-selection"
   | "seat-map-builder"
   | "review-submission"
-  | "qr-scanner"
   | "email-verification"
   | "password-change"
   | "event-reviews"
@@ -283,7 +277,6 @@ export default function App() {
       );
       return "edit-seat-map";
     }
-    if (path === "/scan-history") return "scan-history";
     if (path === "/promo-codes") return "promo-codes";
     if (path === "/organizer-payouts") return "organizer-payouts";
     if (path === "/notifications") return "notifications";
@@ -293,7 +286,6 @@ export default function App() {
     if (path.startsWith("/seat-selection/")) return "seat-selection";
     if (path === "/seat-map-builder") return "seat-map-builder";
     if (path === "/review-submission") return "review-submission";
-    if (path === "/qr-scanner") return "qr-scanner";
     if (path === "/email-verification") return "email-verification";
     if (path === "/password-change") return "password-change";
     if (path.startsWith("/event-reviews")) {
@@ -651,9 +643,6 @@ export default function App() {
           />
         );
 
-      case "scan-history":
-        return <ScanHistory onNavigate={handleNavigate} />;
-
       case "promo-codes":
         return <PromoCodeManagement />;
 
@@ -690,9 +679,6 @@ export default function App() {
             onNavigate={handleNavigate}
           />
         );
-
-      case "qr-scanner":
-        return <QRScanner onNavigate={handleNavigate} />;
 
       case "email-verification":
         return <EmailVerification onNavigate={handleNavigate} />;
