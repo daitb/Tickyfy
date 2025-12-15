@@ -8,8 +8,6 @@ import {
   LayoutDashboard,
   Calendar,
   LogOut,
-  QrCode,
-  History,
   UserCog,
   MessageCircle,
   DollarSign,
@@ -156,18 +154,19 @@ export function Header({
               </Button>
             )}
 
-            {/* Create Event Button - Only for Organizers */}
-            {isAuthenticated && userRole === "organizer" && (
-              <Button
-                onClick={() => onNavigate("create-event")}
-                variant="secondary"
-                size="sm"
-                className="bg-white text-teal-600 hover:bg-neutral-100 gap-2 hidden lg:flex"
-              >
-                <Plus size={18} />
-                {t("header.createEvent")}
-              </Button>
-            )}
+            {/* Create Event Button - For Organizers and Admins */}
+            {isAuthenticated &&
+              (userRole === "organizer" || userRole === "admin") && (
+                <Button
+                  onClick={() => onNavigate("create-event")}
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white text-teal-600 hover:bg-neutral-100 gap-2 hidden lg:flex"
+                >
+                  <Plus size={18} />
+                  {t("header.createEvent")}
+                </Button>
+              )}
 
             {/* My Tickets */}
             {/* <Button
@@ -271,25 +270,6 @@ export function Header({
                       >
                         <Plus size={16} className="mr-2" />
                         {t("header.createEvent")}
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  {(userRole === "staff" ||
-                    userRole === "organizer" ||
-                    userRole === "admin") && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => onNavigate("qr-scanner")}
-                      >
-                        <QrCode size={16} className="mr-2" />
-                        {t("header.qrScanner")}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onNavigate("scan-history")}
-                      >
-                        <History size={16} className="mr-2" />
-                        {t("header.scanHistory")}
                       </DropdownMenuItem>
                     </>
                   )}
