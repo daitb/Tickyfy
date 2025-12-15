@@ -86,7 +86,8 @@ AZURE-SQL-SETUP-GUIDE.md
 appsettings.json
 appsettings.Development.json
 appsettings.Production.json
-appsettings.*.json
+# Allow example configuration file
+!appsettings.example.json
 
 # =====================================
 # Environment files
@@ -94,6 +95,18 @@ appsettings.*.json
 .env
 .env.local
 .env.production
+
+# =====================================
+# Node.js / Frontend
+# =====================================
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+build/
 
 # =====================================
 # User uploads (if stored locally)

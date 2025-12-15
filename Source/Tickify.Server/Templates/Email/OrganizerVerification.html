@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tài khoản Organizer đã được xác thực - Tickify</title>
+    <style>
+      /* Base styles */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f4f4;
+      }
+
+      /* Container */
+      .email-container {
+        max-width: 600px;
+        margin: 40px auto;
+        background-color: #ffffff;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Header */
+      .email-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        padding: 40px 30px;
+        text-align: center;
+        color: #ffffff;
+      }
+
+      .email-header h1 {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 600;
+      }
+
+      .success-icon {
+        font-size: 64px;
+        margin-bottom: 10px;
+      }
+
+      /* Body */
+      .email-body {
+        padding: 40px 30px;
+        color: #333333;
+        line-height: 1.6;
+      }
+
+      .email-body h2 {
+        color: #10b981;
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+
+      .email-body p {
+        margin: 15px 0;
+        font-size: 16px;
+      }
+
+      .company-name {
+        color: #10b981;
+        font-weight: 600;
+      }
+
+      /* Success box */
+      .success-box {
+        margin: 30px 0;
+        padding: 25px;
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        border-radius: 10px;
+        text-align: center;
+      }
+
+      .success-box h3 {
+        color: #065f46;
+        margin-top: 0;
+        font-size: 22px;
+      }
+
+      .success-box p {
+        color: #047857;
+        margin: 10px 0;
+        font-size: 16px;
+      }
+
+      /* Features */
+      .features {
+        margin: 30px 0;
+        padding: 20px;
+        background-color: #f0fdf4;
+        border-left: 4px solid #10b981;
+        border-radius: 5px;
+      }
+
+      .feature-item {
+        margin: 15px 0;
+        padding-left: 30px;
+        position: relative;
+      }
+
+      .feature-item:before {
+        content: "🎉";
+        position: absolute;
+        left: 0;
+        font-size: 18px;
+      }
+
+      /* Tips */
+      .tips-box {
+        margin: 30px 0;
+        padding: 20px;
+        background-color: #fef3c7;
+        border-radius: 5px;
+      }
+
+      .tips-box h3 {
+        color: #92400e;
+        margin-top: 0;
+      }
+
+      .tip-item {
+        margin: 10px 0;
+        padding-left: 30px;
+        position: relative;
+      }
+
+      .tip-item:before {
+        content: "💡";
+        position: absolute;
+        left: 0;
+        font-size: 18px;
+      }
+
+      /* Button */
+      .button-container {
+        text-align: center;
+        margin: 30px 0;
+      }
+
+      .button {
+        display: inline-block;
+        padding: 15px 40px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #ffffff;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: 600;
+        font-size: 16px;
+        box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+      }
+
+      .button:hover {
+        transform: translateY(-2px);
+      }
+
+      /* Footer */
+      .email-footer {
+        padding: 30px;
+        background-color: #f9fafb;
+        color: #6b7280;
+        text-align: center;
+        font-size: 14px;
+      }
+
+      .email-footer p {
+        margin: 5px 0;
+      }
+
+      .social-links {
+        margin: 20px 0;
+      }
+
+      .social-links a {
+        display: inline-block;
+        margin: 0 10px;
+        color: #10b981;
+        text-decoration: none;
+      }
+
+      /* Responsive */
+      @media only screen and (max-width: 600px) {
+        .email-container {
+          margin: 20px;
+        }
+
+        .email-header,
+        .email-body,
+        .email-footer {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <!-- Header -->
+      <div class="email-header">
+        <div class="success-icon">✅</div>
+        <h1>Xác thực thành công!</h1>
+      </div>
+
+      <!-- Body -->
+      <div class="email-body">
+        <h2>Chúc mừng {UserName}! 🎊</h2>
+
+        <p>
+          Tuyệt vời! Tài khoản Organizer của bạn cho
+          <span class="company-name">{CompanyName}</span> đã được xác thực bởi
+          Admin của Tickify.
+        </p>
+
+        <!-- Success Box -->
+        <div class="success-box">
+          <h3>🎯 Bạn đã sẵn sàng!</h3>
+          <p>
+            Giờ đây bạn có thể tạo và quản lý các sự kiện công khai, bán vé
+            trực tuyến và tiếp cận hàng triệu khách hàng tiềm năng.
+          </p>
+        </div>
+
+        <p>
+          Là một Organizer đã được xác thực, bạn sẽ được hưởng nhiều lợi ích
+          đặc biệt:
+        </p>
+
+        <!-- Features -->
+        <div class="features">
+          <h3 style="margin-top: 0; color: #10b981">
+            🌟 Quyền lợi của Organizer:
+          </h3>
+          <div class="feature-item">
+            Tạo sự kiện công khai không giới hạn
+          </div>
+          <div class="feature-item">
+            Badge "Verified" hiển thị trên trang tổ chức
+          </div>
+          <div class="feature-item">
+            Ưu tiên trong kết quả tìm kiếm và đề xuất
+          </div>
+          <div class="feature-item">Hỗ trợ marketing và quảng bá</div>
+          <div class="feature-item">
+            Công cụ phân tích và báo cáo chi tiết
+          </div>
+          <div class="feature-item">Hỗ trợ khách hàng ưu tiên 24/7</div>
+        </div>
+
+        <!-- Tips -->
+        <div class="tips-box">
+          <h3>💡 Mẹo để tạo sự kiện thành công:</h3>
+          <div class="tip-item">
+            Sử dụng hình ảnh chất lượng cao và mô tả chi tiết
+          </div>
+          <div class="tip-item">
+            Thiết lập giá vé hợp lý và có nhiều lựa chọn
+          </div>
+          <div class="tip-item">
+            Bật thông báo để cập nhật tình trạng bán vé theo thời gian thực
+          </div>
+          <div class="tip-item">
+            Sử dụng mã giảm giá để thu hút khách hàng đặt vé sớm
+          </div>
+          <div class="tip-item">
+            Quảng bá trên mạng xã hội và website của bạn
+          </div>
+        </div>
+
+        <!-- CTA Button -->
+        <div class="button-container">
+          <a
+            href="https://tickify.vn/organizer-dashboard"
+            class="button"
+            target="_blank"
+            >Tạo sự kiện ngay</a
+          >
+        </div>
+
+        <p>
+          Nếu bạn cần hỗ trợ trong việc tạo sự kiện đầu tiên, đội ngũ của chúng
+          tôi luôn sẵn sàng giúp đỡ. Liên hệ:
+        </p>
+
+        <ul style="margin: 15px 0; padding-left: 20px">
+          <li>Email: <a href="mailto:support@tickify.vn">support@tickify.vn</a></li>
+          <li>Hotline: 1900-xxxx (8:00 - 22:00 hàng ngày)</li>
+          <li>Live Chat: Trên website Tickify</li>
+        </ul>
+
+        <p style="margin-top: 30px">
+          Chúc bạn thành công rực rỡ với các sự kiện của mình!<br />
+          <strong>Trân trọng,<br />Đội ngũ Tickify</strong>
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div class="email-footer">
+        <div class="social-links">
+          <a href="https://facebook.com/tickify">Facebook</a> |
+          <a href="https://twitter.com/tickify">Twitter</a> |
+          <a href="https://instagram.com/tickify">Instagram</a> |
+          <a href="https://tickify.vn/blog">Blog</a>
+        </div>
+        <p>&copy; 2025 Tickify. All rights reserved.</p>
+        <p>
+          Email này được gửi tới {UserName} từ Tickify Event Management Platform
+        </p>
+        <p style="font-size: 12px; color: #9ca3af; margin-top: 15px">
+          Bạn nhận được email này vì tài khoản Organizer của bạn đã được xác
+          thực.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
