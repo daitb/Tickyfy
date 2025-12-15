@@ -18,12 +18,16 @@
     "waitlist": "Waitlist",
     "organizerDashboard": "Organizer Dashboard",
     "manageEvents": "Manage Events",
-    "qrScanner": "QR Scanner",
-    "scanHistory": "Scan History",
     "profileSettings": "Profile & Settings",
     "signOut": "Sign Out",
     "chat": "Chat",
     "pendingApproval": "Pending Approval"
+  },
+  "waitlist": {
+    "joined": "Joined waitlist successfully",
+    "alreadyJoined": "Already in Waitlist",
+    "notification": "We'll notify you when tickets become available",
+    "error": "Failed to join waitlist"
   },
   "home": {
     "title": "Discover Amazing Events",
@@ -40,7 +44,31 @@
     },
     "noEvents": "No events found"
   },
+  "search": {
+    "placeholder": "What are you looking for today?",
+    "exploreByCategory": "Explore by Category",
+    "exploreByCity": "Explore by City",
+    "suggestionsForYou": "Suggestions for You",
+    "searchResults": "Search Results",
+    "result": "result",
+    "results": "results",
+    "soldOut": "Sold Out",
+    "from": "From",
+    "noEventsFound": "No events found",
+    "tryDifferentKeywords": "Try searching with different keywords or explore by category",
+    "clearSearch": "Clear search"
+  },
+  "categories": {
+    "Music": "Music",
+    "Theater": "Theater",
+    "Sports": "Sports",
+    "Conference": "Conference",
+    "Arts": "Arts",
+    "Food & Drink": "Food & Drink",
+    "Other": "Other"
+  },
   "auth": {
+    "loginToJoinWaitlist": "Login to Join Waitlist",
     "login": "Login",
     "register": "Register",
     "email": "Email",
@@ -143,6 +171,16 @@
   "events": {
     "title": "Events",
     "category": "Category",
+    "categoryMusic": "Music",
+    "categorySports": "Sports",
+    "categoryArts": "Arts & Culture",
+    "categoryTechnology": "Technology",
+    "entertainment": "Entertainment",
+    "categoryFood": "Food & Drink",
+    "categoryBusiness": "Business",
+    "categoryHealth": "Health & Wellness",
+    "categoryEducation": "Education",
+    "categoryFashion": "Fashion & Beauty",
     "allCategories": "All Categories",
     "date": "Date",
     "location": "Location",
@@ -172,6 +210,7 @@
     "share": "Share",
     "addToWishlist": "Add to Wishlist",
     "addToWaitlist": "Join Waitlist",
+    "allSeatsSold": "All tickets for this event have been sold",
     "eventInfo": "Event Information",
     "ticketTypes": "Ticket Types",
     "reviews": "Reviews",
@@ -391,6 +430,8 @@
       "generalAdmission": "General Admission",
       "category": "Category",
       "seatNumber": "Seat Number",
+      "refundNotAllowed": "Refund Not Available",
+      "refundNotAllowedMessage": "This event does not allow ticket refunds. Please contact support if you have any questions.",
       "transfer": "Transfer",
       "downloadPdf": "Download PDF",
       "share": "Share",
@@ -455,6 +496,7 @@
     }
   },
   "organizer": {
+    "accessRequiredTitle": "Organizer access required",
     "becomeOrganizer": "Become an Organizer",
     "title": "Apply to Become an Event Organizer",
     "description": "Create and manage your own events on Tickify. Fill in the information below to submit your request.",
@@ -520,6 +562,7 @@
     "publishEvent": "Publish Event",
     "createNewEvent": "Create New Event",
     "dashboard": {
+      "accessRequiredDescription": "Please apply to become an organizer to view performance dashboards.",
       "title": "Organizer Dashboard",
       "subtitle": "Manage your events and track performance",
       "overview": "Overview",
@@ -602,7 +645,9 @@
       "revenueByEvent": "Revenue by Event",
       "eventComparison": "Comparison of event performance",
       "salesRate": "Ticket Sales Rate",
-      "percentageSold": "Percentage of tickets sold"
+      "percentageSold": "Percentage of tickets sold",
+      "reason": "Reason",
+      "searchOrders": "Search orders, customers..."
     }
   },
   "editEvent": {
@@ -929,6 +974,27 @@
     "users": "Users",
     "payouts": "Payouts",
     "organizerRequests": "Organizer Requests",
+    "paymentsTab": "Payments",
+    "payments": {
+      "title": "Payment Management",
+      "subtitle": "Review and approve organizer payment requests",
+      "search": "Search booking code, amount...",
+      "customer": "Customer",
+      "event": "Event",
+      "tickets": "Tickets",
+      "amount": "Amount",
+      "date": "Date",
+      "status": "Status",
+      "total": "Total",
+      "payments": "payments",
+      "completed": "Completed",
+      "pending": "Pending",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "confirmed": "Confirmed",
+      "noData": "No payment data available",
+      "loadError": "Failed to load payment data"
+    },
     "userId": "User ID",
     "email": "Email",
     "fullName": "Full Name",
@@ -997,6 +1063,7 @@
       "subtitle": "Platform management and analytics"
     },
     "overview": "Overview",
+    "revenue": "Revenue",
     "totalUsers": "Total Users",
     "totalEvents": "Total Events",
     "totalRevenue": "Total Revenue",
@@ -1193,7 +1260,11 @@
     "contactUs": "Contact Us",
     "about": "About",
     "FAQ": "FAQ",
-    "support": "Support"
+    "support": "Support",
+    "soldOut": "Sold Out",
+    "left": "left",
+    "generalAdmission": "General Admission",
+    "bookNow": "Book Now"
   },
   "footer": {
     "description": "Your trusted platform for discovering and booking events across Vietnam.",
@@ -1470,7 +1541,10 @@
       "leftError": "Unable to leave the waitlist",
       "nextInLine": "Next in line!",
       "inWaitlist": "in waitlist",
-      "joined": "Joined",
+      "joined": "Joined waitlist successfully",
+      "alreadyJoined": "Already in Waitlist",
+      "notification": "We'll notify you when tickets become available",
+      "error": "Failed to join waitlist",
       "tickets": "tickets",
       "purchased": "Purchased",
       "whatNext": "What happens next?",
@@ -1673,11 +1747,94 @@
       "processing": "Processing Payment...",
       "success": "Payment Successful!",
       "failed": "Payment Failed",
+      "successTitle": "Your payment has been processed successfully",
       "successMessage": "Your payment has been processed successfully",
       "failedMessage": "There was an issue processing your payment",
       "returnToHome": "Return to Home",
       "tryAgain": "Try Again",
-      "contactSupport": "Contact Support"
+      "contactSupport": "Contact Support",
+      "verifying": "Verifying Payment...",
+      "pleaseWait": "Please wait a moment",
+      "retrying": "Retrying (attempt {{count}})...",
+      "retryAttempts": "Retry attempts",
+      "amount": "Amount",
+      "method": "Method",
+      "transactionId": "Transaction ID",
+      "time": "Time",
+      "status": "Status",
+      "completed": "Completed",
+      "viewTickets": "View My Tickets",
+      "viewOrderDetails": "View Order Details",
+      "paymentId": "Payment ID",
+      "paymentIdNotFound": "Payment ID not found",
+      "invalidPaymentId": "Invalid payment ID: {{paymentId}}",
+      "verificationFailed": "Payment verification failed: {{error}}",
+      "verificationPending": "Waiting for payment verification",
+      "verificationError": "Payment verification error",
+      "freeBookingConfirmed": "Your free booking has been confirmed",
+      "cancelledMessage": "Payment has been cancelled",
+      "paymentFailed": "Payment failed",
+      "vnpayFailed": "VNPay payment failed (Code: {{code}})",
+      "momoFailedResult": "MoMo payment failed (Code: {{code}})",
+      "momoFailedError": "MoMo payment error (Code: {{code}})",
+      "message": "Message"
+    },
+    "creditCard": {
+      "enterFullInfo": "Please enter full card information",
+      "invalidExpiryFormat": "Invalid expiry format. Use MM/YY",
+      "invalidExpiry": "Card has expired or invalid expiry date",
+      "verifying": "Verifying card information..."
+    },
+    "methods": {
+      "momoWallet": "MoMo E-Wallet",
+      "momoDescription": "Pay instantly with MoMo wallet",
+      "vnpay": "VNPay Gateway",
+      "vnpayDescription": "Bank cards, QR code, e-wallets",
+      "creditCard": "Credit/Debit Card",
+      "creditCardDescription": "Visa, Mastercard, etc."
+    },
+    "selectMethod": "Select Payment Method",
+    "popular": "Popular",
+    "momo": {
+      "howToPay": "How to pay with MoMo:",
+      "step1": "Click 'Complete Payment' below",
+      "step2": "You'll be redirected to MoMo app/website",
+      "step3": "Confirm payment in your MoMo app",
+      "step4": "You'll be redirected back after payment",
+      "phoneNumber": "MoMo Phone Number",
+      "phoneNote": "Enter the phone number linked to your MoMo account",
+      "validPhone": "Valid phone number"
+    },
+    "vnpay": {
+      "howToPay": "How to pay with VNPay:",
+      "step1": "Click 'Complete Payment' below",
+      "step2": "You'll be redirected to VNPay payment gateway",
+      "step3": "Select payment method (Bank card/E-wallet/QR)",
+      "step4": "Complete payment and you'll be redirected back",
+      "supportedBanks": "Supported Banks:",
+      "banksNote": "Supports most banks and e-wallets in Vietnam",
+      "banks": {
+        "vietcombank": "Vietcombank",
+        "techcombank": "Techcombank",
+        "vietinbank": "VietinBank",
+        "bidv": "BIDV",
+        "acb": "ACB",
+        "mbbank": "MB Bank",
+        "vpbank": "VPBank",
+        "tpbank": "TPBank",
+        "agribank": "Agribank"
+      }
+    },
+    "creditCard": {
+      "securePayment": "Your payment is secure",
+      "instructions": "All transactions are encrypted and processed securely through our trusted payment partners. We never store your full payment details.",
+      "cardNumber": "Card Number",
+      "cardholderName": "Cardholder Name",
+      "expiryDate": "Expiry Date",
+      "cvv": "CVV",
+      "validCardNumber": "Valid card number",
+      "validCardholderName": "Valid cardholder name",
+      "valid": "Valid"
     }
   },
   "transfer": {
@@ -1805,6 +1962,12 @@
       "exportData": "Export Data"
     }
   },
+  "image": {
+    "validation": {
+      "invalidType": "Invalid file type. Only JPG, PNG, GIF, and WebP images are accepted.",
+      "sizeTooLarge": "File size too large. Maximum 5MB. Your file: {{size}}MB"
+    }
+  },
   "wizard": {
     "organizer": {
       "title": "Create Your Event",
@@ -1902,6 +2065,7 @@
       "publish": "Publish Event",
       "saveDraft": "Save as Draft",
       "backHome": "Back to Home",
+      "imageUploadError": "Image Upload Error",
       "validation": {
         "missingFields": "Missing required fields",
         "missingFieldsDesc": "Please fill in all required fields",
@@ -2099,6 +2263,37 @@
       "deletedSuccessfully": "Promo code deleted successfully",
       "activatedSuccessfully": "Promo code activated successfully",
       "deactivatedSuccessfully": "Promo code deactivated successfully"
+    },
+    "seat": {
+      "builder": {
+        "title": "Seat Map Builder",
+        "subtitle": "Design your venue seating layout",
+        "seatMapName": "Seat Map for {eventTitle}",
+        "rows": "Rows",
+        "seatsPerRow": "Seats per Row",
+        "templates": {
+          "theaterStyle": "Theater Style",
+          "theaterDescription": "Traditional theater seating",
+          "stadium": "Stadium",
+          "stadiumDescription": "Curved stadium layout",
+          "conference": "Conference",
+          "conferenceDescription": "Tables and chairs",
+          "concertHall": "Concert Hall",
+          "concertDescription": "Mix of seated and standing"
+        },
+        "zone": {
+          "createNewZone": "Create New Zone",
+          "editZone": "Edit Zone",
+          "zoneDescription": "Define the zone name, color, and pricing",
+          "zoneName": "Zone Name",
+          "zoneNamePlaceholder": "e.g., VIP Section",
+          "zoneColor": "Zone Color",
+          "pricePerSeat": "Price per Seat (VND)",
+          "cancel": "Cancel",
+          "createZone": "Create Zone",
+          "updateZone": "Update Zone"
+        }
+      }
     }
   },
   "seat": {
@@ -2144,6 +2339,7 @@
         "connectionRestored": "Connection restored! Seat availability has been refreshed.",
         "connectionLost": "Connection lost. Attempting to reconnect...",
         "soldOut": "This event is sold out! Redirecting back to event details...",
+        "soldOutRedirect": "😔 Sorry, this event is sold out! You can join the waitlist to be notified when tickets become available. Redirecting to event details...",
         "reservationExtended": "✅ Reservation extended by 5 minutes!",
         "failedToExtend": "Failed to extend reservation. Please try again.",
         "failedToRelease": "Failed to release seat. Please try again.",
@@ -2177,6 +2373,7 @@
       "rows": "Rows",
       "cols": "Cols",
       "autoNumberSeats": "Auto-Number Seats",
+      "seatMapName": "Seat Map for {eventTitle}",
       "clearAll": "Clear All",
       "zonesAndPricing": "Zones & Pricing",
       "add": "Add",
@@ -2233,6 +2430,28 @@
       "concertHall": "Concert Hall",
       "concertDescription": "Mix of seated and standing",
       "seatMapPreview": "Seat Map Preview",
+      "templates": {
+        "theaterStyle": "Theater Style",
+        "theaterDescription": "Traditional theater seating",
+        "stadium": "Stadium",
+        "stadiumDescription": "Curved stadium layout",
+        "conference": "Conference",
+        "conferenceDescription": "Tables and chairs",
+        "concertHall": "Concert Hall",
+        "concertDescription": "Mix of seated and standing"
+      },
+      "zone": {
+        "createNewZone": "Create New Zone",
+        "editZone": "Edit Zone",
+        "zoneDescription": "Define the zone name, color, and pricing",
+        "zoneName": "Zone Name",
+        "zoneNamePlaceholder": "e.g., VIP Section",
+        "zoneColor": "Zone Color",
+        "pricePerSeat": "Price per Seat (VND)",
+        "cancel": "Cancel",
+        "createZone": "Create Zone",
+        "updateZone": "Update Zone"
+      },
       "howUsersWillSee": "This is how users will see your seat map",
       "copySeatMap": "Copy Seat Map from Another Event",
       "selectExistingMap": "Select an existing seat map to copy its layout",
@@ -2911,6 +3130,130 @@
       "contact": "Contact Us",
       "refund": "Refund Policy",
       "organizers": "For Organizers"
+    }
+  },
+  "chatbot": {
+    "title": "Tickify Assistant",
+    "placeholder": "Type your question...",
+    "online": "Online",
+    "poweredBy": "Powered by AI",
+    "clearHistory": "Clear chat history",
+    "close": "Close chat",
+    "send": "Send message",
+    "thinking": "Thinking...",
+    "retry": "Retry",
+    "enterToSend": "Press",
+    "toSend": "to send",
+    "shiftEnter": "Shift+Enter",
+    "toNewLine": "to new line",
+    "clear": "Clear",
+    "welcome": {
+      "title": "Welcome to {title}!",
+      "description": "I can help you search for events, book tickets, or answer questions. Let's start a conversation!"
+    },
+    "emptyState": {
+      "title": "Welcome to {title}!",
+      "description": "I can help you search for events, book tickets, or answer questions. Let's start a conversation!"
+    },
+    "error": {
+      "generic": "Sorry, an error occurred. Please try again.",
+      "network": "Connection error. Please check your internet connection."
+    },
+    "sources": {
+      "title": "Reference sources:"
+    }
+  },
+  "seatMapBuilder": {
+    "title": "Seat Map Builder",
+    "back": "Back",
+    "topBar": {
+      "undo": "Undo",
+      "redo": "Redo",
+      "zoomOut": "Zoom Out",
+      "zoomIn": "Zoom In",
+      "fitToScreen": "Fit to Screen",
+      "showGrid": "Show Grid",
+      "preview": "Preview",
+      "saveDraft": "Save Draft",
+      "publish": "Publish"
+    },
+    "eventInfo": {
+      "title": "Event Information",
+      "event": "Event",
+      "venue": "Venue",
+      "totalCapacity": "Total Capacity"
+    },
+    "drawingTools": {
+      "title": "Drawing Tools",
+      "standardSeat": "Standard Seat",
+      "wheelchairAccessible": "Wheelchair Accessible",
+      "eraser": "Eraser",
+      "gridSize": "Grid Size",
+      "rows": "Rows",
+      "cols": "Cols",
+      "autoNumber": "Auto-Number Seats",
+      "clearAll": "Clear All"
+    },
+    "zones": {
+      "title": "Zones & Pricing",
+      "add": "Add",
+      "autoSync": "Auto-Sync: Zones and ticket types are automatically synchronized.",
+      "newZonesInfo": "New zones will create matching ticket types automatically.",
+      "price": "Price",
+      "capacity": "Capacity",
+      "addZone": "Add Zone",
+      "editZone": "Edit Zone",
+      "zoneName": "Zone Name",
+      "zoneColor": "Zone Color",
+      "zonePrice": "Zone Price",
+      "cancel": "Cancel",
+      "save": "Save",
+      "delete": "Delete"
+    },
+    "templates": {
+      "title": "Templates",
+      "loadTemplate": "Load Template",
+      "copyFromEvent": "Copy from Event",
+      "theaterStyle": "Theater Style",
+      "theaterDescription": "Traditional theater seating with center aisle",
+      "conferenceHall": "Conference Hall",
+      "conferenceDescription": "Large conference room with table seating",
+      "arenaStyle": "Arena Style",
+      "arenaDescription": "Stadium seating in sections"
+    },
+    "stage": "STAGE",
+    "tips": {
+      "title": "Tips & Instructions",
+      "howToUse": "How to use:",
+      "selectZone": "Select a zone from the left sidebar",
+      "chooseTool": "Choose a drawing tool",
+      "clickDrag": "Click or drag on the grid to place seats",
+      "useEraser": "Use eraser to remove seats",
+      "autoNumberInfo": "Auto-number assigns seat labels",
+      "keyboardShortcuts": "Keyboard Shortcuts:",
+      "undo": "Ctrl+Z: Undo",
+      "redo": "Ctrl+Y: Redo",
+      "save": "Ctrl+S: Save",
+      "delete": "Delete: Remove selected",
+      "currentSelection": "Current Selection:",
+      "tool": "Tool",
+      "zone": "Zone"
+    },
+    "messages": {
+      "zoneDeleted": "Zone deleted",
+      "templateApplied": "Template applied successfully",
+      "seatsNumbered": "Seats numbered automatically",
+      "eventIdMissing": "Event ID is missing",
+      "addZoneFirst": "Please add at least one zone before saving",
+      "zonesMustHaveNames": "All zones must have names",
+      "zonePriceExceedsMax": "Zone prices cannot exceed {max} VND. Invalid zones: {zones}",
+      "seatMapUpdated": "Seat map updated successfully",
+      "seatMapSaved": "Seat map saved successfully",
+      "saveFailed": "Failed to save seat map",
+      "addSeatsFirst": "Please add seats before publishing",
+      "seatMapPublished": "Seat map published successfully!",
+      "failedToLoadSeatMaps": "Failed to load seat maps",
+      "cannotModifyAfterSales": "Cannot modify seat map after tickets have been sold. This would affect existing bookings and seat assignments."
     }
   }
 }

@@ -5,8 +5,12 @@ export type RefundStatus = "Pending" | "Approved" | "Rejected" | "Processed";
 
 export interface RefundRequest {
   id: number;
+  refundId?: number; // Backend returns RefundId
   bookingId: number;
+  bookingNumber?: string;
   userId: number;
+  userName?: string;
+  eventTitle?: string;
   reason: string;
   refundAmount: number;
   status: RefundStatus;
@@ -18,9 +22,18 @@ export interface RefundRequest {
 }
 
 /**
- * User tạo yêu cầu hoàn tiền
- * POST /api/refund/request
+ * Transform backend response to match frontend interface
  */
+function transformRefundResponse(data: any): RefundRequest {
+  return {
+    ...data,
+    id: data.refundId || data.id,
+    refundId: data.refundId,
+  };
+}
+
+// POST /api/refund/request
+
 export async function createRefundRequest(body: {
   bookingId: number;
   refundAmount: number;
@@ -30,51 +43,41 @@ export async function createRefundRequest(body: {
   return res.data;
 }
 
-/**
- * User xem danh sách yêu cầu hoàn tiền của mình
- * GET /api/refund/my-refunds
- */
+// GET /api/refund/my-refunds
+
 export async function getMyRefundRequests() {
-  const res = await apiClient.get<RefundRequest[]>("/refunds/my-refunds");
-  return res.data;
+  const res = await apiClient.get<any[]>("/refunds/my-refunds");
+  return res.data.map(transformRefundResponse);
 }
 
-/**
- * Staff/Admin xem toàn bộ refund (tuỳ backend bạn có endpoint)
- * GET /api/refund
- */
+// GET /api/refund
+ 
 export async function getAllRefundRequests() {
-  const res = await apiClient.get<RefundRequest[]>("/refunds");
-  return res.data;
+  const res = await apiClient.get<any[]>("/refunds");
+  return res.data.map(transformRefundResponse);
 }
 
-/**
- * Staff/Admin duyệt refund
- * POST /api/refund/{id}/approve
- */
+// POST /api/refund/{id}/approve
+
 export async function approveRefund(id: number, staffNotes?: string) {
-  const res = await apiClient.post<RefundRequest>(`/refunds/${id}/approve`, {
+  const res = await apiClient.post<any>(`/refunds/${id}/approve`, {
     staffNotes,
   });
-  return res.data;
+  return transformRefundResponse(res.data);
 }
 
-/**
- * Staff/Admin từ chối refund
- * POST /api/refund/{id}/reject
- */
+// POST /api/refund/{id}/reject
+ 
 export async function rejectRefund(id: number, reason: string) {
-  const res = await apiClient.post<RefundRequest>(`/refunds/${id}/reject`, {
+  const res = await apiClient.post<any>(`/refunds/${id}/reject`, {
     reason,
   });
-  return res.data;
+  return transformRefundResponse(res.data);
 }
 
-/**
- * Lấy chi tiết 1 refund
- * GET /api/refund/{id}
- */
+// GET /api/refund/{id}
+
 export async function getRefundById(id: number) {
-  const res = await apiClient.get<RefundRequest>(`/refunds/${id}`);
-  return res.data;
+  const res = await apiClient.get<any>(`/refunds/${id}`);
+  return transformRefundResponse(res.data);
 }

@@ -18,12 +18,16 @@
     "waitlist": "Danh sách chờ",
     "organizerDashboard": "Bảng điều khiển",
     "manageEvents": "Quản lý sự kiện",
-    "qrScanner": "Quét QR",
-    "scanHistory": "Lịch sử quét",
     "profileSettings": "Hồ sơ & Cài đặt",
     "signOut": "Đăng xuất",
     "chat": "Trò chuyện",
     "pendingApproval": "Đang chờ phê duyệt"
+  },
+  "waitlist": {
+    "joined": "Đã tham gia danh sách chờ",
+    "alreadyJoined": "Đã trong danh sách chờ",
+    "notification": "Chúng tôi sẽ thông báo khi có vé",
+    "error": "Không thể tham gia danh sách chờ"
   },
   "home": {
     "title": "Khám phá các sự kiện tuyệt vời",
@@ -39,6 +43,29 @@
       "all": "Tất cả sự kiện"
     },
     "noEvents": "Không tìm thấy sự kiện"
+  },
+  "search": {
+    "placeholder": "Bạn đang tìm kiếm gì hôm nay?",
+    "exploreByCategory": "Khám phá theo danh mục",
+    "exploreByCity": "Khám phá theo thành phố",
+    "suggestionsForYou": "Gợi ý cho bạn",
+    "searchResults": "Kết quả tìm kiếm",
+    "result": "kết quả",
+    "results": "kết quả",
+    "soldOut": "Hết vé",
+    "from": "Từ",
+    "noEventsFound": "Không tìm thấy sự kiện",
+    "tryDifferentKeywords": "Thử tìm kiếm với từ khóa khác hoặc khám phá theo danh mục",
+    "clearSearch": "Xóa tìm kiếm"
+  },
+  "categories": {
+    "Music": "Âm nhạc",
+    "Theater": "Sân khấu",
+    "Sports": "Thể thao",
+    "Conference": "Hội nghị",
+    "Arts": "Nghệ thuật",
+    "Food & Drink": "Ẩm thực",
+    "Other": "Khác"
   },
   "auth": {
     "login": "Đăng nhập",
@@ -125,6 +152,7 @@
     "goToLoginButton": "Đi đến trang đăng nhập",
     "resetPasswordError": "Đặt lại mật khẩu thất bại. Vui lòng thử lại.",
     "currentPassword": "Mật khẩu hiện tại",
+    "loginToJoinWaitlist": "Đăng nhập để tham gia danh sách chờ",
     "currentPasswordPlaceholder": "Nhập mật khẩu hiện tại",
     "newPasswordPlaceholder": "Nhập mật khẩu mới",
     "changePassword": "Đổi mật khẩu",
@@ -172,6 +200,7 @@
     "share": "Chia sẻ",
     "addToWishlist": "Thêm vào yêu thích",
     "addToWaitlist": "Tham gia danh sách chờ",
+    "allSeatsSold": "Tất cả vé cho sự kiện này đã được bán hết",
     "eventInfo": "Thông tin sự kiện",
     "ticketTypes": "Loại vé",
     "reviews": "Đánh giá",
@@ -391,6 +420,8 @@
       "generalAdmission": "Vé thường",
       "category": "Danh mục",
       "seatNumber": "Số ghế",
+      "refundNotAllowed": "Không cho phép hoàn tiền",
+      "refundNotAllowedMessage": "Sự kiện này không cho phép hoàn tiền vé. Vui lòng liên hệ hỗ trợ nếu bạn có bất kỳ câu hỏi nào.",
       "transfer": "Chuyển vé",
       "downloadPdf": "Tải PDF",
       "share": "Chia sẻ",
@@ -602,7 +633,9 @@
       "unknownEvent": "Sự kiện không xác định",
       "revenueByEvent": "Doanh thu theo sự kiện",
       "eventComparison": "So sánh hiệu suất sự kiện",
-      "percentageSold": "Phần trăm vé đã bán"
+      "percentageSold": "Phần trăm vé đã bán",
+      "reason": "Lý do",
+      "searchOrders": "Tìm kiếm đơn hàng, khách hàng..."
     }
   },
   "editEvent": {
@@ -916,7 +949,7 @@
     "feedbackHelpful": "Phản hồi của bạn đã được gửi và sẽ giúp người khác khám phá các sự kiện tuyệt vời."
   },
   "admin": {
-    "activate":"Kích hoạt",
+    "activate": "Kích hoạt",
     "allRoles": "Tất cả vai trò",
     "allEmails": "Tất cả",
     "unverified": "Chưa xác thực",
@@ -925,9 +958,31 @@
     "noUsersFound": "Không tìm thấy người dùng",
     "platformUsersDesc": "Quản lý người dùng và hoạt động của nền tảng",
     "emailVerified": "Xác thực email",
-    "userManagement": "Quản lý người dùng",    "users": "Người dùng", 
+    "userManagement": "Quản lý người dùng",
+    "users": "Người dùng",
     "payouts": "Thanh toán",
     "organizerRequests": "Yêu cầu trở thành nhà tổ chức",
+    "paymentsTab": "Thanh toán",
+    "payments": {
+      "title": "Quản lý thanh toán",
+      "subtitle": "Xem xét và phê duyệt yêu cầu thanh toán của nhà tổ chức",
+      "search": "Tìm kiếm mã đơn hàng, số tiền...",
+      "customer": "Khách hàng",
+      "event": "Sự kiện",
+      "tickets": "Vé",
+      "amount": "Số tiền",
+      "date": "Ngày",
+      "status": "Trạng thái",
+      "total": "Tổng",
+      "payments": "thanh toán",
+      "completed": "Hoàn thành",
+      "pending": "Đang chờ",
+      "failed": "Thất bại",
+      "cancelled": "Đã hủy",
+      "confirmed": "Đã xác nhận",
+      "noData": "Không có dữ liệu thanh toán",
+      "loadError": "Không thể tải dữ liệu thanh toán"
+    },
     "userId": "ID người dùng",
     "email": "Email",
     "fullName": "Họ và tên",
@@ -1192,7 +1247,11 @@
     "contactUs": "Liên hệ",
     "about": "Giới thiệu",
     "FAQ": "Câu hỏi thường gặp",
-    "support": "Hỗ trợ"
+    "support": "Hỗ trợ",
+    "soldOut": "Hết vé",
+    "left": "còn lại",
+    "generalAdmission": "Vé thường",
+    "bookNow": "Đặt ngay"
   },
   "footer": {
     "description": "Nền tảng đáng tin cậy của bạn để khám phá và đặt vé cho các sự kiện trên khắp Việt Nam.",
@@ -1469,7 +1528,10 @@
       "leftError": "Không thể rời danh sách chờ",
       "nextInLine": "Tiếp theo trong hàng!",
       "inWaitlist": "trong danh sách chờ",
-      "joined": "Đã tham gia",
+      "joined": "Đã tham gia danh sách chờ",
+      "alreadyJoined": "Đã trong danh sách chờ",
+      "notification": "Tham gia danh sách chờ để được thông báo khi có vé mới",
+      "error": "Không thể tham gia danh sách chờ",
       "tickets": "vé",
       "purchased": "Đã mua",
       "whatNext": "Điều gì sẽ xảy ra tiếp theo?",
@@ -1672,11 +1734,94 @@
       "processing": "Đang xử lý thanh toán...",
       "success": "Thanh toán thành công!",
       "failed": "Thanh toán thất bại",
+      "successTitle": "Thanh toán của bạn đã được xử lý thành công",
       "successMessage": "Thanh toán của bạn đã được xử lý thành công",
       "failedMessage": "Có vấn đề khi xử lý thanh toán của bạn",
       "returnToHome": "Về trang chủ",
       "tryAgain": "Thử lại",
-      "contactSupport": "Liên hệ hỗ trợ"
+      "contactSupport": "Liên hệ hỗ trợ",
+      "verifying": "Đang xác minh thanh toán...",
+      "pleaseWait": "Vui lòng chờ trong giây lát",
+      "retrying": "Đang thử lại (lần {{count}})...",
+      "retryAttempts": "Số lần thử lại",
+      "amount": "Số tiền",
+      "method": "Phương thức",
+      "transactionId": "Mã giao dịch",
+      "time": "Thời gian",
+      "status": "Trạng thái",
+      "completed": "Đã hoàn tất",
+      "viewTickets": "Xem vé của tôi",
+      "viewOrderDetails": "Xem chi tiết đơn hàng",
+      "paymentId": "Mã thanh toán",
+      "paymentIdNotFound": "Không tìm thấy mã thanh toán",
+      "invalidPaymentId": "Mã thanh toán không hợp lệ: {{paymentId}}",
+      "verificationFailed": "Xác minh thanh toán thất bại: {{error}}",
+      "verificationPending": "Đang chờ xác minh thanh toán",
+      "verificationError": "Lỗi xác minh thanh toán",
+      "freeBookingConfirmed": "Đặt chỗ miễn phí của bạn đã được xác nhận",
+      "cancelledMessage": "Thanh toán đã bị hủy",
+      "paymentFailed": "Thanh toán thất bại",
+      "vnpayFailed": "Thanh toán VNPay thất bại (Mã: {{code}})",
+      "momoFailedResult": "Thanh toán MoMo thất bại (Mã: {{code}})",
+      "momoFailedError": "Thanh toán MoMo gặp lỗi (Mã: {{code}})",
+      "message": "Thông báo"
+    },
+    "creditCard": {
+      "enterFullInfo": "Vui lòng nhập đầy đủ thông tin thẻ",
+      "invalidExpiryFormat": "Định dạng ngày hết hạn không hợp lệ. Sử dụng MM/YY",
+      "invalidExpiry": "Thẻ đã hết hạn hoặc ngày hết hạn không hợp lệ",
+      "verifying": "Đang xác minh thông tin thẻ..."
+    },
+    "methods": {
+      "momoWallet": "Ví điện tử MoMo",
+      "momoDescription": "Thanh toán ngay lập tức với ví MoMo",
+      "vnpay": "Cổng thanh toán VNPay",
+      "vnpayDescription": "Thẻ ngân hàng, mã QR, ví điện tử",
+      "creditCard": "Thẻ tín dụng/Ghi nợ",
+      "creditCardDescription": "Visa, Mastercard, v.v."
+    },
+    "selectMethod": "Chọn phương thức thanh toán",
+    "popular": "Phổ biến",
+    "momo": {
+      "howToPay": "Cách thanh toán với MoMo:",
+      "step1": "Nhấp 'Hoàn tất thanh toán' bên dưới",
+      "step2": "Bạn sẽ được chuyển đến ứng dụng/trang web MoMo",
+      "step3": "Xác nhận thanh toán trong ứng dụng MoMo của bạn",
+      "step4": "Bạn sẽ được chuyển lại sau khi thanh toán",
+      "phoneNumber": "Số điện thoại MoMo",
+      "phoneNote": "Nhập số điện thoại liên kết với tài khoản MoMo của bạn",
+      "validPhone": "Số điện thoại hợp lệ"
+    },
+    "vnpay": {
+      "howToPay": "Cách thanh toán với VNPay:",
+      "step1": "Nhấp 'Hoàn tất thanh toán' bên dưới",
+      "step2": "Bạn sẽ được chuyển đến cổng thanh toán VNPay",
+      "step3": "Chọn phương thức thanh toán (Thẻ ngân hàng/Ví điện tử/QR)",
+      "step4": "Hoàn tất thanh toán và bạn sẽ được chuyển lại",
+      "supportedBanks": "Ngân hàng được hỗ trợ:",
+      "banksNote": "Hỗ trợ hầu hết các ngân hàng và ví điện tử tại Việt Nam",
+      "banks": {
+        "vietcombank": "Vietcombank",
+        "techcombank": "Techcombank",
+        "vietinbank": "VietinBank",
+        "bidv": "BIDV",
+        "acb": "ACB",
+        "mbbank": "MB Bank",
+        "vpbank": "VPBank",
+        "tpbank": "TPBank",
+        "agribank": "Agribank"
+      }
+    },
+    "creditCard": {
+      "securePayment": "Thanh toán an toàn",
+      "instructions": "Tất cả giao dịch được mã hóa và xử lý an toàn thông qua các đối tác thanh toán đáng tin cậy. Chúng tôi không bao giờ lưu trữ toàn bộ thông tin thanh toán của bạn.",
+      "cardNumber": "Số thẻ",
+      "cardholderName": "Tên chủ thẻ",
+      "expiryDate": "Ngày hết hạn",
+      "cvv": "CVV",
+      "validCardNumber": "Số thẻ hợp lệ",
+      "validCardholderName": "Tên chủ thẻ hợp lệ",
+      "valid": "Hợp lệ"
     }
   },
   "transfer": {
@@ -1804,6 +1949,12 @@
       "exportData": "Xuất dữ liệu"
     }
   },
+  "image": {
+    "validation": {
+      "invalidType": "Loại file không hợp lệ. Chỉ chấp nhận ảnh JPG, PNG, GIF hoặc WebP.",
+      "sizeTooLarge": "Kích thước file quá lớn. Tối đa 5MB. File của bạn: {{size}}MB"
+    }
+  },
   "wizard": {
     "organizer": {
       "title": "Tạo sự kiện của bạn",
@@ -1901,6 +2052,7 @@
       "publish": "Xuất bản sự kiện",
       "saveDraft": "Lưu nháp",
       "backHome": "Về trang chủ",
+      "imageUploadError": "Lỗi tải ảnh lên",
       "validation": {
         "missingFields": "Thiếu thông tin bắt buộc",
         "missingFieldsDesc": "Vui lòng điền đầy đủ các trường bắt buộc",
@@ -2171,6 +2323,37 @@
       "deletedSuccessfully": "Xóa mã khuyến mãi thành công",
       "activatedSuccessfully": "Kích hoạt mã khuyến mãi thành công",
       "deactivatedSuccessfully": "Vô hiệu hóa mã khuyến mãi thành công"
+    },
+    "seat": {
+      "builder": {
+        "title": "Trình xây dựng sơ đồ ghế",
+        "subtitle": "Thiết kế bố cục chỗ ngồi của địa điểm",
+        "seatMapName": "Sơ đồ ghế cho {eventTitle}",
+        "rows": "Hàng",
+        "seatsPerRow": "Ghế mỗi hàng",
+        "templates": {
+          "theaterStyle": "Kiểu nhà hát",
+          "theaterDescription": "Chỗ ngồi nhà hát truyền thống",
+          "stadium": "Sân vận động",
+          "stadiumDescription": "Bố cục sân vận động cong",
+          "conference": "Hội nghị",
+          "conferenceDescription": "Bàn ghế",
+          "concertHall": "Phòng hòa nhạc",
+          "concertDescription": "Kết hợp ngồi và đứng"
+        },
+        "zone": {
+          "createNewZone": "Tạo khu vực mới",
+          "editZone": "Chỉnh sửa khu vực",
+          "zoneDescription": "Xác định tên khu vực, màu sắc và giá",
+          "zoneName": "Tên khu vực",
+          "zoneNamePlaceholder": "vd: Khu vực VIP",
+          "zoneColor": "Màu khu vực",
+          "pricePerSeat": "Giá mỗi ghế (VNĐ)",
+          "cancel": "Hủy",
+          "createZone": "Tạo khu vực",
+          "updateZone": "Cập nhật khu vực"
+        }
+      }
     }
   },
   "seat": {
@@ -2216,6 +2399,7 @@
         "connectionRestored": "Đã khôi phục kết nối! Tình trạng ghế đã được làm mới.",
         "connectionLost": "Mất kết nối. Đang thử kết nối lại...",
         "soldOut": "Sự kiện này đã hết vé! Đang chuyển về chi tiết sự kiện...",
+        "soldOutRedirect": "😔 Rất tiếc, sự kiện này đã hết vé! Bạn có thể tham gia danh sách chờ để được thông báo khi có vé trống. Đang chuyển về trang chi tiết...",
         "reservationExtended": "✅ Đã gia hạn đặt chỗ thêm 5 phút!",
         "failedToExtend": "Không thể gia hạn đặt chỗ. Vui lòng thử lại.",
         "failedToRelease": "Không thể giải phóng ghế. Vui lòng thử lại.",
@@ -2249,6 +2433,7 @@
       "rows": "Số hàng",
       "cols": "Số cột",
       "autoNumberSeats": "Tự động đánh số ghế",
+      "seatMapName": "Sơ đồ ghế cho {eventTitle}",
       "clearAll": "Xóa tất cả",
       "zonesAndPricing": "Khu vực & Giá",
       "add": "Thêm",
@@ -2305,6 +2490,28 @@
       "concertHall": "Phòng hòa nhạc",
       "concertDescription": "Kết hợp ngồi và đứng",
       "seatMapPreview": "Xem trước sơ đồ ghế",
+      "templates": {
+        "theaterStyle": "Kiểu nhà hát",
+        "theaterDescription": "Chỗ ngồi nhà hát truyền thống",
+        "stadium": "Sân vận động",
+        "stadiumDescription": "Bố cục sân vận động cong",
+        "conference": "Hội nghị",
+        "conferenceDescription": "Bàn ghế",
+        "concertHall": "Phòng hòa nhạc",
+        "concertDescription": "Kết hợp ngồi và đứng"
+      },
+      "zone": {
+        "createNewZone": "Tạo khu vực mới",
+        "editZone": "Chỉnh sửa khu vực",
+        "zoneDescription": "Xác định tên khu vực, màu sắc và giá",
+        "zoneName": "Tên khu vực",
+        "zoneNamePlaceholder": "vd: Khu vực VIP",
+        "zoneColor": "Màu khu vực",
+        "pricePerSeat": "Giá mỗi ghế (VNĐ)",
+        "cancel": "Hủy",
+        "createZone": "Tạo khu vực",
+        "updateZone": "Cập nhật khu vực"
+      },
       "howUsersWillSee": "Đây là cách người dùng sẽ thấy sơ đồ ghế của bạn",
       "copySeatMap": "Sao chép sơ đồ ghế từ sự kiện khác",
       "selectExistingMap": "Chọn sơ đồ ghế hiện có để sao chép bố cục",
@@ -2983,6 +3190,130 @@
       "contact": "Liên hệ",
       "refund": "Chính sách hoàn tiền",
       "organizers": "Dành cho nhà tổ chức"
+    }
+  },
+  "chatbot": {
+    "title": "Tickify Assistant",
+    "placeholder": "Nhập câu hỏi của bạn...",
+    "online": "Trực tuyến",
+    "poweredBy": "Được hỗ trợ bởi AI",
+    "clearHistory": "Xóa lịch sử chat",
+    "close": "Đóng chat",
+    "send": "Gửi tin nhắn",
+    "thinking": "Đang suy nghĩ...",
+    "retry": "Thử lại",
+    "enterToSend": "Nhấn",
+    "toSend": "để gửi",
+    "shiftEnter": "Shift+Enter",
+    "toNewLine": "để xuống dòng",
+    "clear": "Xóa",
+    "welcome": {
+      "title": "Chào mừng đến với {title}!",
+      "description": "Tôi có thể giúp bạn tìm kiếm sự kiện, đặt vé, hoặc giải đáp các thắc mắc. Hãy bắt đầu cuộc trò chuyện!"
+    },
+    "emptyState": {
+      "title": "Chào mừng đến với {title}!",
+      "description": "Tôi có thể giúp bạn tìm kiếm sự kiện, đặt vé, hoặc giải đáp các thắc mắc. Hãy bắt đầu cuộc trò chuyện!"
+    },
+    "error": {
+      "generic": "Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.",
+      "network": "Lỗi kết nối. Vui lòng kiểm tra kết nối internet của bạn."
+    },
+    "sources": {
+      "title": "Nguồn tham khảo:"
+    }
+  },
+  "seatMapBuilder": {
+    "title": "Công cụ tạo sơ đồ chỗ ngồi",
+    "back": "Quay lại",
+    "topBar": {
+      "undo": "Hoàn tác",
+      "redo": "Làm lại",
+      "zoomOut": "Thu nhỏ",
+      "zoomIn": "Phóng to",
+      "fitToScreen": "Vừa màn hình",
+      "showGrid": "Hiện lưới",
+      "preview": "Xem trước",
+      "saveDraft": "Lưu bản nháp",
+      "publish": "Xuất bản"
+    },
+    "eventInfo": {
+      "title": "Thông tin sự kiện",
+      "event": "Sự kiện",
+      "venue": "Địa điểm",
+      "totalCapacity": "Tổng sức chứa"
+    },
+    "drawingTools": {
+      "title": "Công cụ vẽ",
+      "standardSeat": "Ghế thường",
+      "wheelchairAccessible": "Ghế xe lăn",
+      "eraser": "Tẩy",
+      "gridSize": "Kích thước lưới",
+      "rows": "Hàng",
+      "cols": "Cột",
+      "autoNumber": "Đánh số tự động",
+      "clearAll": "Xóa tất cả"
+    },
+    "zones": {
+      "title": "Khu vực & Giá vé",
+      "add": "Thêm",
+      "autoSync": "Tự động đồng bộ: Các khu vực và loại vé được đồng bộ tự động.",
+      "newZonesInfo": "Khu vực mới sẽ tạo loại vé tương ứng tự động.",
+      "price": "Giá",
+      "capacity": "Sức chứa",
+      "addZone": "Thêm khu vực",
+      "editZone": "Chỉnh sửa khu vực",
+      "zoneName": "Tên khu vực",
+      "zoneColor": "Màu khu vực",
+      "zonePrice": "Giá khu vực",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "delete": "Xóa"
+    },
+    "templates": {
+      "title": "Mẫu có sẵn",
+      "loadTemplate": "Tải mẫu",
+      "copyFromEvent": "Sao chép từ sự kiện",
+      "theaterStyle": "Kiểu rạp hát",
+      "theaterDescription": "Chỗ ngồi rạp hát truyền thống với lối đi giữa",
+      "conferenceHall": "Hội trường",
+      "conferenceDescription": "Phòng hội nghị lớn với chỗ ngồi có bàn",
+      "arenaStyle": "Kiểu sân vận động",
+      "arenaDescription": "Chỗ ngồi sân vận động theo từng khu"
+    },
+    "stage": "SÂN KHẤU",
+    "tips": {
+      "title": "Mẹo & Hướng dẫn",
+      "howToUse": "Cách sử dụng:",
+      "selectZone": "Chọn một khu vực từ thanh bên trái",
+      "chooseTool": "Chọn một công cụ vẽ",
+      "clickDrag": "Nhấp hoặc kéo trên lưới để đặt ghế",
+      "useEraser": "Sử dụng tẩy để xóa ghế",
+      "autoNumberInfo": "Đánh số tự động gán nhãn cho ghế",
+      "keyboardShortcuts": "Phím tắt:",
+      "undo": "Ctrl+Z: Hoàn tác",
+      "redo": "Ctrl+Y: Làm lại",
+      "save": "Ctrl+S: Lưu",
+      "delete": "Delete: Xóa đã chọn",
+      "currentSelection": "Lựa chọn hiện tại:",
+      "tool": "Công cụ",
+      "zone": "Khu vực"
+    },
+    "messages": {
+      "zoneDeleted": "Đã xóa khu vực",
+      "templateApplied": "Áp dụng mẫu thành công",
+      "seatsNumbered": "Đã đánh số ghế tự động",
+      "eventIdMissing": "Thiếu ID sự kiện",
+      "addZoneFirst": "Vui lòng thêm ít nhất một khu vực trước khi lưu",
+      "zonesMustHaveNames": "Tất cả các khu vực phải có tên",
+      "zonePriceExceedsMax": "Giá khu vực không được vượt quá {max} VND. Khu vực không hợp lệ: {zones}",
+      "seatMapUpdated": "Cập nhật sơ đồ chỗ ngồi thành công",
+      "seatMapSaved": "Lưu sơ đồ chỗ ngồi thành công",
+      "saveFailed": "Không thể lưu sơ đồ chỗ ngồi",
+      "addSeatsFirst": "Vui lòng thêm ghế trước khi xuất bản",
+      "seatMapPublished": "Xuất bản sơ đồ chỗ ngồi thành công!",
+      "failedToLoadSeatMaps": "Không thể tải sơ đồ chỗ ngồi",
+      "cannotModifyAfterSales": "Không thể sửa đổi sơ đồ chỗ ngồi sau khi đã bán vé. Điều này sẽ ả nh hưởng đến các đặt chỗ và phân bổ chỗ ngồi hiện tại."
     }
   }
 }

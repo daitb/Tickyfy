@@ -46,10 +46,7 @@ export const routePermissions: RoutePermission[] = [
   { path: "/edit-event", allowedRoles: ["organizer", "admin"], redirectTo: "/login" },
   { path: "/promo-codes", allowedRoles: ["organizer", "admin"], redirectTo: "/login" },
   { path: "/seat-map-builder", allowedRoles: ["organizer", "admin"], redirectTo: "/login" },
-
-  // Staff routes (for event staff/scanners)
-  { path: "/qr-scanner", allowedRoles: ["staff", "organizer", "admin"], redirectTo: "/login" },
-  { path: "/scan-history", allowedRoles: ["staff", "organizer", "admin"], redirectTo: "/login" },
+  { path: "/create-event", allowedRoles: ["organizer", "admin"], redirectTo: "/login" },
 
   // Admin-only routes
   { path: "/admin-dashboard", allowedRoles: ["admin"], redirectTo: "/login" },

@@ -70,8 +70,8 @@ apiClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Only log errors, not all requests
-    if (error.response?.status && error.response.status >= 400) {
+    // Only log server errors (500+), not validation errors (400-499)
+    if (error.response?.status && error.response.status >= 500) {
       console.error(
         `API Error [${error.response.status}]:`,
         error.config?.url,

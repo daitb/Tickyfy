@@ -566,6 +566,19 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
             <CardTitle>{t("eventAnalytics.salesOverTime")}</CardTitle>
           </CardHeader>
           <CardContent>
+            {salesOverTimeData.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-80 text-center">
+                <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
+                  <TrendingUp className="text-neutral-400" size={32} />
+                </div>
+                <h3 className="text-lg font-medium text-neutral-900 mb-2">
+                  {t("eventAnalytics.noSalesData")}
+                </h3>
+                <p className="text-sm text-neutral-500 max-w-md">
+                  {t("eventAnalytics.noSalesDataDescription")}
+                </p>
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height={320}>
               <AreaChart
                 data={salesOverTimeData}
@@ -621,6 +634,7 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
                 />
               </AreaChart>
             </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -640,6 +654,19 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
               </div>
             </CardHeader>
             <CardContent>
+              {salesOverTimeData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-72 text-center">
+                  <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
+                    <Ticket className="text-neutral-400" size={32} />
+                  </div>
+                  <h3 className="text-lg font-medium text-neutral-900 mb-2">
+                    {t("eventAnalytics.noTicketSalesData")}
+                  </h3>
+                  <p className="text-sm text-neutral-500 max-w-md">
+                    {t("eventAnalytics.noTicketSalesDataDescription")}
+                  </p>
+                </div>
+              ) : (
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart
                   data={salesOverTimeData}
@@ -669,6 +696,7 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
                   <Bar dataKey="tickets" fill="#22c55e" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
@@ -783,6 +811,19 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
               </div>
             </CardHeader>
             <CardContent>
+              {topBuyers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-3">
+                    <DollarSign className="text-neutral-400" size={24} />
+                  </div>
+                  <h3 className="text-base font-medium text-neutral-900 mb-1">
+                    {t("eventAnalytics.noTopBuyers")}
+                  </h3>
+                  <p className="text-sm text-neutral-500">
+                    {t("eventAnalytics.noTopBuyersDescription")}
+                  </p>
+                </div>
+              ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -816,6 +857,7 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
                   ))}
                 </TableBody>
               </Table>
+              )}
             </CardContent>
           </Card>
 
@@ -830,6 +872,19 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
               </div>
             </CardHeader>
             <CardContent>
+              {recentTransactions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-3">
+                    <Ticket className="text-neutral-400" size={24} />
+                  </div>
+                  <h3 className="text-base font-medium text-neutral-900 mb-1">
+                    {t("eventAnalytics.noTransactions")}
+                  </h3>
+                  <p className="text-sm text-neutral-500">
+                    {t("eventAnalytics.noTransactionsDescription")}
+                  </p>
+                </div>
+              ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -859,6 +914,7 @@ export function EventAnalytics({ eventId, onNavigate }: EventAnalyticsProps) {
                   ))}
                 </TableBody>
               </Table>
+              )}
             </CardContent>
           </Card>
         </div>

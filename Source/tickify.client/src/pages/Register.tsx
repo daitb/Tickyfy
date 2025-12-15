@@ -209,7 +209,7 @@ export function Register({ onNavigate }: RegisterProps) {
 
       // Redirect based on role
       const userRole = loginResponse.roles[0];
-      if (userRole === "User") {
+      if (userRole === "Customer") {
         onNavigate("home");
       } else if (userRole === "Organizer") {
         onNavigate("organizer-dashboard");

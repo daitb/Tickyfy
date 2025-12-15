@@ -8,10 +8,10 @@ import {
   LayoutDashboard,
   Calendar,
   LogOut,
-  QrCode,
-  History,
   UserCog,
   MessageCircle,
+  DollarSign,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { InlineSearchBar } from "./InlineSearchBar";
@@ -31,6 +31,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { useWishlistToggle } from "../hooks/useWishlistToggle";
+import { useWaitlistToggle } from "../hooks/useWaitlistToggle";
 import { useEffect, useState } from "react";
 
 interface HeaderProps {
@@ -50,8 +51,9 @@ export function Header({
 }: HeaderProps) {
   const { t } = useTranslation();
   const { wishlistCount } = useWishlistToggle();
+  const { waitlistCount, notifiedCount } = useWaitlistToggle();
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
-  
+
   // Check if user has pending organizer request
   useEffect(() => {
     const checkPendingRequest = async () => {
@@ -70,18 +72,28 @@ export function Header({
 
     checkPendingRequest();
   }, [isAuthenticated, userRole]);
-  
+
   const handleEventClick = (eventId: string) => {
     onNavigate("event-detail", eventId);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleCategoryClick = (_category: Category) => {
+  const handleCategoryClick = (category: Category) => {
+    // Navigate to listing with category filter
+    window.history.pushState(
+      {},
+      "",
+      `/listing?category=${encodeURIComponent(category)}`
+    );
     onNavigate("listing");
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleCityClick = (_city: string) => {
+  const handleCityClick = (city: string) => {
+    // Navigate to listing with city filter
+    window.history.pushState(
+      {},
+      "",
+      `/listing?city=${encodeURIComponent(city)}`
+    );
     onNavigate("listing");
   };
 
@@ -141,19 +153,20 @@ export function Header({
                 <span className="hidden sm:inline">{t("header.chat")}</span>
               </Button>
             )}
-            
-            {/* Create Event Button - Only for Organizers */}
-            {isAuthenticated && userRole === "organizer" && (
-              <Button
-                onClick={() => onNavigate("create-event")}
-                variant="secondary"
-                size="sm"
-                className="bg-white text-teal-600 hover:bg-neutral-100 gap-2 hidden lg:flex"
-              >
-                <Plus size={18} />
-                {t("header.createEvent")}
-              </Button>
-            )}
+
+            {/* Create Event Button - For Organizers and Admins */}
+            {isAuthenticated &&
+              (userRole === "organizer" || userRole === "admin") && (
+                <Button
+                  onClick={() => onNavigate("create-event")}
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white text-teal-600 hover:bg-neutral-100 gap-2 hidden lg:flex"
+                >
+                  <Plus size={18} />
+                  {t("header.createEvent")}
+                </Button>
+              )}
 
             {/* My Tickets */}
             {/* <Button
@@ -186,11 +199,13 @@ export function Header({
                       </AvatarFallback>
                     </Avatar>
                     <span className="hidden sm:inline">
-                      {authService.getCurrentUser()?.fullName || t("header.account")}
+                      {authService.getCurrentUser()?.fullName ||
+                        t("header.account")}
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-56">
+                  {/* User Menu Items */}
                   <DropdownMenuItem onClick={() => onNavigate("my-tickets")}>
                     <Ticket size={16} className="mr-2" />
                     {t("header.myTickets")}
@@ -199,7 +214,10 @@ export function Header({
                     <Heart size={16} className="mr-2" />
                     {t("header.wishlist")}
                     {wishlistCount > 0 && (
-                      <Badge variant="secondary" className="ml-auto h-5 min-w-[20px] flex items-center justify-center px-1.5">
+                      <Badge
+                        variant="secondary"
+                        className="ml-auto h-5 min-w-[20px] flex items-center justify-center px-1.5"
+                      >
                         {wishlistCount}
                       </Badge>
                     )}
@@ -207,7 +225,31 @@ export function Header({
                   <DropdownMenuItem onClick={() => onNavigate("waitlist")}>
                     <Clock size={16} className="mr-2" />
                     {t("header.waitlist")}
+                    {waitlistCount > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className={`ml-auto h-5 min-w-[20px] flex items-center justify-center px-1.5 ${
+                          notifiedCount > 0
+                            ? "bg-green-100 text-green-700 border-green-200"
+                            : "bg-amber-100 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        {notifiedCount > 0
+                          ? `${notifiedCount}!`
+                          : waitlistCount}
+                      </Badge>
+                    )}
                   </DropdownMenuItem>
+
+                  {/* Refund Menu - For All Users */}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onNavigate("refund-history")}
+                  >
+                    <RefreshCw size={16} className="mr-2 text-purple-600" />
+                    <span>{t("header.refundHistory", "My Refunds")}</span>
+                  </DropdownMenuItem>
+
                   <DropdownMenuSeparator />
                   {(userRole === "organizer" || userRole === "admin") && (
                     <>
@@ -231,25 +273,6 @@ export function Header({
                       </DropdownMenuItem>
                     </>
                   )}
-                  {(userRole === "staff" ||
-                    userRole === "organizer" ||
-                    userRole === "admin") && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => onNavigate("qr-scanner")}
-                      >
-                        <QrCode size={16} className="mr-2" />
-                        {t("header.qrScanner")}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onNavigate("scan-history")}
-                      >
-                        <History size={16} className="mr-2" />
-                        {t("header.scanHistory")}
-                      </DropdownMenuItem>
-                    </>
-                  )}
                   {userRole === "admin" && (
                     <>
                       <DropdownMenuSeparator />
@@ -258,6 +281,27 @@ export function Header({
                       >
                         <Shield size={16} className="mr-2" />
                         {t("header.adminPanel")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("manage-refunds")}
+                      >
+                        <DollarSign size={16} className="mr-2 text-green-600" />
+                        <span>
+                          {t("header.manageRefunds", "Manage Refunds")}
+                        </span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {userRole === "staff" && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => onNavigate("manage-refunds")}
+                      >
+                        <DollarSign size={16} className="mr-2 text-green-600" />
+                        <span>
+                          {t("header.manageRefunds", "Manage Refunds")}
+                        </span>
                       </DropdownMenuItem>
                     </>
                   )}
@@ -277,7 +321,8 @@ export function Header({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem disabled className="text-neutral-500">
                         <Plus size={16} className="mr-2" />
-                        {t("header.becomeOrganizer")} - {t("header.pendingApproval")}
+                        {t("header.becomeOrganizer")} -{" "}
+                        {t("header.pendingApproval")}
                       </DropdownMenuItem>
                     </>
                   )}

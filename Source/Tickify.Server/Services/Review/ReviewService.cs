@@ -35,34 +35,6 @@ public sealed class ReviewService : IReviewService
     {
         var uid = GetUserId(user);
         
-        // TODO: For production, uncomment these validations
-        // Validate that user attended the event (has scanned tickets)
-        // var userTickets = await _tickets.GetByUserIdAsync(uid);
-        // var eventTickets = userTickets.Where(t => t.Booking?.EventId == dto.EventId).ToList();
-        
-        // if (!eventTickets.Any())
-        // {
-        //     throw new InvalidOperationException("You must have tickets for this event to review it.");
-        // }
-
-        // Check if any ticket was scanned (user attended)
-        // var hasAttended = false;
-        // foreach (var ticket in eventTickets)
-        // {
-        //     var scans = await _ticketScans.GetByTicketIdAsync(ticket.Id);
-        //     if (scans.Any(s => s.IsValid))
-        //     {
-        //         hasAttended = true;
-        //         break;
-        //     }
-        // }
-
-        // if (!hasAttended)
-        // {
-        //     throw new InvalidOperationException("You must have attended the event (ticket scanned) to submit a review.");
-        // }
-
-        // Check if user already reviewed this event
         var existingReview = (await _reviews.GetByUserIdAsync(uid))
             .FirstOrDefault(r => r.EventId == dto.EventId);
         if (existingReview != null)
@@ -79,9 +51,6 @@ public sealed class ReviewService : IReviewService
         };
         
         var review = await _reviews.CreateAsync(entity);
-        
-        // Recalculate event average rating (Event doesn't have AverageRating field, it's calculated on the fly)
-        // This is handled in EventService when fetching event details
         
         return review;
     }
@@ -106,21 +75,12 @@ public sealed class ReviewService : IReviewService
         
         var updated = await _reviews.UpdateAsync(mine);
         
-        // Recalculate event average rating
-        // This is handled in EventService when fetching event details
-        
         return updated;
     }
 
     public async Task<bool> DeleteMineAsync(int id, ClaimsPrincipal user)
     {
         var deleted = await _reviews.DeleteAsync(id, GetUserId(user), isAdmin: false);
-        
-        if (deleted)
-        {
-            // Recalculate event average rating
-            // This is handled in EventService when fetching event details
-        }
         
         return deleted;
     }

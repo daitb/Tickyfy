@@ -18,12 +18,16 @@ public class TicketDetailDto
     public decimal Price { get; set; }
     
     public int? SeatId { get; set; }
+    public string? Row { get; set; }
     public string? SeatNumber { get; set; }
     
     public string Status { get; set; } = string.Empty;
     public string? QrCode { get; set; }
     public bool IsUsed { get; set; }
     public DateTime? UsedAt { get; set; }
+    
+    public bool AllowTransfer { get; set; }
+    public bool AllowRefund { get; set; }
     
     public DateTime CreatedAt { get; set; }
 }

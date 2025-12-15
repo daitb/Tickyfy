@@ -30,20 +30,17 @@ import { authService } from "../services/authService";
 
 interface TicketDetailProps {
   ticketId?: string;
-  orders?: any[]; // Deprecated - không dùng nữa, fetch từ API
   onNavigate: (page: string, id?: string) => void;
 }
 
-export function TicketDetail({
-  ticketId,
-  orders,
-  onNavigate,
-}: TicketDetailProps) {
+export function TicketDetail({ ticketId, onNavigate }: TicketDetailProps) {
   const { t, i18n } = useTranslation();
   const [currentTicket, setCurrentTicket] = useState<TicketDto | null>(null);
   const [currentEvent, setCurrentEvent] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   // Fetch ticket và event data từ API
   useEffect(() => {
@@ -69,12 +66,10 @@ export function TicketDetail({
             );
             setCurrentEvent(event);
           } catch (err) {
-            console.error("Error fetching event:", err);
             // Event fetch fail không block ticket display
           }
         }
       } catch (err: any) {
-        console.error("Error fetching ticket:", err);
         setError(
           err.response?.data?.message ||
             err.message ||
@@ -150,6 +145,83 @@ export function TicketDetail({
     }).format(Math.round(price));
   };
 
+  const handleDownloadTicket = async () => {
+    if (!currentTicket) return;
+
+    try {
+      setIsDownloading(true);
+      const blob = await ticketService.downloadTicket(
+        currentTicket.ticketId.toString()
+      );
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+
+      // Check if it's HTML or PDF based on blob type
+      const fileExtension = blob.type.includes("html") ? "html" : "pdf";
+      link.download = `ticket-${currentTicket.ticketNumber}.${fileExtension}`;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      // If HTML, also open in new tab for immediate viewing
+      if (fileExtension === "html") {
+        const newWindow = window.open();
+        if (newWindow) {
+          const htmlContent = await blob.text();
+          newWindow.document.write(htmlContent);
+          newWindow.document.close();
+        }
+      }
+    } catch (err: any) {
+      alert(
+        err.response?.data?.message || err.message || "Không thể tải xuống vé"
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleShareTicket = async () => {
+    if (!currentTicket) return;
+
+    try {
+      setIsSharing(true);
+      const shareData = {
+        title: currentTicket.eventTitle || "My Ticket",
+        text: `${t("booking.ticketDetail.checkOutMyTicket")} ${
+          currentTicket.eventTitle
+        }!`,
+        url: window.location.href,
+      };
+
+      // Check if Web Share API is supported
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: Copy link to clipboard
+        await navigator.clipboard.writeText(window.location.href);
+        alert(
+          t("booking.ticketDetail.linkCopied") || "Link copied to clipboard!"
+        );
+      }
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        console.error("Share error:", err);
+      }
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handlePrintTicket = () => {
+    window.print();
+  };
+
   // Lấy tên người dùng hiện tại
   const user = authService.getCurrentUser();
   const name = user?.fullName || user?.email || "Guest";
@@ -179,7 +251,7 @@ export function TicketDetail({
         </div>
 
         {/* Ticket Visual Card */}
-        <Card className="mb-8 overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-600 border-0">
+        <Card className="mb-8 overflow-hidden bg-teal-600 border-0">
           <CardContent className="p-8 md:p-12 text-white relative">
             {/* Decorative pattern */}
             <div className="absolute top-0 right-0 w-64 h-64 opacity-10">
@@ -413,29 +485,59 @@ export function TicketDetail({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Button
             className="w-full bg-teal-500 hover:bg-teal-600"
+            disabled={!currentTicket?.allowTransfer}
             onClick={() =>
               onNavigate("transfer-ticket", currentTicket?.ticketId?.toString())
+            }
+            title={
+              !currentTicket?.allowTransfer
+                ? t("booking.ticketDetail.transferNotAllowed") ||
+                  "Transfer not allowed for this event"
+                : ""
             }
           >
             <Send size={16} className="mr-2" />
             {t("booking.ticketDetail.transfer")}
           </Button>
-          <Button className="w-full">
-            <Download size={16} className="mr-2" />
-            {t("booking.ticketDetail.downloadPdf")}
+          <Button
+            className="w-full"
+            onClick={handleDownloadTicket}
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <Loader2 size={16} className="mr-2 animate-spin" />
+            ) : (
+              <Download size={16} className="mr-2" />
+            )}
+            {isDownloading
+              ? t("common.downloading") || "Downloading..."
+              : t("booking.ticketDetail.downloadPdf")}
           </Button>
-          <Button variant="outline" className="w-full">
-            <Share2 size={16} className="mr-2" />
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleShareTicket}
+            disabled={isSharing}
+          >
+            {isSharing ? (
+              <Loader2 size={16} className="mr-2 animate-spin" />
+            ) : (
+              <Share2 size={16} className="mr-2" />
+            )}
             {t("booking.ticketDetail.share")}
           </Button>
-          <Button variant="outline" className="w-full">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handlePrintTicket}
+          >
             <Printer size={16} className="mr-2" />
             {t("booking.ticketDetail.print")}
           </Button>
         </div>
 
         {/* Refund Section */}
-        {currentTicket && (
+        {currentTicket && currentTicket.allowRefund ? (
           <TicketRefundForm
             ticketId={currentTicket.ticketId.toString()}
             orderId={
@@ -450,7 +552,25 @@ export function TicketDetail({
               onNavigate("my-tickets");
             }}
           />
-        )}
+        ) : currentTicket && !currentTicket.allowRefund ? (
+          <Card className="mb-8 border-neutral-200">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-neutral-900 mb-1">
+                    {t("booking.ticketDetail.refundNotAllowed") ||
+                      "Refund Not Available"}
+                  </h3>
+                  <p className="text-neutral-600 text-sm">
+                    {t("booking.ticketDetail.refundNotAllowedMessage") ||
+                      "This event does not allow ticket refunds. Please contact support if you have any questions."}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {/* Accordions */}
         <Accordion type="single" collapsible className="space-y-4">

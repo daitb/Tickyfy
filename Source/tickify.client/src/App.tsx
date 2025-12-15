@@ -26,6 +26,12 @@ const EventReviews = lazy(() =>
 const RefundRequest = lazy(() =>
   import("./pages/RefundRequest").then((m) => ({ default: m.RefundRequest }))
 );
+const RefundHistory = lazy(() =>
+  import("./pages/RefundHistory").then((m) => ({ default: m.RefundHistory }))
+);
+const ManageRefunds = lazy(() =>
+  import("./pages/ManageRefunds").then((m) => ({ default: m.default }))
+);
 const NotificationPreferences = lazy(() =>
   import("./pages/NotificationPreferences").then((m) => ({
     default: m.NotificationPreferences,
@@ -95,9 +101,7 @@ const EventAnalytics = lazy(() =>
 const EditEvent = lazy(() =>
   import("./pages/EditEvent").then((m) => ({ default: m.EditEvent }))
 );
-const ScanHistory = lazy(() =>
-  import("./pages/ScanHistory").then((m) => ({ default: m.ScanHistory }))
-);
+
 const PromoCodeManagement = lazy(() =>
   import("./pages/PromoCodeManagement").then((m) => ({
     default: m.PromoCodeManagement,
@@ -129,9 +133,7 @@ const ReviewSubmission = lazy(() =>
     default: m.ReviewSubmission,
   }))
 );
-const QRScanner = lazy(() =>
-  import("./pages/QRScanner").then((m) => ({ default: m.QRScanner }))
-);
+
 const EmailVerification = lazy(() =>
   import("./pages/EmailVerification").then((m) => ({
     default: m.EmailVerification,
@@ -207,7 +209,6 @@ type Page =
   | "event-analytics"
   | "edit-event"
   | "edit-seat-map"
-  | "scan-history"
   | "promo-codes"
   | "organizer-payouts"
   | "notifications"
@@ -217,11 +218,12 @@ type Page =
   | "seat-selection"
   | "seat-map-builder"
   | "review-submission"
-  | "qr-scanner"
   | "email-verification"
   | "password-change"
   | "event-reviews"
   | "refund-request"
+  | "refund-history"
+  | "manage-refunds"
   | "admin-dashboard"
   | "chat"
   | "staff-chat"
@@ -262,7 +264,8 @@ export default function App() {
     if (path === "/wishlist") return "wishlist";
     if (path === "/waitlist") return "waitlist";
     if (path === "/create-event") return "create-event";
-    if (path === "/organizer-wizard" || path.startsWith("/organizer-wizard/")) return "organizer-wizard";
+    if (path === "/organizer-wizard" || path.startsWith("/organizer-wizard/"))
+      return "organizer-wizard";
     if (path === "/organizer-dashboard") return "organizer-dashboard";
     if (path === "/event-management") return "event-management";
     if (path.startsWith("/event-analytics/")) return "event-analytics";
@@ -274,7 +277,6 @@ export default function App() {
       );
       return "edit-seat-map";
     }
-    if (path === "/scan-history") return "scan-history";
     if (path === "/promo-codes") return "promo-codes";
     if (path === "/organizer-payouts") return "organizer-payouts";
     if (path === "/notifications") return "notifications";
@@ -284,13 +286,14 @@ export default function App() {
     if (path.startsWith("/seat-selection/")) return "seat-selection";
     if (path === "/seat-map-builder") return "seat-map-builder";
     if (path === "/review-submission") return "review-submission";
-    if (path === "/qr-scanner") return "qr-scanner";
     if (path === "/email-verification") return "email-verification";
     if (path === "/password-change") return "password-change";
     if (path.startsWith("/event-reviews")) {
       return "event-reviews";
     }
     if (path === "/refund-request") return "refund-request";
+    if (path === "/refund-history") return "refund-history";
+    if (path === "/manage-refunds") return "manage-refunds";
     if (path === "/admin-dashboard") return "admin-dashboard";
     if (path === "/chat") return "chat";
     if (path === "/staff-chat") return "staff-chat";
@@ -327,13 +330,13 @@ export default function App() {
   >(() => {
     const user = authService.getCurrentUser();
     if (!user) return "guest";
+
+    // Map backend roles to frontend roles
+    const role = user?.role?.toLowerCase();
+    if (role === "customer") return "user";
+
     return (
-      (user?.role?.toLowerCase() as
-        | "guest"
-        | "user"
-        | "organizer"
-        | "staff"
-        | "admin") || "user"
+      (role as "guest" | "user" | "organizer" | "staff" | "admin") || "user"
     );
   });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -411,14 +414,16 @@ export default function App() {
       if (authenticated) {
         const user = authService.getCurrentUser();
         if (user) {
-          setUserRole(
-            (user.role?.toLowerCase() as
-              | "guest"
-              | "user"
-              | "organizer"
-              | "staff"
-              | "admin") || "user"
-          );
+          // Map backend roles to frontend roles
+          const role = user.role?.toLowerCase();
+          if (role === "customer") {
+            setUserRole("user");
+          } else {
+            setUserRole(
+              (role as "guest" | "user" | "organizer" | "staff" | "admin") ||
+                "user"
+            );
+          }
         }
       } else {
         setUserRole("guest");
@@ -539,9 +544,7 @@ export default function App() {
         return <Success order={lastOrder} onNavigate={handleNavigate} />;
 
       case "my-tickets":
-        return (
-          <MyTickets orders={completedOrders} onNavigate={handleNavigate} />
-        );
+        return <MyTickets onNavigate={handleNavigate} />;
 
       case "order-detail": {
         // Extract orderId from URL directly
@@ -567,7 +570,6 @@ export default function App() {
         return (
           <TicketDetail
             ticketId={ticketIdFromUrl || undefined}
-            orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
@@ -603,10 +605,17 @@ export default function App() {
         return <CreateEvent onNavigate={handleNavigate} />;
 
       case "organizer-wizard":
-        return <OrganizerWizard onNavigate={handleNavigate} eventId={selectedEventId || undefined} />;
+        return (
+          <OrganizerWizard
+            onNavigate={handleNavigate}
+            eventId={selectedEventId || undefined}
+          />
+        );
 
       case "organizer-dashboard":
-        return <OrganizerDashboard key={Date.now()} onNavigate={handleNavigate} />;
+        return (
+          <OrganizerDashboard key={Date.now()} onNavigate={handleNavigate} />
+        );
 
       case "event-management":
         return <EventManagement onNavigate={handleNavigate} />;
@@ -633,9 +642,6 @@ export default function App() {
             eventId={selectedEventId}
           />
         );
-
-      case "scan-history":
-        return <ScanHistory onNavigate={handleNavigate} />;
 
       case "promo-codes":
         return <PromoCodeManagement />;
@@ -674,9 +680,6 @@ export default function App() {
           />
         );
 
-      case "qr-scanner":
-        return <QRScanner onNavigate={handleNavigate} />;
-
       case "email-verification":
         return <EmailVerification onNavigate={handleNavigate} />;
 
@@ -699,6 +702,12 @@ export default function App() {
 
       case "refund-request":
         return <RefundRequest onNavigate={handleNavigate} />;
+
+      case "refund-history":
+        return <RefundHistory onNavigate={handleNavigate} />;
+
+      case "manage-refunds":
+        return <ManageRefunds />;
 
       case "admin-dashboard":
         return <AdminDashboard onNavigate={handleNavigate} />;

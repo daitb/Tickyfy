@@ -23,6 +23,7 @@ public class WaitlistService : IWaitlistService
         var entries = await _context.Waitlists
             .Include(w => w.Event)
             .Include(w => w.TicketType)
+            .Include(w => w.User)
             .Where(w => w.UserId == userId)
             .OrderByDescending(w => w.JoinedAt)
             .ToListAsync();
@@ -33,7 +34,7 @@ public class WaitlistService : IWaitlistService
         {
             // Calculate position in queue
             var position = await _context.Waitlists
-                .Where(w => w.EventId == entry.EventId 
+                .Where(w => w.EventId == entry.EventId
                     && (entry.TicketTypeId == null || w.TicketTypeId == entry.TicketTypeId)
                     && w.JoinedAt < entry.JoinedAt
                     && !w.HasPurchased)
@@ -71,18 +72,21 @@ public class WaitlistService : IWaitlistService
 
     public async Task<WaitlistDto> JoinWaitlistAsync(int userId, JoinWaitlistDto dto)
     {
-        // Check if event exists
+        _logger.LogInformation("JoinWaitlistAsync called - UserId: {UserId}, EventId: {EventId}, RequestedQuantity: {Quantity}",
+            userId, dto.EventId, dto.RequestedQuantity);
+
         var eventEntity = await _context.Events
             .FirstOrDefaultAsync(e => e.Id == dto.EventId);
 
         if (eventEntity == null)
         {
+            _logger.LogWarning("Event {EventId} not found", dto.EventId);
             throw new NotFoundException("Event not found");
         }
 
-        // Check if user already on waitlist
+        // Check if user already in waitlist
         var existing = await _context.Waitlists
-            .FirstOrDefaultAsync(w => w.UserId == userId 
+            .FirstOrDefaultAsync(w => w.UserId == userId
                 && w.EventId == dto.EventId
                 && (dto.TicketTypeId == null || w.TicketTypeId == dto.TicketTypeId)
                 && !w.HasPurchased);
@@ -92,11 +96,17 @@ public class WaitlistService : IWaitlistService
             throw new ConflictException("You are already on the waitlist for this event");
         }
 
-        // Validate ticket type if specified
+        // Load user information
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            throw new NotFoundException("User not found");
+        }
+
         if (dto.TicketTypeId.HasValue)
         {
             var ticketType = await _context.TicketTypes
-                .FirstOrDefaultAsync(tt => tt.Id == dto.TicketTypeId.Value 
+                .FirstOrDefaultAsync(tt => tt.Id == dto.TicketTypeId.Value
                     && tt.EventId == dto.EventId);
 
             if (ticketType == null)
@@ -118,7 +128,6 @@ public class WaitlistService : IWaitlistService
         _context.Waitlists.Add(waitlistEntry);
         await _context.SaveChangesAsync();
 
-        // Calculate position
         var position = await _context.Waitlists
             .Where(w => w.EventId == dto.EventId
                 && (dto.TicketTypeId == null || w.TicketTypeId == dto.TicketTypeId)
@@ -126,9 +135,13 @@ public class WaitlistService : IWaitlistService
                 && !w.HasPurchased)
             .CountAsync() + 1;
 
-        // Load related data
+        // Reload with navigation properties
         await _context.Entry(waitlistEntry)
             .Reference(w => w.Event)
+            .LoadAsync();
+
+        await _context.Entry(waitlistEntry)
+            .Reference(w => w.User)
             .LoadAsync();
 
         if (waitlistEntry.TicketTypeId.HasValue)
@@ -138,12 +151,15 @@ public class WaitlistService : IWaitlistService
                 .LoadAsync();
         }
 
+        _logger.LogInformation("User {UserId} joined waitlist for event {EventId}. Position: {Position}",
+            userId, dto.EventId, position);
+
         return new WaitlistDto
         {
             WaitlistId = waitlistEntry.Id,
             UserId = waitlistEntry.UserId,
-            UserName = "",
-            UserEmail = "",
+            UserName = waitlistEntry.User?.FullName ?? user.FullName,
+            UserEmail = waitlistEntry.User?.Email ?? user.Email,
             EventId = waitlistEntry.EventId,
             EventTitle = waitlistEntry.Event?.Title ?? "",
             EventBanner = waitlistEntry.Event?.BannerImage,
@@ -169,7 +185,6 @@ public class WaitlistService : IWaitlistService
             throw new NotFoundException("Waitlist entry not found");
         }
 
-        // Don't allow leaving if already purchased
         if (entry.HasPurchased)
         {
             throw new BadRequestException("Cannot leave waitlist after purchase");
@@ -184,7 +199,7 @@ public class WaitlistService : IWaitlistService
     public async Task<bool> IsUserOnWaitlistAsync(int userId, int eventId, int? ticketTypeId = null)
     {
         return await _context.Waitlists
-            .AnyAsync(w => w.UserId == userId 
+            .AnyAsync(w => w.UserId == userId
                 && w.EventId == eventId
                 && (ticketTypeId == null || w.TicketTypeId == ticketTypeId)
                 && !w.HasPurchased);
@@ -206,7 +221,6 @@ public class WaitlistService : IWaitlistService
             return "notified";
         }
 
-        // Check if event has passed
         if (entry.Event?.StartDate < DateTime.UtcNow)
         {
             return "expired";

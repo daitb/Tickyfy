@@ -2,7 +2,6 @@ import apiClient from "./apiClient";
 import { toast } from "sonner";
 import type { Event, TicketTier } from "../types";
 
-// Backend DTOs
 export interface EventListDto {
   eventId: number;
   title: string;
@@ -30,6 +29,8 @@ export interface EventDetailDto {
   totalSeats: number;
   availableSeats: number;
   isFeatured: boolean;
+  allowTransfer: boolean;
+  allowRefund: boolean;
   status: string;
   categoryId: number;
   categoryName: string;
@@ -61,7 +62,6 @@ export interface PagedResult<T> {
   totalPages: number;
 }
 
-// Helper function to map backend EventListDto to frontend Event format
 function mapEventListToEvent(dto: EventListDto): Event {
   if (!dto || !dto.eventId) {
     throw new Error("Invalid event data");
@@ -70,17 +70,6 @@ function mapEventListToEvent(dto: EventListDto): Event {
   const startDate = dto.startDate ? new Date(dto.startDate) : new Date();
   const title = dto.title || "Untitled Event";
 
-  // Debug: Log backend prices
-  console.log(
-    "Backend data for",
-    title,
-    "- minPrice:",
-    dto.minPrice,
-    "maxPrice:",
-    dto.maxPrice
-  );
-
-  // Create placeholder ticket tiers from minPrice and maxPrice for list view
   const ticketTiers: TicketTier[] = [];
   if (dto.minPrice > 0) {
     ticketTiers.push({
@@ -91,7 +80,6 @@ function mapEventListToEvent(dto: EventListDto): Event {
       total: dto.availableSeats || 0,
     });
   }
-  // Only add max price if it exists and is different from min
   if (dto.maxPrice && dto.maxPrice > 0 && dto.maxPrice !== dto.minPrice) {
     ticketTiers.push({
       id: "max",
@@ -134,7 +122,6 @@ function mapEventListToEvent(dto: EventListDto): Event {
   };
 }
 
-// Helper function to map backend EventDetailDto to frontend Event format
 function mapEventDetailToEvent(dto: EventDetailDto): Event {
   if (!dto || !dto.eventId) {
     throw new Error("Invalid event detail data");
@@ -175,8 +162,8 @@ function mapEventDetailToEvent(dto: EventDetailDto): Event {
     organizerName: dto.organizerName || "",
     ticketTiers,
     policies: {
-      refundable: true,
-      transferable: true,
+      refundable: dto.allowRefund ?? false,
+      transferable: dto.allowTransfer ?? false,
     },
     status: (dto.status?.toLowerCase() || "published") as
       | "draft"
@@ -187,9 +174,6 @@ function mapEventDetailToEvent(dto: EventDetailDto): Event {
 }
 
 class EventService {
-  /**
-   * Get event by ID
-   */
   async getEventById(id: number): Promise<Event> {
     try {
       const resp = await apiClient.get<EventDetailDto>(`/events/${id}`);
@@ -203,9 +187,6 @@ class EventService {
     }
   }
 
-  /**
-   * Attempts to fetch an event by numeric id or by slug (falls back to scanning list)
-   */
   async getEventByIdentifier(
     identifier: string | number
   ): Promise<Event | null> {
@@ -217,23 +198,18 @@ class EventService {
       }
     }
 
-    // try numeric suffix first
     const s = String(identifier);
     const m = s.match(/(\d+)$/);
     if (m) {
       try {
         return await this.getEventById(parseInt(m[1], 10));
-      } catch {
-        // continue to slug lookup
-      }
+      } catch {}
     }
 
-    // fallback: fetch all events and find by id
     try {
       const list = await this.getEvents();
       const found = list.find((e) => String(e.id) === s || String(e.id) === s);
       if (found) {
-        // Fetch full details
         return await this.getEventById(Number(found.id));
       }
       return null;
@@ -242,23 +218,16 @@ class EventService {
     }
   }
 
-  /**
-   * Get all events (returns list format)
-   * Only returns Published events for public view
-   */
   async getEvents(): Promise<Event[]> {
     try {
-      // Filter to only show Published events on public pages
       const resp = await apiClient.get<PagedResult<EventListDto>>(
         `/events?Status=Published`
       );
-      // Handle both PagedResult and direct array response
       if (resp.data && "items" in resp.data && Array.isArray(resp.data.items)) {
         return resp.data.items
           .filter((item) => item && item.eventId)
           .map(mapEventListToEvent);
       }
-      // If it's already an array (after interceptor unwrapping)
       if (Array.isArray(resp.data)) {
         return resp.data
           .filter((item) => item && item.eventId)
@@ -266,20 +235,15 @@ class EventService {
       }
       return [];
     } catch (error: any) {
-      // Silent fail for events list, return empty array
       return [];
     }
   }
 
-  /**
-   * Get featured events
-   */
   async getFeaturedEvents(count: number = 10): Promise<Event[]> {
     try {
       const resp = await apiClient.get<EventListDto[]>(
         `/events/featured?count=${count}`
       );
-      // Response is already unwrapped by interceptor, should be array
       if (Array.isArray(resp.data)) {
         return resp.data
           .filter((item) => item && item.eventId)
@@ -287,20 +251,31 @@ class EventService {
       }
       return [];
     } catch (error: any) {
-      // Silent fail for featured events, return empty array
       return [];
     }
   }
 
-  /**
-   * Get upcoming events
-   */
+  async getTrendingEvents(count: number = 10): Promise<Event[]> {
+    try {
+      const resp = await apiClient.get<EventListDto[]>(
+        `/events/trending?count=${count}`
+      );
+      if (Array.isArray(resp.data)) {
+        return resp.data
+          .filter((item) => item && item.eventId)
+          .map(mapEventListToEvent);
+      }
+      return [];
+    } catch (error: any) {
+      return [];
+    }
+  }
+
   async getUpcomingEvents(count: number = 20): Promise<Event[]> {
     try {
       const resp = await apiClient.get<EventListDto[]>(
         `/events/upcoming?count=${count}`
       );
-      // Response is already unwrapped by interceptor, should be array
       if (Array.isArray(resp.data)) {
         return resp.data
           .filter((item) => item && item.eventId)
@@ -308,14 +283,10 @@ class EventService {
       }
       return [];
     } catch (error: any) {
-      // Silent fail for upcoming events, return empty array
       return [];
     }
   }
 
-  /**
-   * Search events
-   */
   async searchEvents(
     query: string,
     pageNumber: number = 1,
@@ -329,25 +300,16 @@ class EventService {
     return resp.data.items.map(mapEventListToEvent);
   }
 
-  /**
-   * POST /api/events - Create new event (Organizer only)
-   */
   async createEvent(dto: CreateEventDto): Promise<Event> {
     const response = await apiClient.post<EventDetailDto>("/events", dto);
     return mapEventDetailToEvent(response.data);
   }
 
-  /**
-   * PUT /api/events/{id} - Update existing event (Organizer/Admin)
-   */
   async updateEvent(id: number, dto: UpdateEventDto): Promise<Event> {
     const response = await apiClient.put<EventDetailDto>(`/events/${id}`, dto);
     return mapEventDetailToEvent(response.data);
   }
 
-  /**
-   * POST /api/events/{id}/publish - Publish event (Organizer only)
-   */
   async publishEvent(id: number): Promise<Event> {
     const response = await apiClient.post<EventDetailDto>(
       `/events/${id}/publish`
@@ -355,9 +317,6 @@ class EventService {
     return mapEventDetailToEvent(response.data);
   }
 
-  /**
-   * POST /api/events/{id}/approve - Approve event (Admin only)
-   */
   async approveEvent(id: number): Promise<Event> {
     const response = await apiClient.post<EventDetailDto>(
       `/events/${id}/approve`
@@ -365,9 +324,6 @@ class EventService {
     return mapEventDetailToEvent(response.data);
   }
 
-  /**
-   * POST /api/events/{id}/reject - Reject event (Admin only)
-   */
   async rejectEvent(id: number, reason: string): Promise<Event> {
     const response = await apiClient.post<EventDetailDto>(
       `/events/${id}/reject`,
@@ -376,9 +332,6 @@ class EventService {
     return mapEventDetailToEvent(response.data);
   }
 
-  /**
-   * POST /api/events/{id}/cancel - Cancel event
-   */
   async cancelEvent(id: number, reason?: string): Promise<boolean> {
     const response = await apiClient.post<boolean>(`/events/${id}/cancel`, {
       reason,
@@ -386,25 +339,16 @@ class EventService {
     return response.data;
   }
 
-  /**
-   * DELETE /api/events/{id} - Delete event (Admin only)
-   */
   async deleteEvent(id: number): Promise<boolean> {
     const response = await apiClient.delete<boolean>(`/events/${id}`);
     return response.data;
   }
 
-  /**
-   * GET /api/events/{id}/stats - Get event statistics
-   */
   async getEventStatistics(id: number): Promise<EventStatsDto> {
     const response = await apiClient.get<EventStatsDto>(`/events/${id}/stats`);
     return response.data;
   }
 
-  /**
-   * POST /api/events/{id}/duplicate - Duplicate event
-   */
   async duplicateEvent(id: number): Promise<Event> {
     const response = await apiClient.post<EventDetailDto>(
       `/events/${id}/duplicate`
@@ -413,7 +357,6 @@ class EventService {
   }
 }
 
-// ===== Additional DTOs for Create/Update =====
 export interface CreateEventDto {
   organizerId: number;
   categoryId: number;
@@ -425,6 +368,8 @@ export interface CreateEventDto {
   endDate: string;
   totalSeats: number;
   isFeatured?: boolean;
+  allowTransfer?: boolean;
+  allowRefund?: boolean;
   seatMapId?: number;
   ticketTypes?: CreateTicketTypeDto[];
 }
@@ -446,6 +391,8 @@ export interface UpdateEventDto {
   endDate: string;
   totalSeats: number;
   isFeatured: boolean;
+  allowTransfer: boolean;
+  allowRefund: boolean;
 }
 
 export interface EventStatsDto {
