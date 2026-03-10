@@ -6,7 +6,7 @@ import axios, {
 import { toast } from "sonner";
 
 // Base API URL
-const API_BASE_URL = `${import.meta.env.VITE_API_URL}`;
+const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 
 // Flag to prevent multiple refresh token requests
 let isRefreshing = false;
