@@ -2,25 +2,13 @@
 node_modules
 
 # Development files
-*.md
-!README.md
 .vscode
 .idea
-
-# Source files (chỉ cần build output)
-src
-public
-
-# Config files không cần thiết
-tsconfig.json
-tsconfig.*.json
-eslint.config.js
-vite.config.ts
+*.log
 
 # Build artifacts
 .esproj.user
 *.user
 
-# Logs
-*.log
-npm-debug.log*
+# KHÔNG ĐƯỢC để tsconfig, vite.config hay src/public ở đây
+# Vì Vercel cần chúng để thực hiện lệnh 'npm run build'
