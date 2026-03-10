@@ -119,7 +119,7 @@ class SignalRService {
 
   constructor() {
     // Get API base URL from environment or use default
-    this.baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5179";
+    this.baseUrl = import.meta.env.VITE_API_URL;
   }
 
   /**

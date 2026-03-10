@@ -44,9 +44,7 @@ export function Login({ onNavigate }: LoginProps) {
   // Initialize Google Sign-In
   useEffect(() => {
     // Google Client ID - Replace with your actual Google OAuth Client ID
-    const GOOGLE_CLIENT_ID =
-      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-      "177365327171-n3jfda9entg6u3h6mc9glsgbeob65qs9.apps.googleusercontent.com";
+    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
     // Wait for Google script to load
     const checkGoogleLoaded = () => {

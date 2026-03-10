@@ -14,7 +14,7 @@ class NotificationSignalRService {
 
   constructor() {
     // Lấy API base URL từ environment hoặc dùng default
-    this.baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5179";
+    this.baseUrl = import.meta.env.VITE_API_URL;
   }
 
   /**
