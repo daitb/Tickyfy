@@ -909,7 +909,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                           }}
                         />
                         <Tooltip
-                          formatter={(value: number) => formatPrice(value)}
+                          formatter={(value) => formatPrice(Number(value))}
                           labelFormatter={(label) => label}
                           cursor={{ fill: "rgba(0, 0, 0, 0.05)" }}
                         />
@@ -1790,7 +1790,7 @@ export function OrganizerDashboard({ onNavigate }: OrganizerDashboardProps) {
                           }}
                         />
                         <Tooltip
-                          formatter={(value: number) => formatPrice(value)}
+                          formatter={(value) => formatPrice(Number(value))}
                         />
                         <Bar dataKey="revenue" fill="#f97316" />
                       </BarChart>

@@ -3571,7 +3571,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             }}
                           />
                           <Tooltip
-                            formatter={(value: number) => formatPrice(value)}
+                            formatter={(value) => formatPrice(Number(value))}
                             cursor={{ fill: "rgba(0, 0, 0, 0.05)" }}
                           />
                           <Bar
