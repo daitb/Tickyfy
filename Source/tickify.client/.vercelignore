@@ -1,14 +1,17 @@
 # Dependencies
 node_modules
+*.log
 
 # Development files
 .vscode
 .idea
-*.log
 
-# Build artifacts
+# Build artifacts (local only)
 .esproj.user
 *.user
 
-# KHÔNG ĐƯỢC để tsconfig, vite.config hay src/public ở đây
-# Vì Vercel cần chúng để thực hiện lệnh 'npm run build'
+# Environment files
+.env.local
+.env.*.local
+
+# Vercel cần: tsconfig, vite.config, src/, public/, package.json để build

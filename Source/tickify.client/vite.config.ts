@@ -4,6 +4,7 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  base: "/",
   resolve: {
     extensions: [".js", ".jsx", ".ts", ".tsx", ".json"],
     alias: {
@@ -11,9 +12,17 @@ export default defineConfig({
     },
     dedupe: ["react", "react-dom"],
   },
+  optimizeDeps: {
+    include: ["react", "react-dom", "react-router-dom"],
+    esbuildOptions: {
+      target: "esnext",
+    },
+  },
   build: {
     target: "esnext",
     outDir: "build",
+    sourcemap: false,
+    minify: "esbuild",
     chunkSizeWarningLimit: 1000, // Tăng ngưỡng warning lên 1000 kB
     rollupOptions: {
       onwarn(warning, warn) {
