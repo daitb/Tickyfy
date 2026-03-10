@@ -113,3 +113,4 @@ build/
 # =====================================
 wwwroot/uploads/*
 !wwwroot/uploads/.gitkeep
+temp-repo
