@@ -56,9 +56,16 @@ public class TicketController : ControllerBase
         // If admin and ticket not found in user's tickets, try to get by ID
         if (ticket == null && isAdmin)
         {
-            var ticketDto = await _ticketService.GetByIdAsync(id);
-            // Convert TicketDto to TicketDetailDto (simplified - may need full details)
-            return Ok(ApiResponse<TicketDto>.SuccessResponse(ticketDto));
+            // For admin, get detailed ticket info directly
+            var allUserTickets = await _ticketService.GetUserTicketsAsync(userId);
+            var adminTicket = allUserTickets.FirstOrDefault(t => t.TicketId == id);
+            
+            if (adminTicket == null)
+            {
+                return NotFound(ApiResponse<object>.FailureResponse("Ticket not found"));
+            }
+            
+            return Ok(ApiResponse<TicketDetailDto>.SuccessResponse(adminTicket));
         }
 
         return Ok(ApiResponse<TicketDetailDto>.SuccessResponse(ticket!));
@@ -193,6 +200,7 @@ public class TicketController : ControllerBase
     }
 
     /// Accept ticket transfer (via GET with query params - for email links)
+    [AllowAnonymous]
     [HttpGet("transfers/accept")]
     [ProducesResponseType(typeof(ApiResponse<TicketDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -297,9 +305,8 @@ public class TicketController : ControllerBase
         ));
     }
 
-    /// <summary>
+
     /// Get QR code for ticket
-    /// </summary>
     [HttpGet("{id}/qrcode")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -463,5 +470,234 @@ public class TicketController : ControllerBase
             tickets,
             $"Retrieved {tickets.Count()} tickets for event {eventId}."
         ));
+    }
+
+    /// Download ticket as PDF
+    [HttpGet("{id}/download")]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> DownloadTicket(int id)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(ApiResponse<object>.FailureResponse("Please login to download ticket."));
+            }
+
+            var userId = int.Parse(userIdClaim);
+            var isAdmin = User.IsInRole("Admin") || User.IsInRole("Organizer");
+
+            // Get user's tickets to check ownership
+            var userTickets = await _ticketService.GetUserTicketsAsync(userId);
+            var ticket = userTickets.FirstOrDefault(t => t.TicketId == id);
+
+            if (ticket == null && !isAdmin)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    ApiResponse<object>.FailureResponse("You don't have permission to download this ticket."));
+            }
+
+            if (ticket == null)
+            {
+                return NotFound(ApiResponse<object>.FailureResponse("Ticket not found"));
+            }
+
+        // Generate QR code
+        string qrCodeBase64;
+        using (var qrGenerator = new QRCodeGenerator())
+        {
+            var qrCodeData = qrGenerator.CreateQrCode(ticket.QrCode ?? ticket.TicketNumber, QRCodeGenerator.ECCLevel.Q);
+            using (var qrCode = new PngByteQRCode(qrCodeData))
+            {
+                byte[] qrCodeImage = qrCode.GetGraphic(10);
+                qrCodeBase64 = Convert.ToBase64String(qrCodeImage);
+            }
+        }
+
+            // Generate HTML ticket
+            var html = GenerateTicketHtml(ticket, qrCodeBase64);
+            var bytes = System.Text.Encoding.UTF8.GetBytes(html);
+
+            return File(bytes, "text/html", $"ticket-{ticket.TicketNumber}.html");
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                ApiResponse<object>.FailureResponse($"Error generating ticket: {ex.Message}"));
+        }
+    }
+
+    private string GenerateTicketHtml(TicketDetailDto ticket, string qrCodeBase64)
+    {
+        return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <title>Ticket - {ticket.TicketNumber}</title>
+    <style>
+        @media print {{
+            body {{ margin: 0; padding: 20px; }}
+            .no-print {{ display: none; }}
+        }}
+        body {{
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }}
+        .ticket {{
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }}
+        .header {{
+            background: #14b8a6;
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }}
+        .header h1 {{ margin: 0 0 10px 0; font-size: 28px; }}
+        .header p {{ margin: 5px 0; opacity: 0.9; }}
+        .qr-section {{
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 30px 0;
+        }}
+        .qr-code {{
+            background: white;
+            padding: 20px;
+            display: inline-block;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .info-grid {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }}
+        .info-item {{
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }}
+        .info-label {{
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }}
+        .info-value {{
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }}
+        .warning {{
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            text-align: center;
+        }}
+        .footer {{
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }}
+        .print-btn {{
+            background: #14b8a6;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 20px auto;
+            display: block;
+        }}
+        .print-btn:hover {{ background: #0d9488; }}
+    </style>
+</head>
+<body>
+    <div class='ticket'>
+        <button class='print-btn no-print' onclick='window.print()'>🖨️ Print Ticket</button>
+        
+        <div class='header'>
+            <h1>{ticket.EventTitle}</h1>
+            <p> {ticket.EventStartDate:dddd, MMMM dd, yyyy} at {ticket.EventStartDate:hh:mm tt}</p>
+            <p> {ticket.EventVenue}</p>
+        </div>
+
+        <div class='info-grid'>
+            <div class='info-item'>
+                <div class='info-label'>Ticket Holder</div>
+                <div class='info-value'>{User.FindFirstValue(ClaimTypes.Email) ?? "Guest"}</div>
+            </div>
+            <div class='info-item'>
+                <div class='info-label'>Ticket Type</div>
+                <div class='info-value'>{ticket.TicketTypeName}</div>
+            </div>
+            <div class='info-item'>
+                <div class='info-label'>Ticket Number</div>
+                <div class='info-value'>{ticket.TicketNumber}</div>
+            </div>
+            <div class='info-item'>
+                <div class='info-label'>Booking Number</div>
+                <div class='info-value'>#{ticket.BookingNumber}</div>
+            </div>
+            <div class='info-item'>
+                <div class='info-label'>Seat</div>
+                <div class='info-value'>{ticket.SeatNumber ?? "General Admission"}</div>
+            </div>
+            <div class='info-item'>
+                <div class='info-label'>Price Paid</div>
+                <div class='info-value'>{ticket.Price:N0} ₫</div>
+            </div>
+            <div class='info-item'>
+                <div class='info-label'>Status</div>
+                <div class='info-value'>{ticket.Status}</div>
+            </div>
+            <div class='info-item'>
+                <div class='info-label'>Purchase Date</div>
+                <div class='info-value'>{ticket.CreatedAt:MMM dd, yyyy}</div>
+            </div>
+        </div>
+
+        <div class='qr-section'>
+            <h3 style='margin-top: 0;'>Entry QR Code</h3>
+            <div class='qr-code'>
+                <img src='data:image/png;base64,{qrCodeBase64}' alt='QR Code' style='width: 256px; height: 256px;' />
+            </div>
+            <p style='margin: 15px 0 5px 0; font-family: monospace; font-size: 14px;'>{ticket.QrCode ?? ticket.TicketNumber}</p>
+            <p style='color: #666; font-size: 14px;'>Present this QR code at the venue entrance</p>
+        </div>
+
+        <div class='warning'>
+            <strong>⚠️ Important:</strong> Do not share this QR code. Each ticket is valid for one-time entry only.
+        </div>
+
+        <div class='footer'>
+            <p><strong>Tickify</strong> - Your Event Ticketing Platform</p>
+            <p>Valid until {ticket.EventEndDate:MMMM dd, yyyy} 11:59 PM</p>
+            <p style='font-size: 12px; color: #999; margin-top: 10px;'>
+                For support, contact us at support@tickify.com
+            </p>
+        </div>
+    </div>
+</body>
+</html>";
     }
 }

@@ -1,4 +1,4 @@
-import { Calendar, MapPin } from 'lucide-react';
+import { Calendar, MapPin, Star } from 'lucide-react';
 import React from 'react';
 import type { Event } from '../../types';
 
@@ -63,6 +63,22 @@ export default function RelatedEvents({ currentEventId, relatedEvents, onEventCl
                     <MapPin className="w-4 h-4 text-[#00C16A]" />
                     <span className="line-clamp-1">{event.venue}, {event.city}</span>
                   </div>
+                  {/* Rating display */}
+                  {(event.averageRating !== undefined && event.averageRating > 0) && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="flex items-center gap-1">
+                        <Star size={14} className="fill-yellow-400 text-yellow-400" />
+                        <span className="font-medium text-gray-900">
+                          {event.averageRating.toFixed(1)}
+                        </span>
+                      </div>
+                      {event.totalReviews !== undefined && event.totalReviews > 0 && (
+                        <span className="text-gray-500">
+                          ({event.totalReviews})
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -158,6 +158,34 @@ namespace Tickify.Data
                 .HasForeignKey(s => s.TicketTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Seat - SeatZone relationship
+            modelBuilder.Entity<Seat>()
+                .HasOne(s => s.SeatZone)
+                .WithMany(sz => sz.Seats)
+                .HasForeignKey(s => s.SeatZoneId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // SeatZone - SeatMap relationship
+            modelBuilder.Entity<SeatZone>()
+                .HasOne(sz => sz.SeatMap)
+                .WithMany(sm => sm.Zones)
+                .HasForeignKey(sz => sz.SeatMapId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // SeatZone - TicketType relationship
+            modelBuilder.Entity<SeatZone>()
+                .HasOne(sz => sz.TicketType)
+                .WithMany()
+                .HasForeignKey(sz => sz.TicketTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // SeatMap - Event relationship
+            modelBuilder.Entity<SeatMap>()
+                .HasOne(sm => sm.Event)
+                .WithOne(e => e.SeatMap)
+                .HasForeignKey<SeatMap>(sm => sm.EventId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Seat - Ticket relationship
             modelBuilder.Entity<Ticket>()
                 .HasOne(t => t.Seat)
@@ -369,7 +397,7 @@ namespace Tickify.Data
                 .WithMany()
                 .HasForeignKey(tt => tt.ApprovedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
-                
+
             // TicketTransfer - column config
             modelBuilder.Entity<TicketTransfer>()
                 .Property(tt => tt.AcceptanceToken)
@@ -413,8 +441,16 @@ namespace Tickify.Data
             modelBuilder.Entity<Event>()
                 .HasIndex(e => e.CategoryId);
 
+            // Category distribution query (admin dashboard)
+            modelBuilder.Entity<Event>()
+                .HasIndex(e => new { e.CategoryId, e.Status });
+
             modelBuilder.Entity<Event>()
                 .HasIndex(e => e.OrganizerId);
+
+            // Organizer events query
+            modelBuilder.Entity<Event>()
+                .HasIndex(e => new { e.OrganizerId, e.Status });
 
             modelBuilder.Entity<Event>()
                 .HasIndex(e => e.StartDate);
@@ -435,6 +471,20 @@ namespace Tickify.Data
             modelBuilder.Entity<Booking>()
                 .HasIndex(b => b.BookingDate);
 
+            // Trending events optimization (booking count)
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => new { b.EventId, b.Status });
+
+            // Booking date range queries (dashboard)
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => new { b.Status, b.BookingDate });
+
+            // Booking - SeatIdsJson column configuration
+            modelBuilder.Entity<Booking>()
+                .Property(b => b.SeatIdsJson)
+                .HasColumnType("nvarchar(max)")
+                .IsRequired(false);
+
             // Tickets - Check-in and validation
             modelBuilder.Entity<Ticket>()
                 .HasIndex(t => t.BookingId);
@@ -451,6 +501,18 @@ namespace Tickify.Data
             // Seats - Real-time availability
             modelBuilder.Entity<Seat>()
                 .HasIndex(s => new { s.TicketTypeId, s.Status }); // Critical for seat selection!
+
+            modelBuilder.Entity<Seat>()
+                .HasIndex(s => s.IsWheelchair); // For wheelchair accessible seat filtering
+
+            modelBuilder.Entity<Seat>()
+                .HasIndex(s => s.SeatZoneId); // For zone-based queries
+
+            modelBuilder.Entity<Seat>()
+                .HasIndex(s => s.IsAdminLocked); // For admin locked seats filtering
+
+            modelBuilder.Entity<Seat>()
+                .HasIndex(s => new { s.ReservedByUserId, s.ReservedUntil }); // For reservation expiry checks
 
             // Notifications - User inbox (shown on every page!)
             modelBuilder.Entity<Notification>()
@@ -483,6 +545,10 @@ namespace Tickify.Data
             modelBuilder.Entity<Payment>()
                 .HasIndex(p => p.PaidAt);
 
+            // Composite index for revenue calculations (admin dashboard)
+            modelBuilder.Entity<Payment>()
+                .HasIndex(p => new { p.Status, p.PaidAt });
+
             // Reviews - Rating calculations
             modelBuilder.Entity<Review>()
                 .HasIndex(r => r.EventId);
@@ -505,9 +571,23 @@ namespace Tickify.Data
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.IsActive);
 
+            // User growth tracking (admin dashboard)
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.CreatedAt);
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => new { u.IsActive, u.CreatedAt });
+
             // RefundRequests - Processing
             modelBuilder.Entity<RefundRequest>()
                 .HasIndex(rr => rr.Status);
+
+            // OrganizerRequests - Admin approval queue
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasIndex(or => or.Status);
+
+            modelBuilder.Entity<OrganizerRequest>()
+                .HasIndex(or => new { or.Status, or.RequestedAt });
 
             // Configure decimal precision for money fields
             modelBuilder.Entity<Booking>()
@@ -572,6 +652,17 @@ namespace Tickify.Data
                 .ToTable(t => t.HasCheckConstraint(
                     "CK_Events_Dates_Valid",
                     "[EndDate] >= [StartDate]"));
+
+            // Events - AllowTransfer and AllowRefund configuration
+            modelBuilder.Entity<Event>()
+                .Property(e => e.AllowTransfer)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            modelBuilder.Entity<Event>()
+                .Property(e => e.AllowRefund)
+                .IsRequired()
+                .HasDefaultValue(false);
 
             // TicketTypes - Inventory and pricing rules
             modelBuilder.Entity<TicketType>()
@@ -715,6 +806,30 @@ namespace Tickify.Data
 
             modelBuilder.Entity<OrganizerRequest>()
                 .HasIndex(or => or.Status);
+
+            // ===== SEAT ADMIN LOCK CONFIGURATION =====
+
+            // Seat - Admin lock fields configuration
+            modelBuilder.Entity<Seat>()
+                .Property(s => s.IsAdminLocked)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            modelBuilder.Entity<Seat>()
+                .Property(s => s.AdminLockedReason)
+                .HasMaxLength(500)
+                .IsRequired(false);
+
+            modelBuilder.Entity<Seat>()
+                .Property(s => s.HasExtendedReservation)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            // Seat - Check constraints for admin lock
+            modelBuilder.Entity<Seat>()
+                .ToTable(t => t.HasCheckConstraint(
+                    "CK_Seats_AdminLock_Valid",
+                    "[IsAdminLocked] = 0 OR ([IsAdminLocked] = 1 AND [AdminLockedReason] IS NOT NULL)"));
         }
     }
 }

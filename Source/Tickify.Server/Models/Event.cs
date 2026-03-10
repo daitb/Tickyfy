@@ -26,6 +26,8 @@ namespace Tickify.Models
         public EventStatus Status { get; set; } = EventStatus.Pending;
         public int OrganizerId { get; set; }
         public int CategoryId { get; set; }
+        public bool AllowTransfer { get; set; } = false; // Allow ticket transfer
+        public bool AllowRefund { get; set; } = false; // Allow ticket refund
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
         public int? ApprovedByStaffId { get; set; }
@@ -36,6 +38,7 @@ namespace Tickify.Models
         public Organizer? Organizer { get; set; }
         public Category? Category { get; set; }
         public User? ApprovedByStaff { get; set; }
+        public SeatMap? SeatMap { get; set; }
         public ICollection<TicketType>? TicketTypes { get; set; }
         public ICollection<Booking>? Bookings { get; set; }
         public ICollection<Review>? Reviews { get; set; }

@@ -5,46 +5,42 @@ using Tickify.Data;
 using Tickify.DTOs.Event;
 using Tickify.DTOs.Organizer;
 using Tickify.Exceptions;
+using Tickify.Interfaces;
 using Tickify.Interfaces.Services;
 using Tickify.Models;
 using Tickify.Services.Email;
 
 namespace Tickify.Services;
 
-/// <summary>
-/// Organizer Service - Business logic for organizer management
-/// </summary>
 public class OrganizerService : IOrganizerService
 {
     private readonly ApplicationDbContext _context;
     private readonly IEmailService _emailService;
     private readonly ILogger<OrganizerService> _logger;
+    private readonly IAzureStorageService _azureStorageService;
 
     public OrganizerService(
         ApplicationDbContext context,
         IEmailService emailService,
-        ILogger<OrganizerService> logger)
+        ILogger<OrganizerService> logger,
+        IAzureStorageService azureStorageService)
     {
         _context = context;
         _emailService = emailService;
         _logger = logger;
+        _azureStorageService = azureStorageService;
     }
 
-    /// <summary>
-    /// Create organizer request (User submits request to become organizer)
-    /// </summary>
     public async Task<OrganizerRequest> CreateOrganizerRequestAsync(int userId, CreateOrganizerDto dto)
     {
         _logger.LogInformation("Creating organizer request for user {UserId}", userId);
 
-        // Check if user exists
         var user = await _context.Users.FindAsync(userId);
         if (user == null)
         {
             throw new NotFoundException($"User with ID {userId} not found");
         }
 
-        // Check if user already has a pending request
         var existingRequest = await _context.OrganizerRequests
             .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == "Pending");
 
@@ -53,7 +49,6 @@ public class OrganizerService : IOrganizerService
             throw new ConflictException("You already have a pending organizer request");
         }
 
-        // Check if user is already an organizer
         var existingOrganizer = await _context.Organizers
             .FirstOrDefaultAsync(o => o.UserId == userId);
 
@@ -62,7 +57,6 @@ public class OrganizerService : IOrganizerService
             throw new ConflictException("User is already registered as an organizer");
         }
 
-        // Create organizer request
         var request = new OrganizerRequest
         {
             UserId = userId,
@@ -83,18 +77,12 @@ public class OrganizerService : IOrganizerService
         return request;
     }
 
-    /// <summary>
-    /// Get pending organizer request for a user
-    /// </summary>
     public async Task<OrganizerRequest?> GetPendingOrganizerRequestAsync(int userId)
     {
         return await _context.OrganizerRequests
             .FirstOrDefaultAsync(r => r.UserId == userId && r.Status == "Pending");
     }
 
-    /// <summary>
-    /// Get organizer by user ID
-    /// </summary>
     public async Task<Organizer?> GetOrganizerByUserIdAsync(int userId)
     {
         return await _context.Organizers
@@ -102,22 +90,16 @@ public class OrganizerService : IOrganizerService
             .FirstOrDefaultAsync(o => o.UserId == userId);
     }
 
-    /// <summary>
-    /// Register new organizer (User becomes Organizer) - DEPRECATED
-    /// This method is kept for backward compatibility but should use CreateOrganizerRequestAsync instead
-    /// </summary>
     public async Task<OrganizerDto> RegisterOrganizerAsync(int userId, CreateOrganizerDto dto)
     {
         _logger.LogInformation("Registering user {UserId} as organizer", userId);
 
-        // Check if user exists
         var user = await _context.Users.FindAsync(userId);
         if (user == null)
         {
             throw new NotFoundException($"User with ID {userId} not found");
         }
 
-        // Check if user is already an organizer
         var existingOrganizer = await _context.Organizers
             .FirstOrDefaultAsync(o => o.UserId == userId);
 
@@ -126,7 +108,6 @@ public class OrganizerService : IOrganizerService
             throw new ConflictException("User is already registered as an organizer");
         }
 
-        // Create organizer profile
         var organizer = new Organizer
         {
             UserId = userId,
@@ -144,7 +125,6 @@ public class OrganizerService : IOrganizerService
 
         _context.Organizers.Add(organizer);
 
-        // Assign Organizer role to user
         var organizerRole = await _context.Roles
             .FirstOrDefaultAsync(r => r.Name == "Organizer");
 
@@ -163,7 +143,6 @@ public class OrganizerService : IOrganizerService
 
         _logger.LogInformation("Organizer registered successfully with ID: {OrganizerId}", organizer.Id);
 
-        // Send welcome email
         try
         {
             await _emailService.SendOrganizerWelcomeEmailAsync(user.Email, user.FullName, organizer.CompanyName);
@@ -176,9 +155,6 @@ public class OrganizerService : IOrganizerService
         return MapToOrganizerDto(organizer);
     }
 
-    /// <summary>
-    /// Get organizer profile by ID
-    /// </summary>
     public async Task<OrganizerProfileDto?> GetOrganizerProfileAsync(int organizerId)
     {
         _logger.LogInformation("Fetching organizer profile for ID: {OrganizerId}", organizerId);
@@ -220,9 +196,6 @@ public class OrganizerService : IOrganizerService
         };
     }
 
-    /// <summary>
-    /// Update organizer profile
-    /// </summary>
     public async Task<OrganizerProfileDto> UpdateOrganizerProfileAsync(int organizerId, int userId, CreateOrganizerDto dto)
     {
         _logger.LogInformation("Updating organizer profile ID: {OrganizerId}", organizerId);
@@ -236,13 +209,11 @@ public class OrganizerService : IOrganizerService
             throw new NotFoundException($"Organizer with ID {organizerId} not found");
         }
 
-        // Verify ownership
         if (organizer.UserId != userId)
         {
             throw new ForbiddenException("You don't have permission to update this organizer profile");
         }
 
-        // Update fields
         organizer.CompanyName = dto.CompanyName;
         organizer.BusinessRegistrationNumber = dto.BusinessRegistrationNumber;
         organizer.TaxCode = dto.TaxCode;
@@ -260,9 +231,6 @@ public class OrganizerService : IOrganizerService
         return (await GetOrganizerProfileAsync(organizerId))!;
     }
 
-    /// <summary>
-    /// Get all events for an organizer
-    /// </summary>
     public async Task<List<OrganizerEventDashboardDto>> GetOrganizerEventsAsync(int organizerId, int userId)
     {
         _logger.LogInformation("Fetching events for organizer ID: {OrganizerId}", organizerId);
@@ -278,7 +246,6 @@ public class OrganizerService : IOrganizerService
 
         var isAdminRequest = userId == 0;
 
-        // Verify ownership when request comes from organizer context
         if (!isAdminRequest && organizer.UserId != userId)
         {
             throw new ForbiddenException("You don't have permission to view these events");
@@ -293,28 +260,44 @@ public class OrganizerService : IOrganizerService
                 EventId = e.Id,
                 Title = e.Title,
                 StartDate = e.StartDate,
+                EndDate = e.EndDate,
+                BannerImage = e.BannerImage,
                 Status = e.Status.ToString(),
                 TotalSeats = e.TicketTypes!
                     .Select(tt => (int?)tt.TotalQuantity)
                     .Sum() ?? 0,
-                SoldSeats = e.TicketTypes!
-                    .Select(tt => (int?)(tt.TotalQuantity - tt.AvailableQuantity))
-                    .Sum() ?? 0,
+                SoldSeats = e.Bookings!
+                    .Where(b => b.Status == BookingStatus.Confirmed)
+                    .SelectMany(b => b.Tickets!)
+                    .Count(t => t.Status != TicketStatus.Cancelled && t.Status != TicketStatus.Refunded),
                 Revenue = e.Bookings!
                     .Where(b => b.Status == BookingStatus.Confirmed
                                 && b.Payment != null
                                 && b.Payment.Status == PaymentStatus.Completed)
                     .Select(b => (decimal?)b.Payment!.Amount)
-                    .Sum() ?? 0m
+                    .Sum() ?? 0m,
+                RejectionReason = e.RejectionReason
             })
             .ToListAsync();
+
+        foreach (var evt in events)
+        {
+            if (!string.IsNullOrEmpty(evt.BannerImage) && !evt.BannerImage.StartsWith("http"))
+            {
+                try
+                {
+                    evt.BannerImage = await _azureStorageService.GetBlobUrlWithSasAsync(evt.BannerImage, expiryHours: 24);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to generate SAS URL for banner image: {BannerImage}", evt.BannerImage);
+                }
+            }
+        }
 
         return events;
     }
 
-    /// <summary>
-    /// Get organizer earnings dashboard
-    /// </summary>
     public async Task<OrganizerEarningsDto> GetOrganizerEarningsAsync(int organizerId, int userId)
     {
         _logger.LogInformation("Fetching earnings for organizer ID: {OrganizerId}", organizerId);
@@ -328,7 +311,6 @@ public class OrganizerService : IOrganizerService
 
         var isAdminRequest = userId == 0;
 
-        // Verify ownership
         if (!isAdminRequest && organizer.UserId != userId)
         {
             throw new ForbiddenException("You don't have permission to view these earnings");
@@ -400,7 +382,8 @@ public class OrganizerService : IOrganizerService
 
         var topEvents = await _context.Events
             .AsNoTracking()
-            .Where(e => e.OrganizerId == organizerId)
+            .Where(e => e.OrganizerId == organizerId
+                && (e.Status == EventStatus.Published || e.Status == EventStatus.Approved)) // Published or Approved events
             .Select(e => new OrganizerTopEventDto
             {
                 EventId = e.Id,
@@ -416,6 +399,7 @@ public class OrganizerService : IOrganizerService
                     .SelectMany(b => b.Tickets!)
                     .Count(t => t.Status != TicketStatus.Cancelled && t.Status != TicketStatus.Refunded)
             })
+            .Where(e => e.Revenue > 0 || e.TicketsSold > 0)
             .OrderByDescending(e => e.Revenue)
             .ThenByDescending(e => e.TicketsSold)
             .Take(5)
@@ -435,9 +419,52 @@ public class OrganizerService : IOrganizerService
         };
     }
 
-    /// <summary>
-    /// Verify organizer (Admin only)
-    /// </summary>
+    public async Task<List<OrganizerBookingDto>> GetOrganizerBookingsAsync(int organizerId, int userId)
+    {
+        _logger.LogInformation("Fetching bookings for organizer {OrganizerId}", organizerId);
+
+        var organizer = await _context.Organizers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == organizerId);
+
+        if (organizer == null)
+        {
+            throw new NotFoundException($"Organizer with ID {organizerId} not found");
+        }
+
+        if (userId != 0 && organizer.UserId != userId)
+        {
+            throw new ForbiddenException("You don't have permission to view this organizer's bookings");
+        }
+
+        var bookings = await _context.Bookings
+            .AsNoTracking()
+            .Include(b => b.Event)
+            .Include(b => b.User)
+            .Include(b => b.Payment)
+            .Include(b => b.Tickets)
+            .Where(b => b.Event!.OrganizerId == organizerId)
+            .OrderByDescending(b => b.BookingDate)
+            .Select(b => new OrganizerBookingDto
+            {
+                BookingId = b.Id,
+                BookingCode = b.BookingCode,
+                BookingDate = b.BookingDate,
+                Status = b.Status.ToString(),
+                EventId = b.EventId,
+                EventTitle = b.Event!.Title,
+                CustomerName = b.User!.FullName,
+                CustomerEmail = b.User.Email,
+                TotalTickets = b.Tickets!.Count,
+                TotalAmount = b.TotalAmount,
+                PaymentStatus = b.Payment != null ? b.Payment.Status.ToString() : null,
+                PaymentDate = b.Payment != null ? b.Payment.PaidAt : null
+            })
+            .ToListAsync();
+
+        return bookings;
+    }
+
     public async Task<OrganizerDto> VerifyOrganizerAsync(int organizerId, int adminId)
     {
         _logger.LogInformation("Admin {AdminId} verifying organizer {OrganizerId}", adminId, organizerId);
@@ -464,7 +491,6 @@ public class OrganizerService : IOrganizerService
 
         _logger.LogInformation("Organizer {OrganizerId} verified successfully", organizerId);
 
-        // Send verification email
         if (organizer.User != null)
         {
             try
@@ -484,9 +510,6 @@ public class OrganizerService : IOrganizerService
         return MapToOrganizerDto(organizer);
     }
 
-    /// <summary>
-    /// Get all organizers (Admin only)
-    /// </summary>
     public async Task<List<OrganizerDto>> GetAllOrganizersAsync()
     {
         _logger.LogInformation("Fetching all organizers");
@@ -499,7 +522,6 @@ public class OrganizerService : IOrganizerService
         return organizers.Select(MapToOrganizerDto).ToList();
     }
 
-    #region Helper Methods
 
     private OrganizerDto MapToOrganizerDto(Organizer organizer)
     {
@@ -516,5 +538,4 @@ public class OrganizerService : IOrganizerService
         };
     }
 
-    #endregion
 }

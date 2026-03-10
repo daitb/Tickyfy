@@ -1,5 +1,7 @@
-import { useState, useRef } from "react";
-import { useTranslation } from 'react-i18next';
+import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { seatMapService } from "../services/seatMapService";
+import { eventService } from "../services/eventService";
 import {
   Undo2,
   Redo2,
@@ -26,6 +28,7 @@ import {
   RotateCcw,
   Check,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
@@ -55,7 +58,8 @@ import {
 import { toast } from "sonner";
 
 interface SeatMapBuilderProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, eventId?: string) => void;
+  eventId?: string | null;
 }
 
 interface Zone {
@@ -85,59 +89,70 @@ type Tool =
   | "stage"
   | "eraser";
 
+// Templates will be translated in the component
 const predefinedTemplates = [
   {
     id: "theater",
-    name: "Theater Style",
+    nameKey: "management.seat.builder.templates.theaterStyle",
     rows: 15,
     cols: 20,
-    description: "Traditional theater seating",
+    descriptionKey: "management.seat.builder.templates.theaterDescription",
   },
   {
     id: "stadium",
-    name: "Stadium",
+    nameKey: "management.seat.builder.templates.stadium",
     rows: 20,
     cols: 30,
-    description: "Curved stadium layout",
+    descriptionKey: "management.seat.builder.templates.stadiumDescription",
   },
   {
     id: "conference",
-    name: "Conference",
+    nameKey: "management.seat.builder.templates.conference",
     rows: 10,
     cols: 15,
-    description: "Tables and chairs",
+    descriptionKey: "management.seat.builder.templates.conferenceDescription",
   },
   {
     id: "concert",
-    name: "Concert Hall",
+    nameKey: "management.seat.builder.templates.concertHall",
     rows: 12,
     cols: 25,
-    description: "Mix of seated and standing",
+    descriptionKey: "management.seat.builder.templates.concertDescription",
   },
 ];
 
-const defaultZones: Zone[] = [
-  { id: "zone1", name: "Orchestra", color: "#00C16A", price: 120, capacity: 0 },
-  { id: "zone2", name: "Mezzanine", color: "#4F46E5", price: 80, capacity: 0 },
-  { id: "zone3", name: "Balcony", color: "#7C3AED", price: 50, capacity: 0 },
-];
+// No default zones - user must create zones matching their ticket types
 
-export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
+export function SeatMapBuilder({
+  onNavigate,
+  eventId: eventIdProp,
+}: SeatMapBuilderProps) {
   const { t } = useTranslation();
-  const [zones, setZones] = useState<Zone[]>(defaultZones);
+  // Extract numeric ID from eventId (could be "evt-1" or "1")
+  const eventId = eventIdProp
+    ? eventIdProp.includes("-")
+      ? eventIdProp.split("-")[1]
+      : eventIdProp
+    : null;
+
+  const [zones, setZones] = useState<Zone[]>([]); // Start with empty zones
+  const [seatMapId, setSeatMapId] = useState<number | null>(null);
+  const [eventTitle, setEventTitle] = useState("");
+  const [loading, setLoading] = useState(true);
   const [seats, setSeats] = useState<GridSeat[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>("seat");
-  const [selectedZone, setSelectedZone] = useState<string | null>(
-    zones[0]?.id || null
-  );
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
   const [gridSize, setGridSize] = useState({ rows: 15, cols: 20 });
   const [isDrawing, setIsDrawing] = useState(false);
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
+  const [availableSeatMaps, setAvailableSeatMaps] = useState<any[]>([]);
+  const [loadingSeatMaps, setLoadingSeatMaps] = useState(false);
   const [history, setHistory] = useState<GridSeat[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
@@ -148,6 +163,101 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     color: "#00C16A",
     price: 0,
   });
+
+  // Load existing seat map data on mount
+  useEffect(() => {
+    if (eventId) {
+      loadSeatMapData();
+    } else {
+      setLoading(false);
+    }
+  }, [eventId]);
+
+  const loadSeatMapData = async () => {
+    if (!eventId) return;
+
+    try {
+      setLoading(true);
+
+      // Load event info
+      const event = await eventService.getEventById(parseInt(eventId));
+      setEventTitle(event.title);
+
+      // Try to load existing seat map
+      try {
+        const seatMapData = await seatMapService.getSeatMapByEvent(eventId);
+
+        setSeatMapId(parseInt(seatMapData.id.toString()));
+        setGridSize({
+          rows: seatMapData.totalRows,
+          cols: seatMapData.totalColumns,
+        });
+
+        // Load zones from seat map
+        if (seatMapData.zones && seatMapData.zones.length > 0) {
+          const loadedZones: Zone[] = seatMapData.zones.map((z) => ({
+            id: z.id.toString(),
+            name: z.name,
+            color: z.color || "#00C16A",
+            price: z.zonePrice,
+            capacity: z.capacity,
+          }));
+          setZones(loadedZones);
+          setSelectedZone(loadedZones[0]?.id || null);
+        }
+
+        // Load seats
+        const seatsData = await seatMapService.getEventSeats(eventId);
+
+        const loadedSeats: GridSeat[] = seatsData.map((s) => ({
+          id: s.id.toString(),
+          row: s.gridRow || 0,
+          col: s.gridColumn || 0,
+          zoneId: s.seatZoneId?.toString() || null,
+          isBlocked: s.isBlocked,
+          isWheelchair: s.isWheelchair || false, // Load wheelchair status from database
+          label: s.fullSeatCode,
+        }));
+
+        setSeats(loadedSeats);
+        addToHistory(loadedSeats);
+
+        toast.success("Đã tải sơ đồ chỗ ngồi thành công");
+      } catch (err: any) {
+        // Handle 404 gracefully - this is expected for new seat maps
+        if (
+          err?.response?.status === 404 ||
+          err?.message?.includes("not found")
+        ) {
+          // AUTO-CREATE ZONES FROM TICKET TYPES
+          if (event.ticketTiers && event.ticketTiers.length > 0) {
+            const autoZones: Zone[] = event.ticketTiers.map((tt, index) => ({
+              id: `zone-${tt.id || index}`,
+              name: tt.name,
+              color: ["#00C16A", "#4F46E5", "#7C3AED", "#EF4444", "#F59E0B"][
+                index % 5
+              ],
+              price: tt.price || 0,
+              capacity: 0, // Will be set when seats are placed
+            }));
+            setZones(autoZones);
+            setSelectedZone(autoZones[0]?.id || null);
+            toast.success(
+              `Auto-created ${autoZones.length} zones from ticket types`
+            );
+          } else {
+            toast.info("Creating new seat map - add zones manually");
+          }
+        } else {
+          toast.error("Failed to load seat map data");
+        }
+      }
+    } catch (error) {
+      toast.error("Failed to load event data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const addToHistory = (newSeats: GridSeat[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -227,21 +337,49 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
 
   const handleAddZone = () => {
     if (!newZone.name || newZone.price <= 0) {
-      toast.error("Please fill in all zone details");
+      toast.error("Vui lòng điền đầy đủ thông tin khu vực");
       return;
     }
 
-    const zone: Zone = {
-      id: `zone${zones.length + 1}`,
-      ...newZone,
-      capacity: 0,
-    };
+    // Validate maximum price (50 million VND for payment gateway limit)
+    const MAX_ZONE_PRICE = 50_000_000;
+    if (newZone.price > MAX_ZONE_PRICE) {
+      toast.error(
+        `Giá khu vực không được vượt quá ${MAX_ZONE_PRICE.toLocaleString()} VND do hạn chế của cổng thanh toán (MoMo: tối đa 50M VND mỗi giao dịch)`
+      );
+      return;
+    }
 
-    setZones([...zones, zone]);
-    setSelectedZone(zone.id);
+    if (editingZone) {
+      // Update existing zone
+      setZones(
+        zones.map((z) =>
+          z.id === editingZone.id
+            ? {
+                ...z,
+                name: newZone.name,
+                color: newZone.color,
+                price: newZone.price,
+              }
+            : z
+        )
+      );
+      toast.success("Đã cập nhật khu vực thành công");
+    } else {
+      // Create new zone
+      const zone: Zone = {
+        id: `zone${Date.now()}`,
+        ...newZone,
+        capacity: 0,
+      };
+      setZones([...zones, zone]);
+      setSelectedZone(zone.id);
+      toast.success("Đã tạo khu vực thành công");
+    }
+
     setNewZone({ name: "", color: "#00C16A", price: 0 });
+    setEditingZone(null);
     setShowZoneModal(false);
-    toast.success("Zone created successfully");
   };
 
   const handleDeleteZone = (zoneId: string) => {
@@ -250,7 +388,7 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     setSeats(
       seats.map((s) => (s.zoneId === zoneId ? { ...s, zoneId: null } : s))
     );
-    toast.success("Zone deleted");
+    toast.success(t("seatMapBuilder.messages.zoneDeleted"));
   };
 
   const handleApplyTemplate = (template: (typeof predefinedTemplates)[0]) => {
@@ -286,7 +424,7 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     setGridSize({ rows: rowsToCreate, cols: colsToCreate });
     addToHistory(newSeats);
     setShowTemplateModal(false);
-    toast.success("Template applied successfully");
+    toast.success(t("seatMapBuilder.messages.templateApplied"));
   };
 
   const autoNumberSeats = () => {
@@ -313,14 +451,37 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     });
 
     setSeats(labeledSeats);
-    toast.success("Seats numbered automatically");
+    toast.success(t("seatMapBuilder.messages.seatsNumbered"));
   };
 
   const getSeatColor = (seat: GridSeat) => {
+    // Blocked seats - red
     if (seat.isBlocked) return "#EF5350";
+
+    // Wheelchair seats - distinct blue
+    if (seat.isWheelchair) return "#60A5FA";
+
+    // No zone assigned - gray
     if (!seat.zoneId) return "#E0E0E0";
+
+    // Use zone color
     const zone = zones.find((z) => z.id === seat.zoneId);
     return zone?.color || "#E0E0E0";
+  };
+
+  // Calculate contrasting text color based on background
+  const getTextColor = (bgColor: string) => {
+    // Convert hex to RGB
+    const hex = bgColor.replace("#", "");
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    // Return black for light backgrounds, white for dark backgrounds
+    return luminance > 0.5 ? "#000000" : "#FFFFFF";
   };
 
   const getTotalCapacity = () => {
@@ -331,16 +492,136 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
     return seats.filter((s) => s.zoneId === zoneId && !s.isBlocked).length;
   };
 
-  const handleSave = () => {
-    toast.success("Seat map saved as draft");
-  };
-
-  const handlePublish = () => {
-    if (seats.length === 0) {
-      toast.error("Please add seats before publishing");
+  const handleSave = async () => {
+    if (!eventId) {
+      toast.error(t("seatMapBuilder.messages.eventIdMissing"));
       return;
     }
-    toast.success("Seat map published successfully!");
+
+    // Validate zones have proper names
+    if (zones.length === 0) {
+      toast.error(t("seatMapBuilder.messages.addZoneFirst"));
+      return;
+    }
+
+    const emptyZoneNames = zones.filter((z) => !z.name || z.name.trim() === "");
+    if (emptyZoneNames.length > 0) {
+      toast.error(t("seatMapBuilder.messages.zonesMustHaveNames"));
+      return;
+    }
+
+    // Validate zone prices before saving
+    const MAX_ZONE_PRICE = 50_000_000;
+    const invalidZones = zones.filter((z) => z.price > MAX_ZONE_PRICE);
+    if (invalidZones.length > 0) {
+      toast.error(
+        t("seatMapBuilder.messages.zonePriceExceedsMax", {
+          max: MAX_ZONE_PRICE.toLocaleString(),
+          zones: invalidZones.map((z) => z.name).join(", "),
+        })
+      );
+      return;
+    }
+
+    try {
+      // AUTO-UPDATE ZONE CAPACITIES from actual seat counts
+      const updatedZones = zones.map((z) => ({
+        ...z,
+        capacity: getZoneCapacity(z.id), // Count actual seats assigned to this zone
+      }));
+
+      // Include all seat properties including wheelchair status
+      const layoutData = {
+        zones: updatedZones.map((z) => ({
+          id: z.id,
+          name: z.name,
+          color: z.color,
+          price: z.price,
+          capacity: z.capacity, // Now contains actual seat count
+          startRow: 0,
+          endRow: 0,
+          startColumn: 0,
+          endColumn: 0,
+        })),
+        seats: seats.map((s) => ({
+          ...s,
+          isWheelchair: s.isWheelchair || false,
+          isBlocked: s.isBlocked || false,
+        })),
+      };
+
+      const payload = {
+        eventId: eventId,
+        name: t("management.seat.builder.seatMapName", {
+          eventTitle: eventTitle || t("common.eventTitle"),
+        }),
+        description: "Seat map created with builder",
+        totalRows: gridSize.rows,
+        totalColumns: gridSize.cols,
+        layoutConfig: JSON.stringify(layoutData),
+      };
+
+      if (seatMapId) {
+        // Update existing - only send layoutConfig for updates to trigger backend processing
+        // Backend will check if tickets are sold and reject if structure changes
+        await seatMapService.updateSeatMap(seatMapId.toString(), {
+          name: payload.name,
+          description: payload.description,
+          totalRows: payload.totalRows,
+          totalColumns: payload.totalColumns,
+          layoutConfig: payload.layoutConfig,
+          isActive: true,
+        });
+        toast.success(t("seatMapBuilder.messages.seatMapUpdated"));
+
+        // Reload data to get updated zones and seats with DB IDs
+        await loadSeatMapData();
+      } else {
+        // Create new
+        const created = await seatMapService.createSeatMap(payload);
+        const newSeatMapId = created.id;
+        setSeatMapId(newSeatMapId);
+
+        toast.success(t("seatMapBuilder.messages.seatMapSaved"));
+
+        // Reload data to get zones and seats with DB IDs
+        // Wait a bit for backend to finish processing
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await loadSeatMapData();
+      }
+    } catch (error: any) {
+      // Check if error is due to tickets already sold
+      if (error?.response?.data?.message?.includes("tickets have been sold")) {
+        toast.error(
+          "Không thể chỉnh sửa sơ đồ chỗ ngồi sau khi đã bán vé. " +
+            "Điều này sẽ ảnh hưởng đến các đặt chỗ hiện có.",
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(t("seatMapBuilder.messages.saveFailed"));
+      }
+    }
+  };
+
+  const handlePublish = async () => {
+    if (seats.length === 0) {
+      toast.error(t("seatMapBuilder.messages.addSeatsFirst"));
+      return;
+    }
+
+    await handleSave();
+    toast.success(t("seatMapBuilder.messages.seatMapPublished"));
+
+    // Navigate back to wizard with eventId after publishing
+    setTimeout(() => {
+      if (eventId) {
+        // Save step 3 (Ticketing) to return to correct step
+        sessionStorage.setItem(`wizard-step-${eventId}`, "3");
+        onNavigate("organizer-wizard", eventId);
+      } else {
+        onNavigate("organizer-dashboard");
+      }
+    }, 1000);
   };
 
   return (
@@ -352,14 +633,24 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
-                onClick={() => onNavigate("organizer-dashboard")}
+                onClick={() => {
+                  if (eventId) {
+                    // Save step 3 (Ticketing) to return to correct step
+                    sessionStorage.setItem(`wizard-step-${eventId}`, "3");
+                    onNavigate("organizer-wizard", eventId);
+                  } else {
+                    onNavigate("organizer-dashboard");
+                  }
+                }}
               >
-                ← Back
+                ← {t("seatMapBuilder.back")}
               </Button>
               <div>
-                <h2 className="text-lg text-neutral-900">Seat Map Builder</h2>
+                <h2 className="text-lg text-neutral-900">
+                  {t("seatMapBuilder.title")}
+                </h2>
                 <p className="text-xs text-neutral-500">
-                  Summer Music Festival 2024
+                  {eventTitle || "Summer Music Festival 2024"}
                 </p>
               </div>
             </div>
@@ -424,21 +715,21 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                 onClick={() => setShowPreview(true)}
               >
                 <Eye size={16} className="mr-2" />
-                Preview
+                {t("seatMapBuilder.topBar.preview")}
               </Button>
 
               <Button variant="outline" size="sm" onClick={handleSave}>
                 <Save size={16} className="mr-2" />
-                Save Draft
+                {t("seatMapBuilder.topBar.saveDraft")}
               </Button>
 
               <Button
-                className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
+                className="bg-teal-600 hover:bg-teal-700 text-white"
                 size="sm"
                 onClick={handlePublish}
               >
                 <Check size={16} className="mr-2" />
-                Publish
+                {t("seatMapBuilder.topBar.publish")}
               </Button>
             </div>
           </div>
@@ -452,21 +743,29 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
             {/* Event Info */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Event Information</CardTitle>
+                <CardTitle className="text-sm">
+                  {t("seatMapBuilder.eventInfo.title")}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div>
-                  <span className="text-neutral-500">Event:</span>
+                  <span className="text-neutral-500">
+                    {t("seatMapBuilder.eventInfo.event")}:
+                  </span>
                   <div className="text-neutral-900">
-                    Summer Music Festival 2024
+                    {eventTitle || "Summer Music Festival 2024"}
                   </div>
                 </div>
                 <div>
-                  <span className="text-neutral-500">Venue:</span>
+                  <span className="text-neutral-500">
+                    {t("seatMapBuilder.eventInfo.venue")}:
+                  </span>
                   <div className="text-neutral-900">Madison Square Garden</div>
                 </div>
                 <div>
-                  <span className="text-neutral-500">Total Capacity:</span>
+                  <span className="text-neutral-500">
+                    {t("seatMapBuilder.eventInfo.totalCapacity")}:
+                  </span>
                   <div className="text-neutral-900 text-xl">
                     {getTotalCapacity()}
                   </div>
@@ -477,7 +776,9 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
             {/* Drawing Tools */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Drawing Tools</CardTitle>
+                <CardTitle className="text-sm">
+                  {t("seatMapBuilder.drawingTools.title")}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Button
@@ -487,7 +788,7 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                   onClick={() => setSelectedTool("seat")}
                 >
                   <Armchair size={16} className="mr-2" />
-                  Standard Seat
+                  {t("seatMapBuilder.drawingTools.standardSeat")}
                 </Button>
 
                 <Button
@@ -499,7 +800,7 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                   onClick={() => setSelectedTool("wheelchair")}
                 >
                   <Users size={16} className="mr-2" />
-                  Wheelchair Accessible
+                  {t("seatMapBuilder.drawingTools.wheelchairAccessible")}
                 </Button>
 
                 <Button
@@ -509,15 +810,17 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                   onClick={() => setSelectedTool("eraser")}
                 >
                   <Eraser size={16} className="mr-2" />
-                  Eraser
+                  {t("seatMapBuilder.drawingTools.eraser")}
                 </Button>
 
                 <div className="pt-2">
-                  <Label className="text-xs">Grid Size</Label>
+                  <Label className="text-xs">
+                    {t("seatMapBuilder.drawingTools.gridSize")}
+                  </Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <Input
                       type="number"
-                      placeholder="Rows"
+                      placeholder={t("seatMapBuilder.drawingTools.rows")}
                       value={gridSize.rows}
                       onChange={(e) =>
                         setGridSize({
@@ -529,7 +832,7 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                     />
                     <Input
                       type="number"
-                      placeholder="Cols"
+                      placeholder={t("seatMapBuilder.drawingTools.cols")}
                       value={gridSize.cols}
                       onChange={(e) =>
                         setGridSize({
@@ -548,7 +851,7 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                   className="w-full"
                   onClick={autoNumberSeats}
                 >
-                  Auto-Number Seats
+                  {t("seatMapBuilder.drawingTools.autoNumber")}
                 </Button>
 
                 <Button
@@ -561,7 +864,7 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                   }}
                 >
                   <RotateCcw size={16} className="mr-2" />
-                  Clear All
+                  {t("seatMapBuilder.drawingTools.clearAll")}
                 </Button>
               </CardContent>
             </Card>
@@ -570,14 +873,34 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">Zones & Pricing</CardTitle>
+                  <CardTitle className="text-sm">
+                    {t("seatMapBuilder.zones.title")}
+                  </CardTitle>
                   <Button size="sm" onClick={() => setShowZoneModal(true)}>
                     <Plus size={14} className="mr-1" />
-                    Add
+                    {t("seatMapBuilder.zones.add")}
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* Info Notice */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                  <div className="flex gap-2">
+                    <AlertCircle
+                      size={16}
+                      className="text-blue-600 flex-shrink-0 mt-0.5"
+                    />
+                    <div className="text-xs text-blue-800">
+                      <strong>{t("seatMapBuilder.zones.autoSync")}</strong>
+                      {eventTitle && (
+                        <div className="mt-1 text-blue-700">
+                          {t("seatMapBuilder.zones.newZonesInfo")}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {zones.map((zone) => (
                   <div
                     key={zone.id}
@@ -586,7 +909,10 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                         ? "border-teal-500 bg-teal-50"
                         : "border-neutral-200 hover:border-neutral-300"
                     }`}
-                    onClick={() => setSelectedZone(zone.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedZone(zone.id);
+                    }}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -603,6 +929,11 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingZone(zone);
+                            setNewZone({
+                              name: zone.name,
+                              color: zone.color,
+                              price: zone.price,
+                            });
                             setShowZoneModal(true);
                           }}
                           className="text-neutral-400 hover:text-neutral-600"
@@ -622,11 +953,15 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                     </div>
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-neutral-500">Price:</span>
+                        <span className="text-neutral-500">
+                          {t("seatMapBuilder.zones.price")}:
+                        </span>
                         <span className="text-neutral-900">${zone.price}</span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-neutral-500">Capacity:</span>
+                        <span className="text-neutral-500">
+                          {t("seatMapBuilder.zones.capacity")}:
+                        </span>
                         <span className="text-neutral-900">
                           {getZoneCapacity(zone.id)}
                         </span>
@@ -640,9 +975,11 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
             {/* Templates */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Templates</CardTitle>
+                <CardTitle className="text-sm">
+                  {t("seatMapBuilder.templates.title")}
+                </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -650,7 +987,35 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                   onClick={() => setShowTemplateModal(true)}
                 >
                   <Layout size={16} className="mr-2" />
-                  Load Template
+                  {t("seatMapBuilder.templates.loadTemplate")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={async () => {
+                    setShowCopyModal(true);
+                    setLoadingSeatMaps(true);
+                    try {
+                      // Get current user's organizer ID from auth service
+                      const user = JSON.parse(
+                        localStorage.getItem("user") || "{}"
+                      );
+                      if (user.organizerId) {
+                        const maps = await seatMapService.getOrganizerSeatMaps(
+                          user.organizerId
+                        );
+                        setAvailableSeatMaps(maps);
+                      }
+                    } catch (err) {
+                      toast.error("Failed to load seat maps");
+                    } finally {
+                      setLoadingSeatMaps(false);
+                    }
+                  }}
+                >
+                  <Copy size={16} className="mr-2" />
+                  {t("seatMapBuilder.templates.copyFromEvent")}
                 </Button>
               </CardContent>
             </Card>
@@ -664,7 +1029,9 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
             <div className="mb-8 text-center">
               <div className="inline-block bg-neutral-200 px-16 py-6 rounded-lg">
                 <div className="text-2xl mb-2">🎭</div>
-                <div className="text-sm text-neutral-700">STAGE</div>
+                <div className="text-sm text-neutral-700">
+                  {t("seatMapBuilder.stage")}
+                </div>
               </div>
             </div>
 
@@ -710,7 +1077,9 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                           backgroundColor: seat
                             ? getSeatColor(seat)
                             : undefined,
-                          color: seat ? "#fff" : "#999",
+                          color: seat
+                            ? getTextColor(getSeatColor(seat))
+                            : "#999",
                         }}
                       >
                         {seat && (
@@ -718,7 +1087,9 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                             {seat.isWheelchair ? (
                               <span className="text-xs">♿</span>
                             ) : seat.label ? (
-                              <span className="text-[8px]">{seat.label}</span>
+                              <span className="text-[8px] font-semibold">
+                                {seat.label}
+                              </span>
                             ) : (
                               <Armchair size={16} />
                             )}
@@ -737,42 +1108,52 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
         <div className="w-72 bg-white border-l overflow-y-auto p-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Tips & Instructions</CardTitle>
+              <CardTitle className="text-sm">
+                {t("seatMapBuilder.tips.title")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-xs text-neutral-600">
               <div>
-                <strong className="text-neutral-900">How to use:</strong>
+                <strong className="text-neutral-900">
+                  {t("seatMapBuilder.tips.howToUse")}
+                </strong>
                 <ul className="mt-1 space-y-1 ml-4">
-                  <li>• Select a zone from the left sidebar</li>
-                  <li>• Choose a drawing tool</li>
-                  <li>• Click or drag on the grid to place seats</li>
-                  <li>• Use eraser to remove seats</li>
-                  <li>• Auto-number assigns seat labels</li>
+                  <li>• {t("seatMapBuilder.tips.selectZone")}</li>
+                  <li>• {t("seatMapBuilder.tips.chooseTool")}</li>
+                  <li>• {t("seatMapBuilder.tips.clickDrag")}</li>
+                  <li>• {t("seatMapBuilder.tips.useEraser")}</li>
+                  <li>• {t("seatMapBuilder.tips.autoNumberInfo")}</li>
                 </ul>
               </div>
 
               <div>
                 <strong className="text-neutral-900">
-                  Keyboard Shortcuts:
+                  {t("seatMapBuilder.tips.keyboardShortcuts")}
                 </strong>
                 <ul className="mt-1 space-y-1 ml-4">
-                  <li>• Ctrl+Z: Undo</li>
-                  <li>• Ctrl+Y: Redo</li>
-                  <li>• Ctrl+S: Save</li>
-                  <li>• Delete: Remove selected</li>
+                  <li>• {t("seatMapBuilder.tips.undo")}</li>
+                  <li>• {t("seatMapBuilder.tips.redo")}</li>
+                  <li>• {t("seatMapBuilder.tips.save")}</li>
+                  <li>• {t("seatMapBuilder.tips.delete")}</li>
                 </ul>
               </div>
 
               <div className="pt-3 border-t">
-                <strong className="text-neutral-900">Current Selection:</strong>
+                <strong className="text-neutral-900">
+                  {t("seatMapBuilder.tips.currentSelection")}
+                </strong>
                 <div className="mt-2 p-2 bg-neutral-50 rounded">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-neutral-500">Tool:</span>
+                    <span className="text-neutral-500">
+                      {t("seatMapBuilder.tips.tool")}:
+                    </span>
                     <Badge variant="secondary">{selectedTool}</Badge>
                   </div>
                   {selectedZone && (
                     <div className="flex items-center gap-2">
-                      <span className="text-neutral-500">Zone:</span>
+                      <span className="text-neutral-500">
+                        {t("seatMapBuilder.tips.zone")}:
+                      </span>
                       <div className="flex items-center gap-1">
                         <div
                           className="w-3 h-3 rounded"
@@ -800,18 +1181,22 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingZone ? "Edit Zone" : "Create New Zone"}
+              {editingZone
+                ? t("management.seat.builder.zone.editZone")
+                : t("management.seat.builder.zone.createNewZone")}
             </DialogTitle>
             <DialogDescription>
-              Define the zone name, color, and pricing
+              {t("management.seat.builder.zone.zoneDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Zone Name</Label>
+              <Label>{t("management.seat.builder.zone.zoneName")}</Label>
               <Input
-                placeholder="e.g., VIP Section"
+                placeholder={t(
+                  "management.seat.builder.zone.zoneNamePlaceholder"
+                )}
                 value={newZone.name}
                 onChange={(e) =>
                   setNewZone({ ...newZone, name: e.target.value })
@@ -820,7 +1205,7 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
             </div>
 
             <div>
-              <Label>Zone Color</Label>
+              <Label>{t("management.seat.builder.zone.zoneColor")}</Label>
               <div className="flex gap-2">
                 <Input
                   type="color"
@@ -841,18 +1226,28 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
             </div>
 
             <div>
-              <Label>Price per Seat ($)</Label>
+              <Label>Price per Seat (VND)</Label>
               <Input
                 type="number"
-                placeholder="120"
+                placeholder="100000"
+                min="0"
+                max="50000000"
                 value={newZone.price || ""}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value) || 0;
+                  if (value > 50_000_000) {
+                    toast.error("Maximum price is 50,000,000 VND");
+                    return;
+                  }
                   setNewZone({
                     ...newZone,
-                    price: parseFloat(e.target.value) || 0,
-                  })
-                }
+                    price: value,
+                  });
+                }}
               />
+              <p className="text-xs text-neutral-500 mt-1">
+                Maximum: 50,000,000 VND (Payment gateway limit)
+              </p>
             </div>
           </div>
 
@@ -865,10 +1260,12 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                 setNewZone({ name: "", color: "#00C16A", price: 0 });
               }}
             >
-              Cancel
+              {t("management.seat.builder.zone.cancel")}
             </Button>
             <Button onClick={handleAddZone}>
-              {editingZone ? "Update Zone" : "Create Zone"}
+              {editingZone
+                ? t("management.seat.builder.zone.updateZone")
+                : t("management.seat.builder.zone.createZone")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -892,13 +1289,14 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
                 className="p-4 border-2 rounded-lg hover:border-teal-500 transition-colors text-left"
               >
                 <div className="text-sm text-neutral-900 mb-1">
-                  {template.name}
+                  {t(template.nameKey)}
                 </div>
                 <div className="text-xs text-neutral-500 mb-2">
-                  {template.description}
+                  {t(template.descriptionKey)}
                 </div>
                 <div className="text-xs text-neutral-400">
-                  {template.rows} rows × {template.cols} columns
+                  {template.rows} {t("management.seat.builder.rows")} ×{" "}
+                  {template.cols} {t("management.seat.builder.seatsPerRow")}
                 </div>
               </button>
             ))}
@@ -979,6 +1377,109 @@ export function SeatMapBuilder({ onNavigate }: SeatMapBuilderProps) {
 
           <DialogFooter>
             <Button onClick={() => setShowPreview(false)}>Close Preview</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Copy Seat Map Modal */}
+      <Dialog open={showCopyModal} onOpenChange={setShowCopyModal}>
+        <DialogContent className="max-w-2xl max-h-[600px]">
+          <DialogHeader>
+            <DialogTitle>Copy Seat Map from Another Event</DialogTitle>
+            <DialogDescription>
+              Select an existing seat map to copy its layout
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-y-auto max-h-[400px]">
+            {loadingSeatMaps ? (
+              <div className="text-center py-8 text-neutral-500">
+                Loading seat maps...
+              </div>
+            ) : availableSeatMaps.length === 0 ? (
+              <div className="text-center py-8 text-neutral-500">
+                No seat maps available to copy
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {availableSeatMaps.map((map) => (
+                  <button
+                    key={map.id}
+                    onClick={async () => {
+                      try {
+                        const fullMap = await seatMapService.getSeatMapById(
+                          map.id.toString()
+                        );
+
+                        // Load zones from the seat map
+                        if (fullMap.zones && fullMap.zones.length > 0) {
+                          const loadedZones: Zone[] = fullMap.zones.map(
+                            (z) => ({
+                              id: `zone${z.id}`,
+                              name: z.name,
+                              color: z.color || "#00C16A",
+                              price: z.zonePrice,
+                              capacity: z.capacity,
+                            })
+                          );
+                          setZones(loadedZones);
+                          setSelectedZone(loadedZones[0]?.id || null);
+                        }
+
+                        // Load seats from the full seat map
+                        const eventSeats = await seatMapService.getEventSeats(
+                          fullMap.eventId.toString()
+                        );
+
+                        // Convert backend seats to grid seats
+                        const loadedSeats: GridSeat[] = eventSeats.map((s) => ({
+                          id: `seat-${s.id}`,
+                          row: s.gridRow ?? 0,
+                          col: s.gridColumn ?? 0,
+                          zoneId: s.seatZoneId ? `zone${s.seatZoneId}` : null,
+                          isBlocked: s.isBlocked,
+                          isWheelchair: s.isWheelchair,
+                          label: `${s.row}${s.seatNumber}`,
+                        }));
+
+                        setSeats(loadedSeats);
+                        setGridSize({
+                          rows: fullMap.totalRows,
+                          cols: fullMap.totalColumns,
+                        });
+
+                        toast.success("Seat map copied successfully!");
+                        setShowCopyModal(false);
+                      } catch (error) {
+                        toast.error("Failed to copy seat map");
+                      }
+                    }}
+                    className="w-full p-4 border-2 rounded-lg hover:border-teal-500 transition-colors text-left"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-medium text-neutral-900 mb-1">
+                          {map.name}
+                        </div>
+                        <div className="text-sm text-neutral-500">
+                          {map.description || "No description"}
+                        </div>
+                        <div className="text-xs text-neutral-400 mt-1">
+                          {map.totalRows} rows × {map.totalColumns} columns
+                        </div>
+                      </div>
+                      <Copy size={16} className="text-neutral-400" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCopyModal(false)}>
+              Cancel
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

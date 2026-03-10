@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { verifyPayment, getPaymentById, verifyPaymentFromReturnUrl } from "../services/paymentService";
 import { CheckCircle, XCircle, Loader2, CreditCard, Calendar, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -23,6 +24,7 @@ interface PaymentDetails {
 }
 
 export default function PaymentReturn() {
+  const { t } = useTranslation();
   const query = useQuery();
   const navigate = useNavigate();
   const [status, setStatus] = useState<"idle" | "verifying" | "success" | "failed" | "cancelled">("idle");
@@ -51,23 +53,20 @@ export default function PaymentReturn() {
       
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-          console.log(`[PaymentReturn] Verification attempt ${attempt + 1}/${maxRetries} for payment ${paymentId}`);
           const ok = await verifyPayment(paymentId);
           if (ok) {
             verified = true;
-            console.log(`[PaymentReturn] Payment ${paymentId} verified successfully`);
             break;
           }
           
           // Wait before retrying
           if (attempt < maxRetries - 1) {
             const delay = retryDelay * (attempt + 1);
-            console.log(`[PaymentReturn] Payment not verified yet, retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
           }
         } catch (err: any) {
           lastError = err;
-          console.error(`[PaymentReturn] Verification attempt ${attempt + 1} failed:`, err);
+
           // Wait before retrying on error too
           if (attempt < maxRetries - 1) {
             const delay = retryDelay * (attempt + 1);
@@ -81,15 +80,14 @@ export default function PaymentReturn() {
       
       if (verified) {
         setStatus("success");
-        setMessage("Thanh toán đã được xác minh thành công! Đặt chỗ của bạn đã được xác nhận.");
+        setMessage(t("payment.return.successMessage"));
         
         // Fetch payment details to display
         try {
           const paymentData = await getPaymentById(paymentId);
           setPaymentDetails(paymentData);
-          console.log("[PaymentReturn] Payment details fetched:", paymentData);
         } catch (err) {
-          console.error("[PaymentReturn] Failed to fetch payment details:", err);
+          // Payment details fetch failed, but payment is verified so continue
           // Continue even if payment details fetch fails
         }
       } else {
@@ -97,17 +95,17 @@ export default function PaymentReturn() {
         const errorMsg = lastError?.response?.data?.message || lastError?.message;
         setMessage(
           errorMsg 
-            ? `Xác minh thanh toán thất bại: ${errorMsg}`
-            : "Xác minh thanh toán vẫn đang chờ xử lý. Thanh toán có thể vẫn đang được xử lý. Vui lòng thử kiểm tra lại sau một lúc hoặc liên hệ hỗ trợ nếu vấn đề vẫn tiếp tục."
+            ? t("payment.return.verificationFailed", { error: errorMsg })
+            : t("payment.return.verificationPending")
         );
       }
     } catch (err: any) {
       setIsRetrying(false);
-      console.error("[PaymentReturn] Payment verification error:", err);
+
       setStatus("failed");
       setMessage(
         err.response?.data?.message || 
-        "Lỗi xác minh thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ nếu thanh toán đã thành công."
+        t("payment.return.verificationError")
       );
     }
   };
@@ -121,7 +119,6 @@ export default function PaymentReturn() {
       query.forEach((value, key) => {
         allParams[key] = value;
       });
-      console.log("[PaymentReturn] Query parameters:", allParams);
       setDebugInfo(JSON.stringify(allParams, null, 2));
 
       // Check if this is a free booking (no payment required)
@@ -134,8 +131,7 @@ export default function PaymentReturn() {
         if (!isNaN(parsedBookingId)) {
           setPaymentId(parsedBookingId);
           setStatus("success");
-          setMessage("Đặt chỗ miễn phí của bạn đã được xác nhận!");
-          console.log("[PaymentReturn] Free booking confirmed:", parsedBookingId);
+          setMessage(t("payment.return.freeBookingConfirmed"));
           setTimeout(() => navigate("/my-tickets"), 2000);
           return;
         }
@@ -151,18 +147,30 @@ export default function PaymentReturn() {
       const errorCode = query.get("errorCode"); // MoMo error code: 0 means success
       const messageParam = query.get("message"); // MoMo message
 
-      console.log("[PaymentReturn] VNPay params:", { vnpTxnRef, vnpResponseCode, vnpTransactionStatus });
-      console.log("[PaymentReturn] MoMo params:", { orderId, resultCode, errorCode, message: messageParam });
 
       // Check for cancellation (user cancelled payment)
       if (vnpResponseCode === "24" || resultCode === "1006" || errorCode === "1006") {
         setStatus("cancelled");
-        setMessage("Bạn đã hủy thanh toán. Vui lòng thử lại nếu bạn muốn hoàn tất đặt chỗ.");
+        setMessage(t("payment.return.cancelledMessage"));
         return;
       }
 
       // Determine payment ID
-      let paymentIdParam = vnpTxnRef || query.get("paymentId");
+      let paymentIdParam = query.get("paymentId");
+      
+      // For VNPay: vnp_TxnRef format is "paymentId_timestamp" (e.g., "123_20251209143000")
+      if (vnpTxnRef) {
+        if (vnpTxnRef.includes("_")) {
+          // Extract paymentId from "paymentId_timestamp"
+          const parts = vnpTxnRef.split("_");
+          if (parts.length > 0 && parts[0]) {
+            paymentIdParam = parts[0];
+          }
+        } else {
+          // Old format: vnp_TxnRef is just paymentId
+          paymentIdParam = vnpTxnRef;
+        }
+      }
       
       // For MoMo: orderId format is "paymentId_timestamp" (e.g., "30_20251114042356")
       if (orderId) {
@@ -171,36 +179,39 @@ export default function PaymentReturn() {
           const parts = orderId.split("_");
           if (parts.length > 0 && parts[0]) {
             paymentIdParam = parts[0];
-            console.log("[PaymentReturn] Extracted paymentId from MoMo orderId:", paymentIdParam);
           }
         } else {
           // Old format: orderId is just paymentId
           paymentIdParam = orderId;
-          console.log("[PaymentReturn] Using MoMo orderId as paymentId:", paymentIdParam);
         }
       }
 
       if (!paymentIdParam) {
         setStatus("failed");
-        setMessage("Không tìm thấy ID thanh toán trong tham số trả về. Vui lòng liên hệ hỗ trợ.");
-        console.error("[PaymentReturn] Payment ID not found in query parameters");
+        setMessage(t("payment.return.paymentIdNotFound"));
+
         return;
       }
 
       const parsedPaymentId = parseInt(paymentIdParam, 10);
       if (isNaN(parsedPaymentId) || parsedPaymentId <= 0) {
         setStatus("failed");
-        setMessage(`ID thanh toán không hợp lệ từ nhà cung cấp: ${paymentIdParam}`);
-        console.error("[PaymentReturn] Invalid payment ID:", paymentIdParam);
+        setMessage(t("payment.return.invalidPaymentId", { paymentId: paymentIdParam }));
+
         return;
       }
 
       setPaymentId(parsedPaymentId);
-      console.log("[PaymentReturn] Using payment ID:", parsedPaymentId);
 
+      // Check for credit card provider
+      const creditCardProvider = query.get("provider");
+      const creditCardStatus = query.get("status");
+      const hasCreditCardResponse = creditCardProvider === "creditcard";
+      
       // Check response codes first
       // VNPay: vnp_ResponseCode = "00" means success, vnp_TransactionStatus = "00" also means success
       // MoMo: errorCode = 0 OR resultCode = 0 means success
+      // CreditCard: status = "success" means success
       // Note: MoMo may not send resultCode/errorCode in ReturnUrl, so we check if they exist first
       const hasVnPayResponse = vnpResponseCode !== null || vnpTransactionStatus !== null;
       const hasMomoResponse = resultCode !== null || errorCode !== null;
@@ -208,65 +219,53 @@ export default function PaymentReturn() {
       const isProviderSuccess = 
         (vnpResponseCode === "00" || vnpTransactionStatus === "00") || 
         (errorCode === "0") ||
-        (resultCode === "0" || resultCode === "00");
-
-      console.log("[PaymentReturn] Provider response check:", {
-        hasVnPayResponse,
-        hasMomoResponse,
-        isProviderSuccess,
-        vnpResponseCode,
-        vnpTransactionStatus,
-        resultCode,
-        errorCode
-      });
+        (resultCode === "0" || resultCode === "00") ||
+        (hasCreditCardResponse && creditCardStatus === "success");
 
       // If we have explicit error codes and they indicate failure, fail immediately
       // Otherwise, proceed to backend verification (MoMo may not send resultCode in ReturnUrl)
-      if ((hasVnPayResponse || hasMomoResponse) && !isProviderSuccess) {
+      if ((hasVnPayResponse || hasMomoResponse || hasCreditCardResponse) && !isProviderSuccess) {
         setStatus("failed");
-        let errorMessage = "Thanh toán thất bại.";
+        let errorMessage = t("payment.return.paymentFailed");
         if (vnpResponseCode && vnpResponseCode !== "00") {
-          errorMessage = `Thanh toán VNPay thất bại. Mã phản hồi: ${vnpResponseCode}`;
+          errorMessage = t("payment.return.vnpayFailed", { code: vnpResponseCode });
         } else if (resultCode && resultCode !== "0" && resultCode !== "00") {
-          errorMessage = `Thanh toán MoMo thất bại. Mã kết quả: ${resultCode}`;
+          errorMessage = t("payment.return.momoFailedResult", { code: resultCode });
           if (messageParam) {
-            errorMessage += `. Thông báo: ${messageParam}`;
+            errorMessage += `. ${t("payment.return.message")}: ${messageParam}`;
           }
         } else if (errorCode && errorCode !== "0") {
-          errorMessage = `Thanh toán MoMo thất bại. Mã lỗi: ${errorCode}`;
+          errorMessage = t("payment.return.momoFailedError", { code: errorCode });
           if (messageParam) {
-            errorMessage += `. Thông báo: ${messageParam}`;
+            errorMessage += `. ${t("payment.return.message")}: ${messageParam}`;
           }
         }
         setMessage(errorMessage);
-        console.error("[PaymentReturn] Payment failed based on provider response codes");
+
         return;
       }
 
       // First, try to verify from return URL parameters directly
       // This is more reliable when webhooks can't reach localhost
-      if (hasVnPayResponse || hasMomoResponse) {
+      if (hasVnPayResponse || hasMomoResponse || hasCreditCardResponse) {
         try {
-          console.log("[PaymentReturn] Attempting return URL verification...");
+
           const verifiedFromReturnUrl = await verifyPaymentFromReturnUrl(parsedPaymentId, query);
           if (verifiedFromReturnUrl) {
             setStatus("success");
-            setMessage("Thanh toán đã được xác minh thành công! Đặt chỗ của bạn đã được xác nhận.");
-            console.log("[PaymentReturn] Payment verified from return URL");
-            
+            setMessage(t("payment.return.successMessage"));
+
             // Fetch payment details to display
             try {
               const paymentData = await getPaymentById(parsedPaymentId);
               setPaymentDetails(paymentData);
             } catch (err) {
-              console.error("[PaymentReturn] Failed to fetch payment details:", err);
+
             }
             return; // Success, exit early
-          } else {
-            console.log("[PaymentReturn] Return URL verification returned false, falling back to standard verification");
           }
         } catch (err: any) {
-          console.error("[PaymentReturn] Return URL verification failed, falling back to standard verification:", err);
+
           // Fall through to standard verification
         }
       }
@@ -275,7 +274,7 @@ export default function PaymentReturn() {
       // For MoMo, if resultCode/errorCode are not present in ReturnUrl,
       // we rely on backend verification which checks the actual payment status
       // Check if we have any indication of success (even if codes are missing)
-      const hasSuccessCode = isProviderSuccess && (hasVnPayResponse || hasMomoResponse);
+      const hasSuccessCode = isProviderSuccess && (hasVnPayResponse || hasMomoResponse || hasCreditCardResponse);
       const hasOrderId = orderId !== null; // MoMo returns orderId even if codes are missing
       
       // If we have orderId from MoMo, it's likely a successful return (MoMo redirects on success)
@@ -293,15 +292,15 @@ export default function PaymentReturn() {
         {status === "verifying" && (
           <>
             <Loader2 className="mx-auto mb-4 text-teal-500 animate-spin" size={48} />
-            <h1 className="text-2xl font-semibold mb-2">Đang xác minh thanh toán</h1>
+            <h1 className="text-2xl font-semibold mb-2">{t("payment.return.verifying")}</h1>
             <p className="text-neutral-600">
               {isRetrying 
-                ? `Đang thử lại lần ${retryCount + 1}... Vui lòng đợi trong giây lát.`
-                : "Vui lòng đợi trong khi chúng tôi xác minh thanh toán của bạn..."}
+                ? t("payment.return.retrying", { count: retryCount + 1 })
+                : t("payment.return.pleaseWait")}
             </p>
             {retryCount > 0 && (
               <p className="text-sm text-neutral-500 mt-2">
-                Số lần thử: {retryCount}
+                {t("payment.return.retryAttempts")}: {retryCount}
               </p>
             )}
           </>
@@ -310,7 +309,7 @@ export default function PaymentReturn() {
         {status === "success" && (
           <>
             <CheckCircle className="mx-auto mb-4 text-green-500" size={48} />
-            <h1 className="text-2xl font-semibold mb-2 text-green-700">Thanh toán thành công!</h1>
+            <h1 className="text-2xl font-semibold mb-2 text-green-700">{t("payment.return.successTitle")}</h1>
             {message && <p className="text-neutral-600 mb-6">{message}</p>}
             
             {paymentDetails && (
@@ -318,7 +317,7 @@ export default function PaymentReturn() {
                 <CardContent className="p-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-neutral-600">Số tiền thanh toán</span>
+                      <span className="text-sm text-neutral-600">{t("payment.return.amount")}</span>
                       <span className="text-lg font-semibold text-green-700">
                         {new Intl.NumberFormat('vi-VN', {
                           style: 'currency',
@@ -327,14 +326,14 @@ export default function PaymentReturn() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-neutral-600">Phương thức thanh toán</span>
+                      <span className="text-sm text-neutral-600">{t("payment.return.method")}</span>
                       <span className="text-sm font-medium text-neutral-900">
                         {paymentDetails.paymentMethod || paymentDetails.paymentGateway || 'N/A'}
                       </span>
                     </div>
                     {paymentDetails.transactionId && (
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-neutral-600">Mã giao dịch</span>
+                        <span className="text-sm text-neutral-600">{t("payment.return.transactionId")}</span>
                         <span className="text-sm font-mono text-neutral-700 break-all text-right">
                           {paymentDetails.transactionId}
                         </span>
@@ -342,7 +341,7 @@ export default function PaymentReturn() {
                     )}
                     {paymentDetails.paidAt && (
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-neutral-600">Thời gian thanh toán</span>
+                        <span className="text-sm text-neutral-600">{t("payment.return.time")}</span>
                         <span className="text-sm text-neutral-700">
                           {new Date(paymentDetails.paidAt).toLocaleString('vi-VN', {
                             year: 'numeric',
@@ -355,9 +354,9 @@ export default function PaymentReturn() {
                       </div>
                     )}
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-neutral-600">Trạng thái</span>
+                      <span className="text-sm text-neutral-600">{t("payment.return.status")}</span>
                       <span className="text-sm font-medium text-green-700">
-                        {paymentDetails.status === 'Completed' ? 'Đã hoàn thành' : paymentDetails.status}
+                        {paymentDetails.status === 'Completed' ? t("payment.return.completed") : paymentDetails.status}
                       </span>
                     </div>
                   </div>
@@ -366,7 +365,7 @@ export default function PaymentReturn() {
             )}
             
             {paymentId && !paymentDetails && (
-              <p className="text-sm text-neutral-500 mb-6">Mã thanh toán: {paymentId}</p>
+              <p className="text-sm text-neutral-500 mb-6">{t("payment.return.paymentId")}: {paymentId}</p>
             )}
             
             <div className="flex flex-col gap-3">
@@ -374,14 +373,14 @@ export default function PaymentReturn() {
                 onClick={() => navigate("/my-tickets")}
                 className="bg-teal-500 hover:bg-teal-600"
               >
-                Xem vé của tôi
+                {t("payment.return.viewTickets")}
               </Button>
               {paymentDetails?.bookingId && (
                 <Button
                   variant="outline"
                   onClick={() => navigate(`/order/${paymentDetails.bookingId}`)}
                 >
-                  Xem chi tiết đơn hàng
+                  {t("payment.return.viewOrderDetails")}
                 </Button>
               )}
             </div>
@@ -391,14 +390,14 @@ export default function PaymentReturn() {
         {status === "failed" && (
           <>
             <XCircle className="mx-auto mb-4 text-red-500" size={48} />
-            <h1 className="text-2xl font-semibold mb-2 text-red-700">Xác minh thanh toán thất bại</h1>
+            <h1 className="text-2xl font-semibold mb-2 text-red-700">{t("payment.return.failedTitle")}</h1>
             {message && <p className="text-neutral-600 mb-6">{message}</p>}
             {paymentId && (
-              <p className="text-sm text-neutral-500 mb-4">Mã thanh toán: {paymentId}</p>
+              <p className="text-sm text-neutral-500 mb-4">{t("payment.return.paymentId")}: {paymentId}</p>
             )}
             {retryCount > 0 && (
               <p className="text-sm text-neutral-500 mb-4">
-                Số lần thử: {retryCount}
+                {t("payment.return.retryAttempts")}: {retryCount}
               </p>
             )}
             <div className="flex flex-col gap-3">
@@ -410,12 +409,12 @@ export default function PaymentReturn() {
                 {isRetrying ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Đang kiểm tra lại...
+                    {t("payment.return.checking")}
                   </>
                 ) : (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4" />
-                    Kiểm tra lại trạng thái
+                    {t("payment.return.checkAgain")}
                   </>
                 )}
               </Button>
@@ -425,13 +424,13 @@ export default function PaymentReturn() {
                   onClick={() => navigate("/checkout")}
                   className="flex-1"
                 >
-                  Thử lại
+                  {t("payment.return.tryAgain")}
                 </Button>
                 <Button
                   onClick={() => navigate("/my-tickets")}
                   className="flex-1 bg-teal-500 hover:bg-teal-600"
                 >
-                  Vé của tôi
+                  {t("payment.return.myTickets")}
                 </Button>
               </div>
             </div>
@@ -441,21 +440,21 @@ export default function PaymentReturn() {
         {status === "cancelled" && (
           <>
             <AlertTriangle className="mx-auto mb-4 text-amber-500" size={48} />
-            <h1 className="text-2xl font-semibold mb-2 text-amber-700">Thanh toán đã bị hủy</h1>
+            <h1 className="text-2xl font-semibold mb-2 text-amber-700">{t("payment.return.cancelledTitle")}</h1>
             {message && <p className="text-neutral-600 mb-6">{message}</p>}
             <div className="flex flex-col gap-3">
               <Button
                 onClick={() => navigate("/checkout")}
                 className="w-full bg-teal-500 hover:bg-teal-600"
               >
-                Thử thanh toán lại
+                {t("payment.return.retryPayment")}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate("/")}
                 className="w-full"
               >
-                Về trang chủ
+                {t("payment.return.returnHome")}
               </Button>
             </div>
           </>

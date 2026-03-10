@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
+import { toast } from 'sonner';
 
 export function Contact() {
   const { t } = useTranslation();
@@ -82,8 +83,9 @@ export function Contact() {
       });
       
       setTimeout(() => setShowSuccess(false), 6000);
-    } catch (error) {
-      console.error('Failed to send message:', error);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || t('contact.form.errors.sendFailed');
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -92,20 +94,17 @@ export function Contact() {
   const contactInfo = [
     {
       icon: <Mail className="w-10 h-10 text-primary" />,
-      title: 'Email',
-      content: 'support@tickify.com',
+      key: 'email',
       link: 'mailto:support@tickify.com'
     },
     {
       icon: <Phone className="w-10 h-10 text-primary" />,
-      title: 'Phone',
-      content: '+84 123 456 789',
+      key: 'phone',
       link: 'tel:+84123456789'
     },
     {
       icon: <MapPin className="w-10 h-10 text-primary" />,
-      title: 'Address',
-      content: '123 Event Street, Ho Chi Minh City, Vietnam',
+      key: 'address',
       link: undefined
     }
   ];
@@ -209,15 +208,15 @@ export function Contact() {
                 <div className="flex-shrink-0">{info.icon}</div>
                 <div>
                   <h3 className="text-lg font-bold mb-1">
-                    {t(`contact.info.${info.title.toLowerCase()}.title`, info.title)}
+                    {t(`contact.info.${info.key}.title`)}
                   </h3>
                   {info.link ? (
                     <a href={info.link} className="text-muted-foreground hover:text-primary transition-colors">
-                      {t(`contact.info.${info.title.toLowerCase()}.content`, info.content)}
+                      {t(`contact.info.${info.key}.content`)}
                     </a>
                   ) : (
                     <p className="text-muted-foreground">
-                      {t(`contact.info.${info.title.toLowerCase()}.content`, info.content)}
+                      {t(`contact.info.${info.key}.content`)}
                     </p>
                   )}
                 </div>

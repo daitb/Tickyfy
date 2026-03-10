@@ -1,12 +1,15 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tickify.Data;
 using Tickify.DTOs.Payment;
 using Tickify.Extensions;
+using Tickify.Hubs;
 using Tickify.Interfaces.Repositories;
+using Tickify.Interfaces.Services;
 using Tickify.Models;
 using Tickify.Models.Momo;
 using Tickify.Repositories;
@@ -23,6 +26,9 @@ public sealed class MoMoProvider : IPaymentProvider
     private readonly IBookingRepository _bookings;
     private readonly ITicketRepository _tickets;
     private readonly ApplicationDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly ILogger<MoMoProvider> _logger;
+    private readonly IHubContext<SeatHub> _seatHubContext;
 
     public MoMoProvider(
         IOptions<MomoOptionModel> options,
@@ -30,7 +36,10 @@ public sealed class MoMoProvider : IPaymentProvider
         IPaymentRepository payments,
         IBookingRepository bookings,
         ITicketRepository tickets,
-        ApplicationDbContext context)
+        ApplicationDbContext context,
+        INotificationService notificationService,
+        ILogger<MoMoProvider> logger,
+        IHubContext<SeatHub> seatHubContext)
     {
         _opt = options.Value;
         _http = hf.CreateClient();
@@ -38,6 +47,9 @@ public sealed class MoMoProvider : IPaymentProvider
         _bookings = bookings;
         _tickets = tickets;
         _context = context;
+        _notificationService = notificationService;
+        _logger = logger;
+        _seatHubContext = seatHubContext;
     }
 
     public async Task<bool> VerifyAsync(int paymentId, CancellationToken ct)
@@ -164,6 +176,19 @@ public sealed class MoMoProvider : IPaymentProvider
                     
                     // Create tickets for the confirmed booking
                     await CreateTicketsForBookingAsync(booking.Id, ct);
+
+                    // Gửi notification sau khi booking được confirm (không block flow)
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await SendPaymentSuccessNotificationsAsync(booking, payment, ct);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"[MoMo] Failed to send notifications for payment {extractedPaymentId}");
+                        }
+                    }, ct);
                 }
                 
                 Console.WriteLine($"[MoMo VerifyFromReturnUrl] Payment {extractedPaymentId} completed successfully from return URL");
@@ -201,12 +226,26 @@ public sealed class MoMoProvider : IPaymentProvider
             throw new InvalidOperationException($"Invalid payment amount: {amount}. Amount must be greater than 0");
         
         // MoMo yêu cầu amount là số nguyên VND (không có phần thập phân)
-        // Kiểm tra xem amount có phần thập phân không (sau khi làm tròn)
-        var roundedAmount = Math.Round(amount, 0);
-        if (Math.Abs(amount - roundedAmount) > 0.001m)
+        // Tự động làm tròn nếu có số thập phân (làm tròn lên để đủ tiền)
+        var momoAmount = (long)Math.Ceiling(amount);
+        
+        // Log nếu có làm tròn để dễ debug
+        if (amount != momoAmount)
         {
-            throw new InvalidOperationException($"Invalid payment amount: {amount}. MoMo requires integer VND amount (no decimals). Please round to: {roundedAmount}");
+            Console.WriteLine($"[MoMo] Amount rounded: {amount} VND -> {momoAmount} VND (rounded up to integer)");
         }
+        
+        // Validate: amount phải > 0
+        if (momoAmount <= 0)
+            throw new InvalidOperationException($"Invalid payment amount: {amount}. Amount must be greater than 0");
+        
+        // MoMo có giới hạn amount: tối thiểu 1,000 VND và tối đa 50,000,000 VND
+        if (momoAmount < 1000)
+            throw new InvalidOperationException($"Invalid payment amount: {momoAmount} VND. MoMo requires minimum 1,000 VND");
+        
+        if (momoAmount > 50000000)
+            throw new InvalidOperationException($"Invalid payment amount: {momoAmount} VND. MoMo maximum is 50,000,000 VND (50 million VND)");
+
 
         // MoMo requires unique orderId - combine paymentId with timestamp to ensure uniqueness
         // Format: {paymentId}_{timestamp} (e.g., "24_20251114034500")
@@ -214,22 +253,11 @@ public sealed class MoMoProvider : IPaymentProvider
         var orderId = $"{paymentId}_{timestamp}";
         var requestId = orderId; // MoMo requires requestId to match orderId
 
-        // MoMo yêu cầu amount là số nguyên VND (không nhân 100)
-        // KHÁC VNPay - MoMo sử dụng VND trực tiếp, không phải đơn vị nhỏ nhất
-        // Dùng Math.Round để làm tròn về số nguyên VND
-        var momoAmount = (long)Math.Round(amount, 0);
+        // NOTE: orderExpireTime is not supported in MoMo test environment
+        // Backend will handle 10-minute expiration through booking.ExpiresAt
         
-        // Validate: amount phải > 0 và là số nguyên VND
-        if (momoAmount <= 0)
-            throw new InvalidOperationException($"Invalid payment amount: {amount}. Amount must be greater than 0");
-        
-        // MoMo có giới hạn amount tối thiểu (thường là 1000 VND)
-        if (momoAmount < 1000)
-            throw new InvalidOperationException($"Invalid payment amount: {amount}. MoMo requires minimum 1000 VND");
-        
-        // Log amount conversion để debug
-        Console.WriteLine($"[MoMo] Amount conversion: {amount} VND -> {momoAmount} VND (integer, NOT multiplied by 100)");
-
+        // IMPORTANT: MoMo signature does NOT include orderExpireTime or requestType
+        // Only these fields in this exact order:
         var raw = $"partnerCode={_opt.PartnerCode}"
                 + $"&accessKey={_opt.AccessKey}"
                 + $"&requestId={requestId}"
@@ -250,9 +278,10 @@ public sealed class MoMoProvider : IPaymentProvider
             notifyUrl = _opt.NotifyUrl,
             returnUrl = _opt.ReturnUrl,
             orderId = orderId,
-            amount = momoAmount.ToString(),
+            amount = momoAmount.ToString(), // MoMo requires STRING type, not number
             orderInfo = orderInfo,
             requestId = requestId,
+            // orderExpireTime removed - not supported in test environment
             extraData = "",
             signature = signature
         };
@@ -261,8 +290,9 @@ public sealed class MoMoProvider : IPaymentProvider
         var requestJson = JsonSerializer.Serialize(payload);
         Console.WriteLine($"[MoMo] ========== PAYMENT REQUEST ==========");
         Console.WriteLine($"[MoMo] PaymentId: {paymentId}, BookingId: {bookingId}");
-        Console.WriteLine($"[MoMo] Original Amount (VND): {amount}");
-        Console.WriteLine($"[MoMo] Converted Amount (smallest unit): {momoAmount}");
+        Console.WriteLine($"[MoMo] Original Amount (decimal): {amount} VND");
+        Console.WriteLine($"[MoMo] MoMo Amount (integer): {momoAmount} VND");
+        Console.WriteLine($"[MoMo] Backend will handle 10-minute expiration via booking.ExpiresAt");
         Console.WriteLine($"[MoMo] Request URL: {_opt.MomoApiUrl}");
         Console.WriteLine($"[MoMo] Request payload: {requestJson}");
         Console.WriteLine($"[MoMo] ======================================");
@@ -328,8 +358,8 @@ public sealed class MoMoProvider : IPaymentProvider
         }
 
 
-        // MoMo không trả expire → set 15'
-        var expire = DateTime.UtcNow.AddMinutes(15);
+        // MoMo không trả expire → sử dụng cấu hình ExpireMinutes (mặc định 15 phút)
+        var expire = DateTime.UtcNow.AddMinutes(_opt.ExpireMinutes);
 
         return new PaymentIntentDto
         {
@@ -425,6 +455,19 @@ public sealed class MoMoProvider : IPaymentProvider
 
                 // Create tickets for the confirmed booking
                 await CreateTicketsForBookingAsync(booking.Id, ct);
+
+                // Gửi notification sau khi booking được confirm (không block flow)
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await SendPaymentSuccessNotificationsAsync(booking, payment, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"[MoMo] Failed to send notifications for payment {paymentId}");
+                    }
+                }, ct);
             }
             return true;
         }
@@ -495,31 +538,91 @@ public sealed class MoMoProvider : IPaymentProvider
             if (quantity <= 0) quantity = 1;
         }
 
-        // Note: Seat assignment is skipped here because we don't have access to the original
-        // SeatIds from CreateBookingDto in the webhook. Seats should be assigned when booking
-        // is created or through a separate process. For now, tickets are created without seat assignment.
-        // TODO: Store SeatIds in Booking model or create a BookingSeats junction table to track seat assignments.
-
-        // Create tickets
+        // Create tickets based on seat selection or general booking
         var ticketsToCreate = new List<Ticket>();
-        for (int i = 0; i < quantity; i++)
+        
+        // Check if this is a seat-based booking
+        if (!string.IsNullOrEmpty(booking.SeatIdsJson))
         {
-            var ticket = new Ticket
+            try
             {
-                BookingId = bookingId,
-                TicketTypeId = selectedTicketType.Id,
-                TicketCode = GenerateTicketCode(bookingId, i + 1),
-                Price = selectedTicketType.Price,
-                Status = TicketStatus.Valid,
-                CreatedAt = DateTime.UtcNow
-            };
+                var seatIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(booking.SeatIdsJson);
+                if (seatIds != null && seatIds.Any())
+                {
+                    // Get seat details for ticket creation
+                    var seats = await _context.Seats
+                        .Include(s => s.TicketType)
+                        .Include(s => s.SeatZone)
+                        .Where(s => seatIds.Contains(s.Id))
+                        .ToListAsync(ct);
 
-            ticketsToCreate.Add(ticket);
+                    int ticketIndex = 1;
+                    var eventId = seats.FirstOrDefault()?.TicketType.EventId;
+                    
+                    foreach (var seat in seats)
+                    {
+                        var ticket = new Ticket
+                        {
+                            BookingId = bookingId,
+                            TicketTypeId = seat.TicketTypeId,
+                            SeatId = seat.Id,
+                            TicketCode = GenerateTicketCode(bookingId, ticketIndex++),
+                            Price = seat.SeatZone?.ZonePrice ?? seat.TicketType.Price,
+                            Status = TicketStatus.Valid,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        ticketsToCreate.Add(ticket);
+
+                        // Mark seat as sold
+                        seat.Status = SeatStatus.Sold;
+                        seat.ReservedByUserId = null;
+                        seat.ReservedUntil = null;
+                    }
+
+                    // Broadcast seat sold status
+                    if (eventId.HasValue)
+                    {
+                        await _seatHubContext.Clients
+                            .Group($"Event_{eventId}")
+                            .SendAsync("SeatsUpdated", new
+                            {
+                                eventId = eventId.Value,
+                                seatIds = seatIds,
+                                status = "Sold"
+                            }, ct);
+                    }
+
+                    Console.WriteLine($"[MoMo] Created {ticketsToCreate.Count} seat-based tickets for booking {bookingId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MoMo] Error parsing seat IDs: {ex.Message}");
+            }
+        }
+        
+        // Fallback: create general tickets if no seats or error
+        if (!ticketsToCreate.Any())
+        {
+            for (int i = 0; i < quantity; i++)
+            {
+                var ticket = new Ticket
+                {
+                    BookingId = bookingId,
+                    TicketTypeId = selectedTicketType.Id,
+                    TicketCode = GenerateTicketCode(bookingId, i + 1),
+                    Price = selectedTicketType.Price,
+                    Status = TicketStatus.Valid,
+                    CreatedAt = DateTime.UtcNow
+                };
+                ticketsToCreate.Add(ticket);
+            }
+            Console.WriteLine($"[MoMo] Created {ticketsToCreate.Count} general tickets for booking {bookingId}");
         }
 
         // Bulk create tickets
         await _tickets.CreateBulkAsync(ticketsToCreate);
-        Console.WriteLine($"[MoMo] Created {ticketsToCreate.Count} tickets for booking {bookingId}");
+        await _context.SaveChangesAsync(); // Save seat status changes
     }
 
     private static string GenerateTicketCode(int bookingId, int ticketNumber)
@@ -533,5 +636,46 @@ public sealed class MoMoProvider : IPaymentProvider
         return BitConverter.ToString(h.ComputeHash(Encoding.UTF8.GetBytes(data)))
                           .Replace("-", "")
                           .ToLowerInvariant();
+    }
+
+    /// Gửi notifications khi payment thành công và booking được confirm
+    private async Task SendPaymentSuccessNotificationsAsync(Booking? booking, Payment payment, CancellationToken ct)
+    {
+        if (booking == null) return;
+
+        try
+        {
+            // Load booking với Event để lấy event name
+            var fullBooking = await _context.Bookings
+                .Include(b => b.Event)
+                .FirstOrDefaultAsync(b => b.Id == booking.Id, ct);
+
+            if (fullBooking?.Event == null)
+            {
+                _logger.LogWarning($"[MoMo] Booking {booking.Id} or Event not found for notification");
+                return;
+            }
+
+            // Gửi notification payment thành công
+            await _notificationService.NotifyPaymentSuccessAsync(
+                booking.UserId,
+                booking.Id,
+                payment.Amount
+            );
+
+            // Gửi notification booking confirmed
+            await _notificationService.NotifyBookingConfirmedAsync(
+                booking.UserId,
+                booking.Id,
+                fullBooking.Event.Title
+            );
+
+            _logger.LogInformation($"[MoMo] Sent notifications for payment {payment.Id} and booking {booking.Id}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"[MoMo] Error sending notifications for booking {booking.Id}");
+            // Không throw để không ảnh hưởng đến transaction
+        }
     }
 }

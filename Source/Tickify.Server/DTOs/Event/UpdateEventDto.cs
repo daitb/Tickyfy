@@ -11,4 +11,7 @@ public class UpdateEventDto
     public DateTime EndDate { get; set; }
     public int TotalSeats { get; set; }
     public bool IsFeatured { get; set; }
+    public bool AllowTransfer { get; set; }
+    public bool AllowRefund { get; set; }
+    public int? SeatMapId { get; set; } // ID của seat map
 }

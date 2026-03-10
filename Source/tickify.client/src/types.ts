@@ -4,6 +4,8 @@ export interface Event {
   slug: string;
   category: Category;
   image: string;
+  bannerImage?: string; // Large banner for header backgrounds
+  posterImage?: string; // Poster/thumbnail image
   date: string;
   time: string;
   venue: string;
@@ -22,6 +24,9 @@ export interface Event {
   faqs?: EventFAQ[];
   venueDetails?: VenueDetails;
   fullDescription?: string;
+  // Reviews
+  averageRating?: number;
+  totalReviews?: number;
 }
 
 export interface EventHighlight {

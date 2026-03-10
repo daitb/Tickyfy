@@ -18,7 +18,9 @@ public class TicketService : ITicketService
     private readonly ITicketTransferRepository _ticketTransferRepository;
     private readonly ITicketScanRepository _ticketScanRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IEventRepository _eventRepository;
     private readonly Email.IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly IMapper _mapper;
 
     public TicketService(
@@ -27,7 +29,9 @@ public class TicketService : ITicketService
         ITicketTransferRepository ticketTransferRepository,
         ITicketScanRepository ticketScanRepository,
         IUserRepository userRepository,
+        IEventRepository eventRepository,
         Email.IEmailService emailService,
+        INotificationService notificationService,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
@@ -35,7 +39,9 @@ public class TicketService : ITicketService
         _ticketTransferRepository = ticketTransferRepository;
         _ticketScanRepository = ticketScanRepository;
         _userRepository = userRepository;
+        _eventRepository = eventRepository;
         _emailService = emailService;
+        _notificationService = notificationService;
         _mapper = mapper;
     }
 
@@ -82,6 +88,14 @@ public class TicketService : ITicketService
 
         if (ticket.Status != TicketStatus.Valid)
             throw new BadRequestException("Only valid tickets can be transferred");
+
+        // Check if event allows transfer
+        var eventData = await _eventRepository.GetByIdAsync(booking.EventId);
+        if (eventData == null)
+            throw new NotFoundException($"Event not found");
+        
+        if (!eventData.AllowTransfer)
+            throw new BadRequestException("This event does not allow ticket transfers");
 
         // Get recipient user by email
         var recipientUser = await _userRepository.GetUserByEmailAsync(transferDto.RecipientEmail);
@@ -133,8 +147,18 @@ public class TicketService : ITicketService
         if (transfer == null)
             throw new NotFoundException($"Transfer not found");
 
+        // Get recipient user info for better error message
+        var recipientUser = await _userRepository.GetUserByIdAsync(transfer.ToUserId);
+        var currentUser = await _userRepository.GetUserByIdAsync(userId);
+        
         if (transfer.ToUserId != userId)
-            throw new UnauthorizedException("You are not authorized to accept this transfer");
+        {
+            var expectedEmail = recipientUser?.Email ?? "unknown";
+            var currentEmail = currentUser?.Email ?? "unknown";
+            throw new UnauthorizedException(
+                $"This transfer was sent to {expectedEmail}. You are currently logged in as {currentEmail}. Please login with the correct account to accept this transfer."
+            );
+        }
 
         if (transfer.IsApproved)
             throw new BadRequestException("This transfer has already been accepted");
@@ -212,12 +236,23 @@ public class TicketService : ITicketService
                     ticketCode: ticket.TicketCode
                 );
             }
+
+            // Send in-app notification to recipient
+            var eventEntity = await _eventRepository.GetByIdAsync(oldBooking.EventId);
+            if (eventEntity != null && sender != null)
+            {
+                await _notificationService.NotifyTicketTransferAsync(
+                    userId,
+                    ticket.Id,
+                    eventEntity.Title,
+                    sender.FullName ?? sender.Email
+                );
+            }
         }
         catch (Exception ex)
         {
             // Log error but don't fail the transfer
             // Email sending failure shouldn't prevent transfer completion
-            Console.WriteLine($"Error sending email notifications: {ex.Message}");
         }
         
         return _mapper.Map<TicketDto>(updatedTicket);
@@ -279,7 +314,6 @@ public class TicketService : ITicketService
         {
             // Log error but don't fail the rejection
             // Email sending failure shouldn't prevent transfer rejection
-            Console.WriteLine($"Error sending email notifications: {ex.Message}");
         }
 
         return true;

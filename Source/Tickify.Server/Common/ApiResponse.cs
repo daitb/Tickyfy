@@ -16,7 +16,7 @@ public class ApiResponse<T>
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
 
-    public static ApiResponse<T> SuccessResponse(T data, string message = "Success")
+    public static ApiResponse<T> SuccessResponse(T? data, string message = "Success")
     {
         return new ApiResponse<T>
         {

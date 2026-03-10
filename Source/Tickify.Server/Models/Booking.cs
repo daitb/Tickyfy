@@ -20,12 +20,15 @@ namespace Tickify.Models
         public decimal DiscountAmount { get; set; } = 0; // Discount applied from promo code
         public BookingStatus Status { get; set; } = BookingStatus.Pending;
         public DateTime BookingDate { get; set; } = DateTime.UtcNow;
-        public DateTime? ExpiresAt { get; set; } // Booking expires if not paid (typically 10-15 minutes)
+        public DateTime? ExpiresAt { get; set; } // Booking expires if not paid (10 minutes)
         public DateTime? CancelledAt { get; set; }
         public string? CancellationReason { get; set; }
         public bool IsRefundRequested { get; set; } = false;
         public bool IsRefunded { get; set; } = false;
         public DateTime? RefundedAt { get; set; }
+        
+        // Store selected seat IDs for seat-based bookings (JSON array)
+        public string? SeatIdsJson { get; set; }
 
         // Computed property
         public bool IsExpired => ExpiresAt.HasValue && DateTime.UtcNow > ExpiresAt && Status == BookingStatus.Pending;

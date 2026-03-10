@@ -8,323 +8,266 @@ using Tickify.Middleware;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Tickify.Services.Auth;
-
-// [ADD] using cho DI của Payment/Refund/Repositories
-using Tickify.Services.Payments;              // PaymentService, VNPayProvider, MoMoProvider
-using Tickify.Services.Refunds;              // RefundService
-using Tickify.Services.Payouts;              // PayoutService
-using Tickify.Repositories;                  // EfPaymentRepository, EfRefundRequestRepository, EfPayoutRepository
+using Tickify.Repositories;
 using Tickify.Interfaces.Repositories;
-using Tickify.Interfaces.Services;
-using Tickify.Services;       // IBookingRepository, IPaymentRepository, IRefundRequestRepository
+using Tickify.Interfaces.Services; // Chứa các Interface chung (IUserService, etc.)
+using Tickify.Services;
+using Tickify.Services.Email;
+using Tickify.Services.Reviews;
+using Tickify.Server.Extensions;
+using Tickify.Services.Payments;
+using Tickify.Services.Refunds;
+using Tickify.Services.Payouts;
 
-namespace Tickify
+// [QUAN TRỌNG] Không "using Tickify.Services.Payments" ở trên đầu file 
+// để tránh máy tính bị loạn giữa IPaymentService (Interface) và IPaymentService (trong namespace Payments nếu có).
+// Chúng ta sẽ gọi trực tiếp bên dưới.
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ============================================
+// 1. DATABASE & CONFIG
+// ============================================
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddAutoMapper(typeof(Program).Assembly);
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+builder.Services.AddHttpClient();
+builder.Services.AddHttpContextAccessor();
+builder.Services.Configure<Tickify.Models.Momo.MomoOptionModel>(builder.Configuration.GetSection("MomoAPI"));
+
+// ============================================
+// 2. SERVICE REGISTRATION (DI)
+// ============================================
+
+// --- Auth & User ---
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<Tickify.Interfaces.IAzureStorageService, Tickify.Services.AzureStorageService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
+builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IFileUploadService, FileUploadService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IAdminService, Tickify.Services.AdminService>();
+
+// --- PAYMENT & REFUND (KHẮC PHỤC TRIỆT ĐỂ LỖI AMBIGUOUS TẠI ĐÂY) ---
+// Định nghĩa rõ: Interface và Class đều lấy từ Services.Payments
+builder.Services.AddScoped<Tickify.Services.Payments.IPaymentService, Tickify.Services.Payments.PaymentService>();
+
+// Đăng ký các Provider (VNPay, MoMo, CreditCard) vào cùng 1 interface IPaymentProvider để PaymentService nhận được IEnumerable
+builder.Services.AddScoped<Tickify.Services.Payments.IPaymentProvider, Tickify.Services.Payments.VNPayProvider>();
+builder.Services.AddScoped<Tickify.Services.Payments.IPaymentProvider, Tickify.Services.Payments.MoMoProvider>();
+builder.Services.AddScoped<Tickify.Services.Payments.IPaymentProvider, Tickify.Services.Payments.CreditCardProvider>();
+
+builder.Services.AddScoped<Tickify.Services.Refunds.IRefundService, Tickify.Services.Refunds.RefundService>();
+builder.Services.AddScoped<IPaymentRepository, EfPaymentRepository>();
+builder.Services.AddScoped<IRefundRequestRepository, EfRefundRequestRepository>();
+builder.Services.AddScoped<IBookingRepository, EfBookingRepository>();
+builder.Services.AddScoped<IReviewRepository, EfReviewRepository>();
+
+// --- Payout ---
+builder.Services.AddScoped<IPayoutRepository, EfPayoutRepository>();
+// Tương tự, dùng full path để tránh nhầm lẫn nếu có interface trùng tên
+builder.Services.AddScoped<Tickify.Services.Payouts.IPayoutService, Tickify.Services.Payouts.PayoutService>();
+
+// --- Event & Ticket ---
+builder.Services.AddScoped<IEventRepository, EventRepository>();
+builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<ITicketRepository, TicketRepository>();
+builder.Services.AddScoped<ITicketTransferRepository, TicketTransferRepository>();
+builder.Services.AddScoped<ITicketScanRepository, TicketScanRepository>();
+builder.Services.AddScoped<ISeatRepository, SeatRepository>();
+builder.Services.AddScoped<IPromoCodeRepository, PromoCodeRepository>();
+builder.Services.AddScoped<ITicketService, TicketService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IPromoCodeService, PromoCodeService>();
+
+// --- Seat Map ---
+builder.Services.AddScoped<ISeatMapRepository, SeatMapRepository>();
+builder.Services.AddScoped<ISeatMapService, SeatMapService>();
+
+// --- Category & Organizer & Support ---
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IOrganizerService, OrganizerService>();
+builder.Services.AddScoped<ISupportService, SupportService>();
+builder.Services.AddScoped<IWishlistService, WishlistService>();
+builder.Services.AddScoped<IWaitlistService, WaitlistService>();
+
+// --- Chat & Notification ---
+builder.Services.AddScoped<IChatRepository, EfChatRepository>();
+builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<INotificationService, Tickify.Services.Notifications.NotificationService>();
+
+// --- RAG AI Services (Groq, Ollama, Embedding) ---
+builder.Services.AddRagServices(builder.Configuration);
+
+// --- Background Jobs ---
+builder.Services.AddHostedService<Tickify.Jobs.SeatReservationCleanupJob>();
+
+// ============================================
+// 3. AUTHENTICATION (JWT)
+// ============================================
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"];
+
+if (string.IsNullOrWhiteSpace(secretKey))
 {
-    public class Program
+    Console.ForegroundColor = ConsoleColor.Yellow;
+    Console.WriteLine("⚠️ WARNING: JwtSettings:SecretKey is missing. Using fallback key.");
+    Console.ResetColor();
+    secretKey = "fallback-secret-key-must-be-very-long-for-security-at-least-32-chars";
+}
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        public static async Task Main(string[] args)
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
+        ClockSkew = TimeSpan.Zero
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = ctx =>
         {
-            var builder = WebApplication.CreateBuilder(args);
+            var accessToken = ctx.Request.Query["access_token"];
+            if (!string.IsNullOrEmpty(accessToken) && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                ctx.Token = accessToken;
+            return Task.CompletedTask;
+        }
+    };
+});
 
-            // ============================================
-            // 1. DATABASE CONFIGURATION
-            // ============================================
-            builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddAuthorization();
 
-            // ============================================
-            // 2. AUTOMAPPER CONFIGURATION
-            // Tự động map giữa Models và DTOs
-            // ============================================
-            builder.Services.AddAutoMapper(typeof(Program).Assembly);
+// ============================================
+// 4. CONFIGURATION (CORS, SIGNALR, SWAGGER)
+// ============================================
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                     ?? new[] { "http://localhost:3000", "http://localhost:5173" };
 
-            // ============================================
-            // 3. FLUENT VALIDATION CONFIGURATION
-            // Validation cho tất cả DTOs
-            // ============================================
-            builder.Services.AddFluentValidationAutoValidation();
-            builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
 
-            // ============================================
-            // 3.5. SERVICES REGISTRATION
-            // Đăng ký các services: JWT, Email, Azure Storage, etc.
-            // ============================================
-            builder.Services.AddScoped<Tickify.Services.Auth.IJwtService, Tickify.Services.Auth.JwtService>();
-            builder.Services.AddScoped<Tickify.Services.Email.IEmailService, Tickify.Services.Email.EmailService>();
-            builder.Services.AddScoped<Tickify.Interfaces.IAzureStorageService, Tickify.Services.AzureStorageService>();
-            builder.Services.AddScoped<IAuthService, AuthService>();
-            builder.Services.AddScoped<IUserRepository, UserRepository>();
-            builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
-            builder.Services.AddScoped<IRoleRepository, RoleRepository>();
-            builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-            builder.Services.AddScoped<IUserService, UserService>();
-            builder.Services.AddScoped<IFileUploadService, FileUploadService>();
-            builder.Services.AddScoped<Tickify.Services.Reviews.IReviewService, Tickify.Services.Reviews.ReviewService>();
-            builder.Services.AddScoped<Tickify.Interfaces.Services.IAdminService, Tickify.Services.AdminService>();
+builder.Services.AddSignalR();
 
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
+    });
 
-            // [ADD] HttpClient + HttpContextAccessor (MoMoProvider dùng HttpClient; controller cần lấy IP)
-            builder.Services.AddHttpClient();
-            builder.Services.AddHttpContextAccessor();
-
-            // [ADD] Configure MoMo options from appsettings.json
-            builder.Services.Configure<Tickify.Models.Momo.MomoOptionModel>(
-                builder.Configuration.GetSection("MomoAPI"));
-
-            // [ADD] Đăng ký Payment/Refund theo Week 2 (không ảnh hưởng module khác)
-            builder.Services.AddScoped<IReviewRepository, EfReviewRepository>();
-            builder.Services.AddScoped<IBookingRepository, EfBookingRepository>(); // <-- THÊM DÒNG NÀY
-            builder.Services.AddScoped<IPaymentRepository, EfPaymentRepository>();
-            builder.Services.AddScoped<IRefundRequestRepository, EfRefundRequestRepository>();
-            builder.Services.AddScoped<Services.Payments.IPaymentService, PaymentService>();
-            builder.Services.AddScoped<IPaymentProvider, VNPayProvider>();
-            builder.Services.AddScoped<IPaymentProvider, MoMoProvider>();
-            builder.Services.AddScoped<IRefundService, RefundService>();
-
-            // Payout Services & Repositories
-            builder.Services.AddScoped<IPayoutRepository, EfPayoutRepository>();
-            builder.Services.AddScoped<Services.Payouts.IPayoutService, Services.Payouts.PayoutService>();
-
-            // [NOTE] Nếu IBookingRepository CHƯA được đăng ký ở nơi khác thì thêm dòng dưới:
-            // builder.Services.AddScoped<IBookingRepository, EfBookingRepository>(); // <-- chỉ bật nếu bạn đã có EfBookingRepository
-
-            // Event Services & Repositories
-            builder.Services.AddScoped<Tickify.Interfaces.Repositories.IEventRepository, Tickify.Repositories.EventRepository>();
-            builder.Services.AddScoped<Tickify.Interfaces.Services.IEventService, Tickify.Services.EventService>();
-
-            // Ticket Services & Repositories (Dev 3)
-            builder.Services.AddScoped<Tickify.Interfaces.Repositories.ITicketRepository, Tickify.Repositories.TicketRepository>();
-            builder.Services.AddScoped<Tickify.Interfaces.Repositories.ITicketTransferRepository, Tickify.Repositories.TicketTransferRepository>();
-            builder.Services.AddScoped<Tickify.Interfaces.Repositories.ITicketScanRepository, Tickify.Repositories.TicketScanRepository>();
-            builder.Services.AddScoped<Tickify.Interfaces.Repositories.ISeatRepository, Tickify.Repositories.SeatRepository>();
-            builder.Services.AddScoped<Tickify.Interfaces.Repositories.IPromoCodeRepository, Tickify.Repositories.PromoCodeRepository>();
-            builder.Services.AddScoped<Tickify.Interfaces.Services.ITicketService, Tickify.Services.TicketService>();
-            builder.Services.AddScoped<Tickify.Interfaces.Services.IBookingService, Tickify.Services.BookingService>();
-            builder.Services.AddScoped<Tickify.Interfaces.Services.IPromoCodeService, Tickify.Services.PromoCodeService>();
-
-            // Seat Management Services & Repositories (Week 2 - Seat Selection)
-            builder.Services.AddScoped<Tickify.Repositories.ISeatMapRepository, Tickify.Repositories.SeatMapRepository>();
-            builder.Services.AddScoped<Tickify.Services.ISeatMapService, Tickify.Services.SeatMapService>();
-
-            // Category, Organizer & Support Services (Developer 2 - Week 2)
-            builder.Services.AddScoped<ICategoryService, CategoryService>();
-            builder.Services.AddScoped<IOrganizerService, OrganizerService>();
-            builder.Services.AddScoped<ISupportService, SupportService>();
-            builder.Services.AddScoped<IWishlistService, WishlistService>();
-
-            // Chat Services & Repositories
-            builder.Services.AddScoped<IChatRepository, EfChatRepository>();
-            builder.Services.AddScoped<IChatService, ChatService>();
-
-            // ============================================
-            // 4. JWT AUTHENTICATION CONFIGURATION
-            // Cấu hình xác thực JWT token
-            // ============================================
-            var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-            var secretKey = jwtSettings["SecretKey"];
-
-            // [ADD] Guard nhẹ để dễ debug cấu hình thiếu (không phá runtime Production)
-            if (string.IsNullOrWhiteSpace(secretKey))
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Tickify API", Version = "v1" });
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Nhập token: Bearer {token}"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
             {
-                builder.Logging.AddConsole();
-                builder.Logging.AddDebug();
-                var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().AddDebug());
-                var logger = loggerFactory.CreateLogger("Startup");
-                logger.LogWarning("JwtSettings:SecretKey is missing or empty. Please configure appsettings.");
-                secretKey = "fallback-key-please-change"; // fallback tránh crash dev; đổi ngay ở appsettings!
-            }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            new string[] {}
+        }
+    });
+});
 
-            builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtSettings["Issuer"],
-                    ValidAudience = jwtSettings["Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
-                    ClockSkew = TimeSpan.Zero // Token hết hạn chính xác
-                };
+var app = builder.Build();
 
-                // [ADD] Cho phép đọc token từ query cho SignalR
-                options.Events = new JwtBearerEvents
-                {
-                    OnMessageReceived = ctx =>
-                    {
-                        var accessToken = ctx.Request.Query["access_token"];
-                        if (!string.IsNullOrEmpty(accessToken) && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
-                            ctx.Token = accessToken;
-                        return Task.CompletedTask;
-                    }
-                };
-            });
+// ============================================
+// 5. MIDDLEWARE PIPELINE
+// ============================================
 
-            builder.Services.AddAuthorization();
+// Exception Handling (Đầu tiên)
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-            // ============================================
-            // 5. CORS CONFIGURATION
-            // Cho phép frontend gọi API (đọc từ appsettings.json)
-            // ============================================
-            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                                 ?? new[] { "http://localhost:3000", "http://localhost:5173" };
+// Database Seeding (Safe Mode - Đảm bảo app không chết nếu DB lỗi)
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    var context = services.GetRequiredService<ApplicationDbContext>();
 
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowFrontend", policy =>
-                {
-                    policy.WithOrigins(allowedOrigins)
-                          .AllowAnyMethod()
-                          .AllowAnyHeader()
-                          .AllowCredentials();
-                });
-            });
-
-            // ============================================
-            // 6. SIGNALR CONFIGURATION (Real-time chat)
-            // ============================================
-            builder.Services.AddSignalR();
-
-            // ============================================
-            // 7. CONTROLLERS & JSON OPTIONS
-            // ============================================
-            builder.Services.AddControllers()
-                .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-                    options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-                    options.JsonSerializerOptions.MaxDepth = 64;
-                    // [ADD] Ensure encoding UTF-8 for Unicode characters
-                    options.JsonSerializerOptions.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
-                });
-
-            // ============================================
-            // 8. SWAGGER CONFIGURATION
-            // API documentation với JWT support
-            // ============================================
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen(options =>
-            {
-                options.SwaggerDoc("v1", new OpenApiInfo
-                {
-                    Title = "Tickify API",
-                    Version = "v1",
-                    Description = "Event Management & Ticket Booking System API",
-                    Contact = new OpenApiContact
-                    {
-                        Name = "Tickify Team",
-                        Email = "support@tickify.com"
-                    }
-                });
-
-                // Thêm JWT Authentication vào Swagger
-                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-                {
-                    Name = "Authorization",
-                    Type = SecuritySchemeType.Http,
-                    Scheme = "Bearer",
-                    BearerFormat = "JWT",
-                    In = ParameterLocation.Header,
-                    Description = "Nhập JWT token. Ví dụ: Bearer {your token}"
-                });
-
-                options.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
-                    {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        new string[] {}
-                    }
-                });
-            });
-
-            var app = builder.Build();
-
-            // ============================================
-            // 7.5. DATABASE INITIALIZATION
-            // Apply migrations và seed dữ liệu ban đầu
-            // ============================================
-            using (var scope = app.Services.CreateScope())
-            {
-                var services = scope.ServiceProvider;
-                var logger = services.GetRequiredService<ILogger<Program>>();
-                var context = services.GetRequiredService<ApplicationDbContext>();
-
-                try
-                {
-                    logger.LogInformation("Đang kiểm tra và apply database migrations...");
-                    
-                    // Apply pending migrations
-                    await context.Database.MigrateAsync();
-                    logger.LogInformation("✅ Database migrations đã được apply thành công");
-
-                    // Seed dữ liệu ban đầu (Roles, Categories, Admin user)
-                    logger.LogInformation("Đang seed dữ liệu ban đầu...");
-                    await DbInitializer.SeedAsync(context);
-                    logger.LogInformation("✅ Database seeding hoàn tất");
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "❌ Lỗi khi khởi tạo database: {Message}", ex.Message);
-                    // Không throw để app vẫn có thể start, nhưng log lỗi rõ ràng
-                    // Trong production có thể muốn throw để fail fast
-                    if (app.Environment.IsDevelopment())
-                    {
-                        throw; // Trong dev, throw để dễ debug
-                    }
-                }
-            }
-
-            // ============================================
-            // 8. MIDDLEWARE PIPELINE
-            // Thứ tự middleware rất quan trọng!
-            // ============================================
-
-            // Exception handling (phải đặt đầu tiên)
-            app.UseMiddleware<ExceptionHandlingMiddleware>();
-
-            // Rate limiting (đặt sau exception handling, trước authentication)
-            app.UseMiddleware<RateLimitingMiddleware>();
-
-            // Swagger (chỉ trong Development)
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI(options =>
-                {
-                    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Tickify API V1");
-                    options.RoutePrefix = string.Empty; // Swagger tại root URL
-                });
-            }
-
-            // CORS (cho phép frontend call API)
-            app.UseCors("AllowFrontend");
-
-            // app.UseHttpsRedirection();
-
-            // Authentication & Authorization
-            app.UseAuthentication(); // Phải đặt trước UseAuthorization
-            app.UseAuthorization();
-
-            app.MapControllers();
-
-            // Map SignalR hub
-            app.MapHub<Tickify.Hubs.ChatHub>("/hubs/chat");
-
-            app.Run();
+    try
+    {
+        // Tự động tạo database nếu chưa tồn tại
+        logger.LogInformation("🔍 Đang kiểm tra database...");
+        await context.Database.EnsureCreatedAsync();
+        logger.LogInformation("✅ Database đã sẵn sàng.");
+        
+        // Seed dữ liệu ban đầu
+        logger.LogInformation("📝 Đang seed dữ liệu...");
+        await DbInitializer.SeedAsync(context);
+        logger.LogInformation("✅ Seed data hoàn tất.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "❌ Lỗi trong quá trình khởi tạo/Seeding Database: {Message}", ex.Message);
+        if (app.Environment.IsDevelopment())
+        {
+            throw; // Trong dev, throw để dễ debug
         }
     }
 }
 
+app.UseMiddleware<RateLimitingMiddleware>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Tickify API V1");
+        options.RoutePrefix = string.Empty;
+    });
+}
+
+app.UseCors("AllowFrontend");
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+app.MapHub<Tickify.Hubs.ChatHub>("/hubs/chat");
+app.MapHub<Tickify.Hubs.NotificationHub>("/hubs/notifications");
+app.MapHub<Tickify.Hubs.SeatHub>("/hubs/seats");
+
+Console.WriteLine("🚀 Tickify API is starting...");
+app.Run();

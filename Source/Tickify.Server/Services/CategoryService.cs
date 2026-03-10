@@ -7,9 +7,6 @@ using Tickify.Models;
 
 namespace Tickify.Services;
 
-/// <summary>
-/// Category Service - Business logic for category management
-/// </summary>
 public class CategoryService : ICategoryService
 {
     private readonly ApplicationDbContext _context;
@@ -23,9 +20,6 @@ public class CategoryService : ICategoryService
         _logger = logger;
     }
 
-    /// <summary>
-    /// Get all active categories with event count
-    /// </summary>
     public async Task<List<CategoryDto>> GetAllCategoriesAsync()
     {
         _logger.LogInformation("Fetching all active categories");
@@ -48,9 +42,6 @@ public class CategoryService : ICategoryService
         return categories;
     }
 
-    /// <summary>
-    /// Get category details by ID
-    /// </summary>
     public async Task<CategoryDto?> GetCategoryByIdAsync(int id)
     {
         _logger.LogInformation("Fetching category with ID: {CategoryId}", id);
@@ -75,14 +66,10 @@ public class CategoryService : ICategoryService
         return category;
     }
 
-    /// <summary>
-    /// Create new category (Admin only)
-    /// </summary>
     public async Task<CategoryDto> CreateCategoryAsync(CreateCategoryDto dto)
     {
         _logger.LogInformation("Creating new category: {CategoryName}", dto.CategoryName);
 
-        // Check if category with same name already exists
         var existingCategory = await _context.Categories
             .FirstOrDefaultAsync(c => c.Name.ToLower() == dto.CategoryName.ToLower());
 
@@ -115,9 +102,6 @@ public class CategoryService : ICategoryService
         };
     }
 
-    /// <summary>
-    /// Update existing category (Admin only)
-    /// </summary>
     public async Task<CategoryDto> UpdateCategoryAsync(int id, UpdateCategoryDto dto)
     {
         _logger.LogInformation("Updating category ID: {CategoryId}", id);
@@ -130,7 +114,6 @@ public class CategoryService : ICategoryService
             throw new NotFoundException($"Category with ID {id} not found");
         }
 
-        // Check if new name conflicts with another category
         if (!string.IsNullOrWhiteSpace(dto.CategoryName) && dto.CategoryName != category.Name)
         {
             var existingCategory = await _context.Categories
@@ -144,7 +127,6 @@ public class CategoryService : ICategoryService
             category.Name = dto.CategoryName;
         }
 
-        // Update fields
         if (dto.Description != null)
         {
             category.Description = dto.Description;
@@ -164,7 +146,6 @@ public class CategoryService : ICategoryService
 
         _logger.LogInformation("Category {CategoryId} updated successfully", id);
 
-        // Get updated category with event count
         var eventCount = await _context.Events
             .CountAsync(e => e.CategoryId == id && e.Status == EventStatus.Published);
 
@@ -177,10 +158,6 @@ public class CategoryService : ICategoryService
             CreatedAt = category.CreatedAt
         };
     }
-
-    /// <summary>
-    /// Delete category (Admin only) - Soft delete
-    /// </summary>
     public async Task<bool> DeleteCategoryAsync(int id)
     {
         _logger.LogInformation("Deleting category ID: {CategoryId}", id);
@@ -194,7 +171,6 @@ public class CategoryService : ICategoryService
             throw new NotFoundException($"Category with ID {id} not found");
         }
 
-        // Check if category has active events
         var hasActiveEvents = category.Events?.Any(e => e.Status == EventStatus.Published) ?? false;
 
         if (hasActiveEvents)
@@ -204,7 +180,6 @@ public class CategoryService : ICategoryService
             );
         }
 
-        // Soft delete
         category.IsActive = false;
 
         await _context.SaveChangesAsync();

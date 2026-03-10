@@ -1,4 +1,3 @@
-// Validators/Reviews/CreateReviewValidator.cs
 using FluentValidation;
 using Tickify.DTOs.Review;
 

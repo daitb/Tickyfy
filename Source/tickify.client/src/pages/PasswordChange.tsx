@@ -30,6 +30,7 @@ import {
 } from '../components/ui/dialog';
 import { Switch } from '../components/ui/switch';
 import { authService } from '../services/authService';
+import { toast } from 'sonner';
 
 interface PasswordChangeProps {
   onNavigate: (page: string) => void;
@@ -145,10 +146,10 @@ export function PasswordChange({ onNavigate }: PasswordChangeProps) {
         onNavigate('user-profile');
       }, 3000);
     } catch (err: any) {
-      console.error('Change password error:', err);
       const errorMessage = err.response?.data?.message || 
                           err.response?.data?.errors?.[0] || 
                           err.message;
+      toast.error(errorMessage || 'Không thể đổi mật khẩu. Vui lòng thử lại.');
       
       if (errorMessage?.includes('incorrect') || errorMessage?.includes('wrong')) {
         setCurrentPasswordError(t('auth.incorrectPassword') || 'Incorrect password');

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import { Lock, CheckCircle, ShoppingBag, AlertCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -12,10 +12,14 @@ import {
 } from "../components/PaymentMethodSelector";
 import { Separator } from "../components/ui/separator";
 import { eventService } from "../services/eventService";
+import { seatMapService, type SeatDto } from "../services/seatMapService";
 import type { CartItem, Order } from "../types";
 import { bookingService } from "../services/bookingService";
 import { authService } from "../services/authService";
 import { createPaymentIntent } from "../services/paymentService";
+import { promoCodeService } from "../services/promoCodeService";
+import { toast } from "sonner";
+import { Tag, X, Loader2 } from "lucide-react";
 import {
   validateEmail,
   validatePhone,
@@ -65,13 +69,22 @@ export function Checkout({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const [eventsMap, setEventsMap] = useState<Record<number, any>>({});
+  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  const [seatDetails, setSeatDetails] = useState<SeatDto[]>([]);
+  const [seatBookingMode, setSeatBookingMode] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [appliedPromoCode, setAppliedPromoCode] = useState<any>(null);
+  const [promoCodeDiscount, setPromoCodeDiscount] = useState(0);
+  const [isValidatingPromoCode, setIsValidatingPromoCode] = useState(false);
+  const [promoCodeError, setPromoCodeError] = useState("");
+  const [reservationExpired, setReservationExpired] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const steps = [
-    { number: 1, label: t('booking.checkout.step1') },
-    { number: 2, label: t('booking.checkout.step2') },
-    { number: 3, label: t('booking.checkout.step3') },
+    { number: 1, label: t("booking.checkout.step1") },
+    { number: 2, label: t("booking.checkout.step2") },
+    { number: 3, label: t("booking.checkout.step3") },
   ];
 
-  // Utility: extract trailing numeric ID from strings like 'evt-1' or return number as-is
   const extractTrailingNumber = (val: string | number | undefined) => {
     if (typeof val === "number") return val;
     if (!val) return NaN;
@@ -80,7 +93,62 @@ export function Checkout({
     return m ? parseInt(m[1], 10) : NaN;
   };
 
-  // When cart items change, fetch event metadata from backend for display
+  useEffect(() => {
+    const seatsJson = sessionStorage.getItem("selectedSeats");
+    const eventIdStr = sessionStorage.getItem("eventId");
+    const expiresAtStr = sessionStorage.getItem("reservationExpiresAt");
+
+    if (seatsJson && eventIdStr) {
+      try {
+        const seatIds = JSON.parse(seatsJson);
+        if (Array.isArray(seatIds) && seatIds.length > 0) {
+          setSelectedSeats(seatIds);
+          setSeatBookingMode(true);
+
+          if (expiresAtStr) {
+            const expiresAt = new Date(expiresAtStr);
+            const now = new Date();
+
+            if (now >= expiresAt) {
+              setReservationExpired(true);
+              toast.error(
+                "Your seat reservation has expired. Please select seats again."
+              );
+              sessionStorage.removeItem("selectedSeats");
+              sessionStorage.removeItem("reservationExpiresAt");
+              sessionStorage.removeItem("eventId");
+              sessionStorage.removeItem("totalPrice");
+              setTimeout(() => {
+                onNavigate(`seat-selection-real`);
+              }, 2000);
+              return;
+            }
+
+            const remaining = Math.floor(
+              (expiresAt.getTime() - now.getTime()) / 1000
+            );
+            setTimeRemaining(remaining);
+          }
+
+          seatMapService
+            .getEventSeats(eventIdStr)
+            .then((allSeats) => {
+              const selectedSeatDetails = allSeats.filter((seat) =>
+                seatIds.includes(seat.id)
+              );
+              setSeatDetails(selectedSeatDetails);
+            })
+            .catch((err) => {
+
+              toast.error(t("booking.checkout.failedToLoadSeatInfo"));
+            });
+        }
+      } catch (e) {
+
+      }
+    }
+  }, [onNavigate]);
+
   useEffect(() => {
     const ids = Array.from(
       new Set(
@@ -96,43 +164,71 @@ export function Checkout({
         .getEventById(id)
         .then((ev) => setEventsMap((prev) => ({ ...prev, [id]: ev })))
         .catch(() => {
-          // ignore missing events for now
         });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+  }, [items, eventsMap]);
 
-  if (items.length === 0) {
+  useEffect(() => {
+    if (!seatBookingMode || timeRemaining === null || reservationExpired)
+      return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev === null || prev <= 0) {
+          setReservationExpired(true);
+          toast.error("Your seat reservation has expired!");
+          sessionStorage.removeItem("selectedSeats");
+          sessionStorage.removeItem("reservationExpiresAt");
+          sessionStorage.removeItem("eventId");
+          sessionStorage.removeItem("totalPrice");
+          setTimeout(() => {
+            onNavigate("seat-selection-real");
+          }, 2000);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [seatBookingMode, timeRemaining, reservationExpired, onNavigate]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  if (items.length === 0 && !seatBookingMode) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="text-center">
           <ShoppingBag className="mx-auto mb-4 text-neutral-400" size={48} />
-          <h2 className="mb-2">{t('booking.checkout.cartEmpty')}</h2>
+          <h2 className="mb-2">{t("booking.checkout.cartEmpty")}</h2>
           <p className="text-neutral-600 mb-6">
-            {t('booking.checkout.cartEmptyMessage')}
+            {t("booking.checkout.cartEmptyMessage")}
           </p>
           <Button
             onClick={() => onNavigate("home")}
             className="bg-teal-500 hover:bg-teal-600"
           >
-            {t('booking.cart.browseEvents')}
+            {t("booking.cart.browseEvents")}
           </Button>
         </div>
       </div>
     );
   }
 
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const subtotal =
+    seatBookingMode && seatDetails.length > 0
+      ? seatDetails.reduce((sum, seat) => sum + seat.price, 0)
+      : items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const serviceFee = subtotal * 0.05;
-  const total = subtotal + serviceFee;
+  const total = subtotal + serviceFee - promoCodeDiscount;
 
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
-    
-    // Validate on change if field has been touched
+
     if (touchedFields[field as keyof typeof touchedFields]) {
       validateField(field, value);
     }
@@ -144,7 +240,9 @@ export function Checkout({
   };
 
   const validateField = (field: string, value: string) => {
-    let validationResult: { isValid: boolean; error?: string } = { isValid: true };
+    let validationResult: { isValid: boolean; error?: string } = {
+      isValid: true,
+    };
 
     switch (field) {
       case "email":
@@ -180,7 +278,11 @@ export function Checkout({
     setFormErrors(errors);
     setTouchedFields({ email: true, name: true, phone: true });
 
-    return emailValidation.isValid && nameValidation.isValid && phoneValidation.isValid;
+    return (
+      emailValidation.isValid &&
+      nameValidation.isValid &&
+      phoneValidation.isValid
+    );
   };
 
   const handlePaymentMethodChange = (method: PaymentMethod, details?: any) => {
@@ -190,12 +292,11 @@ export function Checkout({
 
   const handleNext = () => {
     if (currentStep === 1) {
-      // Validate step 1 before proceeding
       if (!validateStep1()) {
         return;
       }
     }
-    
+
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -214,26 +315,53 @@ export function Checkout({
     setError("");
 
     try {
-      // Validate step 1 (contact information)
+      if (seatBookingMode) {
+        const expiresAtStr = sessionStorage.getItem("reservationExpiresAt");
+        if (expiresAtStr) {
+          const expiresAt = new Date(expiresAtStr);
+          const now = new Date();
+
+          if (now >= expiresAt) {
+            toast.error("Your seat reservation has expired. Redirecting...");
+            sessionStorage.removeItem("selectedSeats");
+            sessionStorage.removeItem("reservationExpiresAt");
+            sessionStorage.removeItem("eventId");
+            sessionStorage.removeItem("totalPrice");
+            setTimeout(() => {
+              onNavigate("seat-selection-real");
+            }, 2000);
+            setIsProcessing(false);
+            return;
+          }
+        }
+      }
+
       if (!validateStep1()) {
         setCurrentStep(1);
         setIsProcessing(false);
         return;
       }
 
-      // Validate step 2 (payment method)
       if (paymentMethod === "momo") {
         const momoValidation = validateMomoPhone(paymentDetails?.phone || "");
         if (!momoValidation.isValid) {
-          setError(`Thông tin thanh toán không hợp lệ: ${momoValidation.error}`);
+          setError(
+            `Thông tin thanh toán không hợp lệ: ${momoValidation.error}`
+          );
           setCurrentStep(2);
           setIsProcessing(false);
           return;
         }
       } else if (paymentMethod === "credit-card") {
-        const cardNumberValidation = validateCardNumber(paymentDetails?.number || "");
-        const cardNameValidation = validateCardholderName(paymentDetails?.name || "");
-        const cardExpiryValidation = validateCardExpiry(paymentDetails?.expiry || "");
+        const cardNumberValidation = validateCardNumber(
+          paymentDetails?.number || ""
+        );
+        const cardNameValidation = validateCardholderName(
+          paymentDetails?.name || ""
+        );
+        const cardExpiryValidation = validateCardExpiry(
+          paymentDetails?.expiry || ""
+        );
         const cardCvvValidation = validateCVV(paymentDetails?.cvv || "");
 
         if (!cardNumberValidation.isValid) {
@@ -262,72 +390,194 @@ export function Checkout({
         }
       }
 
-      // Check if user is authenticated
       if (!authService.isAuthenticated()) {
-        setError(t('booking.checkout.loginRequired'));
+        setError(t("booking.checkout.loginRequired"));
         onNavigate("login");
         setIsProcessing(false);
         return;
       }
 
-      // Get first item (in real app, would handle multiple events)
-      const firstItem = items[0];
+      let eventId: number;
+      let ticketTypeId: number;
+      let totalQuantity: number;
 
-      const eventId = extractTrailingNumber(firstItem.eventId);
-      const ticketTypeId = extractTrailingNumber(firstItem.tierId);
+      if (seatBookingMode && seatDetails.length > 0) {
+        const eventIdStr = sessionStorage.getItem("eventId");
+        eventId = eventIdStr ? parseInt(eventIdStr, 10) : NaN;
+
+        ticketTypeId = seatDetails[0].ticketTypeId;
+        totalQuantity = seatDetails.length;
+      } else {
+        const firstItem = items[0];
+        eventId = extractTrailingNumber(firstItem.eventId);
+        ticketTypeId = extractTrailingNumber(firstItem.tierId);
+        totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+      }
 
       if (isNaN(eventId) || isNaN(ticketTypeId)) {
-        setError(t('booking.checkout.invalidEventOrTicket'));
+        setError(t("booking.checkout.invalidEventOrTicket"));
+        setIsProcessing(false);
         return;
       }
 
-      const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-
-      // Create booking via API with numeric IDs
-      const response = await bookingService.createBooking({
+      const bookingData: any = {
         eventId: eventId,
         ticketTypeId: ticketTypeId,
         quantity: totalQuantity,
-      });
+      };
 
-      console.log("Booking created:", response);
+      if (seatBookingMode && selectedSeats.length > 0) {
+        bookingData.seatIds = selectedSeats;
+      }
 
-      // Now create payment intent for the booking
-      const paymentProviderMap: { [key in PaymentMethod]: "momo" | "vnpay" } = {
+      if (appliedPromoCode && promoCode.trim()) {
+        bookingData.promoCode = promoCode.trim().toUpperCase();
+      }
+
+      const response = await bookingService.createBooking(bookingData);
+
+      const paymentProviderMap: { [key in PaymentMethod]: "momo" | "vnpay" | "creditcard" } = {
         momo: "momo",
         vnpay: "vnpay",
-        "credit-card": "vnpay", // fallback to VNPay for credit cards
+        "credit-card": "creditcard",
       };
 
       const provider = paymentProviderMap[paymentMethod];
-      
+
       try {
-        const paymentIntent = await createPaymentIntent({
-          bookingId: response.bookingId,
-          provider: provider,
-        });
+        let paymentIntent;
 
-        console.log("Payment intent created:", paymentIntent);
+        if (paymentMethod === "credit-card") {
+          if (!paymentDetails?.number || !paymentDetails?.cvv || !paymentDetails?.expiry || !paymentDetails?.name) {
+            setError(t("payment.creditCard.enterFullInfo"));
+            setIsProcessing(false);
+            return;
+          }
 
-        // Redirect to payment provider
+          const expiryParts = paymentDetails.expiry.split("/");
+          if (expiryParts.length !== 2) {
+            setError(t("payment.creditCard.invalidExpiryFormat"));
+            setIsProcessing(false);
+            return;
+          }
+
+          const expiryMonth = parseInt(expiryParts[0], 10);
+          const expiryYear = parseInt("20" + expiryParts[1], 10);
+
+          if (isNaN(expiryMonth) || isNaN(expiryYear) || expiryMonth < 1 || expiryMonth > 12) {
+            setError(t("payment.creditCard.invalidExpiry"));
+            setIsProcessing(false);
+            return;
+          }
+
+          toast.info(t("payment.creditCard.verifying"));
+
+          const { createCreditCardPaymentIntent } = await import("../services/paymentService");
+          
+          paymentIntent = await createCreditCardPaymentIntent({
+            bookingId: response.bookingId,
+            cardDetails: {
+              cardNumber: paymentDetails.number,
+              cardholderName: paymentDetails.name,
+              expiryMonth: expiryMonth,
+              expiryYear: expiryYear,
+              cvv: paymentDetails.cvv,
+            },
+          });
+
+          // Credit card payments are completed immediately
+          if (paymentIntent.isImmediateCompletion) {
+            toast.success("Thanh toán thành công!");
+            
+            // Get current user for order
+            const currentUser = authService.getCurrentUser();
+            
+            // Calculate total from tickets (more reliable than backend response)
+            let ticketSubtotal = 0;
+            if (seatBookingMode && seatDetails.length > 0) {
+              ticketSubtotal = seatDetails.reduce((sum, seat) => sum + seat.price, 0);
+            } else {
+              ticketSubtotal = items.reduce((sum, item) => sum + item.price, 0);
+            }
+            
+            // Add 5% service fee
+            const serviceFeeAmount = ticketSubtotal * 0.05;
+            const totalAmount = ticketSubtotal + serviceFeeAmount;
+            
+            // Create order object for success page
+            const order: Order = {
+              id: paymentIntent.transactionId || response.bookingId.toString(),
+              userId: currentUser?.userId || "",
+              eventId: eventId.toString(),
+              tickets: seatBookingMode && seatDetails.length > 0 
+                ? seatDetails.map((seat, idx) => ({
+                    id: `ticket-${idx}`,
+                    tierId: seat.ticketTypeId.toString(),
+                    tierName: seat.zoneName || "General",
+                    price: seat.price,
+                    qrCode: `QR-${response.bookingId}-${idx}`,
+                    status: "valid" as const,
+                    seatInfo: `${seat.row}-${seat.seatNumber}`
+                  }))
+                : items.map((item, idx) => ({
+                    id: `ticket-${idx}`,
+                    tierId: item.tierId,
+                    tierName: item.tierName,
+                    price: item.price,
+                    qrCode: `QR-${response.bookingId}-${idx}`,
+                    status: "valid" as const
+                  })),
+              subtotal: ticketSubtotal,
+              serviceFee: serviceFeeAmount,
+              total: totalAmount,
+              status: "completed",
+              createdAt: new Date().toISOString(),
+              userEmail: formData.email,
+              userName: formData.name,
+              paymentMethod: "Credit Card"
+            };
+            
+            // Clear session storage
+            sessionStorage.removeItem("selectedSeats");
+            sessionStorage.removeItem("reservationExpiresAt");
+            sessionStorage.removeItem("eventId");
+            sessionStorage.removeItem("totalPrice");
+            
+            // Call onCompleteOrder to pass order data to success page
+            onCompleteOrder(order);
+            
+            // Navigate to success page
+            setTimeout(() => {
+              onNavigate("success");
+            }, 1000);
+            
+            return;
+          }
+        } else {
+          paymentIntent = await createPaymentIntent({
+            bookingId: response.bookingId,
+            provider: provider,
+          });
+        }
+
         if (paymentIntent.redirectUrl) {
           window.location.href = paymentIntent.redirectUrl;
         } else {
           setError("No payment redirect URL received from provider");
         }
       } catch (paymentErr: any) {
-        console.error("Payment intent creation error:", paymentErr);
-        setError(
+        const errorMsg =
           paymentErr.response?.data?.message ||
-            t('booking.checkout.paymentInitFailed')
-        );
+          t("booking.checkout.paymentInitFailed");
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err: any) {
-      console.error("Booking creation error:", err);
-      setError(
+      const errorMsg =
         err.response?.data?.message ||
-          t('booking.checkout.bookingCreateFailed')
-      );
+        t("booking.checkout.bookingCreateFailed");
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsProcessing(false);
     }
@@ -342,7 +592,6 @@ export function Checkout({
 
   const isStepValid = () => {
     if (currentStep === 1) {
-      // Check if all fields are filled and valid
       const emailValid = validateEmail(formData.email).isValid;
       const nameValid = validateName(formData.name).isValid;
       const phoneValid = validatePhone(formData.phone).isValid;
@@ -354,10 +603,15 @@ export function Checkout({
         return validateMomoPhone(paymentDetails.phone).isValid;
       }
       if (paymentMethod === "vnpay") {
-        return true; // VNPay doesn't require additional details
+        return true;
       }
       if (paymentMethod === "credit-card") {
-        if (!paymentDetails?.number || !paymentDetails?.name || !paymentDetails?.expiry || !paymentDetails?.cvv) {
+        if (
+          !paymentDetails?.number ||
+          !paymentDetails?.name ||
+          !paymentDetails?.expiry ||
+          !paymentDetails?.cvv
+        ) {
           return false;
         }
         return (
@@ -372,22 +626,109 @@ export function Checkout({
   };
 
   const getPaymentMethodDisplay = () => {
-    if (paymentMethod === "momo") return t('booking.checkout.momoWallet');
-    if (paymentMethod === "vnpay") return t('booking.checkout.vnpayGateway');
+    if (paymentMethod === "momo") return t("booking.checkout.momoWallet");
+    if (paymentMethod === "vnpay") return t("booking.checkout.vnpayGateway");
     if (paymentMethod === "credit-card")
       return `Card ending in ${paymentDetails?.number?.slice(-4) || "****"}`;
-    return t('booking.checkout.notSelected');
+    return t("booking.checkout.notSelected");
+  };
+
+  const handleApplyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoCodeError("Vui lòng nhập mã giảm giá");
+      return;
+    }
+
+    setIsValidatingPromoCode(true);
+    setPromoCodeError("");
+
+    try {
+      let eventId: number;
+      if (seatBookingMode && seatDetails.length > 0) {
+        const eventIdStr = sessionStorage.getItem("eventId");
+        eventId = eventIdStr ? parseInt(eventIdStr, 10) : NaN;
+      } else {
+        const firstItem = items[0];
+        eventId = extractTrailingNumber(firstItem.eventId);
+      }
+
+      if (isNaN(eventId)) {
+        setPromoCodeError("Không thể xác định sự kiện");
+        setIsValidatingPromoCode(false);
+        return;
+      }
+
+      const validatedPromo = await promoCodeService.validatePromoCode({
+        code: promoCode.trim().toUpperCase(),
+        eventId: eventId,
+        orderTotal: subtotal,
+      });
+
+      const discount = await promoCodeService.calculateDiscount({
+        code: promoCode.trim().toUpperCase(),
+        eventId: eventId,
+        orderTotal: subtotal,
+      });
+
+      setAppliedPromoCode(validatedPromo);
+      setPromoCodeDiscount(discount);
+      setPromoCodeError("");
+      toast.success(`Áp dụng mã giảm giá "${promoCode.toUpperCase()}" thành công!`);
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Mã giảm giá không hợp lệ hoặc đã hết hạn";
+      setPromoCodeError(errorMsg);
+      setAppliedPromoCode(null);
+      setPromoCodeDiscount(0);
+      toast.error(errorMsg);
+    } finally {
+      setIsValidatingPromoCode(false);
+    }
+  };
+
+  const handleRemovePromoCode = () => {
+    setPromoCode("");
+    setAppliedPromoCode(null);
+    setPromoCodeDiscount(0);
+    setPromoCodeError("");
   };
 
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
       <div className="max-w-5xl mx-auto px-4">
+        {/* Reservation Timer Warning (for seat booking mode) */}
+        {seatBookingMode && timeRemaining !== null && !reservationExpired && (
+          <div
+            className={`mb-6 rounded-lg p-4 flex items-center justify-between ${
+              timeRemaining < 300
+                ? "bg-orange-100 border border-orange-300 text-orange-800"
+                : "bg-blue-100 border border-blue-300 text-blue-800"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Lock size={20} />
+              <div>
+                <p className="font-medium">
+                  {t("booking.checkout.yourSeatsAreReserved")}
+                </p>
+                <p className="text-sm opacity-90">
+                  {t("booking.checkout.completePaymentWithin")}{" "}
+                  {formatTime(timeRemaining)}
+                </p>
+              </div>
+            </div>
+            <div className="text-2xl font-bold">
+              {formatTime(timeRemaining)}
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
-          <h1 className="mb-2">{t('booking.checkout.title')}</h1>
-          <p className="text-neutral-600">
-            {t('booking.checkout.subtitle')}
-          </p>
+          <h1 className="mb-2">{t("booking.checkout.title")}</h1>
+          <p className="text-neutral-600">{t("booking.checkout.subtitle")}</p>
         </div>
 
         <ProgressSteps steps={steps} currentStep={currentStep} />
@@ -407,18 +748,22 @@ export function Checkout({
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="mb-6">{t('booking.checkout.contactInformation')}</h3>
+                    <h3 className="mb-6">
+                      {t("booking.checkout.contactInformation")}
+                    </h3>
                     <p className="text-neutral-600 mb-6">
-                      {t('booking.checkout.contactMessage')}
+                      {t("booking.checkout.contactMessage")}
                     </p>
 
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="email">{t('booking.checkout.emailAddress')} *</Label>
+                        <Label htmlFor="email">
+                          {t("booking.checkout.emailAddress")} *
+                        </Label>
                         <Input
                           id="email"
                           type="email"
-                          placeholder={t('booking.checkout.emailPlaceholder')}
+                          placeholder={t("booking.checkout.emailPlaceholder")}
                           value={formData.email}
                           onChange={(e) =>
                             handleInputChange("email", e.target.value)
@@ -438,25 +783,31 @@ export function Checkout({
                             <span>{formErrors.email}</span>
                           </div>
                         )}
-                        {touchedFields.email && !formErrors.email && formData.email && (
-                          <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
-                            <CheckCircle size={14} />
-                            <span>Email hợp lệ</span>
-                          </div>
-                        )}
+                        {touchedFields.email &&
+                          !formErrors.email &&
+                          formData.email && (
+                            <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                              <CheckCircle size={14} />
+                              <span>Email hợp lệ</span>
+                            </div>
+                          )}
                         {!touchedFields.email && (
                           <p className="text-xs text-neutral-500 mt-2">
-                            {t('booking.checkout.emailNote')}
+                            {t("booking.checkout.emailNote")}
                           </p>
                         )}
                       </div>
 
                       <div>
-                        <Label htmlFor="name">{t('booking.checkout.fullName')} *</Label>
+                        <Label htmlFor="name">
+                          {t("booking.checkout.fullName")} *
+                        </Label>
                         <Input
                           id="name"
                           type="text"
-                          placeholder={t('booking.checkout.fullNamePlaceholder')}
+                          placeholder={t(
+                            "booking.checkout.fullNamePlaceholder"
+                          )}
                           value={formData.name}
                           onChange={(e) =>
                             handleInputChange("name", e.target.value)
@@ -476,25 +827,29 @@ export function Checkout({
                             <span>{formErrors.name}</span>
                           </div>
                         )}
-                        {touchedFields.name && !formErrors.name && formData.name && (
-                          <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
-                            <CheckCircle size={14} />
-                            <span>Họ tên hợp lệ</span>
-                          </div>
-                        )}
+                        {touchedFields.name &&
+                          !formErrors.name &&
+                          formData.name && (
+                            <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                              <CheckCircle size={14} />
+                              <span>Họ tên hợp lệ</span>
+                            </div>
+                          )}
                         {!touchedFields.name && (
                           <p className="text-xs text-neutral-500 mt-2">
-                            {t('booking.checkout.fullNameNote')}
+                            {t("booking.checkout.fullNameNote")}
                           </p>
                         )}
                       </div>
 
                       <div>
-                        <Label htmlFor="phone">{t('booking.checkout.phoneNumber')} *</Label>
+                        <Label htmlFor="phone">
+                          {t("booking.checkout.phoneNumber")} *
+                        </Label>
                         <Input
                           id="phone"
                           type="tel"
-                          placeholder={t('booking.checkout.phonePlaceholder')}
+                          placeholder={t("booking.checkout.phonePlaceholder")}
                           value={formData.phone}
                           onChange={(e) => {
                             const formatted = formatPhoneNumber(e.target.value);
@@ -515,15 +870,17 @@ export function Checkout({
                             <span>{formErrors.phone}</span>
                           </div>
                         )}
-                        {touchedFields.phone && !formErrors.phone && formData.phone && (
-                          <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
-                            <CheckCircle size={14} />
-                            <span>Số điện thoại hợp lệ</span>
-                          </div>
-                        )}
+                        {touchedFields.phone &&
+                          !formErrors.phone &&
+                          formData.phone && (
+                            <div className="flex items-center gap-1 mt-1 text-sm text-green-600">
+                              <CheckCircle size={14} />
+                              <span>Số điện thoại hợp lệ</span>
+                            </div>
+                          )}
                         {!touchedFields.phone && (
                           <p className="text-xs text-neutral-500 mt-2">
-                            {t('booking.checkout.phoneNote')}
+                            {t("booking.checkout.phoneNote")}
                           </p>
                         )}
                       </div>
@@ -537,9 +894,11 @@ export function Checkout({
                         size={18}
                       />
                       <div className="text-sm text-teal-700">
-                        <p className="mb-1">{t('booking.checkout.secureInfo')}</p>
+                        <p className="mb-1">
+                          {t("booking.checkout.secureInfo")}
+                        </p>
                         <p className="text-xs">
-                          {t('booking.checkout.secureInfoNote')}
+                          {t("booking.checkout.secureInfoNote")}
                         </p>
                       </div>
                     </div>
@@ -562,9 +921,11 @@ export function Checkout({
                         size={18}
                       />
                       <div className="text-sm text-teal-700">
-                        <p className="mb-1">{t('booking.checkout.securePayment')}</p>
+                        <p className="mb-1">
+                          {t("booking.checkout.securePayment")}
+                        </p>
                         <p className="text-xs">
-                          {t('booking.checkout.securePaymentNote')}
+                          {t("booking.checkout.securePaymentNote")}
                         </p>
                       </div>
                     </div>
@@ -576,23 +937,25 @@ export function Checkout({
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="mb-6">{t('booking.checkout.reviewOrder')}</h3>
+                    <h3 className="mb-6">
+                      {t("booking.checkout.reviewOrder")}
+                    </h3>
                     <p className="text-neutral-600 mb-6">
-                      {t('booking.checkout.reviewMessage')}
+                      {t("booking.checkout.reviewMessage")}
                     </p>
 
                     <div className="space-y-4">
                       {/* Contact Info */}
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <div className="flex items-start justify-between mb-3">
-                          <h4>{t('booking.checkout.contactInformation')}</h4>
+                          <h4>{t("booking.checkout.contactInformation")}</h4>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setCurrentStep(1)}
                             className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
                           >
-                            {t('booking.checkout.edit')}
+                            {t("booking.checkout.edit")}
                           </Button>
                         </div>
                         <div className="text-sm text-neutral-600 space-y-1">
@@ -604,54 +967,166 @@ export function Checkout({
 
                       {/* Items */}
                       <div className="bg-neutral-50 rounded-xl p-5">
-                        <h4 className="mb-4">{t('booking.checkout.ticketSummary')}</h4>
+                        <h4 className="mb-4">
+                          {seatBookingMode
+                            ? t("booking.checkout.selectedSeats")
+                            : t("booking.checkout.ticketSummary")}
+                        </h4>
                         <div className="space-y-3">
-                          {items.map((item, index) => {
-                                                  const numericEventId = extractTrailingNumber(item.eventId);
-                                                  const event = eventsMap[numericEventId];
-                            return (
-                              <div key={index}>
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="text-neutral-900">
-                                      {item.eventTitle}
+                          {seatBookingMode && seatDetails.length > 0
+                            ? // Show seat details
+                              seatDetails.map((seat, index) => (
+                                <div key={seat.id}>
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <div className="text-neutral-900">
+                                        {seat.isWheelchair && "♿ "}
+                                        {t("booking.checkout.seat")} {seat.row}
+                                        {seat.seatNumber}
+                                        {seat.zoneName && (
+                                          <span className="text-sm text-neutral-600 ml-2">
+                                            ({seat.zoneName})
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="text-sm text-neutral-600 mt-1">
-                                      {item.tierName}
-                                    </div>
-                                    <div className="text-sm text-neutral-500 mt-1">
-                                      {event?.date} • {event?.venue}
-                                    </div>
-                                  </div>
-                                  <div className="text-right ml-4">
-                                    <div className="text-neutral-900">
-                                      {formatPrice(item.price * item.quantity)}
-                                    </div>
-                                    <div className="text-sm text-neutral-500 mt-1">
-                                      {t('booking.quantity')}: {item.quantity}
+                                    <div className="text-right ml-4">
+                                      <div className="text-neutral-900">
+                                        {formatPrice(seat.price)}
+                                      </div>
                                     </div>
                                   </div>
+                                  {index < seatDetails.length - 1 && (
+                                    <Separator className="mt-3" />
+                                  )}
                                 </div>
-                                {index < items.length - 1 && (
-                                  <Separator className="mt-3" />
-                                )}
-                              </div>
-                            );
-                          })}
+                              ))
+                            : // Show cart items
+                              items.map((item, index) => {
+                                const numericEventId = extractTrailingNumber(
+                                  item.eventId
+                                );
+                                const event = eventsMap[numericEventId];
+                                return (
+                                  <div key={index}>
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <div className="text-neutral-900">
+                                          {item.eventTitle}
+                                        </div>
+                                        <div className="text-sm text-neutral-600 mt-1">
+                                          {item.tierName}
+                                        </div>
+                                        <div className="text-sm text-neutral-500 mt-1">
+                                          {event?.date} • {event?.venue}
+                                        </div>
+                                      </div>
+                                      <div className="text-right ml-4">
+                                        <div className="text-neutral-900">
+                                          {formatPrice(
+                                            item.price * item.quantity
+                                          )}
+                                        </div>
+                                        <div className="text-sm text-neutral-500 mt-1">
+                                          {t("booking.quantity")}:{" "}
+                                          {item.quantity}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {index < items.length - 1 && (
+                                      <Separator className="mt-3" />
+                                    )}
+                                  </div>
+                                );
+                              })}
                         </div>
+                      </div>
+
+                      {/* Promo Code */}
+                      <div className="bg-neutral-50 rounded-xl p-5">
+                        <h4 className="mb-4">Mã giảm giá</h4>
+                        {!appliedPromoCode ? (
+                          <div className="space-y-3">
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Nhập mã giảm giá"
+                                value={promoCode}
+                                onChange={(e) => {
+                                  setPromoCode(e.target.value.toUpperCase());
+                                  setPromoCodeError("");
+                                }}
+                                onKeyPress={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleApplyPromoCode();
+                                  }
+                                }}
+                                className="flex-1"
+                              />
+                              <Button
+                                onClick={handleApplyPromoCode}
+                                disabled={isValidatingPromoCode || !promoCode.trim()}
+                                className="bg-teal-500 hover:bg-teal-600"
+                              >
+                                {isValidatingPromoCode ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    {t("checkout.applying")}
+                                  </>
+                                ) : (
+                                  t("promoCode.apply")
+                                )}
+                              </Button>
+                            </div>
+                            {promoCodeError && (
+                              <div className="flex items-center gap-2 text-sm text-red-600">
+                                <AlertCircle size={14} />
+                                <span>{promoCodeError}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                              <div className="flex items-center gap-2">
+                                <Tag className="text-green-600" size={18} />
+                                <div>
+                                  <div className="font-semibold text-green-900">
+                                    {appliedPromoCode.code}
+                                  </div>
+                                  {appliedPromoCode.description && (
+                                    <div className="text-xs text-green-700">
+                                      {appliedPromoCode.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleRemovePromoCode}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <X size={16} />
+                              </Button>
+                            </div>
+                            <div className="text-sm text-green-600">
+                              Bạn đã tiết kiệm được {formatPrice(promoCodeDiscount)}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Payment Method */}
                       <div className="bg-neutral-50 rounded-xl p-5">
                         <div className="flex items-start justify-between mb-3">
-                          <h4>{t('booking.checkout.paymentMethod')}</h4>
+                          <h4>{t("booking.checkout.paymentMethod")}</h4>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setCurrentStep(2)}
                             className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
                           >
-                            {t('booking.checkout.edit')}
+                            {t("booking.checkout.edit")}
                           </Button>
                         </div>
                         <div className="text-sm text-neutral-600">
@@ -662,7 +1137,8 @@ export function Checkout({
                       {/* Terms */}
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                         <p className="text-sm text-amber-800">
-                          <strong>{t('booking.checkout.importantNote')}</strong> {t('booking.checkout.termsNote')}
+                          <strong>{t("booking.checkout.importantNote")}</strong>{" "}
+                          {t("booking.checkout.termsNote")}
                         </p>
                       </div>
                     </div>
@@ -678,7 +1154,7 @@ export function Checkout({
                     onClick={handleBack}
                     className="flex-1"
                   >
-                    {t('booking.checkout.back')}
+                    {t("booking.checkout.back")}
                   </Button>
                 )}
                 {currentStep < 3 ? (
@@ -687,7 +1163,8 @@ export function Checkout({
                     disabled={!isStepValid()}
                     className="flex-1 bg-teal-500 hover:bg-teal-600"
                   >
-                    {t('booking.checkout.continueTo')} {steps[currentStep].label}
+                    {t("booking.checkout.continueTo")}{" "}
+                    {steps[currentStep].label}
                   </Button>
                 ) : (
                   <Button
@@ -697,8 +1174,10 @@ export function Checkout({
                   >
                     <Lock size={16} className="mr-2" />
                     {isProcessing
-                      ? t('booking.checkout.processing')
-                      : `${t('booking.checkout.completePayment')} - ${formatPrice(total)}`}
+                      ? t("booking.checkout.processing")
+                      : `${t(
+                          "booking.checkout.completePayment"
+                        )} - ${formatPrice(total)}`}
                   </Button>
                 )}
               </div>
@@ -708,11 +1187,15 @@ export function Checkout({
           {/* Summary Sidebar */}
           <div className="lg:col-span-1">
             <div className="sticky top-20">
-              <FeeBreakdown subtotal={subtotal} serviceFee={serviceFee} />
+              <FeeBreakdown 
+                subtotal={subtotal} 
+                serviceFee={serviceFee} 
+                discount={promoCodeDiscount}
+              />
 
               {/* Order Items Preview */}
               <div className="mt-4 bg-white rounded-xl p-5 shadow-sm">
-                <h4 className="mb-4">{t('booking.checkout.orderItems')}</h4>
+                <h4 className="mb-4">{t("booking.checkout.orderItems")}</h4>
                 <div className="space-y-3">
                   {items.map((item, index) => (
                     <div key={index} className="text-sm">

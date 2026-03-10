@@ -1,62 +1,192 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  Suspense,
+  lazy,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { EventReviews } from "./pages/EventReviews";
-import { RefundRequest } from "./pages/RefundRequest";
-import { NotificationPreferences } from "./pages/NotificationPreferences";
-import { SeatMapBuilder } from "./pages/SeatMapBuilder";
-import { AdminDashboard } from "./pages/AdminDashboard";
-import { Home } from "./pages/Home";
-import { EventListing } from "./pages/EventListing";
-import { EventDetail } from "./pages/EventDetail";
-import { Cart } from "./pages/Cart";
-import { Checkout } from "./pages/Checkout";
-import { Success } from "./pages/Success";
-import { MyTickets } from "./pages/MyTickets";
-import { OrderDetail } from "./pages/OrderDetail";
-import { TicketDetail } from "./pages/TicketDetail";
-import { TransferTicket } from "./pages/TransferTicket";
-import { Wishlist } from "./pages/Wishlist";
-import { Waitlist } from "./pages/Waitlist";
-import { OrganizerWizard } from "./pages/OrganizerWizard";
-import { CreateEvent } from "./pages/CreateEvent";
-import { OrganizerDashboard } from "./pages/OrganizerDashboard";
-import { EventManagement } from "./pages/EventManagement";
-import { EventAnalytics } from "./pages/EventAnalytics";
-import { EditEvent } from "./pages/EditEvent";
-import { ScanHistory } from "./pages/ScanHistory";
-import { PromoCodeManagement } from "./pages/PromoCodeManagement";
-import { OrganizerPayouts } from "./pages/OrganizerPayouts";
-import { NotificationsPage } from "./pages/NotificationsPage";
-import { ResetPassword } from "./pages/ResetPassword";
-import { UserProfile } from "./pages/UserProfile";
-import { SeatSelection } from "./pages/SeatSelection";
-import { ReviewSubmission } from "./pages/ReviewSubmission";
-import { QRScanner } from "./pages/QRScanner";
-import { EmailVerification } from "./pages/EmailVerification";
-import { PasswordChange } from "./pages/PasswordChange";
-import { Login } from "./pages/Login";
-import { Register } from "./pages/Register";
-import { ForgotPassword } from "./pages/ForgotPassword";
-import { ChatPage } from "./pages/ChatPage";
-import { StaffChatPage } from "./pages/StaffChatPage";
-import { BecomeOrganizer } from "./pages/BecomeOrganizer";
-import PaymentReturn from "./pages/PaymentReturn";
-import { About } from "./pages/About";
-import { Privacy } from "./pages/Privacy";
-import { Terms } from "./pages/Terms";
-import { FAQ } from "./pages/FAQ";
-import { Contact } from "./pages/Contact";
-import { RefundPolicy } from "./pages/RefundPolicy";
-import { ForOrganizers } from "./pages/ForOrganizers";
-import { HelpCenter } from "./pages/HelpCenter";
-import { Error } from "./pages/Error";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { LoadingFallback } from "./components/LoadingFallback";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ChatbotWidget } from "./components/chatbot"; // RAG Chatbot
 import type { CartItem, Order } from "./types";
 import { mockOrders } from "./mockData";
 import { authService } from "./services/authService";
 import { Toaster } from "./components/ui/sonner";
+import notificationSignalRService from "./services/notificationSignalRService";
+
+// Lazy load các pages lớn để giảm initial bundle size
+const EventReviews = lazy(() =>
+  import("./pages/EventReviews").then((m) => ({ default: m.EventReviews }))
+);
+const RefundRequest = lazy(() =>
+  import("./pages/RefundRequest").then((m) => ({ default: m.RefundRequest }))
+);
+const RefundHistory = lazy(() =>
+  import("./pages/RefundHistory").then((m) => ({ default: m.RefundHistory }))
+);
+const ManageRefunds = lazy(() =>
+  import("./pages/ManageRefunds").then((m) => ({ default: m.default }))
+);
+const NotificationPreferences = lazy(() =>
+  import("./pages/NotificationPreferences").then((m) => ({
+    default: m.NotificationPreferences,
+  }))
+);
+const SeatMapBuilder = lazy(() =>
+  import("./pages/SeatMapBuilder").then((m) => ({ default: m.SeatMapBuilder }))
+);
+const AdminDashboard = lazy(() =>
+  import("./pages/AdminDashboard").then((m) => ({ default: m.AdminDashboard }))
+);
+const EventListing = lazy(() =>
+  import("./pages/EventListing").then((m) => ({ default: m.EventListing }))
+);
+const EventDetail = lazy(() =>
+  import("./pages/EventDetail").then((m) => ({ default: m.EventDetail }))
+);
+const Cart = lazy(() =>
+  import("./pages/Cart").then((m) => ({ default: m.Cart }))
+);
+const Checkout = lazy(() =>
+  import("./pages/Checkout").then((m) => ({ default: m.Checkout }))
+);
+const Success = lazy(() =>
+  import("./pages/Success").then((m) => ({ default: m.Success }))
+);
+const MyTickets = lazy(() =>
+  import("./pages/MyTickets").then((m) => ({ default: m.MyTickets }))
+);
+const OrderDetail = lazy(() =>
+  import("./pages/OrderDetail").then((m) => ({ default: m.OrderDetail }))
+);
+const TicketDetail = lazy(() =>
+  import("./pages/TicketDetail").then((m) => ({ default: m.TicketDetail }))
+);
+const TransferTicket = lazy(() =>
+  import("./pages/TransferTicket").then((m) => ({ default: m.TransferTicket }))
+);
+const AcceptTransfer = lazy(() =>
+  import("./pages/AcceptTransfer").then((m) => ({ default: m.AcceptTransfer }))
+);
+const Wishlist = lazy(() =>
+  import("./pages/Wishlist").then((m) => ({ default: m.Wishlist }))
+);
+const Waitlist = lazy(() => import("./pages/Waitlist"));
+const OrganizerWizard = lazy(() =>
+  import("./pages/OrganizerWizard").then((m) => ({
+    default: m.OrganizerWizard,
+  }))
+);
+const CreateEvent = lazy(() =>
+  import("./pages/CreateEvent").then((m) => ({ default: m.CreateEvent }))
+);
+const OrganizerDashboard = lazy(() =>
+  import("./pages/OrganizerDashboard").then((m) => ({
+    default: m.OrganizerDashboard,
+  }))
+);
+const EventManagement = lazy(() =>
+  import("./pages/EventManagement").then((m) => ({
+    default: m.EventManagement,
+  }))
+);
+const EventAnalytics = lazy(() =>
+  import("./pages/EventAnalytics").then((m) => ({ default: m.EventAnalytics }))
+);
+const EditEvent = lazy(() =>
+  import("./pages/EditEvent").then((m) => ({ default: m.EditEvent }))
+);
+
+const PromoCodeManagement = lazy(() =>
+  import("./pages/PromoCodeManagement").then((m) => ({
+    default: m.PromoCodeManagement,
+  }))
+);
+const OrganizerPayouts = lazy(() =>
+  import("./pages/OrganizerPayouts").then((m) => ({
+    default: m.OrganizerPayouts,
+  }))
+);
+const NotificationsPage = lazy(() =>
+  import("./pages/NotificationsPage").then((m) => ({
+    default: m.NotificationsPage,
+  }))
+);
+const ResetPassword = lazy(() =>
+  import("./pages/ResetPassword").then((m) => ({ default: m.ResetPassword }))
+);
+const UserProfile = lazy(() =>
+  import("./pages/UserProfile").then((m) => ({ default: m.UserProfile }))
+);
+const SeatSelectionReal = lazy(() =>
+  import("./pages/SeatSelectionReal").then((m) => ({
+    default: m.SeatSelectionReal,
+  }))
+);
+const ReviewSubmission = lazy(() =>
+  import("./pages/ReviewSubmission").then((m) => ({
+    default: m.ReviewSubmission,
+  }))
+);
+
+const EmailVerification = lazy(() =>
+  import("./pages/EmailVerification").then((m) => ({
+    default: m.EmailVerification,
+  }))
+);
+const PasswordChange = lazy(() =>
+  import("./pages/PasswordChange").then((m) => ({ default: m.PasswordChange }))
+);
+const ChatPage = lazy(() =>
+  import("./pages/ChatPage").then((m) => ({ default: m.ChatPage }))
+);
+const StaffChatPage = lazy(() =>
+  import("./pages/StaffChatPage").then((m) => ({ default: m.StaffChatPage }))
+);
+const BecomeOrganizer = lazy(() =>
+  import("./pages/BecomeOrganizer").then((m) => ({
+    default: m.BecomeOrganizer,
+  }))
+);
+const PaymentReturn = lazy(() =>
+  import("./pages/PaymentReturn").then((m) => ({ default: m.default }))
+);
+const About = lazy(() =>
+  import("./pages/About").then((m) => ({ default: m.About }))
+);
+const Privacy = lazy(() =>
+  import("./pages/Privacy").then((m) => ({ default: m.Privacy }))
+);
+const Terms = lazy(() =>
+  import("./pages/Terms").then((m) => ({ default: m.Terms }))
+);
+const FAQ = lazy(() => import("./pages/FAQ").then((m) => ({ default: m.FAQ })));
+const Contact = lazy(() =>
+  import("./pages/Contact").then((m) => ({ default: m.Contact }))
+);
+const RefundPolicy = lazy(() =>
+  import("./pages/RefundPolicy").then((m) => ({ default: m.RefundPolicy }))
+);
+const ForOrganizers = lazy(() =>
+  import("./pages/ForOrganizers").then((m) => ({ default: m.ForOrganizers }))
+);
+const HelpCenter = lazy(() =>
+  import("./pages/HelpCenter").then((m) => ({ default: m.HelpCenter }))
+);
+const Error = lazy(() =>
+  import("./pages/Error").then((m) => ({ default: m.Error }))
+);
+
+// Keep frequently used pages non-lazy for faster initial load
+import { Home } from "./pages/Home";
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
+import { ForgotPassword } from "./pages/ForgotPassword";
 
 type Page =
   | "home"
@@ -69,6 +199,7 @@ type Page =
   | "order-detail"
   | "ticket-detail"
   | "transfer-ticket"
+  | "accept-transfer"
   | "wishlist"
   | "waitlist"
   | "create-event"
@@ -77,7 +208,7 @@ type Page =
   | "event-management"
   | "event-analytics"
   | "edit-event"
-  | "scan-history"
+  | "edit-seat-map"
   | "promo-codes"
   | "organizer-payouts"
   | "notifications"
@@ -87,11 +218,12 @@ type Page =
   | "seat-selection"
   | "seat-map-builder"
   | "review-submission"
-  | "qr-scanner"
   | "email-verification"
   | "password-change"
   | "event-reviews"
   | "refund-request"
+  | "refund-history"
+  | "manage-refunds"
   | "admin-dashboard"
   | "chat"
   | "staff-chat"
@@ -128,29 +260,40 @@ export default function App() {
     if (path.startsWith("/order/")) return "order-detail";
     if (path.startsWith("/ticket/")) return "ticket-detail";
     if (path.startsWith("/transfer-ticket/")) return "transfer-ticket";
+    if (path.startsWith("/tickets/accept-transfer")) return "accept-transfer";
     if (path === "/wishlist") return "wishlist";
     if (path === "/waitlist") return "waitlist";
     if (path === "/create-event") return "create-event";
-    if (path === "/organizer-wizard") return "organizer-wizard";
+    if (path === "/organizer-wizard" || path.startsWith("/organizer-wizard/"))
+      return "organizer-wizard";
     if (path === "/organizer-dashboard") return "organizer-dashboard";
     if (path === "/event-management") return "event-management";
     if (path.startsWith("/event-analytics/")) return "event-analytics";
     if (path === "/edit-event") return "edit-event";
-    if (path === "/scan-history") return "scan-history";
+    if (path.startsWith("/edit-seat-map/")) {
+      console.log(
+        "[App.tsx getPageFromPath] Detected edit-seat-map path:",
+        path
+      );
+      return "edit-seat-map";
+    }
     if (path === "/promo-codes") return "promo-codes";
     if (path === "/organizer-payouts") return "organizer-payouts";
     if (path === "/notifications") return "notifications";
     if (path === "/notification-preferences") return "notification-preferences";
     if (path === "/reset-password") return "reset-password";
     if (path === "/user-profile") return "user-profile";
-    if (path === "/seat-selection") return "seat-selection";
+    if (path.startsWith("/seat-selection/")) return "seat-selection";
     if (path === "/seat-map-builder") return "seat-map-builder";
     if (path === "/review-submission") return "review-submission";
-    if (path === "/qr-scanner") return "qr-scanner";
     if (path === "/email-verification") return "email-verification";
     if (path === "/password-change") return "password-change";
-    if (path === "/event-reviews") return "event-reviews";
+    if (path.startsWith("/event-reviews")) {
+      return "event-reviews";
+    }
     if (path === "/refund-request") return "refund-request";
+    if (path === "/refund-history") return "refund-history";
+    if (path === "/manage-refunds") return "manage-refunds";
     if (path === "/admin-dashboard") return "admin-dashboard";
     if (path === "/chat") return "chat";
     if (path === "/staff-chat") return "staff-chat";
@@ -187,19 +330,22 @@ export default function App() {
   >(() => {
     const user = authService.getCurrentUser();
     if (!user) return "guest";
+
+    // Map backend roles to frontend roles
+    const role = user?.role?.toLowerCase();
+    if (role === "customer") return "user";
+
     return (
-      (user?.role?.toLowerCase() as
-        | "guest"
-        | "user"
-        | "organizer"
-        | "staff"
-        | "admin") || "user"
+      (role as "guest" | "user" | "organizer" | "staff" | "admin") || "user"
     );
   });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Derive page from URL - no need for effect
-  const currentPageFromUrl = useMemo(() => getPageFromPath(), [getPageFromPath]);
+  const currentPageFromUrl = useMemo(
+    () => getPageFromPath(),
+    [getPageFromPath]
+  );
 
   // Update currentPage when URL changes
   useEffect(() => {
@@ -239,6 +385,24 @@ export default function App() {
       const eventId = path.split("/event-analytics/")[1]?.split("/")[0];
       if (eventId) setSelectedEventId(eventId);
     }
+
+    // Extract eventId from organizer-wizard URL (for editing)
+    if (path.startsWith("/organizer-wizard/")) {
+      const eventId = path.split("/organizer-wizard/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
+
+    // Extract eventId from seat-selection URL
+    if (path.startsWith("/seat-selection/")) {
+      const eventId = path.split("/seat-selection/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
+
+    // Extract eventId from edit-seat-map URL
+    if (path.startsWith("/edit-seat-map/")) {
+      const eventId = path.split("/edit-seat-map/")[1]?.split("/")[0];
+      if (eventId) setSelectedEventId(eventId);
+    }
   }, [location.pathname]);
 
   // Check authentication on mount and when localStorage changes
@@ -250,14 +414,16 @@ export default function App() {
       if (authenticated) {
         const user = authService.getCurrentUser();
         if (user) {
-          setUserRole(
-            (user.role?.toLowerCase() as
-              | "guest"
-              | "user"
-              | "organizer"
-              | "staff"
-              | "admin") || "user"
-          );
+          // Map backend roles to frontend roles
+          const role = user.role?.toLowerCase();
+          if (role === "customer") {
+            setUserRole("user");
+          } else {
+            setUserRole(
+              (role as "guest" | "user" | "organizer" | "staff" | "admin") ||
+                "user"
+            );
+          }
         }
       } else {
         setUserRole("guest");
@@ -298,6 +464,18 @@ export default function App() {
         path = `/transfer-ticket/${id}`;
       } else if (page === "event-analytics") {
         path = `/event-analytics/${id}`;
+      } else if (page === "organizer-wizard") {
+        // For editing events
+        setSelectedEventId(id);
+        path = `/organizer-wizard/${id}`;
+      } else if (page === "seat-selection") {
+        path = `/seat-selection/${id}`;
+      } else if (page === "edit-seat-map") {
+        setSelectedEventId(id);
+        path = `/edit-seat-map/${id}`;
+      } else if (page === "event-reviews") {
+        setSelectedEventId(id);
+        path = `/event-reviews/${id}`;
       } else {
         setSelectedEventId(id);
       }
@@ -366,9 +544,7 @@ export default function App() {
         return <Success order={lastOrder} onNavigate={handleNavigate} />;
 
       case "my-tickets":
-        return (
-          <MyTickets orders={completedOrders} onNavigate={handleNavigate} />
-        );
+        return <MyTickets onNavigate={handleNavigate} />;
 
       case "order-detail": {
         // Extract orderId from URL directly
@@ -394,7 +570,6 @@ export default function App() {
         return (
           <TicketDetail
             ticketId={ticketIdFromUrl || undefined}
-            orders={completedOrders}
             onNavigate={handleNavigate}
           />
         );
@@ -417,6 +592,9 @@ export default function App() {
         );
       }
 
+      case "accept-transfer":
+        return <AcceptTransfer onNavigate={handleNavigate} />;
+
       case "wishlist":
         return <Wishlist onNavigate={handleNavigate} />;
 
@@ -427,10 +605,17 @@ export default function App() {
         return <CreateEvent onNavigate={handleNavigate} />;
 
       case "organizer-wizard":
-        return <OrganizerWizard onNavigate={handleNavigate} />;
+        return (
+          <OrganizerWizard
+            onNavigate={handleNavigate}
+            eventId={selectedEventId || undefined}
+          />
+        );
 
       case "organizer-dashboard":
-        return <OrganizerDashboard onNavigate={handleNavigate} />;
+        return (
+          <OrganizerDashboard key={Date.now()} onNavigate={handleNavigate} />
+        );
 
       case "event-management":
         return <EventManagement onNavigate={handleNavigate} />;
@@ -446,8 +631,17 @@ export default function App() {
       case "edit-event":
         return <EditEvent onNavigate={handleNavigate} />;
 
-      case "scan-history":
-        return <ScanHistory onNavigate={handleNavigate} />;
+      case "edit-seat-map":
+        console.log(
+          "[App.tsx] Rendering SeatMapBuilder component, selectedEventId:",
+          selectedEventId
+        );
+        return (
+          <SeatMapBuilder
+            onNavigate={handleNavigate}
+            eventId={selectedEventId}
+          />
+        );
 
       case "promo-codes":
         return <PromoCodeManagement />;
@@ -468,16 +662,23 @@ export default function App() {
         return <UserProfile onNavigate={handleNavigate} />;
 
       case "seat-selection":
-        return <SeatSelection onNavigate={handleNavigate} />;
+        return (
+          <SeatSelectionReal
+            eventId={selectedEventId || undefined}
+            onNavigate={handleNavigate}
+          />
+        );
 
       case "seat-map-builder":
         return <SeatMapBuilder onNavigate={handleNavigate} />;
 
       case "review-submission":
-        return <ReviewSubmission onNavigate={handleNavigate} />;
-
-      case "qr-scanner":
-        return <QRScanner onNavigate={handleNavigate} />;
+        return (
+          <ReviewSubmission
+            eventId={selectedEventId || undefined}
+            onNavigate={handleNavigate}
+          />
+        );
 
       case "email-verification":
         return <EmailVerification onNavigate={handleNavigate} />;
@@ -485,11 +686,28 @@ export default function App() {
       case "password-change":
         return <PasswordChange onNavigate={handleNavigate} />;
 
-      case "event-reviews":
-        return <EventReviews onNavigate={handleNavigate} />;
+      case "event-reviews": {
+        // Extract eventId from URL directly
+        const eventIdFromUrl = location.pathname.startsWith("/event-reviews/")
+          ? location.pathname.split("/event-reviews/")[1]?.split("/")[0]
+          : selectedEventId;
+
+        return (
+          <EventReviews
+            eventId={eventIdFromUrl || undefined}
+            onNavigate={handleNavigate}
+          />
+        );
+      }
 
       case "refund-request":
         return <RefundRequest onNavigate={handleNavigate} />;
+
+      case "refund-history":
+        return <RefundHistory onNavigate={handleNavigate} />;
+
+      case "manage-refunds":
+        return <ManageRefunds />;
 
       case "admin-dashboard":
         return <AdminDashboard onNavigate={handleNavigate} />;
@@ -555,21 +773,26 @@ export default function App() {
     currentPage === "payment-return";
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen flex flex-col">
-        {!isStandalonePage && (
-          <Header
-            onNavigate={handleNavigate}
-            currentPage={currentPage}
-            isAuthenticated={isAuthenticated}
-            userRole={userRole}
-            onSearchOpenChange={setIsSearchOpen}
-          />
-        )}
-        <main className="flex-1">{renderPage()}</main>
-        {!isStandalonePage && <Footer />}
-        <Toaster position="top-center" richColors closeButton={false} />
-      </div>
-    </ProtectedRoute>
+    <ErrorBoundary>
+      <ProtectedRoute>
+        <div className="min-h-screen flex flex-col">
+          {!isStandalonePage && (
+            <Header
+              onNavigate={handleNavigate}
+              currentPage={currentPage}
+              isAuthenticated={isAuthenticated}
+              userRole={userRole}
+              onSearchOpenChange={setIsSearchOpen}
+            />
+          )}
+          <main className="flex-1">
+            <Suspense fallback={<LoadingFallback />}>{renderPage()}</Suspense>
+          </main>
+          {!isStandalonePage && <Footer />}
+          <ChatbotWidget position="bottom-right" enableStreaming={true} />
+          <Toaster />
+        </div>
+      </ProtectedRoute>
+    </ErrorBoundary>
   );
 }

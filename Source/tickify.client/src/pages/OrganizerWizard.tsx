@@ -1,42 +1,116 @@
-import { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Upload, Plus, Trash2, ArrowLeft, Loader2, X, CheckCircle, AlertCircle, Clock } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Switch } from '../components/ui/switch';
-import { ProgressSteps } from '../components/ProgressSteps';
-import { cities } from '../mockData';
-import { eventService, type CreateEventDto } from '../services/eventService';
-import { categoryService, type CategoryDto } from '../services/categoryService';
-import { authService } from '../services/authService';
-import { imageService } from '../services/imageService';
-import { toast } from 'sonner';
+import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Upload,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  Loader2,
+  X,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Grid3x3,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
+import { ProgressSteps } from "../components/ProgressSteps";
+import { cities } from "../mockData";
+import { eventService, type CreateEventDto } from "../services/eventService";
+import { categoryService, type CategoryDto } from "../services/categoryService";
+import { authService } from "../services/authService";
+import { imageService } from "../services/imageService";
+import { toast } from "sonner";
 import type { Category, Event, TicketTier } from "../types";
 
 interface OrganizerWizardProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: string, eventId?: string) => void;
+  eventId?: string; // For editing existing events
 }
 
-export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
-  const { t } = useTranslation();
-  const [currentStep, setCurrentStep] = useState(1);
+// Category translation mapping
+const getCategoryTranslation = (
+  categoryName: string,
+  currentLang: string
+): string => {
+  const translations: Record<string, Record<string, string>> = {
+    // English category names from database
+    "Music & Concerts": { en: "Music & Concerts", vi: "Âm nhạc & Hòa nhạc" },
+    "Sports & Fitness": { en: "Sports & Fitness", vi: "Thể thao & Thể hình" },
+    "Arts & Culture": { en: "Arts & Culture", vi: "Nghệ thuật & Văn hóa" },
+    "Food & Drink": { en: "Food & Drink", vi: "Ẩm thực" },
+    "Business & Professional": {
+      en: "Business & Professional",
+      vi: "Kinh doanh & Chuyên nghiệp",
+    },
+    "Technology & Innovation": {
+      en: "Technology & Innovation",
+      vi: "Công nghệ & Đổi mới",
+    },
+    "Education & Learning": {
+      en: "Education & Learning",
+      vi: "Giáo dục & Học tập",
+    },
+    Entertainment: { en: "Entertainment", vi: "Giải trí" },
+    "Health & Wellness": { en: "Health & Wellness", vi: "Sức khỏe & Chăm sóc" },
+    Conference: { en: "Conference", vi: "Hội nghị" },
+    Other: { en: "Other", vi: "Khác" },
+    // Fallback for simple names
+    Music: { en: "Music", vi: "Âm nhạc" },
+    Sports: { en: "Sports", vi: "Thể thao" },
+    Business: { en: "Business", vi: "Kinh doanh" },
+    Technology: { en: "Technology", vi: "Công nghệ" },
+    Education: { en: "Education", vi: "Giáo dục" },
+    // Vietnamese category names (if already translated in database)
+    "Nghệ thuật & Văn hóa": {
+      en: "Arts & Culture",
+      vi: "Nghệ thuật & Văn hóa",
+    },
+    "Giải trí": { en: "Entertainment", vi: "Giải trí" },
+    "Ẩm thực": { en: "Food & Drink", vi: "Ẩm thực" },
+  };
+
+  return translations[categoryName]?.[currentLang] || categoryName;
+};
+
+export function OrganizerWizard({ onNavigate, eventId }: OrganizerWizardProps) {
+  const { t, i18n } = useTranslation();
+  // Restore step from sessionStorage when returning from seat map builder
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (eventId) {
+      const savedStep = sessionStorage.getItem(`wizard-step-${eventId}`);
+      if (savedStep) {
+        sessionStorage.removeItem(`wizard-step-${eventId}`);
+        return parseInt(savedStep, 10);
+      }
+    }
+    return 1;
+  });
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isLoadingEvent, setIsLoadingEvent] = useState(false);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [eventData, setEventData] = useState<Partial<Event>>({
-    category: 'Music',
-    city: cities[0],
+    category: "Music",
     ticketTiers: [],
     policies: {
       refundable: true,
-      transferable: true
-    }
+      transferable: true,
+    },
   });
+  const isEditMode = Boolean(eventId);
 
   const [ticketTiers, setTicketTiers] = useState<Partial<TicketTier>[]>([
-    { name: '', price: 0, total: 100, description: '' }
+    { name: "", price: 0, total: 100, description: "" },
   ]);
 
   // Image upload states
@@ -69,7 +143,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     return now.toTimeString().slice(0, 5);
   };
 
-  // Load categories on mount
+  // Load categories and seat map templates on mount
   useEffect(() => {
     const loadCategories = async () => {
       try {
@@ -77,29 +151,104 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
         setCategories(cats);
         // Set first category as default if available
         if (cats.length > 0 && !eventData.category) {
-          setEventData(prev => ({ ...prev, category: cats[0].categoryName as any }));
+          setEventData((prev) => ({
+            ...prev,
+            category: cats[0].categoryName as any,
+          }));
         }
       } catch (error) {
-        console.error('Error loading categories:', error);
+        console.error("Error loading categories:", error);
       }
     };
+
     loadCategories();
   }, []);
 
+  // Load event data when in edit mode
+  useEffect(() => {
+    const loadEventData = async () => {
+      if (!eventId) return;
+
+      setIsLoadingEvent(true);
+      try {
+        const event = await eventService.getEventById(Number(eventId));
+
+        // Parse date and time from event.date (ISO string)
+        const eventDate = new Date(event.date);
+        const dateStr = eventDate.toISOString().split("T")[0]; // YYYY-MM-DD
+        const timeStr = eventDate.toTimeString().slice(0, 5); // HH:MM
+
+        // Populate form with existing event data
+        setEventData((prev) => ({
+          ...prev,
+          title: event.title,
+          category: event.category,
+          venue: event.venue,
+          date: dateStr,
+          time: timeStr,
+          description: event.fullDescription || event.description,
+          image: event.image,
+          organizerId: event.organizerId,
+          policies: event.policies || {
+            refundable: true,
+            transferable: true,
+          },
+        }));
+
+        // Populate ticket tiers
+        if (event.ticketTiers && event.ticketTiers.length > 0) {
+          setTicketTiers(
+            event.ticketTiers.map((tier) => ({
+              id: tier.id,
+              name: tier.name,
+              price: tier.price,
+              total: tier.total,
+              available: tier.available,
+              description: tier.description,
+            }))
+          );
+        }
+
+        // Set image preview if exists
+        if (event.image) {
+          setImagePreview(event.image);
+          setUploadedImageUrl(event.image);
+        }
+
+        toast.success(
+          t("wizard.organizer.loadEventSuccess") || "Event loaded successfully"
+        );
+      } catch (error) {
+        console.error("Error loading event:", error);
+        toast.error(
+          t("wizard.organizer.loadEventError") || "Failed to load event data"
+        );
+        onNavigate("event-management"); // Go back if can't load
+      } finally {
+        setIsLoadingEvent(false);
+      }
+    };
+
+    loadEventData();
+  }, [eventId]);
+
   const steps = [
-    { number: 1, label: 'Basics' },
-    { number: 2, label: 'Schedule & Venue' },
-    { number: 3, label: 'Ticketing' },
-    { number: 4, label: 'Policies' },
-    { number: 5, label: 'Review' }
+    { number: 1, label: t("wizard.organizer.stepLabel1") },
+    { number: 2, label: t("wizard.organizer.stepLabel2") },
+    { number: 3, label: t("wizard.organizer.stepLabel3") },
+    { number: 4, label: t("wizard.organizer.stepLabel4") },
+    { number: 5, label: t("wizard.organizer.stepLabel5") },
   ];
 
   const handleInputChange = (field: string, value: any) => {
-    setEventData({ ...eventData, [field]: value });
+    setEventData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleAddTier = () => {
-    setTicketTiers([...ticketTiers, { name: '', price: 0, total: 100, description: '' }]);
+    setTicketTiers([
+      ...ticketTiers,
+      { name: "", price: 0, total: 100, description: "" },
+    ]);
   };
 
   const handleRemoveTier = (index: number) => {
@@ -113,33 +262,39 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   };
 
   // Handle image file selection and auto-upload
-  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log('[OrganizerWizard] Image selected:', file.name);
     setUploadError(null);
 
     // Validate file
     const validationError = imageService.validateImageFile(file);
     if (validationError) {
-      console.error('[OrganizerWizard] Validation failed:', validationError);
-      setUploadError(validationError);
-      alert(validationError);
+      const errorMessage = String(
+        t(validationError.key, validationError.params)
+      );
+      setUploadError(errorMessage);
+      toast.error(t("wizard.organizer.imageUploadError") as string, {
+        description: errorMessage,
+        duration: 3000,
+        closeButton: false,
+      });
       // Reset file input
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
       return;
     }
 
     setSelectedImage(file);
-    
+
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
-      console.log('[OrganizerWizard] Preview created');
     };
     reader.readAsDataURL(file);
 
@@ -150,42 +305,37 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
   // Upload image to Azure Storage
   const handleImageUpload = async (fileToUpload?: File) => {
     const imageToUpload = fileToUpload || selectedImage;
-    
+
     if (!imageToUpload) {
-      console.warn('[OrganizerWizard] No image to upload');
       return;
     }
 
     try {
       setIsUploadingImage(true);
       setUploadError(null);
-      console.log('[OrganizerWizard] Auto-uploading to Azure Storage...');
-      
+
       const response = await imageService.uploadImage(imageToUpload);
-      
+
       setUploadedImageUrl(response.imageUrl);
-      handleInputChange('image', response.imageUrl);
-      
-      console.log('[OrganizerWizard] Upload successful!', {
-        imageUrl: response.imageUrl,
-        blobName: response.blobName
-      });
-      
-      // Success notification (subtle, không dùng alert để không làm gián đoạn UX)
-      console.log('Image uploaded successfully to Azure Storage!');
+      handleInputChange("image", response.imageUrl);
+
+      // Silent success - no toast notification
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || error.message || 'Failed to upload image';
-      console.error('[OrganizerWizard] Upload error:', errorMsg);
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to upload image";
+      console.error("[OrganizerWizard] Upload error:", errorMsg);
       setUploadError(errorMsg);
-      
+
       // Reset on error
       setSelectedImage(null);
       setImagePreview(null);
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
-      
-      alert(`Upload failed: ${errorMsg}`);
+
+      toast.error(`Tải ảnh thất bại: ${errorMsg}`);
     } finally {
       setIsUploadingImage(false);
     }
@@ -193,14 +343,13 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
   // Remove selected image
   const handleRemoveImage = () => {
-    console.log('[OrganizerWizard] Removing image');
     setSelectedImage(null);
     setImagePreview(null);
     setUploadedImageUrl(null);
     setUploadError(null);
-    handleInputChange('image', undefined);
+    handleInputChange("image", undefined);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -221,9 +370,15 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       setIsPublishing(true);
 
       // Validate required fields
-      if (!eventData.title || !eventData.description || !eventData.venue || !eventData.date || !eventData.time) {
-        toast.error('Missing required fields', {
-          description: 'Please fill in all required fields',
+      if (
+        !eventData.title ||
+        !eventData.description ||
+        !eventData.venue ||
+        !eventData.date ||
+        !eventData.time
+      ) {
+        toast.error(t("wizard.organizer.validation.missingFields"), {
+          description: t("wizard.organizer.validation.missingFieldsDesc"),
           duration: 2000,
           closeButton: false,
         });
@@ -232,24 +387,24 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
       // Validate field lengths
       if (eventData.title.length < 5) {
-        toast.error('Invalid event title', {
-          description: 'Event title must be at least 5 characters long',
+        toast.error(t("wizard.organizer.validation.titleTooShort"), {
+          description: t("wizard.organizer.validation.titleTooShortDesc"),
           duration: 2000,
           closeButton: false,
         });
         return;
       }
       if (eventData.description.length < 50) {
-        toast.error('Invalid description', {
-          description: 'Event description must be at least 50 characters long',
+        toast.error(t("wizard.organizer.validation.descriptionTooShort"), {
+          description: t("wizard.organizer.validation.descriptionTooShortDesc"),
           duration: 2000,
           closeButton: false,
         });
         return;
       }
       if (eventData.venue.length < 5) {
-        toast.error('Invalid venue', {
-          description: 'Venue must be at least 5 characters long',
+        toast.error(t("wizard.organizer.validation.venueTooShort"), {
+          description: t("wizard.organizer.validation.venueTooShortDesc"),
           duration: 2000,
           closeButton: false,
         });
@@ -270,8 +425,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       eventDateOnly.setHours(0, 0, 0, 0);
 
       if (eventDateOnly < today) {
-        toast.error('Invalid event date', {
-          description: 'Event date cannot be in the past. Please select a future date.',
+        toast.error(t("wizard.organizer.validation.datePast"), {
+          description: t("wizard.organizer.validation.datePastDesc"),
           duration: 3000,
           closeButton: false,
         });
@@ -283,8 +438,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       minDateTime.setHours(minDateTime.getHours() + 24);
 
       if (selectedDateTime < minDateTime) {
-        toast.error('Event too soon', {
-          description: 'Event must be scheduled at least 24 hours in advance. Please select a date and time that is at least 1 day from now.',
+        toast.error(t("wizard.organizer.validation.eventTooSoon"), {
+          description: t("wizard.organizer.validation.eventTooSoonDesc"),
           duration: 3000,
           closeButton: false,
         });
@@ -295,8 +450,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
       if (eventDateOnly.getTime() === today.getTime()) {
         const currentTime = getCurrentTime();
         if (eventData.time <= currentTime) {
-          toast.error('Invalid event time', {
-            description: `Event time cannot be in the past. Current time: ${currentTime}, Selected time: ${eventData.time}`,
+          toast.error(t("wizard.organizer.validation.timePast"), {
+            description: t("wizard.organizer.validation.timePastDesc"),
             duration: 3000,
             closeButton: false,
           });
@@ -306,76 +461,162 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
       // Validate that event has at least one ticket tier
       if (ticketTiers.length === 0 || !ticketTiers[0].name) {
-        toast.error('Missing ticket tiers', {
-          description: 'Please add at least one ticket tier before publishing.',
+        toast.error(t("wizard.organizer.validation.missingTiers"), {
+          description: t("wizard.organizer.validation.missingTiersDesc"),
           duration: 2000,
           closeButton: false,
         });
         return;
       }
 
+      // Validate ticket tier prices and quantities
+      const MAX_TIER_PRICE = 50_000_000;
+      for (let i = 0; i < ticketTiers.length; i++) {
+        const tier = ticketTiers[i];
+        if (!tier.price || tier.price <= 0) {
+          toast.error(t("wizard.organizer.validation.tierPriceInvalid"), {
+            description: t("wizard.organizer.validation.tierPriceInvalidDesc"),
+            duration: 2000,
+            closeButton: false,
+          });
+          return;
+        }
+        if (tier.price > MAX_TIER_PRICE) {
+          toast.error("Giá vé vượt quá giới hạn", {
+            description: `Giá vé "${
+              tier.name
+            }" không được vượt quá ${MAX_TIER_PRICE.toLocaleString()} VND (Giới hạn cổng thanh toán MoMo: 50 triệu VND/giao dịch)`,
+            duration: 3000,
+            closeButton: false,
+          });
+          return;
+        }
+        if (!tier.total || tier.total <= 0) {
+          toast.error(t("wizard.organizer.validation.tierQuantityInvalid"), {
+            description: t(
+              "wizard.organizer.validation.tierQuantityInvalidDesc"
+            ),
+            duration: 2000,
+            closeButton: false,
+          });
+          return;
+        }
+      }
+
       // Combine date and time
-      const eventDate = eventData.date || '';
-      const eventTime = eventData.time || '00:00';
+      const eventDate = eventData.date || "";
+      const eventTime = eventData.time || "00:00";
       const startDateTime = `${eventDate}T${eventTime}:00`;
       const endDateTime = `${eventDate}T23:59:00`; // Default end time
 
       // Map category name to categoryId
-      const selectedCategory = categories.find(c => c.categoryName === eventData.category);
+      const selectedCategory = categories.find(
+        (c) => c.categoryName === eventData.category
+      );
       const categoryId = selectedCategory?.categoryId || 1; // Fallback to 1 if not found
 
-      // Prepare event data
-      const createEventDto: CreateEventDto = {
-        organizerId: organizerId!,
-        categoryId: categoryId,
-        title: eventData.title,
-        description: eventData.description,
-        venue: eventData.venue,
-        imageUrl: eventData.image,
-        startDate: startDateTime,
-        endDate: endDateTime,
-        totalSeats: ticketTiers.reduce((sum, tier) => sum + (tier.total || 0), 0),
-        isFeatured: false,
-        ticketTypes: ticketTiers.map(tier => ({
-          typeName: tier.name || 'General',
-          price: tier.price || 0,
-          quantity: tier.total || 0,
-          description: tier.description
-        }))
-      };
+      if (isEditMode && eventId) {
+        // UPDATE existing event
+        const updateEventDto = {
+          categoryId: categoryId,
+          title: eventData.title,
+          description: eventData.description,
+          venue: eventData.venue,
+          imageUrl: eventData.image,
+          startDate: startDateTime,
+          endDate: endDateTime,
+          totalSeats: ticketTiers.reduce(
+            (sum, tier) => sum + (tier.total || 0),
+            0
+          ),
+          isFeatured: false,
+          allowTransfer: eventData.policies?.transferable ?? false,
+          allowRefund: eventData.policies?.refundable ?? false,
+        };
 
-      console.log('Creating event with data:', createEventDto);
+        const updatedEvent = await eventService.updateEvent(
+          Number(eventId),
+          updateEventDto
+        );
 
-      // POST /api/events - Create event
-      const createdEvent = await eventService.createEvent(createEventDto);
+        toast.success(
+          t("wizard.organizer.eventUpdated") ||
+            `Event "${updatedEvent.title}" updated successfully!`,
+          {
+            description:
+              t("wizard.organizer.eventUpdatedDesc") ||
+              "Your changes have been saved.",
+            duration: 2000,
+            closeButton: false,
+          }
+        );
+        onNavigate("event-management");
+      } else {
+        // CREATE new event
+        const createEventDto: CreateEventDto = {
+          organizerId: organizerId!,
+          categoryId: categoryId,
+          title: eventData.title,
+          description: eventData.description,
+          venue: eventData.venue,
+          imageUrl: eventData.image,
+          startDate: startDateTime,
+          endDate: endDateTime,
+          totalSeats: ticketTiers.reduce(
+            (sum, tier) => sum + (tier.total || 0),
+            0
+          ),
+          isFeatured: false,
+          allowTransfer: eventData.policies?.transferable ?? false,
+          allowRefund: eventData.policies?.refundable ?? false,
+          ticketTypes: ticketTiers.map((tier) => ({
+            typeName: tier.name || "General",
+            price: tier.price || 0,
+            quantity: tier.total || 0,
+            description: tier.description,
+          })),
+        };
 
-      toast.success(`Event "${createdEvent.title}" created successfully!`, {
-        description: 'It will be reviewed by admin.',
-        duration: 2000,
-        closeButton: false,
-      });
-      onNavigate('organizer-dashboard');
+        const createdEvent = await eventService.createEvent(createEventDto);
+
+        toast.success(
+          t("wizard.organizer.eventCreated") ||
+            `Event "${createdEvent.title}" created successfully!`,
+          {
+            description:
+              t("wizard.organizer.eventCreatedDesc") ||
+              "Now you can set up seat map for this event.",
+            duration: 3000,
+            closeButton: false,
+          }
+        );
+
+        // Navigate to seat map setup after creating event
+        // createdEvent.id is a string (mapped from eventId)
+        if (createdEvent.id) {
+          onNavigate("edit-seat-map", createdEvent.id);
+        } else {
+          onNavigate("event-management");
+        }
+      }
     } catch (error: any) {
-      console.error('Error creating event:', error);
-      console.error('Error response data:', error.response?.data);
-      
       // Extract detailed error messages from backend validation
-      let errorMessage = 'Please check your inputs.';
-      let errorTitle = 'Failed to create event';
-      
+      let errorMessage = "Please check your inputs.";
+      let errorTitle = "Failed to create event";
+
       if (error.response?.data) {
         const data = error.response.data;
         // If backend returns validation errors array
         if (data.errors && Array.isArray(data.errors)) {
-          errorMessage = data.errors.join('\n');
-          errorTitle = 'Validation errors';
+          errorMessage = data.errors.join("\n");
+          errorTitle = "Validation errors";
         } else if (data.message) {
           errorMessage = data.message;
         }
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast.error(errorTitle, {
         description: errorMessage,
         duration: 4000,
@@ -419,19 +660,37 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
     );
   }
 
+  // Show loading state when loading event data
+  if (isLoadingEvent) {
+    return (
+      <div className="min-h-screen bg-neutral-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 text-center py-20">
+          <Loader2 className="animate-spin h-12 w-12 mx-auto mb-4 text-purple-600" />
+          <p className="text-lg text-neutral-600">
+            {t("wizard.organizer.loadingEvent") || "Loading event data..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => onNavigate('home')}
+            onClick={() => onNavigate("home")}
             className="mb-4"
           >
             <ArrowLeft size={16} className="mr-2" />
-            Back
+            {t("wizard.organizer.previous")}
           </Button>
-          <h1>Create New Event</h1>
+          <h1>
+            {isEditMode
+              ? t("wizard.organizer.editTitle") || "Edit Event"
+              : t("wizard.organizer.title")}
+          </h1>
         </div>
 
         <ProgressSteps steps={steps} currentStep={currentStep} />
@@ -440,46 +699,56 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
           {/* Step 1: Basics */}
           {currentStep === 1 && (
             <div className="space-y-6">
-              <h3 className="mb-6">Event Basics</h3>
+              <h3 className="mb-6">{t("wizard.organizer.eventBasics")}</h3>
 
               <div>
-                <Label htmlFor="title">Event Title *</Label>
+                <Label htmlFor="title">
+                  {t("wizard.organizer.eventTitle")}
+                </Label>
                 <Input
                   id="title"
-                  placeholder="e.g., Summer Music Festival 2025"
-                  value={eventData.title || ''}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  placeholder={t("wizard.organizer.eventTitlePlaceholder")}
+                  value={eventData.title || ""}
+                  onChange={(e) => handleInputChange("title", e.target.value)}
                   className="mt-1"
                 />
               </div>
 
               <div>
-                <Label htmlFor="slug">URL Slug *</Label>
+                <Label htmlFor="slug">{t("wizard.organizer.urlSlug")}</Label>
                 <Input
                   id="slug"
-                  placeholder="summer-music-festival-2025"
-                  value={eventData.slug || ''}
-                  onChange={(e) => handleInputChange('slug', e.target.value)}
+                  placeholder={t("wizard.organizer.urlSlugPlaceholder")}
+                  value={eventData.slug || ""}
+                  onChange={(e) => handleInputChange("slug", e.target.value)}
                   className="mt-1"
                 />
                 <p className="text-xs text-neutral-500 mt-1">
-                  tickify.vn/events/{eventData.slug || 'your-event'}
+                  {t("wizard.organizer.urlSlugHint")}
+                  {eventData.slug || "your-event"}
                 </p>
               </div>
 
               <div>
-                <Label htmlFor="category">Category *</Label>
+                <Label htmlFor="category">
+                  {t("wizard.organizer.category")}
+                </Label>
                 <Select
                   value={eventData.category}
-                  onValueChange={(value) => handleInputChange('category', value as Category)}
+                  onValueChange={(value) =>
+                    handleInputChange("category", value as Category)
+                  }
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map(cat => (
+                    {categories.map((cat) => (
                       <SelectItem key={cat.categoryId} value={cat.categoryName}>
-                        {cat.categoryName}
+                        {getCategoryTranslation(
+                          cat.categoryName,
+                          i18n.language
+                        )}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -487,21 +756,26 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
               </div>
 
               <div>
-                <Label htmlFor="description">Description * (minimum 50 characters)</Label>
+                <Label htmlFor="description">
+                  {t("wizard.organizer.description")}
+                </Label>
                 <Textarea
                   id="description"
-                  placeholder="Describe your event in detail... (minimum 50 characters required)"
-                  value={eventData.description || ''}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  placeholder={t("wizard.organizer.descriptionPlaceholder")}
+                  value={eventData.description || ""}
+                  onChange={(e) =>
+                    handleInputChange("description", e.target.value)
+                  }
                   className="mt-1 min-h-[120px]"
                 />
                 <p className="text-xs text-neutral-500 mt-1">
-                  {eventData.description?.length || 0} / 50 characters minimum
+                  {eventData.description?.length || 0} / 50{" "}
+                  {t("wizard.organizer.descriptionHint")}
                 </p>
               </div>
 
               <div>
-                <Label>Event Image</Label>
+                <Label>{t("wizard.organizer.eventImage")}</Label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -510,18 +784,21 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                   className="hidden"
                   id="image-upload"
                 />
-                
+
                 {!imagePreview ? (
                   <label
                     htmlFor="image-upload"
                     className="mt-1 border-2 border-dashed border-neutral-300 rounded-xl p-8 text-center hover:border-orange-500 transition-colors cursor-pointer flex flex-col items-center block"
                   >
-                    <Upload className="mx-auto text-neutral-400 mb-2" size={32} />
+                    <Upload
+                      className="mx-auto text-neutral-400 mb-2"
+                      size={32}
+                    />
                     <p className="text-sm text-neutral-600">
-                      Click to upload image
+                      {t("wizard.organizer.clickToUpload")}
                     </p>
                     <p className="text-xs text-neutral-400 mt-1">
-                      PNG, JPG, GIF, WebP up to 5MB
+                      {t("wizard.organizer.imageFormats")}
                     </p>
                   </label>
                 ) : (
@@ -530,16 +807,18 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                     {isUploadingImage && (
                       <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center z-10">
                         <div className="text-center">
-                          <Loader2 className="animate-spin mx-auto text-orange-500 mb-2" size={40} />
-                          <p className="text-sm text-neutral-700 font-medium">Uploading to Azure Storage...</p>
+                          <Loader2
+                            className="animate-spin mx-auto text-orange-500"
+                            size={40}
+                          />
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="relative">
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
                         className="w-full h-64 object-cover rounded-lg"
                       />
                       {!isUploadingImage && (
@@ -547,23 +826,30 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                           type="button"
                           onClick={handleRemoveImage}
                           className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-all shadow-lg hover:scale-110 z-10 border-2 border-white"
-                          title="Remove image"
+                          title={t("wizard.organizer.removeImage")}
                         >
                           <X size={25} />
                         </button>
                       )}
                     </div>
-                    
+
                     {uploadError && (
                       <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                        <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={16} />
+                        <AlertCircle
+                          className="text-red-500 flex-shrink-0 mt-0.5"
+                          size={16}
+                        />
                         <div className="flex-1">
-                          <p className="text-sm text-red-700 font-medium">Upload Failed</p>
-                          <p className="text-xs text-red-600 mt-1">{uploadError}</p>
+                          <p className="text-sm text-red-700 font-medium">
+                            {t("wizard.organizer.uploadFailed")}
+                          </p>
+                          <p className="text-xs text-red-600 mt-1">
+                            {uploadError}
+                          </p>
                         </div>
                       </div>
                     )}
-                    
+
                     {uploadedImageUrl && !isUploadingImage && (
                       <div className="mt-4">
                         <label
@@ -571,7 +857,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                           className="w-full px-4 py-2 border-2 border-orange-500 text-orange-600 rounded-lg hover:bg-orange-50 cursor-pointer flex items-center justify-center transition-colors font-medium"
                         >
                           <Upload size={16} className="mr-2" />
-                          Change Image
+                          {t("wizard.organizer.changeImage")}
                         </label>
                       </div>
                     )}
@@ -584,11 +870,13 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
           {/* Step 2: Schedule & Venue */}
           {currentStep === 2 && (
             <div className="space-y-6">
-              <h3 className="mb-6">Schedule & Venue</h3>
+              <h3 className="mb-6">{t("wizard.organizer.scheduleVenue")}</h3>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="date">Event Date *</Label>
+                  <Label htmlFor="date">
+                    {t("wizard.organizer.eventDate")}
+                  </Label>
                   <Input
                     id="date"
                     type="date"
@@ -598,54 +886,44 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                     className="mt-1"
                   />
                   <p className="text-xs text-neutral-500 mt-1">
-                    Event must be at least 24 hours in the future
+                    {t("wizard.organizer.eventDateHint")}
                   </p>
                 </div>
 
                 <div>
-                  <Label htmlFor="time">Start Time *</Label>
+                  <Label htmlFor="time">
+                    {t("wizard.organizer.startTime")}
+                  </Label>
                   <div className="relative mt-1">
                     <Input
                       id="time"
                       type="time"
-                      value={eventData.time || ''}
-                      onChange={(e) => handleInputChange('time', e.target.value)}
+                      value={eventData.time || ""}
+                      onChange={(e) =>
+                        handleInputChange("time", e.target.value)
+                      }
                       className="pr-10"
                     />
-                    <Clock className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" size={16} />
+                    <Clock
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                      size={16}
+                    />
                   </div>
                   <p className="text-xs text-neutral-500 mt-1">
-                    Event must be at least 24 hours from now
+                    {t("wizard.organizer.startTimeHint")}
                   </p>
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="venue">Venue Name *</Label>
+                <Label htmlFor="venue">{t("wizard.organizer.venueName")}</Label>
                 <Input
                   id="venue"
-                  placeholder="e.g., Phu Tho Stadium"
-                  value={eventData.venue || ''}
-                  onChange={(e) => handleInputChange('venue', e.target.value)}
+                  placeholder={t("wizard.organizer.venueNamePlaceholder")}
+                  value={eventData.venue || ""}
+                  onChange={(e) => handleInputChange("venue", e.target.value)}
                   className="mt-1"
                 />
-              </div>
-
-              <div>
-                <Label htmlFor="city">City *</Label>
-                <Select
-                  value={eventData.city}
-                  onValueChange={(value) => handleInputChange('city', value)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map(city => (
-                      <SelectItem key={city} value={city}>{city}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </div>
           )}
@@ -655,21 +933,22 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h3>Ticket Tiers</h3>
-                <Button
-                  onClick={handleAddTier}
-                  variant="outline"
-                  size="sm"
-                >
+                <Button onClick={handleAddTier} variant="outline" size="sm">
                   <Plus size={16} className="mr-2" />
-                  Add Tier
+                  {t("wizard.organizer.addTier")}
                 </Button>
               </div>
 
               <div className="space-y-4">
                 {ticketTiers.map((tier, index) => (
-                  <div key={index} className="border border-neutral-200 rounded-xl p-4">
+                  <div
+                    key={index}
+                    className="border border-neutral-200 rounded-xl p-4"
+                  >
                     <div className="flex items-start justify-between mb-4">
-                      <h4>Tier {index + 1}</h4>
+                      <h4>
+                        {t("wizard.organizer.tierNumber")} {index + 1}
+                      </h4>
                       {ticketTiers.length > 1 && (
                         <Button
                           variant="ghost"
@@ -684,43 +963,71 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label>Tier Name *</Label>
+                        <Label>{t("wizard.organizer.tierName")}</Label>
                         <Input
-                          placeholder="e.g., General Admission"
-                          value={tier.name || ''}
-                          onChange={(e) => handleTierChange(index, 'name', e.target.value)}
+                          placeholder={t(
+                            "wizard.organizer.tierNamePlaceholder"
+                          )}
+                          value={tier.name || ""}
+                          onChange={(e) =>
+                            handleTierChange(index, "name", e.target.value)
+                          }
                           className="mt-1"
                         />
                       </div>
 
                       <div>
-                        <Label>Price (VND) *</Label>
+                        <Label>{t("wizard.organizer.tierPrice")}</Label>
                         <Input
                           type="number"
-                          placeholder="500000"
-                          value={tier.price || ''}
-                          onChange={(e) => handleTierChange(index, 'price', parseInt(e.target.value))}
+                          placeholder={t(
+                            "wizard.organizer.tierPricePlaceholder"
+                          )}
+                          value={tier.price || ""}
+                          onChange={(e) =>
+                            handleTierChange(
+                              index,
+                              "price",
+                              parseInt(e.target.value)
+                            )
+                          }
                           className="mt-1"
                         />
                       </div>
 
                       <div>
-                        <Label>Total Tickets *</Label>
+                        <Label>{t("wizard.organizer.totalTickets")}</Label>
                         <Input
                           type="number"
-                          placeholder="100"
-                          value={tier.total || ''}
-                          onChange={(e) => handleTierChange(index, 'total', parseInt(e.target.value))}
+                          placeholder={t(
+                            "wizard.organizer.totalTicketsPlaceholder"
+                          )}
+                          value={tier.total || ""}
+                          onChange={(e) =>
+                            handleTierChange(
+                              index,
+                              "total",
+                              parseInt(e.target.value)
+                            )
+                          }
                           className="mt-1"
                         />
                       </div>
 
                       <div>
-                        <Label>Description</Label>
+                        <Label>{t("wizard.organizer.tierDescription")}</Label>
                         <Input
-                          placeholder="Brief description"
-                          value={tier.description || ''}
-                          onChange={(e) => handleTierChange(index, 'description', e.target.value)}
+                          placeholder={t(
+                            "wizard.organizer.tierDescriptionPlaceholder"
+                          )}
+                          value={tier.description || ""}
+                          onChange={(e) =>
+                            handleTierChange(
+                              index,
+                              "description",
+                              e.target.value
+                            )
+                          }
                           className="mt-1"
                         />
                       </div>
@@ -728,63 +1035,141 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                   </div>
                 ))}
               </div>
+
+              {/* Seat Map Setup Button */}
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-neutral-900 font-medium mb-1">
+                      {t("wizard.organizer.seatMapSetupTitle")}
+                    </h3>
+                    <p className="text-sm text-neutral-600">
+                      {isEditMode
+                        ? t("wizard.organizer.seatMapSetupDescEdit")
+                        : t("wizard.organizer.seatMapSetupDescCreate")}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      if (isEditMode && eventId) {
+                        // Save current step before navigating to seat map
+                        sessionStorage.setItem(
+                          `wizard-step-${eventId}`,
+                          currentStep.toString()
+                        );
+                        // Edit mode: navigate directly to seat map
+                        onNavigate("edit-seat-map", eventId);
+                      } else {
+                        // Create mode: save event first, then navigate
+                        await handlePublish();
+                      }
+                    }}
+                    disabled={isPublishing}
+                    className="bg-blue-500 hover:bg-blue-600"
+                  >
+                    {isPublishing ? (
+                      <>
+                        <Loader2 size={18} className="mr-2 animate-spin" />
+                        {t("wizard.organizer.saving", "Đang lưu...")}
+                      </>
+                    ) : (
+                      <>
+                        <Grid3x3 size={18} className="mr-2" />
+                        {t("wizard.organizer.setupSeatsButton")}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Step 4: Policies */}
           {currentStep === 4 && (
             <div className="space-y-6">
-              <h3 className="mb-6">Ticket Policies</h3>
+              <h3 className="mb-6">{t("wizard.organizer.ticketPolicies")}</h3>
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 border border-neutral-200 rounded-xl">
                   <div>
-                    <div className="text-neutral-900">Refundable Tickets</div>
+                    <div className="text-neutral-900">
+                      {t("wizard.organizer.refundableTickets")}
+                    </div>
                     <div className="text-sm text-neutral-500">
-                      Allow customers to request refunds
+                      {t("wizard.organizer.refundableTicketsDesc")}
                     </div>
                   </div>
                   <Switch
                     checked={eventData.policies?.refundable || false}
-                    onCheckedChange={(checked) => 
-                      handleInputChange('policies', { ...eventData.policies, refundable: checked })
+                    onCheckedChange={(checked) =>
+                      setEventData((prev) => ({
+                        ...prev,
+                        policies: {
+                          refundable: checked,
+                          transferable: prev.policies?.transferable || false,
+                          refundDeadline: prev.policies?.refundDeadline,
+                        },
+                      }))
                     }
                   />
                 </div>
 
                 {eventData.policies?.refundable && (
                   <div className="ml-4">
-                    <Label>Refund Deadline *</Label>
+                    <Label>{t("wizard.organizer.refundDeadline")}</Label>
                     <Input
                       type="date"
-                      min={eventData.date || new Date().toISOString().split('T')[0]}
-                      max={eventData.date}
-                      value={eventData.policies?.refundDeadline || ''}
-                      onChange={(e) => 
-                        handleInputChange('policies', { 
-                          ...eventData.policies, 
-                          refundDeadline: e.target.value 
-                        })
+                      min={new Date().toISOString().split("T")[0]}
+                      max={
+                        eventData.date
+                          ? new Date(
+                              new Date(eventData.date).getTime() -
+                                5 * 24 * 60 * 60 * 1000
+                            )
+                              .toISOString()
+                              .split("T")[0]
+                          : undefined
+                      }
+                      value={eventData.policies?.refundDeadline || ""}
+                      onChange={(e) =>
+                        setEventData((prev) => ({
+                          ...prev,
+                          policies: {
+                            refundable: prev.policies?.refundable || false,
+                            transferable: prev.policies?.transferable || false,
+                            refundDeadline: e.target.value,
+                          },
+                        }))
                       }
                       className="mt-1"
                     />
                     <p className="text-xs text-neutral-500 mt-1">
-                      Must be on or before the event date
+                      {t("wizard.organizer.refundDeadlineHint")}
                     </p>
                   </div>
                 )}
 
                 <div className="flex items-center justify-between p-4 border border-neutral-200 rounded-xl">
                   <div>
-                    <div className="text-neutral-900">Transferable Tickets</div>
+                    <div className="text-neutral-900">
+                      {t("wizard.organizer.transferableTickets")}
+                    </div>
                     <div className="text-sm text-neutral-500">
-                      Allow customers to transfer tickets to others
+                      {t("wizard.organizer.transferableTicketsDesc")}
                     </div>
                   </div>
                   <Switch
                     checked={eventData.policies?.transferable || false}
-                    onCheckedChange={(checked) => 
-                      handleInputChange('policies', { ...eventData.policies, transferable: checked })
+                    onCheckedChange={(checked) =>
+                      setEventData((prev) => ({
+                        ...prev,
+                        policies: {
+                          refundable: prev.policies?.refundable || false,
+                          transferable: checked,
+                          refundDeadline: prev.policies?.refundDeadline,
+                        },
+                      }))
                     }
                   />
                 </div>
@@ -795,39 +1180,61 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
           {/* Step 5: Review */}
           {currentStep === 5 && (
             <div className="space-y-6">
-              <h3 className="mb-6">Review & Publish</h3>
+              <h3 className="mb-6">{t("wizard.organizer.reviewPublish")}</h3>
 
               <div className="space-y-4">
                 <div className="bg-neutral-50 rounded-xl p-4">
-                  <h4 className="mb-3">Event Details</h4>
+                  <h4 className="mb-3">{t("wizard.organizer.eventDetails")}</h4>
                   <dl className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Title:</dt>
+                      <dt className="text-neutral-500">
+                        {t("wizard.organizer.titleLabel")}
+                      </dt>
                       <dd className="text-neutral-900">{eventData.title}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Category:</dt>
-                      <dd className="text-neutral-900">{eventData.category}</dd>
+                      <dt className="text-neutral-500">
+                        {t("wizard.organizer.categoryLabel")}
+                      </dt>
+                      <dd className="text-neutral-900">
+                        {eventData.category
+                          ? getCategoryTranslation(
+                              eventData.category,
+                              i18n.language
+                            )
+                          : ""}
+                      </dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Date:</dt>
-                      <dd className="text-neutral-900">{eventData.date} at {eventData.time}</dd>
+                      <dt className="text-neutral-500">
+                        {t("wizard.organizer.dateLabel")}
+                      </dt>
+                      <dd className="text-neutral-900">
+                        {eventData.date} {t("wizard.organizer.at")}{" "}
+                        {eventData.time}
+                      </dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Venue:</dt>
-                      <dd className="text-neutral-900">{eventData.venue}, {eventData.city}</dd>
+                      <dt className="text-neutral-500">
+                        {t("wizard.organizer.venueLabel")}
+                      </dt>
+                      <dd className="text-neutral-900">{eventData.venue}</dd>
                     </div>
                   </dl>
                 </div>
 
                 <div className="bg-neutral-50 rounded-xl p-4">
-                  <h4 className="mb-3">Ticket Tiers ({ticketTiers.length})</h4>
+                  <h4 className="mb-3">
+                    {t("wizard.organizer.ticketTiersCount")} (
+                    {ticketTiers.length})
+                  </h4>
                   <div className="space-y-2">
                     {ticketTiers.map((tier, index) => (
                       <div key={index} className="text-sm flex justify-between">
                         <span className="text-neutral-900">{tier.name}</span>
                         <span className="text-neutral-600">
-                          {(tier.price || 0).toLocaleString()} VND × {tier.total}
+                          {(tier.price || 0).toLocaleString()} VND ×{" "}
+                          {tier.total}
                         </span>
                       </div>
                     ))}
@@ -835,18 +1242,34 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                 </div>
 
                 <div className="bg-neutral-50 rounded-xl p-4">
-                  <h4 className="mb-3">Policies</h4>
+                  <h4 className="mb-3">{t("wizard.organizer.policies")}</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${eventData.policies?.refundable ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          eventData.policies?.refundable
+                            ? "bg-green-500"
+                            : "bg-red-500"
+                        }`}
+                      />
                       <span className="text-neutral-900">
-                        {eventData.policies?.refundable ? 'Refundable' : 'Non-refundable'}
+                        {eventData.policies?.refundable
+                          ? t("wizard.organizer.refundable")
+                          : t("wizard.organizer.nonRefundable")}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${eventData.policies?.transferable ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          eventData.policies?.transferable
+                            ? "bg-green-500"
+                            : "bg-red-500"
+                        }`}
+                      />
                       <span className="text-neutral-900">
-                        {eventData.policies?.transferable ? 'Transferable' : 'Non-transferable'}
+                        {eventData.policies?.transferable
+                          ? t("wizard.organizer.transferable")
+                          : t("wizard.organizer.nonTransferable")}
                       </span>
                     </div>
                   </div>
@@ -858,12 +1281,8 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
           {/* Navigation */}
           <div className="flex gap-3 mt-8">
             {currentStep > 1 && (
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                className="flex-1"
-              >
-                Back
+              <Button variant="outline" onClick={handleBack} className="flex-1">
+                {t("wizard.organizer.previous")}
               </Button>
             )}
             {currentStep < 5 ? (
@@ -871,7 +1290,7 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                 onClick={handleNext}
                 className="flex-1 bg-orange-500 hover:bg-orange-600"
               >
-                Continue
+                {t("wizard.organizer.next")}
               </Button>
             ) : (
               <Button
@@ -882,10 +1301,14 @@ export function OrganizerWizard({ onNavigate }: OrganizerWizardProps) {
                 {isPublishing ? (
                   <>
                     <Loader2 className="animate-spin mr-2" size={16} />
-                    Publishing...
+                    {isEditMode
+                      ? t("wizard.organizer.updatingEvent") || "Updating..."
+                      : t("wizard.organizer.publishingEvent")}
                   </>
+                ) : isEditMode ? (
+                  t("wizard.organizer.updateEvent") || "Update Event"
                 ) : (
-                  'Publish Event'
+                  t("wizard.organizer.publish")
                 )}
               </Button>
             )}
