@@ -14,7 +14,18 @@ export default defineConfig({
   build: {
     target: "esnext",
     outDir: "build",
+    chunkSizeWarningLimit: 1000, // Tăng ngưỡng warning lên 1000 kB
     rollupOptions: {
+      onwarn(warning, warn) {
+        // Bỏ qua cảnh báo về PURE annotation từ SignalR
+        if (
+          warning.code === "INVALID_ANNOTATION" &&
+          warning.message.includes("signalr")
+        ) {
+          return;
+        }
+        warn(warning);
+      },
       output: {
         manualChunks: (id) => {
           // React core
@@ -25,8 +36,11 @@ export default defineConfig({
           if (id.includes("node_modules/@radix-ui/")) {
             return "vendor-radix";
           }
-          // Charts
-          if (id.includes("node_modules/recharts") || id.includes("node_modules/d3-") || id.includes("node_modules/victory-vendor")) {
+          // Charts (tách riêng recharts vì khá lớn)
+          if (id.includes("node_modules/recharts")) {
+            return "vendor-recharts";
+          }
+          if (id.includes("node_modules/d3-") || id.includes("node_modules/victory-vendor")) {
             return "vendor-charts";
           }
           // i18n

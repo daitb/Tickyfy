@@ -182,8 +182,11 @@ const Error = lazy(() =>
   import("./pages/Error").then((m) => ({ default: m.Error }))
 );
 
-// Keep frequently used pages non-lazy for faster initial load
-import { Home } from "./pages/Home";
+const Home = lazy(() =>
+  import("./pages/Home").then((m) => ({ default: m.Home }))
+);
+
+// Keep authentication pages non-lazy for faster auth flows
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ForgotPassword } from "./pages/ForgotPassword";

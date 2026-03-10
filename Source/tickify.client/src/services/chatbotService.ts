@@ -25,7 +25,7 @@ export const chatbotService = {
     onError: (error: Error) => void
   ): Promise<void> {
     try {
-      const response = await fetch(`http://localhost:5179/api${BASE_URL}/chat/stream`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api${BASE_URL}/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
