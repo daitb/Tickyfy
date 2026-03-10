@@ -23,10 +23,9 @@ export default defineConfig({
     outDir: "build",
     sourcemap: false,
     minify: "esbuild",
-    chunkSizeWarningLimit: 1000, // Tăng ngưỡng warning lên 1000 kB
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       onwarn(warning, warn) {
-        // Bỏ qua cảnh báo về PURE annotation từ SignalR
         if (
           warning.code === "INVALID_ANNOTATION" &&
           warning.message.includes("signalr")
@@ -36,46 +35,43 @@ export default defineConfig({
         warn(warning);
       },
       output: {
-        manualChunks: (id) => {
-          // React core
-          if (id.includes("node_modules/react/") || id.includes("node_modules/react-dom/") || id.includes("node_modules/react-router-dom/") || id.includes("node_modules/scheduler/")) {
-            return "vendor-react";
-          }
+        manualChunks: {
+          // React ecosystem - bundle cùng nhau
+          "vendor-react": [
+            "react",
+            "react-dom",
+            "react-router-dom",
+            "react/jsx-runtime",
+          ],
           // Radix UI
-          if (id.includes("node_modules/@radix-ui/")) {
-            return "vendor-radix";
-          }
-          // Charts (tách riêng recharts vì khá lớn)
-          if (id.includes("node_modules/recharts")) {
-            return "vendor-recharts";
-          }
-          if (id.includes("node_modules/d3-") || id.includes("node_modules/victory-vendor")) {
-            return "vendor-charts";
-          }
-          // i18n
-          if (id.includes("node_modules/i18next") || id.includes("node_modules/react-i18next")) {
-            return "vendor-i18n";
-          }
+          "vendor-radix": [
+            "@radix-ui/react-accordion",
+            "@radix-ui/react-alert-dialog",
+            "@radix-ui/react-avatar",
+            "@radix-ui/react-checkbox",
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-label",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-select",
+            "@radix-ui/react-separator",
+            "@radix-ui/react-slot",
+            "@radix-ui/react-switch",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-tooltip",
+          ],
+          // Recharts
+          "vendor-recharts": ["recharts"],
           // Date utilities
-          if (id.includes("node_modules/date-fns") || id.includes("node_modules/react-date-range") || id.includes("node_modules/react-day-picker")) {
-            return "vendor-date";
-          }
+          "vendor-date": ["date-fns", "react-date-range", "react-day-picker"],
           // Forms
-          if (id.includes("node_modules/react-hook-form") || id.includes("node_modules/zod") || id.includes("node_modules/@hookform/")) {
-            return "vendor-forms";
-          }
-          // Real-time / communication
-          if (id.includes("node_modules/@microsoft/signalr")) {
-            return "vendor-signalr";
-          }
+          "vendor-forms": ["react-hook-form", "zod"],
+          // i18n
+          "vendor-i18n": ["i18next", "react-i18next"],
+          // SignalR
+          "vendor-signalr": ["@microsoft/signalr"],
           // Icons
-          if (id.includes("node_modules/lucide-react")) {
-            return "vendor-icons";
-          }
-          // Other vendor libs
-          if (id.includes("node_modules/")) {
-            return "vendor-misc";
-          }
+          "vendor-icons": ["lucide-react"],
         },
       },
     },
