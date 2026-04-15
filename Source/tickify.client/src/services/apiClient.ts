@@ -4,6 +4,7 @@ import axios, {
   AxiosError,
 } from "axios";
 import { toast } from "sonner";
+import { navigateToLogin } from "../utils/authNavigation";
 
 // Base API URL
 const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
@@ -186,8 +187,9 @@ function clearAuthAndRedirect() {
   localStorage.removeItem("authToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("user");
+  window.dispatchEvent(new Event("auth-change"));
   toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-  window.location.href = "/login";
+  navigateToLogin();
 }
 
 export default apiClient;

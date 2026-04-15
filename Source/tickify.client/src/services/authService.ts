@@ -1,5 +1,6 @@
 import apiClient from "./apiClient";
 import { toast } from "sonner";
+import { navigateToLogin } from "../utils/authNavigation";
 
 // ===== INTERFACES =====
 export interface LoginDto {
@@ -114,8 +115,7 @@ class AuthService {
 
       // Dispatch custom event to notify app of auth change
       window.dispatchEvent(new Event("auth-change"));
-
-      window.location.href = "/login";
+      navigateToLogin();
     }
   }
 
