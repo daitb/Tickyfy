@@ -7,6 +7,7 @@ export interface EventListDto {
   title: string;
   venue: string;
   imageUrl?: string;
+  BannerImage?: string;
   startDate: string;
   endDate: string;
   categoryName: string;
@@ -24,6 +25,7 @@ export interface EventDetailDto {
   description: string;
   venue: string;
   imageUrl?: string;
+  BannerImage?: string;
   startDate: string;
   endDate: string;
   totalSeats: number;
@@ -98,7 +100,7 @@ function mapEventListToEvent(dto: EventListDto): Event {
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9-]/g, ""),
     category: (dto.categoryName as any) || "Other",
-    image: dto.imageUrl || "",
+    image: dto.imageUrl || (dto as any).bannerImage || (dto as any).BannerImage || "",
     date: dto.startDate || new Date().toISOString(),
     time: startDate.toLocaleTimeString("en-US", {
       hour: "2-digit",
@@ -148,7 +150,7 @@ function mapEventDetailToEvent(dto: EventDetailDto): Event {
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9-]/g, ""),
     category: (dto.categoryName as any) || "Other",
-    image: dto.imageUrl || "",
+    image: dto.imageUrl || (dto as any).bannerImage || (dto as any).BannerImage || "",
     date: dto.startDate || new Date().toISOString(),
     time: startDate.toLocaleTimeString("en-US", {
       hour: "2-digit",
