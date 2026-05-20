@@ -44,8 +44,6 @@ export function Register({ onNavigate }: RegisterProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const googleButtonRef = useRef<HTMLDivElement>(null);
-  const hiddenGoogleButtonRef = useRef<HTMLDivElement>(null);
   const [isGoogleInitialized, setIsGoogleInitialized] = useState(false);
 
   // Password requirements state
@@ -100,22 +98,18 @@ export function Register({ onNavigate }: RegisterProps) {
   useEffect(() => {
     const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
+    if (!GOOGLE_CLIENT_ID) {
+      setError("Thiếu VITE_GOOGLE_CLIENT_ID. Vui lòng cấu hình biến môi trường trên Vercel.");
+      return;
+    }
+
     const checkGoogleLoaded = () => {
-      if (window.google && hiddenGoogleButtonRef.current) {
+      if (window.google) {
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
           callback: handleGoogleResponse,
           auto_select: false,
           cancel_on_tap_outside: true,
-        });
-
-        // Render Google button in hidden div
-        window.google.accounts.id.renderButton(hiddenGoogleButtonRef.current, {
-          theme: "outline",
-          size: "large",
-          text: "signin_with",
-          shape: "rectangular",
-          locale: "en_US",
         });
 
         setIsGoogleInitialized(true);
@@ -240,29 +234,11 @@ export function Register({ onNavigate }: RegisterProps) {
       return;
     }
 
-    if (hiddenGoogleButtonRef.current) {
-      // Find the Google button element (usually a div with role="button")
-      const googleButton = hiddenGoogleButtonRef.current.querySelector(
-        'div[role="button"]'
-      ) as HTMLElement;
-
-      if (googleButton) {
-        // Programmatically click the Google button
-        googleButton.click();
-      } else {
-        // Fallback: use prompt method to show One Tap UI
-        window.google.accounts.id.prompt((notification: any) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            setError(
-              "Không thể hiển thị cửa sổ đăng nhập Google. Vui lòng thử lại."
-            );
-          }
-        });
+    window.google.accounts.id.prompt((notification: any) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        setError("Không thể hiển thị cửa sổ đăng nhập Google. Vui lòng thử lại.");
       }
-    } else {
-      // Fallback: use prompt method
-      window.google.accounts.id.prompt();
-    }
+    });
   };
 
   return (
@@ -362,9 +338,6 @@ export function Register({ onNavigate }: RegisterProps) {
             {!success && (
               <>
                 <div className="space-y-3 mb-6">
-                  {/* Hidden Google Button - used for programmatic click */}
-                  <div ref={hiddenGoogleButtonRef} className="hidden"></div>
-
                   {/* Custom Google Sign-In Button */}
                   <Button
                     type="button"

@@ -162,7 +162,7 @@ builder.Services.AddAuthorization();
 // 4. CONFIGURATION (CORS, SIGNALR, SWAGGER)
 // ============================================
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                     ?? new[] { "http://localhost:3000", "http://localhost:5173" };
+                     ?? new[] { "https://tickify-six.vercel.app", "http://localhost:3000", "https://localhost:3000" };
 
 builder.Services.AddCors(options =>
 {

@@ -118,6 +118,21 @@ Permissions được kiểm tra mỗi khi:
 ✅ Admin dashboard
 ✅ Quản lý toàn bộ users, events
 
+## Google OAuth trên Vercel
+
+Khi cấu hình Google Sign-In trong Google Cloud Console, cần thêm đúng các **Authorized JavaScript origins** sau:
+
+- `https://tickify-six.vercel.app`
+- `http://localhost:3000`
+- `https://localhost:3000`
+
+Lưu ý:
+
+- Không thêm dấu `/` ở cuối origin.
+- Không dùng path con như `/login` hoặc `/register`.
+- Origin production phải khớp đúng domain Vercel đang deploy.
+- Nếu bạn đổi sang một deployment preview khác của Vercel, origin đó cũng phải được thêm riêng.
+
 ## Kiểm tra trong code
 
 ### Trong component
