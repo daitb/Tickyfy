@@ -61,10 +61,33 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
     onNavigate("event-detail", eventId);
   };
 
+  const publishedEvents = events.filter((event) => event.status === "published");
+
+  const fallbackUpcomingEvents = [...publishedEvents]
+    .filter((event) => {
+      const eventDate = new Date(event.date);
+      return Number.isNaN(eventDate.getTime()) || eventDate.getTime() >= Date.now();
+    })
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 6);
+
+  const displaySpecialEvents =
+    specialEvents.length > 0 ? specialEvents : publishedEvents.slice(0, 4);
+
+  const displayTrendingEvents =
+    trendingEvents.length > 0 ? trendingEvents : publishedEvents.slice(0, 3);
+
+  const displayUpcomingEvents =
+    upcomingEventsList.length > 0
+      ? upcomingEventsList
+      : fallbackUpcomingEvents.length > 0
+      ? fallbackUpcomingEvents
+      : publishedEvents.slice(0, 6);
+
   const filteredEvents =
     selectedCategory === "all"
-      ? upcomingEventsList
-      : upcomingEventsList.filter((e) => e.category === selectedCategory);
+      ? displayUpcomingEvents
+      : displayUpcomingEvents.filter((e) => e.category === selectedCategory);
 
   if (isLoading) {
     return (
@@ -104,7 +127,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
             <EventCardSkeletonGrid count={4} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {specialEvents.map((event) => (
+              {displaySpecialEvents.map((event) => (
                 <EventCard
                   key={event.id}
                   event={event}
@@ -130,7 +153,7 @@ export function Home({ onNavigate, isSearchOpen = false }: HomeProps) {
             <EventCardSkeletonGrid count={3} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {trendingEvents.map((event) => (
+              {displayTrendingEvents.map((event) => (
                 <EventCard
                   key={event.id}
                   event={event}

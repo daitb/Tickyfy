@@ -220,33 +220,33 @@ var app = builder.Build();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // Database Seeding (Safe Mode - Đảm bảo app không chết nếu DB lỗi)
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
-    var context = services.GetRequiredService<ApplicationDbContext>();
+// using (var scope = app.Services.CreateScope())
+// {
+//     var services = scope.ServiceProvider;
+//     var logger = services.GetRequiredService<ILogger<Program>>();
+//     var context = services.GetRequiredService<ApplicationDbContext>();
 
-    try
-    {
-        // Tự động tạo database nếu chưa tồn tại
-        logger.LogInformation("🔍 Đang kiểm tra database...");
-        await context.Database.EnsureCreatedAsync();
-        logger.LogInformation("✅ Database đã sẵn sàng.");
+//     try
+//     {
+//         // Tự động tạo database nếu chưa tồn tại
+//         logger.LogInformation("🔍 Đang kiểm tra database...");
+//         await context.Database.EnsureCreatedAsync();
+//         logger.LogInformation("✅ Database đã sẵn sàng.");
         
-        // Seed dữ liệu ban đầu
-        logger.LogInformation("📝 Đang seed dữ liệu...");
-        await DbInitializer.SeedAsync(context);
-        logger.LogInformation("✅ Seed data hoàn tất.");
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "❌ Lỗi trong quá trình khởi tạo/Seeding Database: {Message}", ex.Message);
-        if (app.Environment.IsDevelopment())
-        {
-            throw; // Trong dev, throw để dễ debug
-        }
-    }
-}
+//         // Seed dữ liệu ban đầu
+//         logger.LogInformation("📝 Đang seed dữ liệu...");
+//         await DbInitializer.SeedAsync(context);
+//         logger.LogInformation("✅ Seed data hoàn tất.");
+//     }
+//     catch (Exception ex)
+//     {
+//         logger.LogError(ex, "❌ Lỗi trong quá trình khởi tạo/Seeding Database: {Message}", ex.Message);
+//         if (app.Environment.IsDevelopment())
+//         {
+//             throw; // Trong dev, throw để dễ debug
+//         }
+//     }
+// }
 
 app.UseMiddleware<RateLimitingMiddleware>();
 
